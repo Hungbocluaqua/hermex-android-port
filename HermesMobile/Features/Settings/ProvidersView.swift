@@ -55,6 +55,10 @@ struct ProvidersView: View {
                         .padding(.horizontal, 24)
                 } else {
                     VStack(alignment: .leading, spacing: 10) {
+                        if let errorMessage = viewModel.errorMessage {
+                            refreshFailureBanner(detail: errorMessage)
+                        }
+
                         ForEach(Array(viewModel.providers.enumerated()), id: \.offset) { index, provider in
                             let key = Self.expansionKey(for: provider, at: index)
                             ProviderRow(
@@ -77,6 +81,36 @@ struct ProvidersView: View {
             .padding(.top, 20)
             .padding(.bottom, 44)
         }
+    }
+
+    /// Shown above cached rows when a pull-to-refresh fails: the list would
+    /// otherwise look freshly loaded even though the request errored (#42 review).
+    private func refreshFailureBanner(detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .accessibilityHidden(true)
+
+                Text("Couldn't refresh. Showing previously loaded providers.")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+            }
+
+            Text(verbatim: detail)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.orange.opacity(0.14))
+        )
+        .accessibilityElement(children: .combine)
     }
 
     /// Expansion is keyed by the provider's stable id so refreshes that reorder

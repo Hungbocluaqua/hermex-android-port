@@ -50,6 +50,42 @@ final class ProvidersViewModelTests: APIClientTestCase {
         XCTAssertFalse(model.isLoading)
     }
 
+    /// A failed pull-to-refresh must keep the cached providers *and* surface the
+    /// error — the view shows a refresh-failure banner above the stale rows.
+    @MainActor
+    func testRefreshFailureKeepsCachedProvidersAndSetsErrorMessage() async {
+        let client = makeClient { request in
+            apiTestJSONResponse("""
+            {
+              "active_provider": "anthropic",
+              "providers": [
+                { "id": "anthropic", "display_name": "Anthropic", "has_key": true }
+              ]
+            }
+            """, for: request)
+        }
+        let model = ProvidersViewModel(server: Self.serverURL, client: client)
+
+        await model.load()
+        XCTAssertEqual(model.providers.map(\.id), ["anthropic"])
+        XCTAssertNil(model.errorMessage)
+
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(
+                url: request.url!,
+                statusCode: 500,
+                httpVersion: nil,
+                headerFields: nil
+            )!, Data())
+        }
+
+        await model.load()
+
+        XCTAssertEqual(model.providers.map(\.id), ["anthropic"], "cached providers must survive a failed refresh")
+        XCTAssertNotNil(model.errorMessage, "the failed refresh must be surfaced")
+        XCTAssertFalse(model.isLoading)
+    }
+
     @MainActor
     func testActiveProviderMatchingIsTrimmedAndCaseInsensitive() {
         XCTAssertEqual(ProvidersViewModel.normalizedProviderID("  OpenAI-Codex \n"), "openai-codex")

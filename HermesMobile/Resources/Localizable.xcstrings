@@ -637,6 +637,112 @@
         }
       }
     },
+    "Couldn't refresh. Showing previously loaded providers." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "تعذّر التحديث. يتم عرض المزوّدين المحمّلين سابقًا."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Aktualisierung fehlgeschlagen. Zuvor geladene Anbieter werden angezeigt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "No se pudo actualizar. Se muestran los proveedores cargados anteriormente."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossible d'actualiser. Affichage des fournisseurs chargés précédemment."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "הרענון נכשל. מוצגים ספקים שנטענו קודם לכן."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossibile aggiornare. Vengono mostrati i provider caricati in precedenza."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "更新できませんでした。以前に読み込んだプロバイダを表示しています。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "새로 고칠 수 없습니다. 이전에 불러온 제공업체를 표시합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Kan niet vernieuwen. Eerder geladen providers worden weergegeven."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Nie udało się odświeżyć. Wyświetlani są wcześniej wczytani dostawcy."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Não foi possível atualizar. Mostrando os provedores carregados anteriormente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Не удалось обновить. Показаны ранее загруженные провайдеры."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Yenilenemedi. Daha önce yüklenen sağlayıcılar gösteriliyor."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ریفریش نہیں ہو سکا۔ پہلے سے لوڈ کیے گئے فراہم کنندگان دکھائے جا رہے ہیں۔"
+          }
+        },
+        "zh-HK" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "無法重新整理。正在顯示先前載入的供應商。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "无法刷新。正在显示之前加载的提供商。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "無法重新整理。正在顯示先前載入的供應商。"
+          }
+        }
+      }
+    },
     "Diff too large to show." : {
       "localizations" : {
         "zh-Hant" : {
