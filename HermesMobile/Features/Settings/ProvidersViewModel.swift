@@ -16,16 +16,26 @@ final class ProvidersViewModel {
 
     private let client: APIClient
 
+    /// Monotonic token identifying the most recent `load()` call. `load()` has
+    /// three overlapping entry points (`.task`, `.refreshable`, "Try Again"), so
+    /// an older in-flight request must not overwrite a newer response or clear
+    /// `isLoading` while the newer request is still pending (#42 Codex review).
+    private var loadGeneration = 0
+
     init(server: URL, client: APIClient? = nil) {
         self.client = client ?? APIClient(baseURL: server)
     }
 
     func load() async {
+        loadGeneration += 1
+        let generation = loadGeneration
+
         isLoading = true
         errorMessage = nil
 
         do {
             let response = try await client.providers()
+            guard generation == loadGeneration else { return }
             providers = response.providers ?? []
             activeProviderID = Self.normalizedProviderID(response.activeProvider)
         } catch is CancellationError {
@@ -34,9 +44,12 @@ final class ProvidersViewModel {
         } catch let error as URLError where error.code == .cancelled {
             // Same cancellation, surfaced through URLSession.
         } catch {
+            guard generation == loadGeneration else { return }
             errorMessage = error.localizedDescription
         }
 
+        // A newer load owns the loading state now — leave it alone.
+        guard generation == loadGeneration else { return }
         isLoading = false
     }
 

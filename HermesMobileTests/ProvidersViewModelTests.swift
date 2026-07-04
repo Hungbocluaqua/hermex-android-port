@@ -86,6 +86,57 @@ final class ProvidersViewModelTests: APIClientTestCase {
         XCTAssertFalse(model.isLoading)
     }
 
+    /// `load()` has three overlapping entry points (`.task`, `.refreshable`,
+    /// "Try Again"). When two loads race and their responses land out of order,
+    /// the older response must be discarded: it may not overwrite newer provider
+    /// data or the newer load's state (#42 Codex review).
+    @MainActor
+    func testStaleOverlappingLoadDoesNotOverwriteNewerResponse() async throws {
+        let firstRequestArrived = expectation(description: "stale request arrived")
+        let secondRequestArrived = expectation(description: "fresh request arrived")
+        let requests = DeferredProvidersRequests()
+
+        DeferredProvidersMockURLProtocol.onRequest = { pendingRequest in
+            switch requests.append(pendingRequest) {
+            case 1: firstRequestArrived.fulfill()
+            case 2: secondRequestArrived.fulfill()
+            default: XCTFail("unexpected extra providers request")
+            }
+        }
+        defer { DeferredProvidersMockURLProtocol.onRequest = nil }
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [DeferredProvidersMockURLProtocol.self]
+        let client = APIClient(baseURL: Self.serverURL, session: URLSession(configuration: configuration))
+        let model = ProvidersViewModel(server: Self.serverURL, client: client)
+
+        let staleLoad = Task { await model.load() }
+        await fulfillment(of: [firstRequestArrived], timeout: 5)
+
+        // A newer load starts while the first request is still in flight …
+        let freshLoad = Task { await model.load() }
+        await fulfillment(of: [secondRequestArrived], timeout: 5)
+
+        // … and its response lands first.
+        requests.request(at: 1).complete(withJSON: """
+        { "active_provider": "fresh", "providers": [ { "id": "fresh" } ] }
+        """)
+        await freshLoad.value
+        XCTAssertEqual(model.providers.map(\.id), ["fresh"])
+        XCTAssertFalse(model.isLoading)
+
+        // The stale response lands afterwards — it must be discarded.
+        requests.request(at: 0).complete(withJSON: """
+        { "active_provider": "stale", "providers": [ { "id": "stale" } ] }
+        """)
+        await staleLoad.value
+
+        XCTAssertEqual(model.providers.map(\.id), ["fresh"], "a stale response must not overwrite newer data")
+        XCTAssertEqual(model.activeProviderID, "fresh")
+        XCTAssertFalse(model.isLoading)
+        XCTAssertNil(model.errorMessage)
+    }
+
     @MainActor
     func testActiveProviderMatchingIsTrimmedAndCaseInsensitive() {
         XCTAssertEqual(ProvidersViewModel.normalizedProviderID("  OpenAI-Codex \n"), "openai-codex")
@@ -182,5 +233,67 @@ final class ProvidersViewModelTests: APIClientTestCase {
         let bare = ProviderSummary(id: "p")
         XCTAssertEqual(ProvidersViewModel.modelCount(for: bare), 0)
         XCTAssertNil(ProvidersViewModel.truncatedModelInfo(for: bare))
+    }
+}
+
+/// URLProtocol whose responses are completed manually by the test, so two
+/// in-flight requests can be answered out of order (the shared
+/// `MockURLProtocol` answers synchronously inside `startLoading`, which
+/// serializes responses in request order).
+private final class DeferredProvidersMockURLProtocol: URLProtocol {
+    /// Called (on a URLSession worker thread) whenever a request starts loading.
+    static var onRequest: ((DeferredProvidersMockURLProtocol) -> Void)?
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let onRequest = Self.onRequest else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
+            return
+        }
+
+        onRequest(self)
+    }
+
+    override func stopLoading() {}
+
+    func complete(withJSON json: String) {
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"]
+        )!
+
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(json.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+}
+
+/// Thread-safe collector for the deferred requests above (`onRequest` fires on
+/// URLSession worker threads).
+private final class DeferredProvidersRequests: @unchecked Sendable {
+    private let lock = NSLock()
+    private var pending: [DeferredProvidersMockURLProtocol] = []
+
+    /// Appends the request and returns its 1-based arrival order.
+    func append(_ request: DeferredProvidersMockURLProtocol) -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        pending.append(request)
+        return pending.count
+    }
+
+    func request(at index: Int) -> DeferredProvidersMockURLProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        return pending[index]
     }
 }
