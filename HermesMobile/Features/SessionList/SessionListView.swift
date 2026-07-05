@@ -24,6 +24,7 @@ struct SessionListView: View {
     @State private var sessionPendingRename: SessionSummary?
     @State private var sessionPendingDeletion: SessionSummary?
     @State private var sessionPendingProjectCreation: SessionSummary?
+    @State private var sessionExportShareItem: SessionExportShareItem?
     @State private var isPresentingProjectCreation = false
     @State private var isPresentingAddServer = false
     @State private var projectPendingDeletion: ProjectSummary?
@@ -114,6 +115,19 @@ struct SessionListView: View {
                 case .insights:
                     InsightsView(server: server, onAPIError: authManager.handleAPIError)
                 }
+            }
+            .sheet(item: $sessionExportShareItem) { item in
+                SessionExportShareSheet(fileURL: item.fileURL)
+                    .presentationDetents([.medium, .large])
+                    .ignoresSafeArea()
+                    // The temp file lives in its own UUID directory (see
+                    // SessionListViewModel.export); remove the directory once
+                    // the share sheet is gone, shared and cancelled alike.
+                    .onDisappear {
+                        try? FileManager.default.removeItem(
+                            at: item.fileURL.deletingLastPathComponent()
+                        )
+                    }
             }
             .sheet(item: $sessionPendingRename) { session in
                 SessionRenameSheet(
@@ -652,6 +666,9 @@ struct SessionListView: View {
             },
             refreshProjects: {
                 Task { await viewModel.loadProjects() }
+            },
+            export: { session, format in
+                Task { await export(session, format: format) }
             }
         )
     }
@@ -814,6 +831,15 @@ struct SessionListView: View {
     private func move(_ session: SessionSummary, to projectID: String?) async {
         await viewModel.move(session, to: projectID, modelContext: modelContext)
         handleLastError()
+    }
+
+    private func export(_ session: SessionSummary, format: SessionExportFormat) async {
+        let fileURL = await viewModel.export(session, format: format)
+        handleLastError()
+
+        if let fileURL {
+            sessionExportShareItem = SessionExportShareItem(fileURL: fileURL)
+        }
     }
 
     private func delete(_ project: ProjectSummary) async {
