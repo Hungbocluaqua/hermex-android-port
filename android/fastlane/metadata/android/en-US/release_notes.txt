@@ -1,0 +1,3 @@
+Initial internal-test build of the native Hermex Android port.
+
+Includes onboarding, multi-server auth, sessions, streaming chat, attachments, approvals, clarification prompts, voice transcription, workspace browsing, git workflows, tasks, skills, memory, settings, share intake, shortcuts, widget actions, and local/offline cache foundations.

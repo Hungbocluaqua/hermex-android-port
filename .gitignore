@@ -38,11 +38,26 @@ node_modules/
 *.dSYM.zip
 *.dSYM
 
+# Android
+android/.gradle/
+android/.kotlin/
+android/local.properties
+android/app/build/
+android/build/
+android/*.jks
+android/*.keystore
+android/keystore.properties
+android/play-service-account.json
+
 # Fastlane
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output/
+android/fastlane/report.xml
+android/fastlane/Preview.html
+android/fastlane/screenshots/**/*.png
+android/fastlane/test_output/
 
 # Pi tooling artifacts (review outputs, fix plans, etc.)
 .pi/

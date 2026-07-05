@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Hermex</string>
+    <string name="share_target_label">Send to Hermex</string>
+    <string name="shortcut_sessions_short">Sessions</string>
+    <string name="shortcut_sessions_long">Open Hermex sessions</string>
+    <string name="shortcut_new_session_short">New Session</string>
+    <string name="shortcut_new_session_long">Start a new Hermex session</string>
+    <string name="shortcut_panels_short">Panels</string>
+    <string name="shortcut_panels_long">Open Hermex tasks and memory</string>
+    <string name="shortcut_settings_short">Settings</string>
+    <string name="shortcut_settings_long">Open Hermex settings</string>
+    <string name="widget_description">Hermex quick actions</string>
+    <string name="widget_subtitle">Jump back into your agent workspace.</string>
+    <string name="widget_open_sessions">Sessions</string>
+    <string name="widget_new_session">New</string>
+</resources>

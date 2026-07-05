@@ -1,0 +1,4 @@
+<full-backup-content>
+    <exclude domain="sharedpref" path="hermex_secure.xml" />
+    <exclude domain="sharedpref" path="hermex_share.xml" />
+</full-backup-content>

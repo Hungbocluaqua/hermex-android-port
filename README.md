@@ -4,11 +4,12 @@
 
 # Hermex
 
-**Control your self-hosted [Hermes](https://github.com/nesquena/hermes-webui) agent from your iPhone.**
+**Control your self-hosted [Hermes](https://github.com/nesquena/hermes-webui) agent from your iPhone or Android device.**
 
-Your server. Your iPhone. No middleman.
+Your server. Your phone. No middleman.
 
 [![iOS 18+](https://img.shields.io/badge/iOS-18%2B-000000?logo=apple&logoColor=white)](https://apps.apple.com/app/hermex/id6767006319)
+[![Android](https://img.shields.io/badge/Android-native-3DDC84?logo=android&logoColor=white)](android/README.md)
 [![Swift](https://img.shields.io/badge/Swift-5.9%2B-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](LICENSE)
 [![Follow on X](https://img.shields.io/badge/Follow-%40uzairansar-000000?logo=x&logoColor=white)](https://x.com/uzairansar)
@@ -24,11 +25,11 @@ Your server. Your iPhone. No middleman.
 
 </div>
 
-Hermex is a native SwiftUI iPhone app for driving a self-hosted [hermes-webui](https://github.com/nesquena/hermes-webui) server — a mobile cockpit for an AI agent that lives on a machine **you** control. The phone is the control plane, not the compute plane: the agent, its tools, and your data stay on your own hardware.
+Hermex is a native mobile app for driving a self-hosted [hermes-webui](https://github.com/nesquena/hermes-webui) server — a mobile cockpit for an AI agent that lives on a machine **you** control. The iOS app is built with SwiftUI, and the Android port is built with Kotlin and Jetpack Compose under [`android/`](android/README.md). The phone is the control plane, not the compute plane: the agent, its tools, and your data stay on your own hardware.
 
 - **Free.** No subscriptions, no in-app purchases.
 - **Private.** No analytics, no tracking, no third-party relay — the app talks only to your server.
-- **Native.** Real SwiftUI, built for iOS 18+, not a web wrapper.
+- **Native.** Real SwiftUI on iOS and Jetpack Compose on Android, not a web wrapper.
 
 ## Features
 
@@ -60,7 +61,7 @@ Hermex is a client only — it does not ship with, host, or provision a backend.
 
 1. **Run the server.** Install and start `hermes-webui` on macOS, Linux, or Windows/WSL2 (Python 3.11+). Set `HERMES_WEBUI_PASSWORD`.
 2. **Make it reachable from your phone** (see options below).
-3. **Connect.** [Download Hermex](https://apps.apple.com/app/hermex/id6767006319), enter your server URL (e.g. `https://hermes.yourdomain.com`) and password, and you're in.
+3. **Connect.** [Download Hermex for iOS](https://apps.apple.com/app/hermex/id6767006319) or build the native Android port from [`android/`](android/README.md), enter your server URL (e.g. `https://hermes.yourdomain.com`) and password, and you're in.
 
 Self-hosting the server, securing it, and keeping it reachable are your responsibility.
 
@@ -81,7 +82,7 @@ If connection testing fails, check these first:
 
 ## Building from source
 
-Prefer the [App Store build](https://apps.apple.com/app/hermex/id6767006319) unless you're developing. To build yourself you need Xcode 26 or newer (iOS 18 SDK) and an iPhone or simulator on iOS 18+.
+Prefer the [App Store build](https://apps.apple.com/app/hermex/id6767006319) unless you're developing. To build the iOS app yourself you need Xcode 26 or newer (iOS 18 SDK) and an iPhone or simulator on iOS 18+.
 
 Clone the repo, open `HermesMobile.xcodeproj`, and run the `HermesMobile` scheme on an iPhone simulator (the Xcode target is `HermesMobile`; the app's display name is `Hermex`). Dependencies are resolved automatically via Swift Package Manager.
 
@@ -102,6 +103,24 @@ xcrun simctl list devices available
 ```
 
 Local validation defaults for XcodeBuildMCP users live in `.xcodebuildmcp/config.yaml`; the standard post-change flow is in [`DEVELOPMENT.md`](DEVELOPMENT.md).
+
+### Android
+
+The native Android port lives in [`android/`](android/README.md). It uses Kotlin, Jetpack Compose, Material 3, Room, DataStore, OkHttp, SSE, Android encrypted storage, share intents, voice transcription, status notifications, shortcuts, widgets, and Fastlane-compatible release metadata.
+
+Common Android validation commands:
+
+```powershell
+cd android
+$env:ANDROID_HOME="$env:LOCALAPPDATA\Android\Sdk"
+$env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
+./gradlew.bat testDebugUnitTest
+./gradlew.bat assembleDebug
+./gradlew.bat assembleDebugAndroidTest
+./gradlew.bat bundleRelease
+```
+
+The debug APK is produced at `android/app/build/outputs/apk/debug/app-debug.apk`; the release bundle is produced at `android/app/build/outputs/bundle/release/app-release.aab`.
 
 ## Server compatibility
 

@@ -1,0 +1,5 @@
+Hermex is a native Android client for a self-hosted Hermes WebUI server. It brings sessions, streaming chat, approvals, attachments, voice transcription, workspace browsing, git controls, scheduled tasks, skills, memory, and settings into a mobile interface built with Kotlin and Jetpack Compose.
+
+The app connects to servers you control and uses Android encrypted storage for server entries, custom headers, and cookies. It supports multiple servers, share intake, document uploads, status notifications, home-screen shortcuts, and a quick-action widget.
+
+This Android port keeps the existing Hermes server contract intact. It does not use a WebView shell and does not require server changes.

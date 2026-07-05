@@ -1,0 +1,38 @@
+default_platform(:android)
+
+platform :android do
+  desc "Build and upload a signed release bundle to the Play internal test track"
+  lane :internal do
+    missing = %w[
+      HERMEX_ANDROID_KEYSTORE_FILE
+      HERMEX_ANDROID_KEYSTORE_PASSWORD
+      HERMEX_ANDROID_KEY_ALIAS
+      HERMEX_ANDROID_KEY_PASSWORD
+      SUPPLY_JSON_KEY
+    ].select { |name| ENV[name].to_s.strip.empty? }
+
+    UI.user_error!("Missing required environment variables: #{missing.join(', ')}") unless missing.empty?
+
+    gradle(
+      task: "bundle",
+      build_type: "Release"
+    )
+
+    upload_to_play_store(
+      track: "internal",
+      aab: "app/build/outputs/bundle/release/app-release.aab",
+      json_key: ENV["SUPPLY_JSON_KEY"],
+      release_status: "draft",
+      skip_upload_screenshots: true,
+      skip_upload_images: true
+    )
+  end
+
+  desc "Validate that the Android release bundle can be produced locally"
+  lane :build_release do
+    gradle(
+      task: "bundle",
+      build_type: "Release"
+    )
+  end
+end

@@ -1,0 +1,53 @@
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="sessions"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_sessions"
+        android:shortcutShortLabel="@string/shortcut_sessions_short"
+        android:shortcutLongLabel="@string/shortcut_sessions_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.uzairansar.hermex"
+            android:targetClass="com.uzairansar.hermex.MainActivity"
+            android:data="hermes-agent://sessions" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="new_session"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_new_session"
+        android:shortcutShortLabel="@string/shortcut_new_session_short"
+        android:shortcutLongLabel="@string/shortcut_new_session_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.uzairansar.hermex"
+            android:targetClass="com.uzairansar.hermex.MainActivity"
+            android:data="hermes-agent://sessions?shortcutAction=new" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="panels"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_panels"
+        android:shortcutShortLabel="@string/shortcut_panels_short"
+        android:shortcutLongLabel="@string/shortcut_panels_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.uzairansar.hermex"
+            android:targetClass="com.uzairansar.hermex.MainActivity"
+            android:data="hermes-agent://panels" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="settings"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_settings"
+        android:shortcutShortLabel="@string/shortcut_settings_short"
+        android:shortcutLongLabel="@string/shortcut_settings_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.uzairansar.hermex"
+            android:targetClass="com.uzairansar.hermex.MainActivity"
+            android:data="hermes-agent://settings" />
+    </shortcut>
+</shortcuts>

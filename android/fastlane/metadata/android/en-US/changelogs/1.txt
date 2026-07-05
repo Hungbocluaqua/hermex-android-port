@@ -1,0 +1,1 @@
+Initial internal-test build of the native Hermex Android port.
