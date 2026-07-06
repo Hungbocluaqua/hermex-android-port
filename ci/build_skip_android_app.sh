@@ -29,8 +29,10 @@ python3 "$ROOT/ci/prepare_skip_hermex_app.py" \
 )
 
 GRADLE_SETTINGS=""
+GRADLE_TASK="assembleDebug"
 if [[ -f "$APP_DIR/Android/settings.gradle.kts" ]]; then
   GRADLE_SETTINGS="$APP_DIR/Android/settings.gradle.kts"
+  GRADLE_TASK=":app:assembleDebug"
 else
   GRADLE_SETTINGS="$(find "$APP_DIR/.build/plugins/outputs" -path "*/$MODULE_NAME/destination/skipstone/settings.gradle.kts" -print -quit)"
 fi
@@ -44,19 +46,21 @@ GRADLE_DIR="$(dirname "$GRADLE_SETTINGS")"
 
 (
   cd "$GRADLE_DIR"
-  if [[ -f ./gradlew ]]; then
+  if command -v skip >/dev/null 2>&1; then
+    skip gradle -p "$GRADLE_DIR" "$GRADLE_TASK"
+  elif [[ -f ./gradlew ]]; then
     chmod +x ./gradlew
-    ./gradlew --no-daemon assembleDebug
+    ./gradlew --no-daemon "$GRADLE_TASK"
   elif command -v gradle >/dev/null 2>&1; then
-    gradle --no-daemon assembleDebug
+    gradle --no-daemon "$GRADLE_TASK"
   else
-    echo "Could not locate Gradle wrapper in $GRADLE_DIR and no system gradle is installed" >&2
+    echo "Could not locate skip, Gradle wrapper in $GRADLE_DIR, or system gradle" >&2
     find "$APP_DIR" -maxdepth 5 \( -name 'settings.gradle.kts' -o -name 'gradlew' \) -print >&2 || true
     exit 1
   fi
 )
 
-find "$GRADLE_DIR" "$APP_DIR/.build/plugins/outputs" -type f \( -name '*.apk' -o -name '*.aab' \) -print0 |
+find "$GRADLE_DIR" "$APP_DIR/.build/Android" "$APP_DIR/.build/plugins/outputs" -type f \( -name '*.apk' -o -name '*.aab' \) -print0 |
   while IFS= read -r -d '' artifact; do
     cp "$artifact" "$DIST_DIR/$(basename "$artifact")"
   done
