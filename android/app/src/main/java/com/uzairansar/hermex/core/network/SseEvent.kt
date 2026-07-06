@@ -1,5 +1,7 @@
 package com.uzairansar.hermex.core.network
 
+import com.uzairansar.hermex.core.model.ContextWindowSnapshot
+import com.uzairansar.hermex.core.model.SessionDetail
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -11,7 +13,11 @@ sealed interface SseEvent {
     data class ToolStarted(val event: ToolStreamEvent) : SseEvent
     data class ToolCompleted(val event: ToolStreamEvent) : SseEvent
     data class Title(val sessionId: String?, val title: String?) : SseEvent
-    data class Done(val sessionId: String?, val usage: JsonElement?) : SseEvent
+    data class Done(
+        val sessionId: String?,
+        val usage: ContextWindowSnapshot?,
+        val session: SessionDetail?,
+    ) : SseEvent
     data class PendingSteerLeftover(val text: String) : SseEvent
     data object StreamEnd : SseEvent
     data object Cancelled : SseEvent
@@ -55,7 +61,8 @@ private data class TitlePayload(
 @Serializable
 private data class DonePayload(
     @SerialName("session_id") val sessionId: String? = null,
-    val usage: JsonElement? = null,
+    val usage: ContextWindowSnapshot? = null,
+    val session: SessionDetail? = null,
     val event: DonePayload? = null,
 )
 
@@ -80,7 +87,11 @@ object SseEventDecoder {
                 "title" -> HermesJson.decodeFromString<TitlePayload>(data).let { SseEvent.Title(it.sessionId, it.title) }
                 "done" -> HermesJson.decodeFromString<DonePayload>(data).let {
                     val event = it.event ?: it
-                    SseEvent.Done(event.sessionId, event.usage)
+                    SseEvent.Done(
+                        sessionId = event.sessionId ?: event.session?.sessionId,
+                        usage = event.usage,
+                        session = event.session,
+                    )
                 }
                 "pending_steer_leftover" -> SseEvent.PendingSteerLeftover(HermesJson.decodeFromString<TextPayload>(data).text.orEmpty())
                 "stream_end" -> SseEvent.StreamEnd

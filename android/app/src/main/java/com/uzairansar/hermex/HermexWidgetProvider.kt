@@ -38,6 +38,10 @@ class HermexWidgetProvider : AppWidgetProvider() {
                 R.id.widget_new_session,
                 launchIntent(context, ShortcutDestination.NewSessionUri, REQUEST_NEW_SESSION),
             )
+            setOnClickPendingIntent(
+                R.id.widget_new_voice,
+                launchIntent(context, ShortcutDestination.NewVoiceSessionUri, REQUEST_NEW_VOICE_SESSION),
+            )
         }
         appWidgetManager.updateAppWidget(appWidgetId, views)
     }
@@ -55,5 +59,6 @@ class HermexWidgetProvider : AppWidgetProvider() {
     private companion object {
         const val REQUEST_OPEN_SESSIONS = 100
         const val REQUEST_NEW_SESSION = 101
+        const val REQUEST_NEW_VOICE_SESSION = 102
     }
 }

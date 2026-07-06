@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uzairansar.hermex.core.model.GitBranchRef
 import com.uzairansar.hermex.core.model.GitBranchesResponse
+import com.uzairansar.hermex.core.model.GitCommitResponse
+import com.uzairansar.hermex.core.model.GitDiffResponse
 import com.uzairansar.hermex.core.model.GitFileChange
+import com.uzairansar.hermex.core.model.GitMutationResponse
 import com.uzairansar.hermex.core.network.ApiError
 import com.uzairansar.hermex.data.repository.GitRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,16 +41,25 @@ data class GitUiState(
     val branches: List<GitBranchOption> = emptyList(),
     val newBranchName: String = "",
     val files: List<GitFileChange> = emptyList(),
+    val changedCount: Int = 0,
+    val totalAdditions: Int = 0,
+    val totalDeletions: Int = 0,
+    val truncated: Boolean = false,
     val selectedPath: String? = null,
     val selectedKind: String = "unstaged",
-    val diff: String? = null,
+    val selectedPaths: Set<String> = emptySet(),
+    val diff: GitDiffResponse? = null,
     val commitMessage: String = "",
+    val messageWasTruncated: Boolean = false,
+    val pushAfterCommit: Boolean = false,
     val isLoading: Boolean = true,
     val isMutating: Boolean = false,
     val pendingCheckout: GitCheckoutSelection? = null,
     val pendingDirtyCheckout: GitCheckoutSelection? = null,
     val showPushConfirm: Boolean = false,
     val showDiscardConfirm: Boolean = false,
+    val pendingDiscardPaths: List<String> = emptyList(),
+    val pendingDiscardDeletesFiles: Boolean = false,
     val error: String? = null,
     val notice: String? = null,
 )
@@ -79,17 +91,27 @@ class GitViewModel(
             }
                 .onSuccess { (status, branches) ->
                     val current = branches?.branches?.current ?: branches?.current ?: status.branch
-                    _state.update {
-                        it.copy(
+                    val files = status.files.orEmpty()
+                    val validPaths = files.mapNotNull { it.serverPath() }.toSet()
+                    _state.update { previous ->
+                        val selectedPath = previous.selectedPath?.takeIf { it in validPaths }
+                        previous.copy(
                             branch = current,
                             branches = branches.toOptions(current),
-                            files = status.files.orEmpty(),
+                            files = files,
+                            changedCount = status.changedCount ?: files.size,
+                            totalAdditions = status.totalAdditions ?: files.sumOf { file -> file.additions ?: 0 },
+                            totalDeletions = status.totalDeletions ?: files.sumOf { file -> file.deletions ?: 0 },
+                            truncated = status.truncated == true,
+                            selectedPaths = previous.selectedPaths.intersect(validPaths),
+                            selectedPath = selectedPath,
+                            diff = if (selectedPath == null) null else previous.diff,
                             isLoading = false,
-                            error = status.error ?: if (clearError) null else it.error,
+                            error = status.error ?: if (clearError) null else previous.error,
                         )
                     }
                 }
-                .onFailure { error -> _state.update { it.copy(isLoading = false, error = error.message ?: "Could not load git status.") } }
+                .onFailure { error -> _state.update { it.copy(isLoading = false, error = error.friendlyGitMessage("Could not load git status.")) } }
         }
     }
 
@@ -98,51 +120,103 @@ class GitViewModel(
     }
 
     fun selectFile(file: GitFileChange, kind: String = if (file.staged == true) "staged" else "unstaged") {
-        val path = file.path ?: return
+        val path = file.serverPath() ?: return
         viewModelScope.launch {
             _state.update { it.copy(selectedPath = path, selectedKind = kind, diff = null, error = null) }
             runCatching { repository.diff(sessionId, path, kind) }
-                .onSuccess { diff -> _state.update { it.copy(diff = diff.diff ?: diff.error ?: "No diff.") } }
-                .onFailure { error -> _state.update { it.copy(error = error.message ?: "Could not load diff.") } }
+                .onSuccess { diff -> _state.update { it.copy(diff = diff, error = diff.error) } }
+                .onFailure { error -> _state.update { it.copy(error = error.friendlyGitMessage("Could not load diff.")) } }
         }
     }
 
+    fun togglePathSelection(file: GitFileChange) {
+        val path = file.serverPath() ?: return
+        _state.update { state ->
+            val selected = state.selectedPaths.toMutableSet()
+            if (!selected.add(path)) selected.remove(path)
+            state.copy(selectedPaths = selected, error = null, notice = null)
+        }
+    }
+
+    fun clearSelection() {
+        _state.update { it.copy(selectedPaths = emptySet(), error = null) }
+    }
+
     fun updateCommitMessage(value: String) {
-        _state.update { it.copy(commitMessage = value) }
+        _state.update { it.copy(commitMessage = value, messageWasTruncated = false) }
+    }
+
+    fun updatePushAfterCommit(value: Boolean) {
+        _state.update { it.copy(pushAfterCommit = value) }
     }
 
     fun stageSelected() {
-        mutateSelected("Staged") { path -> repository.stage(sessionId, listOf(path)).error }
+        mutateSelected("Staged") { path -> repository.stage(sessionId, listOf(path)) }
     }
 
     fun unstageSelected() {
-        mutateSelected("Unstaged") { path -> repository.unstage(sessionId, listOf(path)).error }
+        mutateSelected("Unstaged") { path -> repository.unstage(sessionId, listOf(path)) }
+    }
+
+    fun stageSelectedOrAll() {
+        mutateTargetPaths("Staged") { paths -> repository.stage(sessionId, paths) }
+    }
+
+    fun unstageSelectedOrAll() {
+        mutateTargetPaths("Unstaged") { paths -> repository.unstage(sessionId, paths) }
     }
 
     fun requestDiscardSelected() {
-        if (_state.value.selectedPath != null) {
-            _state.update { it.copy(showDiscardConfirm = true, error = null) }
+        val state = _state.value
+        val path = state.selectedPath ?: return
+        requestDiscard(listOf(path))
+    }
+
+    fun requestDiscardSelectedOrAll() {
+        requestDiscard(targetPaths())
+    }
+
+    private fun requestDiscard(paths: List<String>) {
+        if (paths.isEmpty()) return
+        val targets = _state.value.files.filter { it.serverPath() in paths }
+        _state.update {
+            it.copy(
+                showDiscardConfirm = true,
+                pendingDiscardPaths = paths,
+                pendingDiscardDeletesFiles = targets.any { file -> file.discardMayDeleteFile() },
+                error = null,
+            )
         }
     }
 
     fun dismissDiscardConfirm() {
-        _state.update { it.copy(showDiscardConfirm = false) }
+        _state.update { it.copy(showDiscardConfirm = false, pendingDiscardPaths = emptyList(), pendingDiscardDeletesFiles = false) }
     }
 
     fun confirmDiscardSelected() {
         val state = _state.value
-        val path = state.selectedPath ?: return
-        val deleteUntracked = state.files.firstOrNull { it.path == path }?.status?.contains("untracked", ignoreCase = true) == true
-        _state.update { it.copy(showDiscardConfirm = false) }
-        mutate("Discarded") { repository.discard(sessionId, listOf(path), deleteUntracked).error }
+        val paths = state.pendingDiscardPaths
+        if (paths.isEmpty()) return
+        val stagedPaths = state.files
+            .filter { it.serverPath() in paths && it.staged == true }
+            .mapNotNull { it.serverPath() }
+        val deleteUntracked = state.pendingDiscardDeletesFiles
+        _state.update { it.copy(showDiscardConfirm = false, pendingDiscardPaths = emptyList(), pendingDiscardDeletesFiles = false) }
+        mutate("Discarded") {
+            if (stagedPaths.isNotEmpty()) {
+                val unstage = repository.unstage(sessionId, stagedPaths)
+                if (unstage.error != null) return@mutate unstage
+            }
+            repository.discard(sessionId, paths, deleteUntracked)
+        }
     }
 
     fun fetch() {
-        mutate("Fetched") { repository.fetch(sessionId).error }
+        mutate("Fetched") { repository.fetch(sessionId) }
     }
 
     fun pull() {
-        mutate("Pulled") { repository.pull(sessionId).error }
+        mutate("Pulled") { repository.pull(sessionId) }
     }
 
     fun requestPush() {
@@ -155,7 +229,7 @@ class GitViewModel(
 
     fun confirmPush() {
         _state.update { it.copy(showPushConfirm = false) }
-        mutate("Pushed") { repository.push(sessionId).error }
+        mutate("Pushed") { repository.push(sessionId) }
     }
 
     fun requestCheckout(option: GitBranchOption) {
@@ -203,49 +277,153 @@ class GitViewModel(
 
     fun generateCommitMessage() {
         viewModelScope.launch {
+            val paths = _state.value.selectedPaths.toList()
             _state.update { it.copy(isMutating = true, error = null, notice = null) }
-            runCatching { repository.commitMessage(sessionId) }
+            runCatching {
+                if (paths.isEmpty()) {
+                    repository.commitMessage(sessionId)
+                } else {
+                    repository.commitMessageSelected(sessionId, paths)
+                }
+            }
                 .onSuccess { response ->
+                    val suggested = response.message?.trim().orEmpty()
                     _state.update {
-                        it.copy(
-                            commitMessage = response.message ?: it.commitMessage,
-                            isMutating = false,
-                            error = response.error,
-                            notice = if (response.error == null) "Generated commit message." else null,
-                        )
+                        if (suggested.isEmpty() && response.error == null) {
+                            it.copy(
+                                isMutating = false,
+                                error = "No commit message could be generated.",
+                                notice = null,
+                            )
+                        } else {
+                            it.copy(
+                                commitMessage = suggested.ifBlank { it.commitMessage },
+                                messageWasTruncated = response.truncated == true,
+                                isMutating = false,
+                                error = response.error,
+                                notice = if (response.error == null) "Generated commit message." else null,
+                            )
+                        }
                     }
                 }
-                .onFailure { error -> _state.update { it.copy(isMutating = false, error = error.message ?: "Could not generate commit message.") } }
+                .onFailure { error -> _state.update { it.copy(isMutating = false, error = error.friendlyGitMessage("Could not generate commit message.")) } }
         }
     }
 
     fun commit() {
+        val state = _state.value
+        if (state.files.none { it.staged == true }) {
+            _state.update { it.copy(error = "Stage at least one file before committing all changes.") }
+            return
+        }
+        runCommit(paths = null)
+    }
+
+    fun commitSelected() {
+        val paths = _state.value.selectedPaths.toList()
+        if (paths.isEmpty()) {
+            _state.update { it.copy(error = "Select at least one file to commit selected changes.") }
+            return
+        }
+        runCommit(paths = paths)
+    }
+
+    private fun runCommit(paths: List<String>?) {
         val message = _state.value.commitMessage.trim()
         if (message.isBlank()) {
             _state.update { it.copy(error = "Enter a commit message.") }
             return
         }
-        mutate("Committed") { repository.commit(sessionId, message).error }
+        viewModelScope.launch {
+            val shouldPush = _state.value.pushAfterCommit
+            _state.update { it.copy(isMutating = true, error = null, notice = null) }
+            runCatching {
+                if (paths == null) {
+                    repository.commit(sessionId, message)
+                } else {
+                    repository.commitSelected(sessionId, message, paths)
+                }
+            }.onSuccess { response ->
+                if (response.error != null) {
+                    _state.update { it.copy(isMutating = false, error = response.error) }
+                    return@onSuccess
+                }
+
+                val pushError = if (shouldPush) pushAfterCommitOrError() else null
+                val notice = buildCommitNotice(response, shouldPush && pushError == null)
+                _state.update {
+                    it.copy(
+                        isMutating = false,
+                        commitMessage = "",
+                        messageWasTruncated = false,
+                        selectedPaths = emptySet(),
+                        diff = null,
+                        error = pushError,
+                        notice = notice,
+                    )
+                }
+                refresh(clearNotice = false, clearError = false)
+            }.onFailure { error ->
+                _state.update { it.copy(isMutating = false, error = error.friendlyGitMessage("Could not commit changes.")) }
+            }
+        }
     }
 
-    private fun mutateSelected(success: String, action: suspend (String) -> String?) {
+    private suspend fun pushAfterCommitOrError(): String? =
+        runCatching { repository.push(sessionId) }
+            .fold(
+                onSuccess = { response -> response.error?.let { "Committed, but the push failed. $it" } },
+                onFailure = { error -> "Committed, but the push failed. ${error.friendlyGitMessage("Push failed.")}" },
+            )
+
+    private fun buildCommitNotice(response: GitCommitResponse, pushed: Boolean): String {
+        val sha = response.shortSha ?: response.sha?.take(7)
+        val suffix = when {
+            pushed && sha != null -> " and pushed $sha"
+            pushed -> " and pushed"
+            sha != null -> " $sha"
+            else -> ""
+        }
+        return "Committed$suffix."
+    }
+
+    private fun mutateSelected(success: String, action: suspend (String) -> GitMutationResponse) {
         val path = _state.value.selectedPath ?: return
         mutate(success) { action(path) }
     }
 
-    private fun mutate(success: String, action: suspend () -> String?) {
+    private fun mutateTargetPaths(success: String, action: suspend (List<String>) -> GitMutationResponse) {
+        val paths = targetPaths()
+        if (paths.isEmpty()) {
+            _state.update { it.copy(error = "No changed files to update.") }
+            return
+        }
+        mutate(success) { action(paths) }
+    }
+
+    private fun targetPaths(): List<String> {
+        val state = _state.value
+        return state.files
+            .filter { file ->
+                val path = file.serverPath()
+                path != null && (state.selectedPaths.isEmpty() || path in state.selectedPaths)
+            }
+            .mapNotNull { it.serverPath() }
+    }
+
+    private fun mutate(success: String, action: suspend () -> GitMutationResponse) {
         viewModelScope.launch {
             _state.update { it.copy(isMutating = true, error = null, notice = null) }
             runCatching { action() }
-                .onSuccess { error ->
-                    if (error == null) {
-                        _state.update { it.copy(isMutating = false, notice = success, diff = null) }
+                .onSuccess { response ->
+                    if (response.error == null) {
+                        _state.update { it.copy(isMutating = false, notice = response.message ?: success, diff = null) }
                         refresh()
                     } else {
-                        _state.update { it.copy(isMutating = false, error = error) }
+                        _state.update { it.copy(isMutating = false, error = response.error) }
                     }
                 }
-                .onFailure { error -> _state.update { it.copy(isMutating = false, error = error.message ?: "Git action failed.") } }
+                .onFailure { error -> _state.update { it.copy(isMutating = false, error = error.friendlyGitMessage("Git action failed.")) } }
         }
     }
 
@@ -288,7 +466,7 @@ class GitViewModel(
                         )
                     }
                 } else {
-                    _state.update { it.copy(isMutating = false, error = error.message ?: "Could not switch branches.") }
+                    _state.update { it.copy(isMutating = false, error = error.friendlyGitMessage("Could not switch branches.")) }
                 }
             }
         }
@@ -322,3 +500,28 @@ private fun GitBranchRef.toOption(mode: String, current: String?): GitBranchOpti
 private fun Throwable.isDirtyWorktree(): Boolean =
     (this as? ApiError.Http)?.body?.contains("dirty_worktree", ignoreCase = true) == true ||
         message?.contains("dirty_worktree", ignoreCase = true) == true
+
+private fun Throwable.friendlyGitMessage(fallback: String): String {
+    val body = (this as? ApiError.Http)?.body.orEmpty()
+    if (body.contains("destructive_git_disabled", ignoreCase = true)) {
+        return "Writes disabled on server. Enable HERMES_WEBUI_WORKSPACE_GIT_DESTRUCTIVE=1 on the server to use this."
+    }
+    if (body.contains("active_stream", ignoreCase = true)) {
+        return "Wait for the active response to finish before changing this repository."
+    }
+    return message ?: fallback
+}
+
+private fun GitFileChange.serverPath(): String? =
+    (path ?: workspacePath)
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+
+private fun GitFileChange.discardMayDeleteFile(): Boolean {
+    val statusText = status.orEmpty()
+    return untracked == true ||
+        statusText.contains("untracked", ignoreCase = true) ||
+        statusText.equals("A", ignoreCase = true) ||
+        statusText.contains("added", ignoreCase = true) ||
+        statusText.contains("renamed", ignoreCase = true)
+}

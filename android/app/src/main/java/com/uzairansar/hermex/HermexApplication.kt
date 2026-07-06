@@ -7,6 +7,7 @@ import com.uzairansar.hermex.core.network.SseStreamClient
 import com.uzairansar.hermex.data.db.HermexDatabase
 import com.uzairansar.hermex.data.preferences.LocalSettingsRepository
 import com.uzairansar.hermex.data.repository.AuthRepository
+import com.uzairansar.hermex.data.repository.CacheMaintenanceRepository
 import com.uzairansar.hermex.data.repository.ChatRepository
 import com.uzairansar.hermex.data.repository.GitRepository
 import com.uzairansar.hermex.data.repository.PanelsRepository
@@ -42,10 +43,18 @@ class AppContainer(application: Application) {
         .writeTimeout(60, TimeUnit.SECONDS)
         .build()
     private val database = HermexDatabase.create(application)
+    val cacheMaintenanceRepository = CacheMaintenanceRepository(database.cacheDao())
 
     val authRepository = AuthRepository(
         registry = registry,
         clientFactory = ::apiClient,
+        probeClientFactory = { baseUrl, headers ->
+            HermesApiClient(
+                baseUrl = baseUrl,
+                client = okHttpClient,
+                customHeaders = { headers },
+            )
+        },
         cookieJar = cookieJar,
     )
 
@@ -66,7 +75,7 @@ class AppContainer(application: Application) {
         return ChatRepository(
             client = client,
             cacheDao = database.cacheDao(),
-            sse = SseStreamClient(okHttpClient) {
+            sse = SseStreamClient(baseUrl, okHttpClient) {
                 registry.customHeaders(ServerRegistry.normalizedId(baseUrl))
             },
         )

@@ -1,9 +1,10 @@
 package com.uzairansar.hermex.ui
 
 import android.content.Intent
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
+import android.net.Uri
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -23,6 +24,7 @@ import com.uzairansar.hermex.ui.panels.PanelsRoute
 import com.uzairansar.hermex.ui.sessions.SessionListRoute
 import com.uzairansar.hermex.ui.settings.SettingsRoute
 import com.uzairansar.hermex.ui.theme.HermexTheme
+import com.uzairansar.hermex.ui.theme.LocalHermexHapticsEnabled
 import com.uzairansar.hermex.ui.workspace.WorkspaceRoute
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -37,6 +39,9 @@ fun HermexApp(
     val themeMode by container.localSettingsRepository.themeMode.collectAsStateWithLifecycle(
         initialValue = com.uzairansar.hermex.data.preferences.AppThemeMode.System,
     )
+    val hapticsEnabled by container.localSettingsRepository.hapticsEnabled.collectAsStateWithLifecycle(
+        initialValue = true,
+    )
 
     LaunchedEffect(navController, shortcutIntents) {
         shortcutIntents.collect { intent ->
@@ -47,11 +52,11 @@ fun HermexApp(
     }
 
     HermexTheme(themeMode = themeMode) {
-        Scaffold { padding ->
+        CompositionLocalProvider(LocalHermexHapticsEnabled provides hapticsEnabled) {
             NavHost(
                 navController = navController,
                 startDestination = if (authState is AuthState.LoggedIn) "sessions" else "onboarding",
-                modifier = Modifier.padding(padding),
+                modifier = Modifier.fillMaxSize(),
             ) {
                 composable("onboarding") {
                     OnboardingRoute(
@@ -69,7 +74,7 @@ fun HermexApp(
                     )
                 }
                 composable(
-                    route = "sessions?shortcutAction={shortcutAction}&shortcutNonce={shortcutNonce}",
+                    route = "sessions?shortcutAction={shortcutAction}&shortcutNonce={shortcutNonce}&shortcutProfile={shortcutProfile}",
                     arguments = listOf(
                         navArgument("shortcutAction") {
                             type = NavType.StringType
@@ -77,6 +82,11 @@ fun HermexApp(
                             defaultValue = null
                         },
                         navArgument("shortcutNonce") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        },
+                        navArgument("shortcutProfile") {
                             type = NavType.StringType
                             nullable = true
                             defaultValue = null
@@ -93,9 +103,12 @@ fun HermexApp(
                         container = container,
                         shortcutAction = shortcutAction,
                         shortcutNonce = entry.arguments?.getString("shortcutNonce"),
+                        shortcutProfile = entry.arguments?.getString("shortcutProfile"),
                         onOpenChat = { sessionId -> navController.navigate("chat/$sessionId") },
+                        onOpenVoiceChat = { sessionId -> navController.navigate("chat/$sessionId?autoStartVoice=true") },
                         onOpenSharedDraft = { sessionId -> navController.navigate("chat/$sessionId?consumeShare=true") },
                         onOpenPanels = { navController.navigate("panels") },
+                        onOpenPanel = { section -> navController.navigate("panels?section=$section") },
                         onOpenSettings = { navController.navigate("settings") },
                         onNeedsOnboarding = {
                             navController.navigate("onboarding") {
@@ -105,24 +118,34 @@ fun HermexApp(
                     )
                 }
                 composable(
-                    route = "chat/{sessionId}?consumeShare={consumeShare}",
+                    route = "chat/{sessionId}?consumeShare={consumeShare}&autoStartVoice={autoStartVoice}",
                     arguments = listOf(
                         navArgument("sessionId") { type = NavType.StringType },
                         navArgument("consumeShare") {
                             type = NavType.BoolType
                             defaultValue = false
                         },
+                        navArgument("autoStartVoice") {
+                            type = NavType.BoolType
+                            defaultValue = false
+                        },
                     ),
                 ) { entry ->
                     val server = (authState as? AuthState.LoggedIn)?.server
+                    val account = (authState as? AuthState.LoggedIn)?.account
                     if (server == null) {
                         OnboardingRoute(container.authRepository) {}
                     } else {
                         ChatRoute(
                             sessionId = requireNotNull(entry.arguments?.getString("sessionId")),
                             repository = container.chatRepository(server),
+                            gitRepository = container.gitRepository(server),
+                            localSettingsRepository = container.localSettingsRepository,
+                            activeHeaderColorHex = account?.headerLogoColorHex,
                             sharedDraftStore = container.sharedDraftStore,
                             consumeSharedDraft = entry.arguments?.getBoolean("consumeShare") == true,
+                            autoStartVoice = entry.arguments?.getBoolean("autoStartVoice") == true,
+                            onOpenChat = { sessionId -> navController.navigate("chat/$sessionId") },
                             onBack = { navController.popBackStack() },
                             onOpenWorkspace = {
                                 navController.navigate("workspace/${requireNotNull(entry.arguments?.getString("sessionId"))}")
@@ -160,13 +183,21 @@ fun HermexApp(
                     }
                 }
                 composable(
-                    route = "panels",
+                    route = "panels?section={section}",
+                    arguments = listOf(
+                        navArgument("section") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        },
+                    ),
                     deepLinks = listOf(navDeepLink { uriPattern = ShortcutDestination.PanelsUri }),
-                ) {
+                ) { entry ->
                     val server = (authState as? AuthState.LoggedIn)?.server
                     if (server != null) {
                         PanelsRoute(
                             panelsRepository = container.panelsRepository(server),
+                            initialSection = entry.arguments?.getString("section"),
                             onBack = { navController.popBackStack() },
                         )
                     }
@@ -179,6 +210,7 @@ fun HermexApp(
                     SettingsRoute(
                         authRepository = container.authRepository,
                         localSettingsRepository = container.localSettingsRepository,
+                        cacheMaintenanceRepository = container.cacheMaintenanceRepository,
                         panelsRepository = server?.let { container.panelsRepository(it) },
                         authState = authState,
                         onBack = { navController.popBackStack() },
@@ -200,15 +232,22 @@ private fun Intent.hermexRoute(): String? {
     return when (uri.host) {
         "share" -> ShortcutDestination.shareRoute()
         "sessions" -> ShortcutDestination.sessionsRoute(uri.getQueryParameter("shortcutAction"))
+        "new-chat" -> ShortcutDestination.sessionsRoute(ShortcutDestination.NewSessionAction)
+        "new-chat-voice" -> ShortcutDestination.sessionsRoute(ShortcutDestination.NewVoiceSessionAction)
+        "new-chat-profile" -> uri.getQueryParameter("profile")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { profile -> ShortcutDestination.sessionsRoute(ShortcutDestination.NewProfileSessionAction, profile) }
+            ?: ShortcutDestination.sessionsRoute(ShortcutDestination.NewSessionAction)
         "settings" -> "settings"
-        "panels" -> "panels"
+        "panels" -> uri.getQueryParameter("section")?.takeIf { it.isNotBlank() }?.let { "panels?section=${Uri.encode(it)}" } ?: "panels"
         else -> null
     }
 }
 
-private fun ShortcutDestination.sessionsRoute(action: String? = null): String {
+private fun ShortcutDestination.sessionsRoute(action: String? = null, profile: String? = null): String {
     val supportedAction = supportedAction(action) ?: return "sessions"
-    return "sessions?shortcutAction=$supportedAction&shortcutNonce=${System.currentTimeMillis()}"
+    val profileQuery = profile?.takeIf { it.isNotBlank() }?.let { "&shortcutProfile=${Uri.encode(it)}" }.orEmpty()
+    return "sessions?shortcutAction=$supportedAction&shortcutNonce=${System.currentTimeMillis()}$profileQuery"
 }
 
 private fun ShortcutDestination.shareRoute(): String =

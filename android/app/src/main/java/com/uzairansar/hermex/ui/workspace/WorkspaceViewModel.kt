@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 data class WorkspaceUiState(
     val roots: List<WorkspaceRoot> = emptyList(),
     val currentPath: String? = null,
+    val searchText: String = "",
     val entries: List<WorkspaceEntry> = emptyList(),
     val preview: FileResponse? = null,
     val binaryPreview: BinaryPreview? = null,
@@ -26,17 +27,22 @@ data class BinaryPreview(
     val path: String,
     val bytes: ByteArray,
     val isImage: Boolean,
+    val mimeType: String,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is BinaryPreview) return false
-        return path == other.path && isImage == other.isImage && bytes.contentEquals(other.bytes)
+        return path == other.path &&
+            isImage == other.isImage &&
+            mimeType == other.mimeType &&
+            bytes.contentEquals(other.bytes)
     }
 
     override fun hashCode(): Int {
         var result = path.hashCode()
         result = 31 * result + bytes.contentHashCode()
         result = 31 * result + isImage.hashCode()
+        result = 31 * result + mimeType.hashCode()
         return result
     }
 }
@@ -81,11 +87,23 @@ class WorkspaceViewModel(
         val path = entry.path ?: entry.name ?: return
         val isDirectory = entry.type == "directory" || entry.type == "dir" || entry.type == "folder"
         if (isDirectory) {
-            _state.update { it.copy(currentPath = path, preview = null, binaryPreview = null) }
-            refresh()
+            loadPath(path)
         } else {
             preview(path)
         }
+    }
+
+    fun openRoot(root: WorkspaceRoot) {
+        loadPath(root.path)
+    }
+
+    fun goRoot() {
+        loadPath(null)
+    }
+
+    fun loadPath(path: String?) {
+        _state.update { it.copy(currentPath = path, preview = null, binaryPreview = null) }
+        refresh()
     }
 
     fun goUp() {
@@ -93,8 +111,11 @@ class WorkspaceViewModel(
         val parent = current.substringBeforeLast('/', missingDelimiterValue = "")
             .ifBlank { current.substringBeforeLast('\\', missingDelimiterValue = "") }
             .ifBlank { null }
-        _state.update { it.copy(currentPath = parent, preview = null) }
-        refresh()
+        loadPath(parent)
+    }
+
+    fun updateSearchText(value: String) {
+        _state.update { it.copy(searchText = value) }
     }
 
     fun closePreview() {
@@ -104,6 +125,13 @@ class WorkspaceViewModel(
     private fun preview(path: String) {
         viewModelScope.launch {
             _state.update { it.copy(isPreviewLoading = true, error = null, preview = null, binaryPreview = null) }
+            if (
+                WorkspaceFilePreviewPolicy.isRasterImage(path) ||
+                WorkspaceFilePreviewPolicy.isKnownUnsupportedBinary(path)
+            ) {
+                loadBinaryPreview(path)
+                return@launch
+            }
             runCatching { repository.file(sessionId, path) }
                 .onSuccess { preview ->
                     if (!preview.content.isNullOrEmpty()) {
@@ -113,7 +141,7 @@ class WorkspaceViewModel(
                     }
                 }
                 .onFailure { error ->
-                    if (path.looksLikeImage()) {
+                    if (WorkspaceFilePreviewPolicy.isRasterImage(path)) {
                         loadBinaryPreview(path)
                     } else {
                         _state.update { it.copy(isPreviewLoading = false, error = error.message ?: "Could not open file.") }
@@ -127,7 +155,12 @@ class WorkspaceViewModel(
             .onSuccess { bytes ->
                 _state.update {
                     it.copy(
-                        binaryPreview = BinaryPreview(path = path, bytes = bytes, isImage = path.looksLikeImage()),
+                        binaryPreview = BinaryPreview(
+                            path = path,
+                            bytes = bytes,
+                            isImage = WorkspaceFilePreviewPolicy.isRasterImage(path),
+                            mimeType = WorkspaceFilePreviewPolicy.mimeType(path),
+                        ),
                         isPreviewLoading = false,
                     )
                 }
@@ -137,13 +170,4 @@ class WorkspaceViewModel(
             }
     }
 
-    private fun String.looksLikeImage(): Boolean {
-        val lower = lowercase()
-        return lower.endsWith(".png") ||
-            lower.endsWith(".jpg") ||
-            lower.endsWith(".jpeg") ||
-            lower.endsWith(".gif") ||
-            lower.endsWith(".webp") ||
-            lower.endsWith(".bmp")
-    }
 }

@@ -65,6 +65,22 @@ class ServerRegistry(
         persist(_snapshot.value)
     }
 
+    fun update(account: ServerAccount): ServerAccount? {
+        var updatedAccount: ServerAccount? = null
+        _snapshot.update { current ->
+            if (current.servers.none { it.id == account.id }) return@update current
+            val updated = account.copy(updatedAtEpochMillis = System.currentTimeMillis())
+            updatedAccount = updated
+            current.copy(
+                servers = current.servers.map { existing ->
+                    if (existing.id == account.id) updated else existing
+                },
+            )
+        }
+        persist(_snapshot.value)
+        return updatedAccount
+    }
+
     fun remove(id: String) {
         _snapshot.update { current ->
             val remaining = current.servers.filterNot { it.id == id }

@@ -33,4 +33,6 @@ class GitRepository(private val client: HermesApiClient) {
     suspend fun commitSelected(sessionId: String, message: String, paths: List<String>): GitCommitResponse =
         client.gitCommitSelected(sessionId, message, paths)
     suspend fun commitMessage(sessionId: String): GitCommitMessageResponse = client.gitCommitMessage(sessionId)
+    suspend fun commitMessageSelected(sessionId: String, paths: List<String>): GitCommitMessageResponse =
+        client.gitCommitMessageSelected(sessionId, paths)
 }

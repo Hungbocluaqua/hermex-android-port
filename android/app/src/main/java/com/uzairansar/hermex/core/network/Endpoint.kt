@@ -12,11 +12,14 @@ sealed class Endpoint(
     data object Logout : Endpoint("/api/auth/logout")
     data class Sessions(val includeArchived: Boolean = false, val archivedLimit: Int? = null) : Endpoint(
         "/api/sessions",
-        listOf("include_archived" to includeArchived.takeIf { it }?.toString(), "archived_limit" to archivedLimit?.toString()),
+        listOf(
+            "include_archived" to includeArchived.asIosQueryFlagOrNull(),
+            "archived_limit" to archivedLimit?.takeIf { includeArchived }?.toString(),
+        ),
     )
     data class SessionsSearch(val query: String, val content: Boolean, val depth: Int) : Endpoint(
         "/api/sessions/search",
-        listOf("q" to query, "content" to content.toString(), "depth" to depth.toString()),
+        listOf("q" to query, "content" to content.asIosQueryFlag(), "depth" to depth.toString()),
     )
     data class Session(
         val id: String,
@@ -31,7 +34,7 @@ sealed class Endpoint(
             "messages" to if (includeMessages) "1" else "0",
             "msg_limit" to messageLimit?.toString(),
             "msg_before" to messageBefore?.toString(),
-            "expand_renderable" to expandRenderable.takeIf { it }?.toString(),
+            "expand_renderable" to expandRenderable.asIosQueryFlagOrNull(),
         ),
     )
     data class SessionStatus(val id: String) : Endpoint("/api/session/status", listOf("session_id" to id))
@@ -57,7 +60,14 @@ sealed class Endpoint(
     data object RenameProject : Endpoint("/api/projects/rename")
     data object DeleteProject : Endpoint("/api/projects/delete")
     data object ChatStart : Endpoint("/api/chat/start")
-    data class ChatStream(val streamId: String) : Endpoint("/api/chat/stream", listOf("stream_id" to streamId))
+    data class ChatStream(val streamId: String, val replayAfterSeq: Int? = null) : Endpoint(
+        "/api/chat/stream",
+        listOf(
+            "stream_id" to streamId,
+            "replay" to replayAfterSeq?.let { "1" },
+            "after_seq" to replayAfterSeq?.coerceAtLeast(0)?.toString(),
+        ),
+    )
     data class ChatCancel(val streamId: String) : Endpoint("/api/chat/cancel", listOf("stream_id" to streamId))
     data class ChatStreamStatus(val streamId: String) : Endpoint("/api/chat/stream/status", listOf("stream_id" to streamId))
     data object ChatSteer : Endpoint("/api/chat/steer")
@@ -151,3 +161,7 @@ sealed class Endpoint(
         return builder.build()
     }
 }
+
+private fun Boolean.asIosQueryFlag(): String = if (this) "1" else "0"
+
+private fun Boolean.asIosQueryFlagOrNull(): String? = if (this) "1" else null

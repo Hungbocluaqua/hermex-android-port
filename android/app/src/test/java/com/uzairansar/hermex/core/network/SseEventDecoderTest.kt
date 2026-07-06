@@ -21,6 +21,28 @@ class SseEventDecoderTest {
     }
 
     @Test
+    fun decodesCompletedSessionFromDoneEvent() {
+        val event = SseEventDecoder.decode(
+            "done",
+            """
+            {
+              "usage":{"context_length":128000,"input_tokens":42},
+              "session":{
+                "session_id":"session-1",
+                "messages":[{"role":"assistant","content":"Done.","message_id":"assistant-1"}]
+              }
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(event is SseEvent.Done)
+        event as SseEvent.Done
+        assertEquals("session-1", event.sessionId)
+        assertEquals("Done.", event.session?.messages?.single()?.content)
+        assertEquals(128000, event.usage?.contextLength)
+    }
+
+    @Test
     fun mapsMalformedJsonToTransportError() {
         val event = SseEventDecoder.decode("token", "{")
 

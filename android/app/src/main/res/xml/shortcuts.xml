@@ -26,6 +26,19 @@
     </shortcut>
 
     <shortcut
+        android:shortcutId="new_voice_session"
+        android:enabled="true"
+        android:icon="@drawable/ic_hermex_waveform"
+        android:shortcutShortLabel="@string/shortcut_new_voice_short"
+        android:shortcutLongLabel="@string/shortcut_new_voice_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.uzairansar.hermex"
+            android:targetClass="com.uzairansar.hermex.MainActivity"
+            android:data="hermes-agent://new-chat-voice" />
+    </shortcut>
+
+    <shortcut
         android:shortcutId="panels"
         android:enabled="true"
         android:icon="@drawable/ic_shortcut_panels"

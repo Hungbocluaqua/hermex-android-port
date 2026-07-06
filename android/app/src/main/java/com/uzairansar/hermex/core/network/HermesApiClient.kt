@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import okhttp3.CookieJar
 import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -19,11 +20,17 @@ import okhttp3.Call
 
 class HermesApiClient(
     val baseUrl: HttpUrl,
-    private val client: OkHttpClient,
+    client: OkHttpClient,
     private val json: Json = HermesJson,
     private val customHeaders: () -> List<CustomHeader> = { emptyList() },
 ) {
     private val jsonMediaType = "application/json".toMediaType()
+    private val client: OkHttpClient = client.newBuilder()
+        .addNetworkInterceptor(SameOriginCustomHeaderInterceptor(baseUrl, customHeaders))
+        .build()
+    private val publicMediaClient: OkHttpClient = client.newBuilder()
+        .cookieJar(CookieJar.NO_COOKIES)
+        .build()
 
     suspend fun health(): HealthResponse = get(Endpoint.Health)
     suspend fun authStatus(): AuthStatusResponse = get(Endpoint.AuthStatus)
@@ -44,12 +51,39 @@ class HermesApiClient(
     suspend fun moveSession(sessionId: String, projectId: String?): SessionMutationResponse = post(Endpoint.MoveSession, MoveSessionRequest(sessionId, projectId))
     suspend fun branchSession(sessionId: String, keepCount: Int? = null, title: String? = null): SessionBranchResponse =
         post(Endpoint.BranchSession, BranchSessionRequest(sessionId, keepCount, title))
+    suspend fun sessionYolo(sessionId: String): SessionYoloResponse = get(Endpoint.SessionYolo(sessionId))
+    suspend fun setSessionYolo(sessionId: String, enabled: Boolean): SessionYoloResponse =
+        post(Endpoint.SessionYolo(null), SessionYoloRequest(sessionId, enabled))
+    suspend fun exportSession(sessionId: String, format: SessionExportFormat, fallbackTitle: String? = null): SessionExportFile =
+        withContext(Dispatchers.IO) {
+            val request = requestBuilder(Endpoint.ExportSession(sessionId, format.wireValue))
+                .get()
+                .header("Accept", "*/*")
+                .build()
+            val response = executeDataWithHeaders(client.newCall(request), headers = listOf("Content-Disposition"))
+            SessionExportFile(
+                data = response.bytes,
+                filename = sessionExportFilename(
+                    contentDisposition = response.headers["Content-Disposition"],
+                    fallbackTitle = fallbackTitle,
+                    sessionId = sessionId,
+                    format = format,
+                ),
+                mimeType = format.mimeType,
+            )
+        }
     suspend fun compressSession(sessionId: String, focusTopic: String? = null): SessionCompressResponse =
         post(Endpoint.CompressSession, CompressSessionRequest(sessionId, focusTopic), timeoutSeconds = 120)
     suspend fun undoSession(sessionId: String): SessionUndoResponse = post(Endpoint.UndoSession, SessionIdRequest(sessionId))
     suspend fun retrySession(sessionId: String): SessionRetryResponse = post(Endpoint.RetrySession, SessionIdRequest(sessionId))
-    suspend fun truncateSession(sessionId: String, keepCount: Int): SessionMutationResponse =
+    suspend fun truncateSession(sessionId: String, keepCount: Int): SessionResponse =
         post(Endpoint.TruncateSession, TruncateSessionRequest(sessionId, keepCount))
+    suspend fun updateSession(
+        sessionId: String,
+        workspace: String? = null,
+        model: String? = null,
+        modelProvider: String? = null,
+    ): SessionResponse = post(Endpoint.UpdateSession, UpdateSessionRequest(sessionId, workspace, model, modelProvider))
     suspend fun projects(): ProjectsResponse = get(Endpoint.Projects)
     suspend fun createProject(name: String): ProjectMutationResponse = post(Endpoint.CreateProject, CreateProjectRequest(name))
     suspend fun renameProject(projectId: String, name: String): ProjectMutationResponse = post(Endpoint.RenameProject, RenameProjectRequest(projectId, name))
@@ -58,6 +92,10 @@ class HermesApiClient(
     suspend fun chatCancel(streamId: String): SessionMutationResponse = get(Endpoint.ChatCancel(streamId))
     suspend fun chatStreamStatus(streamId: String): SessionStatusResponse = get(Endpoint.ChatStreamStatus(streamId))
     suspend fun chatSteer(sessionId: String, text: String): ChatSteerResponse = post(Endpoint.ChatSteer, ChatSteerRequest(sessionId, text))
+    suspend fun startBtw(sessionId: String, question: String): BtwStartResponse = post(Endpoint.Btw, BtwRequest(sessionId, question))
+    suspend fun startBackground(sessionId: String, prompt: String): BackgroundStartResponse =
+        post(Endpoint.Background, BackgroundRequest(sessionId, prompt))
+    suspend fun backgroundStatus(sessionId: String): BackgroundStatusResponse = get(Endpoint.BackgroundStatus(sessionId))
     suspend fun submitGoal(
         sessionId: String,
         args: String,
@@ -86,14 +124,57 @@ class HermesApiClient(
     suspend fun directoryList(sessionId: String, path: String?): DirectoryListResponse = get(Endpoint.DirectoryList(sessionId, path))
     suspend fun file(sessionId: String, path: String): FileResponse = get(Endpoint.File(sessionId, path))
     suspend fun rawFile(sessionId: String, path: String): ByteArray = data(Endpoint.RawFile(sessionId, path), "GET")
+    suspend fun media(path: String): ByteArray = data(Endpoint.Media(path), "GET")
+    suspend fun transcriptMediaData(reference: TranscriptMediaReference): ByteArray =
+        when (val source = reference.source) {
+            is TranscriptMediaSource.LocalPath -> media(source.path)
+            is TranscriptMediaSource.RemoteUrl -> remoteTranscriptMediaData(source.url)
+        }
+    suspend fun remoteTranscriptMediaData(url: HttpUrl): ByteArray = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .header("Accept", "*/*")
+            .build()
+        val callClient = if (url.isSameOriginAs(baseUrl)) client else publicMediaClient
+        executeData(callClient.newCall(request))
+    }
     suspend fun models(): ModelCatalogResponse = get(Endpoint.Models)
+    suspend fun modelsLive(): ModelsLiveResponse = get(Endpoint.ModelsLive)
+    suspend fun commands(): CommandsResponse = get(Endpoint.Commands)
     suspend fun profiles(): ProfilesResponse = get(Endpoint.Profiles)
-    suspend fun switchProfile(profile: String): SessionMutationResponse = post(Endpoint.SwitchProfile, SwitchProfileRequest(profile))
+    suspend fun switchProfile(profile: String): ProfileSwitchResponse = post(Endpoint.SwitchProfile, SwitchProfileRequest(profile))
+    suspend fun createProfile(
+        name: String,
+        cloneConfig: Boolean = false,
+        defaultModel: String? = null,
+        modelProvider: String? = null,
+        baseUrl: String? = null,
+        apiKey: String? = null,
+    ): ProfileCreateResponse = post(
+        Endpoint.CreateProfile,
+        ProfileCreateRequest(
+            name = name,
+            cloneConfig = cloneConfig,
+            defaultModel = defaultModel,
+            modelProvider = modelProvider,
+            baseUrl = baseUrl,
+            apiKey = apiKey,
+        ),
+    )
     suspend fun providers(): ModelCatalogResponse = get(Endpoint.Providers)
     suspend fun settings(): SettingsResponse = get(Endpoint.Settings)
+    suspend fun updateSettings(showCliSessions: Boolean): SettingsResponse =
+        post(Endpoint.Settings, UpdateSettingsRequest(showCliSessions = showCliSessions))
+    suspend fun updatesCheck(): UpdatesCheckResponse = get(Endpoint.UpdatesCheck)
+    suspend fun updatesCheckForced(): UpdatesCheckResponse = post(Endpoint.UpdatesCheck, UpdatesCheckForceRequest(force = true))
+    suspend fun applyUpdate(target: String = "webui"): UpdatesApplyResponse = post(Endpoint.UpdatesApply, UpdatesApplyRequest(target))
     suspend fun reasoning(model: String? = null, provider: String? = null): ReasoningResponse = get(Endpoint.Reasoning(model, provider))
     suspend fun setReasoning(effort: String, model: String? = null, provider: String? = null): ReasoningResponse =
         post(Endpoint.Reasoning(model, provider), ReasoningRequest(effort, model, provider))
+    suspend fun personalities(): PersonalitiesResponse = get(Endpoint.Personalities)
+    suspend fun setPersonality(sessionId: String, name: String): PersonalitySetResponse =
+        post(Endpoint.SetPersonality, SetPersonalityRequest(sessionId, name))
     suspend fun defaultModel(model: String): DefaultModelResponse = post(Endpoint.DefaultModel, DefaultModelRequest(model))
     suspend fun insights(days: Int): InsightsResponse = get(Endpoint.Insights(days))
     suspend fun crons(): CronsResponse = get(Endpoint.Crons)
@@ -195,7 +276,8 @@ class HermesApiClient(
         executeAndDecode(request)
     }
 
-    fun streamUrl(streamId: String): HttpUrl = Endpoint.ChatStream(streamId).url(baseUrl)
+    fun streamUrl(streamId: String, replayAfterSeq: Int? = null): HttpUrl =
+        Endpoint.ChatStream(streamId, replayAfterSeq).url(baseUrl)
 
     private suspend inline fun <reified Response : Any> get(endpoint: Endpoint): Response =
         request<Response>(endpoint, "GET", encodedBody = null)
@@ -236,9 +318,7 @@ class HermesApiClient(
     }
 
     private fun requestBuilder(endpoint: Endpoint): Request.Builder {
-        val builder = Request.Builder().url(endpoint.url(baseUrl))
-        customHeaders().applyTo(builder)
-        return builder
+        return Request.Builder().url(endpoint.url(baseUrl))
     }
 
     private inline fun <reified Response : Any> executeAndDecode(request: Request): Response =
@@ -254,6 +334,10 @@ class HermesApiClient(
     }
 
     private fun executeData(call: Call): ByteArray {
+        return executeDataWithHeaders(call).bytes
+    }
+
+    private fun executeDataWithHeaders(call: Call, headers: List<String> = emptyList()): RawResponse {
         val response = try {
             call.execute()
         } catch (error: IOException) {
@@ -263,7 +347,64 @@ class HermesApiClient(
             val bytes = it.body.bytes()
             if (it.code == 401) throw ApiError.Unauthorized
             if (!it.isSuccessful) throw ApiError.Http(it.code, bytes.decodeToString())
-            return bytes
+            return RawResponse(
+                bytes = bytes,
+                headers = headers.associateWith { name -> it.header(name) }.filterValues { value -> value != null }.mapValues { entry -> requireNotNull(entry.value) },
+            )
         }
     }
+
+    private data class RawResponse(
+        val bytes: ByteArray,
+        val headers: Map<String, String> = emptyMap(),
+    )
 }
+
+private fun sessionExportFilename(
+    contentDisposition: String?,
+    fallbackTitle: String?,
+    sessionId: String,
+    format: SessionExportFormat,
+): String {
+    filenameParameter(contentDisposition)?.toSafeFilename()?.let { return it }
+    fallbackTitle?.toSafeFilenameStem()?.let { return "$it.${format.fileExtension}" }
+    val safeId = sessionId.toSafeFilenameStem() ?: "session"
+    return "hermes-$safeId.${format.fileExtension}"
+}
+
+private fun filenameParameter(contentDisposition: String?): String? {
+    if (contentDisposition.isNullOrBlank()) return null
+    return contentDisposition
+        .split(";")
+        .drop(1)
+        .firstNotNullOfOrNull { parameter ->
+            val parts = parameter.split("=", limit = 2)
+            if (parts.size != 2) return@firstNotNullOfOrNull null
+            val key = parts[0].trim().lowercase()
+            if (key != "filename") return@firstNotNullOfOrNull null
+            parts[1].trim().removeSurrounding("\"").takeIf { it.isNotBlank() }
+        }
+}
+
+private fun String.toSafeFilename(): String? {
+    val lastComponent = replace('\\', '/').substringAfterLast('/')
+    val cleaned = lastComponent.replaceUnsafeFilenameCharacters()
+    return cleaned.takeIf { it.isNotBlank() && it != "." && it != ".." }
+}
+
+private fun String.toSafeFilenameStem(): String? =
+    replaceUnsafeFilenameCharacters()
+        .take(80)
+        .takeIf { it.isNotBlank() }
+
+private fun String.replaceUnsafeFilenameCharacters(): String =
+    map { char ->
+        if (char == '/' || char == '\\' || char == ':' || char.code < 32) ' ' else char
+    }
+        .joinToString("")
+        .split(Regex("\\s+"))
+        .filter { it.isNotBlank() }
+        .joinToString(" ")
+
+private fun HttpUrl.isSameOriginAs(other: HttpUrl): Boolean =
+    scheme == other.scheme && host.equals(other.host, ignoreCase = true) && port == other.port

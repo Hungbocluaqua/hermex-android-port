@@ -1,135 +1,1466 @@
 package com.uzairansar.hermex.ui.settings
 
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.core.content.ContextCompat
+import com.uzairansar.hermex.data.preferences.displayModelTitle
+import com.uzairansar.hermex.data.preferences.modelIdentifier
 import com.uzairansar.hermex.data.preferences.AppThemeMode
 import com.uzairansar.hermex.data.preferences.LocalSettingsRepository
+import com.uzairansar.hermex.data.preferences.StreamingSendBehavior
 import com.uzairansar.hermex.data.repository.AuthRepository
 import com.uzairansar.hermex.data.repository.AuthState
+import com.uzairansar.hermex.data.repository.CacheMaintenanceRepository
 import com.uzairansar.hermex.data.repository.PanelsRepository
+import com.uzairansar.hermex.data.secure.ServerAccount
+import com.uzairansar.hermex.ui.theme.HermexCardShape
+import com.uzairansar.hermex.ui.theme.HermexIconButton
+import com.uzairansar.hermex.ui.theme.HermexPillButton
+import com.uzairansar.hermex.ui.theme.hermexGlass
 
 @Composable
 fun SettingsRoute(
     authRepository: AuthRepository,
     localSettingsRepository: LocalSettingsRepository,
+    cacheMaintenanceRepository: CacheMaintenanceRepository? = null,
     panelsRepository: PanelsRepository?,
     authState: AuthState,
     onBack: () -> Unit,
     onSignedOut: () -> Unit,
 ) {
-    val viewModel: SettingsViewModel = viewModel(factory = object : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            @Suppress("UNCHECKED_CAST")
-            return SettingsViewModel(authRepository, localSettingsRepository, panelsRepository) as T
-        }
-    })
+    val activeServerKey = (authState as? AuthState.LoggedIn)?.server?.toString() ?: "disconnected"
+    val viewModel: SettingsViewModel = viewModel(
+        key = "settings:$activeServerKey",
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return SettingsViewModel(authRepository, localSettingsRepository, cacheMaintenanceRepository, panelsRepository) as T
+            }
+        },
+    )
     val state by viewModel.state.collectAsStateWithLifecycle()
     val loggedIn = authState as? AuthState.LoggedIn
+    val context = LocalContext.current
+    val appInfo = remember(context) { context.currentAndroidAppInfo() }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        viewModel.handleResponseCompletionNotificationPermissionResult(granted)
+    }
 
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Button(onClick = onBack) { Text("Back") }
-        }
-        Spacer(Modifier.height(12.dp))
-        Text("Settings", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(12.dp))
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                Text("Server")
-                Text(loggedIn?.server?.toString() ?: "Not configured", style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(8.dp))
-                Text("Server URLs, custom headers, and cookies are stored in Android encrypted storage.")
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().testTag("settings_list"),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 18.dp,
+                bottom = 28.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                SettingsHeader(onBack)
             }
-        }
-        Spacer(Modifier.height(12.dp))
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                Text("Appearance")
-                Text(state.themeMode.label, style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    AppThemeMode.entries.forEach { mode ->
-                        AssistChip(
-                            onClick = { viewModel.setThemeMode(mode) },
-                            label = { Text(if (state.themeMode == mode) "Current: ${mode.label}" else mode.label) },
+            item {
+                SettingsSection(title = "Identity") {
+                    DetailLine("Display Name", loggedIn?.account?.displayName ?: "Hermex")
+                    DetailLine("Initials", loggedIn?.account?.initials ?: "HX")
+                    DetailLine("Header Color", loggedIn?.account?.headerLogoColorHex ?: "#7DD3FC")
+                }
+            }
+            item {
+                SettingsSection(title = "Appearance") {
+                    DetailLine("Theme", state.themeMode.label)
+                    Spacer(Modifier.height(9.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        AppThemeMode.entries.forEach { mode ->
+                            HermexPillButton(
+                                label = if (state.themeMode == mode) "Current: ${mode.label}" else mode.label,
+                                onClick = { viewModel.setThemeMode(mode) },
+                                filled = state.themeMode == mode,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    SettingsToggleRow(
+                        label = "Tint New Chat & Send",
+                        value = state.tintPrimaryActionsWithThemeColor,
+                        onValueChange = viewModel::setTintPrimaryActionsWithThemeColor,
+                    )
+                    Text(
+                        "Apply your header color to these primary buttons.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+            }
+            item {
+                SettingsSection(title = "Chat") {
+                    SettingsToggleRow(
+                        label = "Thinking and Tool Cards",
+                        value = state.chatDisplaySettings.showThinkingAndToolCards,
+                        onValueChange = viewModel::setShowThinkingAndToolCards,
+                    )
+                    SettingsToggleRow(
+                        label = "Expand Thinking by Default",
+                        value = state.chatDisplaySettings.thinkingCardsStartExpanded,
+                        enabled = state.chatDisplaySettings.showThinkingAndToolCards,
+                        onValueChange = viewModel::setThinkingCardsStartExpanded,
+                    )
+                    SettingsToggleRow(
+                        label = "Expand Tools by Default",
+                        value = state.chatDisplaySettings.toolCardsStartExpanded,
+                        enabled = state.chatDisplaySettings.showThinkingAndToolCards,
+                        onValueChange = viewModel::setToolCardsStartExpanded,
+                    )
+                    SettingsToggleRow(
+                        label = "Streamed Text Animation",
+                        value = state.chatDisplaySettings.streamedTextAnimationEnabled,
+                        onValueChange = viewModel::setStreamedTextAnimationEnabled,
+                    )
+                    SettingsToggleRow(
+                        label = "Status Notification Excerpts",
+                        value = state.chatDisplaySettings.showsStatusNotificationResponseExcerpts,
+                        onValueChange = viewModel::setShowsStatusNotificationResponseExcerpts,
+                    )
+                    SettingsToggleRow(
+                        label = "Response Timestamps",
+                        value = state.chatDisplaySettings.showsAssistantTurnTimestamps,
+                        onValueChange = viewModel::setShowsAssistantTurnTimestamps,
+                    )
+                    SettingsToggleRow(
+                        label = "Wrap Code Block Lines",
+                        value = state.chatDisplaySettings.wrapsCodeBlockLines,
+                        onValueChange = viewModel::setWrapsCodeBlockLines,
+                    )
+                    SettingsToggleRow(
+                        label = "Hide Attachment Paths",
+                        value = state.chatDisplaySettings.hidesAttachmentPaths,
+                        onValueChange = viewModel::setHidesAttachmentPaths,
+                    )
+                    SettingsToggleRow(
+                        label = "Right-to-Left Chat Layout",
+                        value = state.chatDisplaySettings.rtlChatLayoutEnabled,
+                        onValueChange = viewModel::setRtlChatLayoutEnabled,
+                    )
+                }
+            }
+            item {
+                SettingsSection(title = "Servers") {
+                    if (state.serverSnapshot.servers.isEmpty()) {
+                        Text("No servers configured.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    } else {
+                        state.serverSnapshot.servers.forEach { account ->
+                            ServerAccountRow(
+                                displayName = account.displayName,
+                                url = account.urlString,
+                                initials = account.initials,
+                                headerColorHex = account.headerLogoColorHex,
+                                isActive = account.id == state.serverSnapshot.activeServerId,
+                                headerCount = state.customHeadersByServer[account.id]?.size ?: 0,
+                                onActivate = { viewModel.activateServer(account.id) },
+                                onEditIdentity = { viewModel.openIdentityEditor(account) },
+                                onEditHeaders = { viewModel.openHeaderEditor(account) },
+                                onClearCache = { viewModel.requestClearCache(account) },
+                                onForget = { viewModel.requestForgetServer(account) },
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(9.dp))
+                    HermexPillButton(
+                        label = if (state.isAddingServer) "Adding..." else "Add Server",
+                        onClick = viewModel::openAddServer,
+                        enabled = !state.isAddingServer,
+                        filled = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(9.dp))
+                    Text(
+                        "Server URLs, custom headers, and cookies are stored in Android encrypted storage.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                    Spacer(Modifier.height(9.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        val activeServer = state.serverSnapshot.servers.firstOrNull { it.id == state.serverSnapshot.activeServerId }
+                        HermexPillButton(
+                            label = if (state.isMaintainingCache) "Cleaning..." else "Clean Expired Cache",
+                            onClick = viewModel::runCacheMaintenance,
+                            enabled = cacheMaintenanceRepository != null && !state.isMaintainingCache,
+                        )
+                        HermexPillButton(
+                            label = if (state.isClearingCache) "Clearing..." else "Clear Active Cache",
+                            onClick = { activeServer?.let(viewModel::requestClearCache) },
+                            enabled = activeServer != null && cacheMaintenanceRepository != null && !state.isClearingCache,
                         )
                     }
                 }
             }
-        }
-        Spacer(Modifier.height(12.dp))
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                Text("Default Model")
-                Text(state.defaultModel ?: "Server default", style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(8.dp))
-                when {
-                    panelsRepository == null -> Text("Connect to a server to manage the default model.")
-                    state.isLoadingModels -> CircularProgressIndicator()
-                    state.models.isEmpty() -> Text("No models returned by the server.")
-                    else -> Row(
-                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        state.models.forEach { model ->
-                            val id = model.id ?: model.name
-                            AssistChip(
-                                onClick = { viewModel.saveDefaultModel(model) },
-                                enabled = !state.isSavingDefaultModel && id != null,
-                                label = {
-                                    Text(
-                                        if (id == state.defaultModel) {
-                                            "Current: ${model.label ?: id}"
-                                        } else {
-                                            model.label ?: id ?: "Model"
-                                        },
-                                    )
-                                },
+            item {
+                SettingsSection(title = "Active Server") {
+                    when {
+                        panelsRepository == null -> Text("Connect to a server to manage active-server settings.", style = MaterialTheme.typography.bodySmall)
+                        state.isLoadingServerSettings -> CircularProgressIndicator(strokeWidth = 2.dp)
+                        else -> {
+                            DetailLine("Status", if (loggedIn != null) "Signed in" else "Signed out")
+                            DetailLine("URL", loggedIn?.server?.toString() ?: "Not configured")
+                            DetailLine("Version", state.serverSettings?.webuiVersion ?: "Unknown")
+                            state.serverSettings?.botName?.takeIf { it.isNotBlank() }?.let { DetailLine("Bot Name", it) }
+                            ServerUpdateControls(state, viewModel)
+                            Spacer(Modifier.height(12.dp))
+                            SettingsPickerSummaryRow(
+                                title = "Default Model",
+                                value = defaultModelLabel(state),
+                                onClick = viewModel::openDefaultModelPicker,
+                                enabled = !state.isLoadingServerSettings,
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            SettingsPickerSummaryRow(
+                                title = "Default Profile",
+                                value = defaultProfileLabel(state),
+                                onClick = viewModel::openDefaultProfilePicker,
+                                enabled = !state.isLoadingServerSettings,
                             )
                         }
                     }
                 }
             }
+            item {
+                SettingsSection(title = "Interaction") {
+                    SettingsToggleRow(
+                        label = "Haptic Feedback",
+                        value = state.hapticsEnabled,
+                        onValueChange = viewModel::setHapticsEnabled,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    SettingsToggleRow(
+                        label = "Response Complete Alerts",
+                        value = state.responseCompletionNotificationsEnabled,
+                        onValueChange = { enabled ->
+                            if (!enabled) {
+                                viewModel.setResponseCompletionNotificationsEnabled(false, "Android notifications disabled.")
+                            } else if (canPostAndroidNotifications(context)) {
+                                viewModel.setResponseCompletionNotificationsEnabled(true, "Android notifications allowed.")
+                            } else {
+                                viewModel.markResponseCompletionNotificationPermissionRequested()
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        },
+                    )
+                    responseCompletionNotificationStatusText(state, context)?.let { status ->
+                        Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    DetailLine("Send While Responding", state.streamingSendBehavior.settingsDescription)
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        StreamingSendBehavior.entries.forEach { behavior ->
+                            HermexPillButton(
+                                label = behavior.title,
+                                onClick = { viewModel.setStreamingSendBehavior(behavior) },
+                                filled = state.streamingSendBehavior == behavior,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    SettingsInfoRow("Share Intake", "Android share sheet target")
+                    SettingsInfoRow("Voice Notes", "Microphone recording and /api/transcribe")
+                    SettingsInfoRow("Status Notifications", "Android notification while a stream is active")
+                    SettingsInfoRow("Shortcuts", "Home screen widget and deep links")
+                }
+            }
+            item {
+                SettingsSection(title = "Android & Shortcuts") {
+                    SettingsActionRow(
+                        label = "Open Hermex Settings",
+                        value = "Permissions, notifications, and app shortcuts",
+                        onClick = { openAndroidAppSettings(context) },
+                    )
+                }
+            }
+            item {
+                SettingsSection(title = "Sessions") {
+                    SettingsToggleRow(
+                        label = "Message Count",
+                        value = state.sessionRowDisplaySettings.showMessageCount,
+                        onValueChange = viewModel::setSessionRowShowMessageCount,
+                    )
+                    SettingsToggleRow(
+                        label = "Workspace",
+                        value = state.sessionRowDisplaySettings.showWorkspace,
+                        onValueChange = viewModel::setSessionRowShowWorkspace,
+                    )
+                    SettingsToggleRow(
+                        label = "Cron Sessions",
+                        value = state.sessionRowDisplaySettings.showCronSessions,
+                        onValueChange = viewModel::setShowCronSessions,
+                    )
+                    SettingsToggleRow(
+                        label = "CLI Sessions",
+                        value = state.showCliSessions,
+                        enabled = !state.isSavingCliSessions,
+                        switchTestTag = "cli_sessions_switch",
+                        onValueChange = viewModel::setShowCliSessions,
+                    )
+                    state.cliSessionsError?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    } ?: run {
+                        if (state.cliSessionsServerSynced) {
+                            Text(
+                                "CLI session visibility is synced with this server, so the WebUI follows it too.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                SettingsSection(title = "Offline Data") {
+                    Text(
+                        "Cached sessions and messages are scoped to the active server for offline viewing.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+            }
+            item {
+                SettingsSection(title = "App") {
+                    SettingsInfoRow("Version", appInfo.version)
+                    SettingsInfoRow("Build", appInfo.build)
+                    SettingsActionRow(
+                        label = "Privacy Policy",
+                        value = "Open in browser",
+                        onClick = { openExternalUrl(context, HermexAppLinks.PRIVACY_POLICY_URL) },
+                    )
+                    SettingsActionRow(
+                        label = "Support",
+                        value = "Open in browser",
+                        onClick = { openExternalUrl(context, HermexAppLinks.SUPPORT_URL) },
+                    )
+                }
+            }
+            state.notice?.let {
+                item { StatusText(it, isError = false) }
+            }
+            state.error?.let {
+                item { StatusText(it, isError = true) }
+            }
+            item {
+                SettingsSection(title = "Account") {
+                    Text(
+                        "Sign out clears this server's session cookies. The server registry remains available so you can reconnect quickly.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    HermexPillButton(
+                        label = if (state.isSigningOut) "Signing out..." else "Sign Out of This Server",
+                        onClick = { viewModel.signOut(onSignedOut) },
+                        enabled = !state.isSigningOut && loggedIn != null,
+                        filled = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
         }
-        state.notice?.let {
-            Spacer(Modifier.height(8.dp))
-            Text(it, color = MaterialTheme.colorScheme.tertiary)
-        }
-        state.error?.let {
-            Spacer(Modifier.height(8.dp))
-            Text(it, color = MaterialTheme.colorScheme.error)
-        }
-        Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = { viewModel.signOut(onSignedOut) },
-            enabled = !state.isSigningOut && loggedIn != null,
-        ) {
-            Text(if (state.isSigningOut) "Signing out..." else "Sign out")
+        SettingsDialogs(state, viewModel, onSignedOut)
+    }
+}
+
+@Composable
+private fun SettingsHeader(onBack: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HermexIconButton("Back", "‹", onBack)
+        Column(Modifier.padding(start = 12.dp)) {
+            Text("Settings", style = MaterialTheme.typography.headlineMedium)
+            Text("Hermes Control Center", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
         }
     }
+}
+
+@Composable
+private fun SettingsSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .hermexGlass(shape = HermexCardShape, castsShadow = false)
+            .padding(12.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(8.dp))
+        content()
+    }
+}
+
+@Composable
+private fun ServerAccountRow(
+    displayName: String,
+    url: String,
+    initials: String,
+    headerColorHex: String,
+    isActive: Boolean,
+    headerCount: Int,
+    onActivate: () -> Unit,
+    onEditIdentity: () -> Unit,
+    onEditHeaders: () -> Unit,
+    onClearCache: () -> Unit,
+    onForget: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ServerAvatar(
+                initials = displayInitials(displayName, initials, url),
+                colorHex = headerColorHex,
+                modifier = Modifier.size(34.dp),
+            )
+            Column(Modifier.weight(1f)) {
+                Text(displayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(url, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary, maxLines = 1, overflow = TextOverflow.MiddleEllipsis)
+            }
+            HermexPillButton(
+                label = if (isActive) "Active" else "Switch",
+                onClick = onActivate,
+                enabled = !isActive,
+                filled = isActive,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            HermexPillButton("Edit Identity", onEditIdentity)
+            HermexPillButton("Headers ($headerCount)", onEditHeaders)
+            HermexPillButton("Clear Cache", onClearCache)
+            HermexPillButton("Forget", onForget)
+        }
+    }
+}
+
+@Composable
+private fun ServerAvatar(
+    initials: String,
+    colorHex: String,
+    modifier: Modifier = Modifier,
+) {
+    val color = colorHex.toComposeColor() ?: MaterialTheme.colorScheme.primary
+    val foreground = if (color.luminanceValue() > 0.68f) Color(0xFF111111) else Color.White
+    Box(
+        modifier = modifier.background(color, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            initials.take(3),
+            style = MaterialTheme.typography.labelMedium,
+            color = foreground,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun SettingsPickerSummaryRow(
+    title: String,
+    value: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            DetailLine(title, value)
+        }
+        Text(
+            text = if (enabled) "Choose" else "Loading",
+            style = MaterialTheme.typography.bodySmall,
+            color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun SettingsToggleRow(
+    label: String,
+    value: Boolean,
+    enabled: Boolean = true,
+    switchTestTag: String? = null,
+    onValueChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onValueChange(!value) }
+            .padding(vertical = 5.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Switch(
+            checked = value,
+            onCheckedChange = onValueChange,
+            enabled = enabled,
+            modifier = switchTestTag?.let { Modifier.testTag(it) } ?: Modifier,
+        )
+    }
+}
+
+@Composable
+private fun SettingsInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            value,
+            modifier = Modifier.padding(start = 12.dp).weight(1f),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.secondary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun SettingsActionRow(
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 7.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            value,
+            modifier = Modifier.padding(start = 12.dp).weight(1f),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun DetailLine(label: String, value: String) {
+    Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+    Text(
+        value,
+        style = MaterialTheme.typography.bodyMedium,
+        maxLines = 1,
+        overflow = TextOverflow.MiddleEllipsis,
+    )
+}
+
+@Composable
+private fun StatusText(text: String, isError: Boolean) {
+    Text(
+        text = text,
+        color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary,
+        style = MaterialTheme.typography.bodySmall,
+    )
+}
+
+@Composable
+private fun SettingsDialogs(
+    state: SettingsUiState,
+    viewModel: SettingsViewModel,
+    onSignedOut: () -> Unit,
+) {
+    if (state.showDefaultModelPicker) {
+        DefaultModelPickerDialog(
+            state = state,
+            onDismiss = viewModel::dismissDefaultModelPicker,
+            onSaveModel = viewModel::saveDefaultModel,
+            onSaveCustom = viewModel::saveDefaultModelId,
+        )
+    }
+
+    if (state.showDefaultProfilePicker) {
+        DefaultProfilePickerDialog(
+            state = state,
+            onDismiss = viewModel::dismissDefaultProfilePicker,
+            onSelect = viewModel::saveDefaultProfile,
+            onCreateProfile = viewModel::openCreateProfileDialog,
+        )
+    }
+
+    if (state.showCreateProfileDialog) {
+        CreateProfileDialog(
+            state = state,
+            onDismiss = viewModel::dismissCreateProfileDialog,
+            onCreate = viewModel::createProfile,
+        )
+    }
+
+    if (state.confirmServerUpdate) {
+        AlertDialog(
+            onDismissRequest = viewModel::cancelServerUpdate,
+            title = { Text("Update server?") },
+            text = { Text("This pulls the latest Hermes server version and restarts it. Active chats may be interrupted briefly; the app reconnects when the server is back.") },
+            confirmButton = { TextButton(onClick = viewModel::applyServerUpdate) { Text("Update") } },
+            dismissButton = { TextButton(onClick = viewModel::cancelServerUpdate) { Text("Cancel") } },
+        )
+    }
+
+    if (state.showForcedUpdateCheckResult) {
+        val outcome = state.forcedUpdateCheckOutcome
+        AlertDialog(
+            onDismissRequest = viewModel::dismissForcedUpdateCheckResult,
+            title = { Text(forcedUpdateTitle(outcome)) },
+            text = { Text(forcedUpdateMessage(outcome)) },
+            confirmButton = {
+                if (outcome is ForcedUpdateCheckOutcome.UpdateAvailable) {
+                    TextButton(
+                        onClick = {
+                            viewModel.dismissForcedUpdateCheckResult()
+                            viewModel.applyServerUpdate()
+                        },
+                    ) {
+                        Text("Update")
+                    }
+                } else {
+                    TextButton(onClick = viewModel::dismissForcedUpdateCheckResult) { Text("OK") }
+                }
+            },
+            dismissButton = {
+                if (outcome is ForcedUpdateCheckOutcome.UpdateAvailable) {
+                    TextButton(onClick = viewModel::dismissForcedUpdateCheckResult) { Text("Dismiss") }
+                }
+            },
+        )
+    }
+
+    state.identityEditorServer?.let { server ->
+        IdentityEditorDialog(
+            server = server,
+            draft = state.identityDraft,
+            onDraftChange = viewModel::updateIdentityDraft,
+            onDismiss = viewModel::dismissIdentityEditor,
+            onSave = viewModel::saveIdentityDraft,
+        )
+    }
+
+    state.headerEditorServer?.let { server ->
+        HeaderEditorDialog(
+            server = server,
+            text = state.headerEditorText,
+            error = state.headerEditorError,
+            onTextChange = viewModel::updateHeaderEditorText,
+            onDismiss = viewModel::dismissHeaderEditor,
+            onSave = viewModel::saveHeaderEditor,
+        )
+    }
+
+    if (state.addServerDialogVisible) {
+        AddServerDialog(
+            state = state,
+            onUrlChange = viewModel::updateAddServerUrl,
+            onPasswordChange = viewModel::updateAddServerPassword,
+            onHeadersChange = viewModel::updateAddServerHeadersText,
+            onDisplayNameChange = viewModel::updateAddServerDisplayName,
+            onInitialsChange = viewModel::updateAddServerInitials,
+            onColorChange = viewModel::updateAddServerHeaderColor,
+            onDismiss = viewModel::dismissAddServer,
+            onSubmit = viewModel::submitAddServer,
+        )
+    }
+
+    state.clearCacheServer?.let { server ->
+        AlertDialog(
+            onDismissRequest = viewModel::cancelClearCache,
+            title = { Text("Clear Offline Cache?") },
+            text = { Text("Remove cached sessions and messages for ${server.displayName}. Server data is not changed.") },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmClearCache, enabled = !state.isClearingCache) {
+                    Text(if (state.isClearingCache) "Clearing..." else "Clear")
+                }
+            },
+            dismissButton = { TextButton(onClick = viewModel::cancelClearCache) { Text("Cancel") } },
+        )
+    }
+
+    state.forgetServer?.let { server ->
+        AlertDialog(
+            onDismissRequest = viewModel::cancelForgetServer,
+            title = { Text("Forget Server?") },
+            text = { Text("Remove ${server.displayName}, its encrypted custom headers, and its saved registry entry. Sign in again to add it back.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.confirmForgetServer(onSignedOut) }) {
+                    Text("Forget")
+                }
+            },
+            dismissButton = { TextButton(onClick = viewModel::cancelForgetServer) { Text("Cancel") } },
+        )
+    }
+}
+
+@Composable
+private fun DefaultModelPickerDialog(
+    state: SettingsUiState,
+    onDismiss: () -> Unit,
+    onSaveModel: (com.uzairansar.hermex.core.model.ModelSummary) -> Unit,
+    onSaveCustom: (String) -> Unit,
+) {
+    var searchText by remember(state.showDefaultModelPicker) { mutableStateOf("") }
+    var customModel by remember(state.showDefaultModelPicker) { mutableStateOf("") }
+    val groups = remember(state.models, state.modelProviders, searchText) {
+        defaultModelPickerGroups(state.models, state.modelProviders, searchText)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Default Model") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OutlinedTextField(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    modifier = Modifier.fillMaxWidth().testTag("default_model_search"),
+                    singleLine = true,
+                    label = { Text("Search models") },
+                    enabled = !state.isSavingDefaultModel,
+                )
+                state.defaultModelPickerError?.let { StatusText(it, isError = true) }
+                OutlinedTextField(
+                    value = customModel,
+                    onValueChange = { customModel = it },
+                    modifier = Modifier.fillMaxWidth().testTag("default_model_custom"),
+                    singleLine = true,
+                    label = { Text("Custom model ID") },
+                    supportingText = { Text("Type the exact model ID the server expects.") },
+                    enabled = !state.isSavingDefaultModel,
+                )
+                HermexPillButton(
+                    label = if (state.isSavingDefaultModel) "Saving..." else "Save Custom Model",
+                    onClick = { onSaveCustom(customModel) },
+                    enabled = customModel.trim().isNotBlank() && !state.isSavingDefaultModel,
+                    filled = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (state.isLoadingLiveModels) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+                        Text("Refreshing live models...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    }
+                }
+                when {
+                    state.models.isEmpty() -> Text("No models returned by the server.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    groups.isEmpty() -> Text("No matching models.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    else -> groups.forEach { group ->
+                        Text(group.title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
+                        group.models.forEach { model ->
+                            DefaultModelOptionRow(
+                                model = model,
+                                selected = model.modelIdentifier == state.defaultModel,
+                                enabled = !state.isSavingDefaultModel,
+                                onClick = { onSaveModel(model) },
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss, enabled = !state.isSavingDefaultModel) { Text("Done") } },
+    )
+}
+
+@Composable
+private fun ServerUpdateControls(
+    state: SettingsUiState,
+    viewModel: SettingsViewModel,
+) {
+    val inFlight = state.updateApplyPhase == ServerUpdateApplyPhase.Applying ||
+        state.updateApplyPhase == ServerUpdateApplyPhase.Recovering
+    Spacer(Modifier.height(10.dp))
+    when (val updateState = state.serverUpdateState) {
+        WebUiUpdateState.UpToDate -> StatusText("Up to date", isError = false)
+        is WebUiUpdateState.UpdateAvailable -> StatusText("Update available - ${updateState.behind} behind", isError = false)
+        WebUiUpdateState.Unavailable,
+        null,
+        -> Unit
+    }
+    Spacer(Modifier.height(8.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HermexPillButton(
+            label = if (state.isCheckingForUpdates) "Checking..." else "Check for updates",
+            onClick = viewModel::checkForUpdatesManually,
+            enabled = !state.isCheckingForUpdates && !inFlight,
+        )
+        if (state.updateApplyPhase == ServerUpdateApplyPhase.Idle && state.serverUpdateState is WebUiUpdateState.UpdateAvailable) {
+            HermexPillButton(
+                label = "Update",
+                onClick = viewModel::requestServerUpdate,
+                enabled = !state.isCheckingForUpdates,
+                filled = true,
+            )
+        }
+        when (state.updateApplyPhase) {
+            ServerUpdateApplyPhase.Applying -> UpdateProgressPill("Starting update...")
+            ServerUpdateApplyPhase.Recovering -> UpdateProgressPill("Updating & restarting...")
+            ServerUpdateApplyPhase.Blocked,
+            ServerUpdateApplyPhase.Failed,
+            -> HermexPillButton(
+                label = "Retry update",
+                onClick = viewModel::requestServerUpdate,
+                enabled = !state.isCheckingForUpdates,
+            )
+            ServerUpdateApplyPhase.Idle -> Unit
+        }
+    }
+    state.updateApplyMessage?.let {
+        Spacer(Modifier.height(8.dp))
+        StatusText(it, isError = state.updateApplyPhase == ServerUpdateApplyPhase.Failed)
+    }
+}
+
+@Composable
+private fun UpdateProgressPill(label: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+    }
+}
+
+@Composable
+private fun DefaultModelOptionRow(
+    model: com.uzairansar.hermex.core.model.ModelSummary,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(if (selected) "✓" else "", modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.primary)
+        Column(Modifier.weight(1f)) {
+            Text(model.displayModelTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
+            val subtitle = listOfNotNull(model.modelIdentifier, model.provider).distinct().joinToString(" - ")
+            if (subtitle.isNotBlank()) {
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DefaultProfilePickerDialog(
+    state: SettingsUiState,
+    onDismiss: () -> Unit,
+    onSelect: (com.uzairansar.hermex.core.model.ProfileSummary) -> Unit,
+    onCreateProfile: () -> Unit,
+) {
+    var searchText by remember(state.showDefaultProfilePicker) { mutableStateOf("") }
+    val query = searchText.trim()
+    val profiles = remember(state.profiles, query) {
+        if (query.isBlank()) {
+            state.profiles
+        } else {
+            state.profiles.filter { profile ->
+                listOfNotNull(
+                    profile.settingsDisplayName(),
+                    profile.normalizedProfileName(),
+                    profile.model,
+                    profile.provider,
+                ).any { it.contains(query, ignoreCase = true) }
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Default Profile") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OutlinedTextField(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    modifier = Modifier.fillMaxWidth().testTag("default_profile_search"),
+                    singleLine = true,
+                    label = { Text("Search profiles") },
+                    enabled = !state.isSavingDefaultProfile,
+                )
+                state.defaultProfilePickerError?.let { StatusText(it, isError = true) }
+                if (!state.isSingleProfileMode) {
+                    HermexPillButton(
+                        label = "New Profile",
+                        onClick = onCreateProfile,
+                        enabled = !state.isSavingDefaultProfile,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                when {
+                    state.profiles.isEmpty() -> Text("No profiles returned by the server.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    profiles.isEmpty() -> Text("No matching profiles.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    else -> profiles.forEach { profile ->
+                        DefaultProfileOptionRow(
+                            profile = profile,
+                            selected = profile.normalizedProfileName() == state.activeProfile,
+                            enabled = !state.isSavingDefaultProfile && profile.normalizedProfileName() != null,
+                            onClick = { onSelect(profile) },
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss, enabled = !state.isSavingDefaultProfile) { Text("Done") } },
+    )
+}
+
+@Composable
+private fun DefaultProfileOptionRow(
+    profile: com.uzairansar.hermex.core.model.ProfileSummary,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(if (selected) "✓" else "", modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.primary)
+        Column(Modifier.weight(1f)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(profile.settingsDisplayName(), style = MaterialTheme.typography.bodyMedium, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
+                if (!selected && profile.isDefault == true) {
+                    Text("Server Default", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            profile.settingsDetails()?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateProfileDialog(
+    state: SettingsUiState,
+    onDismiss: () -> Unit,
+    onCreate: (String, Boolean, String, String, String, String) -> Unit,
+) {
+    var name by remember(state.showCreateProfileDialog) { mutableStateOf("") }
+    var cloneConfig by remember(state.showCreateProfileDialog) { mutableStateOf(false) }
+    var defaultModel by remember(state.showCreateProfileDialog) { mutableStateOf("") }
+    var modelProvider by remember(state.showCreateProfileDialog) { mutableStateOf("") }
+    var baseUrl by remember(state.showCreateProfileDialog) { mutableStateOf("") }
+    var apiKey by remember(state.showCreateProfileDialog) { mutableStateOf("") }
+    val normalizedName = name.trim().lowercase()
+    val invalidBaseUrl = baseUrl.trim().isNotEmpty() && !ProfileNameRules.isValidBaseUrl(baseUrl.trim())
+    val canCreate = ProfileNameRules.isValid(normalizedName) && !invalidBaseUrl && !state.isCreatingProfile
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New Profile") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    modifier = Modifier.fillMaxWidth().testTag("new_profile_name"),
+                    singleLine = true,
+                    label = { Text("Profile name") },
+                    supportingText = { Text("Lowercase letters, numbers, hyphens, and underscores.") },
+                    enabled = !state.isCreatingProfile,
+                    isError = name.isNotBlank() && !ProfileNameRules.isValid(normalizedName),
+                )
+                SettingsToggleRow(
+                    label = "Clone config from active profile",
+                    value = cloneConfig,
+                    enabled = !state.isCreatingProfile,
+                    onValueChange = { cloneConfig = it },
+                )
+                OutlinedTextField(
+                    value = defaultModel,
+                    onValueChange = { defaultModel = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Default model") },
+                    placeholder = { Text("Use active profile default") },
+                    enabled = !state.isCreatingProfile,
+                )
+                OutlinedTextField(
+                    value = modelProvider,
+                    onValueChange = { modelProvider = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Model provider") },
+                    placeholder = { Text("Optional") },
+                    enabled = !state.isCreatingProfile,
+                )
+                OutlinedTextField(
+                    value = baseUrl,
+                    onValueChange = { baseUrl = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Base URL") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    supportingText = { Text(if (invalidBaseUrl) "Base URL must start with http:// or https://." else "Optional. Example: http://localhost:11434") },
+                    isError = invalidBaseUrl,
+                    enabled = !state.isCreatingProfile,
+                )
+                OutlinedTextField(
+                    value = apiKey,
+                    onValueChange = { apiKey = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("API key") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    enabled = !state.isCreatingProfile,
+                )
+                state.profileCreateError?.let { StatusText(it, isError = true) }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onCreate(name, cloneConfig, defaultModel, modelProvider, baseUrl, apiKey) },
+                enabled = canCreate,
+            ) {
+                Text(if (state.isCreatingProfile) "Creating..." else "Create")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !state.isCreatingProfile) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun IdentityEditorDialog(
+    server: ServerAccount,
+    draft: ServerIdentityDraft,
+    onDraftChange: (ServerIdentityDraft) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Server Identity") },
+        text = {
+            ServerIdentityFields(
+                displayName = draft.displayName,
+                initials = draft.initials,
+                colorHex = draft.headerLogoColorHex,
+                fallbackName = server.displayName.ifBlank { server.urlString },
+                onDisplayNameChange = { onDraftChange(draft.copy(displayName = it)) },
+                onInitialsChange = { onDraftChange(draft.copy(initials = it)) },
+                onColorChange = { onDraftChange(draft.copy(headerLogoColorHex = it)) },
+            )
+        },
+        confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun HeaderEditorDialog(
+    server: ServerAccount,
+    text: String,
+    error: String?,
+    onTextChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Custom Headers") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    server.urlString,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.MiddleEllipsis,
+                )
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 4,
+                    maxLines = 8,
+                    label = { Text("Name: Value") },
+                    supportingText = {
+                        Text(error ?: "One header per line. Origin, Referer, Host, and Content-Length are blocked.")
+                    },
+                    isError = error != null,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun AddServerDialog(
+    state: SettingsUiState,
+    onUrlChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onHeadersChange: (String) -> Unit,
+    onDisplayNameChange: (String) -> Unit,
+    onInitialsChange: (String) -> Unit,
+    onColorChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSubmit: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Server") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = state.addServerUrl,
+                    onValueChange = onUrlChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Server URL") },
+                    placeholder = { Text("100.64.0.1:8787") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    enabled = !state.isAddingServer,
+                )
+                if (state.addServerNeedsPassword) {
+                    OutlinedTextField(
+                        value = state.addServerPassword,
+                        onValueChange = onPasswordChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Password") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        enabled = !state.isAddingServer,
+                    )
+                    Text(
+                        "This server requires a password.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+                OutlinedTextField(
+                    value = state.addServerHeadersText,
+                    onValueChange = onHeadersChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 6,
+                    label = { Text("Custom Headers") },
+                    placeholder = { Text("CF-Access-Client-Id: ...") },
+                    enabled = !state.isAddingServer,
+                )
+                Text("Identity", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                ServerIdentityFields(
+                    displayName = state.addServerDisplayName,
+                    initials = state.addServerInitials,
+                    colorHex = state.addServerHeaderColorHex,
+                    fallbackName = state.addServerUrl,
+                    onDisplayNameChange = onDisplayNameChange,
+                    onInitialsChange = onInitialsChange,
+                    onColorChange = onColorChange,
+                    enabled = !state.isAddingServer,
+                )
+                state.addServerError?.let { error ->
+                    Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onSubmit,
+                enabled = !state.isAddingServer && state.addServerUrl.isNotBlank(),
+            ) {
+                Text(if (state.isAddingServer) "Adding..." else "Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !state.isAddingServer) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun ServerIdentityFields(
+    displayName: String,
+    initials: String,
+    colorHex: String,
+    fallbackName: String,
+    onDisplayNameChange: (String) -> Unit,
+    onInitialsChange: (String) -> Unit,
+    onColorChange: (String) -> Unit,
+    enabled: Boolean = true,
+) {
+    val previewName = displayName.ifBlank { fallbackName }
+    val previewInitials = displayInitials(previewName, initials, fallbackName)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            ServerAvatar(
+                initials = previewInitials,
+                colorHex = colorHex,
+                modifier = Modifier.size(42.dp),
+            )
+            Column(Modifier.weight(1f)) {
+                Text("Server Avatar", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    previewInitials,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
+        }
+        OutlinedTextField(
+            value = displayName,
+            onValueChange = onDisplayNameChange,
+            modifier = Modifier.fillMaxWidth().testTag("server_identity_display_name"),
+            singleLine = true,
+            label = { Text("Display Name") },
+            placeholder = { Text(fallbackName.ifBlank { "Hermex" }) },
+            enabled = enabled,
+        )
+        OutlinedTextField(
+            value = initials,
+            onValueChange = onInitialsChange,
+            modifier = Modifier.fillMaxWidth().testTag("server_identity_initials"),
+            singleLine = true,
+            label = { Text("Initials") },
+            placeholder = { Text(previewInitials) },
+            enabled = enabled,
+        )
+        Text("Header Color", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ServerHeaderColorPresets.forEach { preset ->
+                ColorPresetButton(
+                    hex = preset,
+                    selected = normalizedHeaderColorHex(colorHex) == normalizedHeaderColorHex(preset),
+                    enabled = enabled,
+                    onClick = { onColorChange(preset) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorPresetButton(
+    hex: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    TextButton(onClick = onClick, enabled = enabled) {
+        ServerAvatar(
+            initials = if (selected) "X" else "",
+            colorHex = hex,
+            modifier = Modifier.size(24.dp),
+        )
+    }
+}
+
+private fun String.toComposeColor(): Color? {
+    val raw = trim().removePrefix("#")
+    if (!raw.matches(Regex("[0-9a-fA-F]{6}"))) return null
+    val rgb = raw.toLong(16)
+    return Color(0xFF000000L or rgb)
+}
+
+private fun Color.luminanceValue(): Float =
+    0.299f * red + 0.587f * green + 0.114f * blue
+
+private fun defaultModelLabel(state: SettingsUiState): String {
+    val modelId = state.defaultModel?.trim()?.takeIf { it.isNotBlank() } ?: return "Server default"
+    return state.models.firstOrNull { it.modelIdentifier == modelId }?.displayModelTitle ?: modelId
+}
+
+private fun defaultProfileLabel(state: SettingsUiState): String {
+    val profileName = state.activeProfile?.trim()?.takeIf { it.isNotBlank() } ?: return "Server default"
+    return state.profiles.firstOrNull { it.normalizedProfileName() == profileName }?.settingsDisplayName()
+        ?: if (profileName == "default") "Default" else profileName
+}
+
+private fun forcedUpdateTitle(outcome: ForcedUpdateCheckOutcome?): String =
+    when (outcome) {
+        is ForcedUpdateCheckOutcome.UpdateAvailable -> "Update available - ${outcome.behind} behind"
+        ForcedUpdateCheckOutcome.UpToDate -> "You're up to date"
+        ForcedUpdateCheckOutcome.Disabled -> "Update checks are off"
+        ForcedUpdateCheckOutcome.Error,
+        null,
+        -> "Couldn't check for updates"
+    }
+
+private fun forcedUpdateMessage(outcome: ForcedUpdateCheckOutcome?): String =
+    when (outcome) {
+        is ForcedUpdateCheckOutcome.UpdateAvailable -> "This pulls the latest Hermes server version and restarts it. Active chats may be interrupted briefly; the app reconnects when the server is back."
+        ForcedUpdateCheckOutcome.UpToDate -> "The Hermes server is running the latest version."
+        ForcedUpdateCheckOutcome.Disabled -> "Update checks are turned off on this server."
+        ForcedUpdateCheckOutcome.Error,
+        null,
+        -> "Something went wrong reaching the server. Try again in a moment."
+    }
+
+private fun canPostAndroidNotifications(context: Context): Boolean =
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+private fun responseCompletionNotificationStatusText(
+    state: SettingsUiState,
+    context: Context,
+): String? =
+    state.responseCompletionNotificationStatusMessage
+        ?: when {
+            state.responseCompletionNotificationsEnabled && canPostAndroidNotifications(context) -> "Android notifications allowed."
+            state.hasRequestedResponseCompletionNotificationPermission && !canPostAndroidNotifications(context) -> "Android notifications disabled."
+            else -> null
+        }
+
+private fun Context.currentAndroidAppInfo(): AndroidAppInfo {
+    val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+    } else {
+        @Suppress("DEPRECATION")
+        packageManager.getPackageInfo(packageName, 0)
+    }
+    val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        packageInfo.longVersionCode
+    } else {
+        @Suppress("DEPRECATION")
+        packageInfo.versionCode.toLong()
+    }
+    return AndroidAppInfo(
+        version = displayAppVersion(packageInfo.versionName),
+        build = displayAppBuild(versionCode),
+    )
+}
+
+private fun openAndroidAppSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        .setData(Uri.fromParts("package", context.packageName, null))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(intent) }
+}
+
+private fun openExternalUrl(context: Context, url: String) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(intent) }
 }

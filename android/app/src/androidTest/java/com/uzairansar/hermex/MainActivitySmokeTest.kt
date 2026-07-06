@@ -16,10 +16,10 @@ class MainActivitySmokeTest {
     @Test
     fun launchesIntoKnownRootSurface() {
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            hasText("Hermex") || hasText("Sessions")
+            hasText("Control your Hermes agent from Android.") || hasText("Sessions")
         }
 
-        assertTrue(hasText("Hermex") || hasText("Sessions"))
+        assertTrue(hasText("Control your Hermes agent from Android.") || hasText("Sessions"))
     }
 
     private fun hasText(text: String): Boolean =

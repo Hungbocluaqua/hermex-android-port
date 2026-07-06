@@ -25,6 +25,12 @@ data class SessionIdRequest(
 )
 
 @Serializable
+data class SessionYoloRequest(
+    @SerialName("session_id") val sessionId: String,
+    val enabled: Boolean,
+)
+
+@Serializable
 data class RenameSessionRequest(
     @SerialName("session_id") val sessionId: String,
     val title: String,
@@ -62,6 +68,14 @@ data class TruncateSessionRequest(
 )
 
 @Serializable
+data class UpdateSessionRequest(
+    @SerialName("session_id") val sessionId: String,
+    val workspace: String? = null,
+    val model: String? = null,
+    @SerialName("model_provider") val modelProvider: String? = null,
+)
+
+@Serializable
 data class CreateProjectRequest(
     val name: String,
 )
@@ -84,6 +98,8 @@ data class ChatStartRequest(
     val workspace: String? = null,
     val model: String? = null,
     @SerialName("model_provider") val modelProvider: String? = null,
+    val profile: String? = null,
+    @SerialName("explicit_model_pick") val explicitModelPick: Boolean = false,
     val attachments: List<UploadResponse>? = null,
 )
 
@@ -91,6 +107,18 @@ data class ChatStartRequest(
 data class ChatSteerRequest(
     @SerialName("session_id") val sessionId: String,
     val text: String,
+)
+
+@Serializable
+data class BtwRequest(
+    @SerialName("session_id") val sessionId: String,
+    val question: String,
+)
+
+@Serializable
+data class BackgroundRequest(
+    @SerialName("session_id") val sessionId: String,
+    val prompt: String,
 )
 
 @Serializable
@@ -126,6 +154,31 @@ data class ClarifyRespondRequest(
 @Serializable
 data class DefaultModelRequest(
     val model: String,
+)
+
+@Serializable
+data class ProfileCreateRequest(
+    val name: String,
+    @SerialName("clone_config") val cloneConfig: Boolean,
+    @SerialName("default_model") val defaultModel: String? = null,
+    @SerialName("model_provider") val modelProvider: String? = null,
+    @SerialName("base_url") val baseUrl: String? = null,
+    @SerialName("api_key") val apiKey: String? = null,
+)
+
+@Serializable
+data class UpdateSettingsRequest(
+    @SerialName("show_cli_sessions") val showCliSessions: Boolean? = null,
+)
+
+@Serializable
+data class UpdatesCheckForceRequest(
+    val force: Boolean,
+)
+
+@Serializable
+data class UpdatesApplyRequest(
+    val target: String,
 )
 
 @Serializable
@@ -180,12 +233,13 @@ data class ReasoningRequest(
 
 @Serializable
 data class SwitchProfileRequest(
-    val profile: String,
+    val name: String,
 )
 
 @Serializable
 data class SetPersonalityRequest(
-    val personality: String,
+    @SerialName("session_id") val sessionId: String,
+    val name: String,
 )
 
 @Serializable

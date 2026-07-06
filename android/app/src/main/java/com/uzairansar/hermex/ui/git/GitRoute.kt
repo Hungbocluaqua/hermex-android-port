@@ -1,21 +1,24 @@
 package com.uzairansar.hermex.ui.git
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -23,8 +26,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,8 +35,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.uzairansar.hermex.core.model.GitDiffResponse
 import com.uzairansar.hermex.core.model.GitFileChange
 import com.uzairansar.hermex.data.repository.GitRepository
+import com.uzairansar.hermex.ui.theme.HermexCardShape
+import com.uzairansar.hermex.ui.theme.HermexIconButton
+import com.uzairansar.hermex.ui.theme.HermexPillButton
+import com.uzairansar.hermex.ui.theme.hermexGlass
+import com.uzairansar.hermex.ui.theme.hermexHairline
 
 @Composable
 fun GitRoute(
@@ -49,141 +58,220 @@ fun GitRoute(
     })
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Button(onClick = onBack) { Text("Back") }
-            Button(onClick = viewModel::refresh) { Text("Refresh") }
-        }
-        Spacer(Modifier.height(12.dp))
-        Text("Git", style = MaterialTheme.typography.headlineMedium)
-        Text(state.branch ?: "Branch unavailable", style = MaterialTheme.typography.bodySmall)
-        state.notice?.let { Text(it, color = MaterialTheme.colorScheme.tertiary) }
-        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = viewModel::fetch, enabled = !state.isMutating) { Text("Fetch") }
-            Button(onClick = viewModel::pull, enabled = !state.isMutating) { Text("Pull") }
-            Button(onClick = viewModel::requestPush, enabled = !state.isMutating) { Text("Push") }
-        }
-        Spacer(Modifier.height(12.dp))
-        if (state.isLoading) {
-            CircularProgressIndicator()
-            return@Column
-        }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
         ) {
-            if (state.files.isEmpty()) {
-                Text("Working tree is clean.")
-            } else {
-                state.files.forEach { file ->
-                    GitFileRow(file = file, selected = file.path == state.selectedPath, onClick = { viewModel.selectFile(file) })
-                }
-            }
-            BranchesCard(
-                branches = state.branches,
-                newBranchName = state.newBranchName,
-                onNewBranchNameChange = viewModel::updateNewBranchName,
-                onSelectBranch = viewModel::requestCheckout,
-                onCreateBranch = viewModel::requestCreateBranch,
-                enabled = !state.isMutating,
+            GitHeader(
+                branch = state.branch,
+                onBack = onBack,
+                onRefresh = viewModel::refresh,
             )
-            state.diff?.let { diff ->
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(state.selectedPath ?: "Diff", fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = viewModel::stageSelected, enabled = !state.isMutating && state.selectedPath != null) { Text("Stage") }
-                            Button(onClick = viewModel::unstageSelected, enabled = !state.isMutating && state.selectedPath != null) { Text("Unstage") }
-                            Button(onClick = viewModel::requestDiscardSelected, enabled = !state.isMutating && state.selectedPath != null) { Text("Discard") }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Text(diff, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
+            StatusLines(notice = state.notice, error = state.error)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                HermexPillButton("Fetch", viewModel::fetch, enabled = !state.isMutating)
+                HermexPillButton("Pull", viewModel::pull, enabled = !state.isMutating)
+                HermexPillButton("Push", viewModel::requestPush, enabled = !state.isMutating, filled = true)
             }
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp)) {
-                    Text("Commit", fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = state.commitMessage,
-                        onValueChange = viewModel::updateCommitMessage,
-                        label = { Text("Message") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 2,
+            if (state.isLoading) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(strokeWidth = 2.dp)
+                }
+                return@Column
+            }
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+            ) {
+                GitSummaryCard(
+                    branch = state.branch,
+                    changedCount = state.changedCount,
+                    additions = state.totalAdditions,
+                    deletions = state.totalDeletions,
+                    truncated = state.truncated,
+                )
+                if (state.files.isEmpty()) {
+                    CleanTreeCard()
+                } else {
+                    BatchActionsBar(
+                        selectedCount = state.selectedPaths.size,
+                        totalCount = state.files.size,
+                        enabled = !state.isMutating,
+                        onStage = viewModel::stageSelectedOrAll,
+                        onUnstage = viewModel::unstageSelectedOrAll,
+                        onDiscard = viewModel::requestDiscardSelectedOrAll,
+                        onClear = viewModel::clearSelection,
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = viewModel::generateCommitMessage, enabled = !state.isMutating) { Text("Generate") }
-                        Button(onClick = viewModel::commit, enabled = !state.isMutating && state.commitMessage.isNotBlank()) { Text("Commit") }
+                    state.files.forEach { file ->
+                        val path = file.gitPath()
+                        GitFileRow(
+                            file = file,
+                            selected = path == state.selectedPath,
+                            checked = path != null && path in state.selectedPaths,
+                            onClick = { viewModel.selectFile(file) },
+                            onCheckedChange = { viewModel.togglePathSelection(file) },
+                        )
                     }
                 }
+                BranchesSection(
+                    branches = state.branches,
+                    newBranchName = state.newBranchName,
+                    onNewBranchNameChange = viewModel::updateNewBranchName,
+                    onSelectBranch = viewModel::requestCheckout,
+                    onCreateBranch = viewModel::requestCreateBranch,
+                    enabled = !state.isMutating,
+                )
+                state.diff?.let { diff ->
+                    DiffSection(
+                        path = state.selectedPath,
+                        diff = diff,
+                        canAct = !state.isMutating && state.selectedPath != null,
+                        onStage = viewModel::stageSelected,
+                        onUnstage = viewModel::unstageSelected,
+                        onDiscard = viewModel::requestDiscardSelected,
+                    )
+                }
+                CommitSection(
+                    message = state.commitMessage,
+                    selectedCount = state.selectedPaths.size,
+                    hasStagedChanges = state.files.any { it.staged == true },
+                    messageWasTruncated = state.messageWasTruncated,
+                    pushAfterCommit = state.pushAfterCommit,
+                    onMessageChange = viewModel::updateCommitMessage,
+                    onGenerate = viewModel::generateCommitMessage,
+                    onCommit = viewModel::commit,
+                    onCommitSelected = viewModel::commitSelected,
+                    onPushAfterCommitChange = viewModel::updatePushAfterCommit,
+                    enabled = !state.isMutating,
+                )
             }
         }
     }
 
-    state.pendingCheckout?.let { target ->
-        AlertDialog(
-            onDismissRequest = viewModel::dismissCheckoutConfirm,
-            title = { Text("Switch branch?") },
-            text = { Text("Switch to ${target.displayName}? Uncommitted changes will be checked before the branch changes.") },
-            confirmButton = {
-                TextButton(onClick = viewModel::confirmCheckout, enabled = !state.isMutating) { Text("Switch") }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissCheckoutConfirm) { Text("Cancel") }
-            },
-        )
-    }
+    GitDialogs(state, viewModel)
+}
 
-    state.pendingDirtyCheckout?.let { target ->
-        AlertDialog(
-            onDismissRequest = viewModel::dismissCheckoutConfirm,
-            title = { Text("Save changes and switch?") },
-            text = { Text("This workspace has uncommitted changes. Save them temporarily, switch to ${target.displayName}, then restore them on the destination branch.") },
-            confirmButton = {
-                TextButton(onClick = viewModel::confirmDirtyCheckout, enabled = !state.isMutating) { Text("Save and switch") }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissCheckoutConfirm) { Text("Cancel") }
-            },
-        )
-    }
-
-    if (state.showPushConfirm) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissPushConfirm,
-            title = { Text("Push branch?") },
-            text = { Text("Push the current branch to its configured upstream remote?") },
-            confirmButton = {
-                TextButton(onClick = viewModel::confirmPush, enabled = !state.isMutating) { Text("Push") }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissPushConfirm) { Text("Cancel") }
-            },
-        )
-    }
-
-    if (state.showDiscardConfirm) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissDiscardConfirm,
-            title = { Text("Discard changes?") },
-            text = { Text("Discard local changes for ${state.selectedPath ?: "the selected file"}? This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = viewModel::confirmDiscardSelected, enabled = !state.isMutating) { Text("Discard") }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissDiscardConfirm) { Text("Cancel") }
-            },
-        )
+@Composable
+private fun GitHeader(
+    branch: String?,
+    onBack: () -> Unit,
+    onRefresh: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(bottom = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HermexIconButton("Back", "‹", onBack)
+        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+            Text("Git", style = MaterialTheme.typography.headlineMedium)
+            Text(branch ?: "Branch unavailable", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+        }
+        HermexIconButton("Refresh", "↻", onRefresh)
     }
 }
 
 @Composable
-private fun BranchesCard(
+private fun StatusLines(notice: String?, error: String?) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        notice?.let { Text(it, color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodySmall) }
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+    }
+}
+
+@Composable
+private fun CleanTreeCard() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .hermexGlass(shape = HermexCardShape, castsShadow = false)
+            .padding(14.dp),
+    ) {
+        Text("Working tree is clean.", style = MaterialTheme.typography.titleMedium)
+        Text("No changed files in this session workspace.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+    }
+}
+
+@Composable
+private fun GitSummaryCard(
+    branch: String?,
+    changedCount: Int,
+    additions: Int,
+    deletions: Int,
+    truncated: Boolean,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .hermexGlass(shape = HermexCardShape, castsShadow = false)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("$changedCount files changed", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Text("+$additions", color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.labelMedium)
+            Spacer(Modifier.width(8.dp))
+            Text("-$deletions", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium)
+        }
+        Text(branch ?: "HEAD", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+        if (truncated) {
+            Text("Showing first 500 changed files.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+        }
+    }
+}
+
+@Composable
+private fun BatchActionsBar(
+    selectedCount: Int,
+    totalCount: Int,
+    enabled: Boolean,
+    onStage: () -> Unit,
+    onUnstage: () -> Unit,
+    onDiscard: () -> Unit,
+    onClear: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .hermexHairline(HermexCardShape)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = if (selectedCount > 0) "$selectedCount selected" else "All $totalCount changes",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.secondary,
+        )
+        HermexPillButton("Stage", onStage, enabled = enabled && totalCount > 0)
+        HermexPillButton("Unstage", onUnstage, enabled = enabled && totalCount > 0)
+        HermexPillButton("Discard", onDiscard, enabled = enabled && totalCount > 0)
+        if (selectedCount > 0) {
+            HermexPillButton("Clear", onClear, enabled = enabled)
+        }
+    }
+}
+
+@Composable
+private fun BranchesSection(
     branches: List<GitBranchOption>,
     newBranchName: String,
     onNewBranchNameChange: (String) -> Unit,
@@ -191,68 +279,245 @@ private fun BranchesCard(
     onCreateBranch: () -> Unit,
     enabled: Boolean,
 ) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp)) {
-            Text("Branches", fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            if (branches.isEmpty()) {
-                Text("Branch list unavailable.", style = MaterialTheme.typography.bodySmall)
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    branches.forEach { branch ->
-                        AssistChip(
-                            onClick = { onSelectBranch(branch) },
-                            enabled = enabled && !branch.isCurrent,
-                            label = {
-                                Text(
-                                    text = buildString {
-                                        if (branch.isCurrent) append("Current: ")
-                                        append(branch.displayName)
-                                        if (branch.mode == "remote") append(" remote")
-                                    },
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            },
-                        )
-                    }
+    SectionSurface("Branches") {
+        if (branches.isEmpty()) {
+            Text("Branch list unavailable.", style = MaterialTheme.typography.bodySmall)
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                branches.forEach { branch ->
+                    HermexPillButton(
+                        label = buildString {
+                            if (branch.isCurrent) append("Current: ")
+                            append(branch.displayName)
+                            if (branch.mode == "remote") append(" remote")
+                        },
+                        onClick = { onSelectBranch(branch) },
+                        enabled = enabled && !branch.isCurrent,
+                        filled = branch.isCurrent,
+                    )
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = newBranchName,
-                onValueChange = onNewBranchNameChange,
-                label = { Text("New branch") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
+        }
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = newBranchName,
+            onValueChange = onNewBranchNameChange,
+            placeholder = { Text("New branch") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = enabled,
+            shape = HermexCardShape,
+        )
+        Spacer(Modifier.height(8.dp))
+        HermexPillButton("Create and switch", onCreateBranch, enabled = enabled && newBranchName.isNotBlank(), filled = true)
+    }
+}
+
+@Composable
+private fun DiffSection(
+    path: String?,
+    diff: GitDiffResponse,
+    canAct: Boolean,
+    onStage: () -> Unit,
+    onUnstage: () -> Unit,
+    onDiscard: () -> Unit,
+) {
+    SectionSurface(path ?: "Diff") {
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            HermexPillButton("Stage", onStage, enabled = canAct)
+            HermexPillButton("Unstage", onUnstage, enabled = canAct)
+            HermexPillButton("Discard", onDiscard, enabled = canAct)
+        }
+        Spacer(Modifier.height(8.dp))
+        HermexGitDiffContent(diff)
+    }
+}
+
+@Composable
+private fun CommitSection(
+    message: String,
+    selectedCount: Int,
+    hasStagedChanges: Boolean,
+    messageWasTruncated: Boolean,
+    pushAfterCommit: Boolean,
+    onMessageChange: (String) -> Unit,
+    onGenerate: () -> Unit,
+    onCommit: () -> Unit,
+    onCommitSelected: () -> Unit,
+    onPushAfterCommitChange: (Boolean) -> Unit,
+    enabled: Boolean,
+) {
+    SectionSurface("Commit") {
+        OutlinedTextField(
+            value = message,
+            onValueChange = onMessageChange,
+            placeholder = { Text("Message") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 2,
+            shape = HermexCardShape,
+            enabled = enabled,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(
+                checked = pushAfterCommit,
+                onCheckedChange = onPushAfterCommitChange,
                 enabled = enabled,
             )
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = onCreateBranch, enabled = enabled && newBranchName.isNotBlank()) {
-                Text("Create and switch")
+            Text("Push after commit", style = MaterialTheme.typography.bodySmall)
+        }
+        if (messageWasTruncated) {
+            Text("Diff was large; message may be partial.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+            Spacer(Modifier.height(6.dp))
+        }
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            HermexPillButton("Generate", onGenerate, enabled = enabled)
+            if (selectedCount > 0) {
+                HermexPillButton("Commit selected", onCommitSelected, enabled = enabled && message.isNotBlank(), filled = false)
+            }
+            HermexPillButton(
+                if (pushAfterCommit) "Commit & Push" else "Commit",
+                onCommit,
+                enabled = enabled && message.isNotBlank() && hasStagedChanges,
+                filled = true,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionSurface(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .hermexGlass(shape = HermexCardShape, castsShadow = false)
+            .padding(12.dp),
+    ) {
+        Text(title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.MiddleEllipsis)
+        Spacer(Modifier.height(8.dp))
+        content()
+    }
+}
+
+@Composable
+private fun GitFileRow(
+    file: GitFileChange,
+    selected: Boolean,
+    checked: Boolean,
+    onClick: () -> Unit,
+    onCheckedChange: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .hermexHairline(HermexCardShape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = { onCheckedChange() },
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clickable(onClick = onClick)
+                .padding(start = 8.dp),
+        ) {
+            Text(
+                text = file.gitPath() ?: "Unknown file",
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.MiddleEllipsis,
+            )
+            Row(
+                modifier = Modifier.padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SmallTag(file.status ?: "changed")
+                SmallTag(if (file.staged == true) "staged" else "unstaged")
+                if (file.additions != null || file.deletions != null) {
+                    SmallTag("+${file.additions ?: 0} -${file.deletions ?: 0}")
+                }
             }
         }
     }
 }
 
 @Composable
-private fun GitFileRow(file: GitFileChange, selected: Boolean, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Column(Modifier.padding(12.dp)) {
-            Text(
-                text = file.path ?: "Unknown file",
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AssistChip(onClick = onClick, label = { Text(file.status ?: "changed") })
-                AssistChip(onClick = onClick, label = { Text(if (file.staged == true) "staged" else "unstaged") })
-            }
-        }
+private fun SmallTag(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.secondary,
+        modifier = Modifier
+            .hermexGlass(shape = androidx.compose.foundation.shape.CircleShape, castsShadow = false)
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+    )
+}
+
+@Composable
+private fun GitDialogs(state: GitUiState, viewModel: GitViewModel) {
+    state.pendingCheckout?.let { target ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissCheckoutConfirm,
+            title = { Text("Switch branch?") },
+            text = { Text("Switch to ${target.displayName}? Uncommitted changes will be checked before the branch changes.") },
+            confirmButton = { TextButton(onClick = viewModel::confirmCheckout, enabled = !state.isMutating) { Text("Switch") } },
+            dismissButton = { TextButton(onClick = viewModel::dismissCheckoutConfirm) { Text("Cancel") } },
+        )
+    }
+    state.pendingDirtyCheckout?.let { target ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissCheckoutConfirm,
+            title = { Text("Save changes and switch?") },
+            text = { Text("This workspace has uncommitted changes. Save them temporarily, switch to ${target.displayName}, then restore them on the destination branch.") },
+            confirmButton = { TextButton(onClick = viewModel::confirmDirtyCheckout, enabled = !state.isMutating) { Text("Save and switch") } },
+            dismissButton = { TextButton(onClick = viewModel::dismissCheckoutConfirm) { Text("Cancel") } },
+        )
+    }
+    if (state.showPushConfirm) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissPushConfirm,
+            title = { Text("Push branch?") },
+            text = { Text("Push the current branch to its configured upstream remote?") },
+            confirmButton = { TextButton(onClick = viewModel::confirmPush, enabled = !state.isMutating) { Text("Push") } },
+            dismissButton = { TextButton(onClick = viewModel::dismissPushConfirm) { Text("Cancel") } },
+        )
+    }
+    if (state.showDiscardConfirm) {
+        val count = state.pendingDiscardPaths.size
+        AlertDialog(
+            onDismissRequest = viewModel::dismissDiscardConfirm,
+            title = { Text("Discard changes?") },
+            text = {
+                Text(
+                    if (state.pendingDiscardDeletesFiles) {
+                        "Discard $count target(s), including new or untracked files? This cannot be undone."
+                    } else {
+                        "Discard local changes for $count target(s)? This cannot be undone."
+                    },
+                )
+            },
+            confirmButton = { TextButton(onClick = viewModel::confirmDiscardSelected, enabled = !state.isMutating) { Text("Discard") } },
+            dismissButton = { TextButton(onClick = viewModel::dismissDiscardConfirm) { Text("Cancel") } },
+        )
     }
 }
+
+private fun GitFileChange.gitPath(): String? =
+    (path ?: workspacePath)
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }

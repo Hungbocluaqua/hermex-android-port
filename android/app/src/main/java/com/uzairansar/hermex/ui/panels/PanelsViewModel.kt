@@ -8,6 +8,7 @@ import com.uzairansar.hermex.core.model.CronOutputResponse
 import com.uzairansar.hermex.core.model.CronUpdateRequest
 import com.uzairansar.hermex.core.model.InsightsResponse
 import com.uzairansar.hermex.core.model.MemoryResponse
+import com.uzairansar.hermex.core.model.SessionSummary
 import com.uzairansar.hermex.core.model.SkillContentResponse
 import com.uzairansar.hermex.core.model.SkillSummary
 import com.uzairansar.hermex.data.repository.PanelsRepository
@@ -16,7 +17,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
@@ -39,19 +39,43 @@ data class CronTaskDraft(
             .filter { it.isNotEmpty() }
 }
 
+enum class AnalyticsTimeframe(
+    val title: String,
+    val serverDays: Int,
+) {
+    Today("Today", 1),
+    Last7Days("Last 7 Days", 7),
+    Last30Days("Last 30 Days", 30),
+    AllTime("All Time", 365),
+}
+
 data class PanelsUiState(
     val isLoading: Boolean = true,
     val isMutating: Boolean = false,
     val crons: List<CronJob> = emptyList(),
+    val runningCrons: Map<String, Double> = emptyMap(),
     val taskDraft: CronTaskDraft? = null,
+    val selectedCronDetail: CronJob? = null,
     val selectedCronOutput: CronOutputResponse? = null,
+    val isLoadingCronOutput: Boolean = false,
     val pendingDeleteCron: CronJob? = null,
     val skills: List<SkillSummary> = emptyList(),
+    val skillSearchText: String = "",
+    val togglingSkillNames: Set<String> = emptySet(),
+    val selectedSkillName: String? = null,
     val selectedSkill: SkillContentResponse? = null,
+    val selectedSkillFileName: String? = null,
+    val selectedSkillFileContent: String? = null,
+    val isLoadingSkillFile: Boolean = false,
     val memory: MemoryResponse? = null,
     val memorySection: String = "memory",
     val memoryDraft: String = "",
+    val editingMemorySection: String? = null,
     val insights: InsightsResponse? = null,
+    val selectedInsightsTimeframe: AnalyticsTimeframe = AnalyticsTimeframe.Last30Days,
+    val insightSessions: List<SessionSummary> = emptyList(),
+    val insightsDataSource: InsightsDataSource = InsightsDataSource.Local,
+    val insightsFallbackReason: String? = null,
     val notice: String? = null,
     val error: String? = null,
 )
@@ -69,17 +93,44 @@ class PanelsViewModel(
     fun refresh(clearNotice: Boolean = true) {
         viewModelScope.launch {
             val section = _state.value.memorySection
+            val skillSearchText = _state.value.skillSearchText
+            val selectedInsightsTimeframe = _state.value.selectedInsightsTimeframe
+            val selectedCronDetailId = _state.value.selectedCronDetail?.stableId
+            val selectedCronOutput = _state.value.selectedCronOutput
             _state.update { it.copy(isLoading = true, error = null, notice = if (clearNotice) null else it.notice) }
             runCatching {
                 val memory = repository.memory()
+                val crons = repository.crons()
+                val runningCrons = runCatching { repository.cronStatus().runningJobDurations }.getOrDefault(emptyMap())
+                val sortedCrons = crons.sortedForTasks(runningCrons)
+                val insightsResult = runCatching { repository.insights(selectedInsightsTimeframe.serverDays) }
+                val insights = insightsResult.getOrNull()
+                val fallbackSessionsResult = if (insights == null) {
+                    runCatching { repository.sessions() }
+                } else {
+                    null
+                }
                 PanelsUiState(
                     isLoading = false,
-                    crons = repository.crons(),
+                    crons = sortedCrons,
+                    runningCrons = runningCrons,
+                    selectedCronDetail = sortedCrons.firstOrNull { it.stableId == selectedCronDetailId },
+                    selectedCronOutput = selectedCronOutput,
                     skills = repository.skills(),
+                    skillSearchText = skillSearchText,
                     memory = memory,
                     memorySection = section,
                     memoryDraft = memory.sectionText(section),
-                    insights = runCatching { repository.insights() }.getOrNull(),
+                    editingMemorySection = _state.value.editingMemorySection,
+                    insights = insights,
+                    selectedInsightsTimeframe = selectedInsightsTimeframe,
+                    insightSessions = fallbackSessionsResult?.getOrNull().orEmpty(),
+                    insightsDataSource = when {
+                        insights != null -> InsightsDataSource.Server
+                        fallbackSessionsResult?.isSuccess == true -> InsightsDataSource.LocalFallback
+                        else -> InsightsDataSource.Local
+                    },
+                    insightsFallbackReason = insightsResult.exceptionOrNull()?.message,
                     notice = if (clearNotice) null else _state.value.notice,
                 )
             }.onSuccess { loaded ->
@@ -88,6 +139,22 @@ class PanelsViewModel(
                 _state.update { it.copy(isLoading = false, error = error.message ?: "Could not load panels.") }
             }
         }
+    }
+
+    fun selectInsightsTimeframe(timeframe: AnalyticsTimeframe) {
+        if (_state.value.selectedInsightsTimeframe == timeframe) return
+        _state.update {
+            it.copy(
+                selectedInsightsTimeframe = timeframe,
+                insights = null,
+                insightSessions = emptyList(),
+                insightsDataSource = InsightsDataSource.Local,
+                insightsFallbackReason = null,
+                error = null,
+                notice = null,
+            )
+        }
+        refresh()
     }
 
     fun runCron(job: CronJob) {
@@ -105,13 +172,34 @@ class PanelsViewModel(
     }
 
     fun loadCronOutput(job: CronJob) {
+        openCronDetail(job)
+    }
+
+    fun openCronDetail(job: CronJob) {
         val id = job.stableId ?: return
         viewModelScope.launch {
-            _state.update { it.copy(isMutating = true, error = null, notice = null) }
+            _state.update {
+                it.copy(
+                    selectedCronDetail = job,
+                    selectedCronOutput = null,
+                    isLoadingCronOutput = true,
+                    error = null,
+                    notice = null,
+                )
+            }
             runCatching { repository.cronOutput(id) }
-                .onSuccess { output -> _state.update { it.copy(selectedCronOutput = output, isMutating = false) } }
-                .onFailure { error -> _state.update { it.copy(isMutating = false, error = error.message ?: "Could not load task output.") } }
+                .onSuccess { output -> _state.update { it.copy(selectedCronOutput = output, isLoadingCronOutput = false) } }
+                .onFailure { error -> _state.update { it.copy(isLoadingCronOutput = false, error = error.message ?: "Could not load task output.") } }
         }
+    }
+
+    fun refreshCronDetailOutput() {
+        val job = _state.value.selectedCronDetail ?: return
+        openCronDetail(job)
+    }
+
+    fun dismissCronDetail() {
+        _state.update { it.copy(selectedCronDetail = null, selectedCronOutput = null, isLoadingCronOutput = false) }
     }
 
     fun openCreateTask() {
@@ -212,24 +300,135 @@ class PanelsViewModel(
     fun loadSkill(skill: SkillSummary) {
         val name = skill.name ?: return
         viewModelScope.launch {
-            _state.update { it.copy(isMutating = true, error = null, notice = null) }
+            _state.update {
+                it.copy(
+                    isMutating = true,
+                    error = null,
+                    notice = null,
+                    selectedSkillName = name,
+                    selectedSkillFileName = null,
+                    selectedSkillFileContent = null,
+                    isLoadingSkillFile = false,
+                )
+            }
             runCatching { repository.skillContent(name) }
                 .onSuccess { detail -> _state.update { it.copy(selectedSkill = detail, isMutating = false) } }
                 .onFailure { error -> _state.update { it.copy(isMutating = false, error = error.message ?: "Could not load skill.") } }
         }
     }
 
+    fun loadSkillLinkedFile(fileName: String) {
+        val name = _state.value.selectedSkillName ?: _state.value.selectedSkill?.name ?: return
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    selectedSkillFileName = fileName,
+                    selectedSkillFileContent = null,
+                    isLoadingSkillFile = true,
+                    error = null,
+                    notice = null,
+                )
+            }
+            runCatching { repository.skillContent(name, fileName) }
+                .onSuccess { detail ->
+                    _state.update {
+                        it.copy(
+                            selectedSkillFileContent = detail.content ?: detail.error ?: "",
+                            isLoadingSkillFile = false,
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            selectedSkillFileContent = "Could not load file: ${error.message ?: "Unknown error"}",
+                            isLoadingSkillFile = false,
+                        )
+                    }
+                }
+        }
+    }
+
+    fun dismissSkillLinkedFile() {
+        _state.update {
+            it.copy(
+                selectedSkillFileName = null,
+                selectedSkillFileContent = null,
+                isLoadingSkillFile = false,
+            )
+        }
+    }
+
+    fun updateSkillSearchText(value: String) {
+        _state.update { it.copy(skillSearchText = value, error = null) }
+    }
+
     fun toggleSkill(skill: SkillSummary) {
-        val name = skill.name ?: return
-        val enable = skill.disabled == true || skill.enabled == false
-        mutate(if (enable) "Skill enabled." else "Skill disabled.") {
-            repository.toggleSkill(name, enable).error
+        val name = skill.toggleSkillName ?: return
+        if (!skill.canToggleSkill || name in _state.value.togglingSkillNames) return
+        val enable = skill.disabled == true
+        val optimisticDisabled = !enable
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    skills = it.skills.withSkillDisabled(name, optimisticDisabled),
+                    togglingSkillNames = it.togglingSkillNames + name,
+                    error = null,
+                    notice = null,
+                )
+            }
+            runCatching { repository.toggleSkill(name, enable) }
+                .onSuccess { response ->
+                    if (response.error == null) {
+                        _state.update {
+                            it.copy(
+                                togglingSkillNames = it.togglingSkillNames - name,
+                                notice = if (enable) "Skill enabled." else "Skill disabled.",
+                            )
+                        }
+                        refresh(clearNotice = false)
+                    } else {
+                        _state.update {
+                            it.copy(
+                                skills = it.skills.withSkillDisabled(name, skill.disabled),
+                                togglingSkillNames = it.togglingSkillNames - name,
+                                error = response.error,
+                            )
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            skills = it.skills.withSkillDisabled(name, skill.disabled),
+                            togglingSkillNames = it.togglingSkillNames - name,
+                            error = error.message ?: "Could not update skill.",
+                        )
+                    }
+                }
         }
     }
 
     fun selectMemorySection(section: String) {
         val memory = _state.value.memory
         _state.update { it.copy(memorySection = section, memoryDraft = memory.sectionText(section), error = null, notice = null) }
+    }
+
+    fun openMemoryEditor(section: String) {
+        val memory = _state.value.memory
+        _state.update {
+            it.copy(
+                memorySection = section,
+                memoryDraft = memory.sectionText(section),
+                editingMemorySection = section,
+                error = null,
+                notice = null,
+            )
+        }
+    }
+
+    fun dismissMemoryEditor() {
+        _state.update { it.copy(editingMemorySection = null) }
     }
 
     fun updateMemoryDraft(value: String) {
@@ -239,16 +438,26 @@ class PanelsViewModel(
     fun saveMemory() {
         val section = _state.value.memorySection
         val content = _state.value.memoryDraft
-        mutate("Memory saved.") { repository.writeMemory(section, content).error }
+        mutate(
+            success = "Memory saved.",
+            afterSuccess = { _state.update { it.copy(editingMemorySection = null) } },
+        ) {
+            repository.writeMemory(section, content).error
+        }
     }
 
-    private fun mutate(success: String, action: suspend () -> String?) {
+    private fun mutate(
+        success: String,
+        afterSuccess: () -> Unit = {},
+        action: suspend () -> String?,
+    ) {
         viewModelScope.launch {
             _state.update { it.copy(isMutating = true, error = null, notice = null) }
             runCatching { action() }
                 .onSuccess { error ->
                     if (error == null) {
                         _state.update { it.copy(isMutating = false, notice = success) }
+                        afterSuccess()
                         refresh(clearNotice = false)
                     } else {
                         _state.update { it.copy(isMutating = false, error = error) }
@@ -270,15 +479,24 @@ val CronJob.displayName: String
 
 val CronJob.scheduleText: String
     get() = scheduleDisplay
-        ?: schedule.scheduleExpression()
+        ?: schedule?.displayText
         ?: command
         ?: "manual"
 
 val CronJob.isPaused: Boolean
-    get() = paused == true || state == "paused" || enabled == false
+    get() = paused == true || state.equals("paused", ignoreCase = true)
 
 val CronJob.editableScheduleText: String
-    get() = schedule.scheduleExpression() ?: scheduleDisplay.orEmpty()
+    get() = schedule?.displayText ?: scheduleDisplay.orEmpty()
+
+fun Map<String, Double>.runningElapsedFor(job: CronJob): Double? =
+    job.jobId?.let { this[it] } ?: job.id?.let { this[it] }
+
+val SkillSummary.toggleSkillName: String?
+    get() = name?.trim()?.takeIf { it.isNotEmpty() }
+
+val SkillSummary.canToggleSkill: Boolean
+    get() = disabled != null && toggleSkillName != null
 
 private fun MemoryResponse?.sectionText(section: String): String {
     if (this == null) return ""
@@ -294,12 +512,27 @@ private fun JsonElement?.plainText(): String? {
     return (this as? JsonPrimitive)?.contentOrNull ?: toString()
 }
 
-private fun JsonElement?.scheduleExpression(): String? {
-    if (this == null) return null
-    (this as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }?.let { return it }
-    val obj = this as? JsonObject ?: return toString()
-    return listOf("expression", "expr", "run_at", "runAt", "every", "kind")
-        .firstNotNullOfOrNull { key ->
-            (obj[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+private fun List<SkillSummary>.withSkillDisabled(name: String, disabled: Boolean?): List<SkillSummary> =
+    map { skill ->
+        if (skill.toggleSkillName == name) {
+            skill.copy(disabled = disabled, enabled = disabled?.not())
+        } else {
+            skill
         }
-}
+    }
+
+private fun List<CronJob>.sortedForTasks(runningCrons: Map<String, Double>): List<CronJob> =
+    sortedWith { left, right ->
+        val leftRunning = runningCrons.runningElapsedFor(left) != null
+        val rightRunning = runningCrons.runningElapsedFor(right) != null
+        val leftNext = left.nextRunAt?.epochSeconds
+        val rightNext = right.nextRunAt?.epochSeconds
+        when {
+            leftRunning && !rightRunning -> -1
+            !leftRunning && rightRunning -> 1
+            leftNext != null && rightNext != null -> leftNext.compareTo(rightNext)
+            leftNext != null -> -1
+            rightNext != null -> 1
+            else -> String.CASE_INSENSITIVE_ORDER.compare(left.displayName, right.displayName)
+        }
+    }

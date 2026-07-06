@@ -20,6 +20,7 @@ sealed interface AuthState {
 class AuthRepository(
     private val registry: ServerRegistry,
     private val clientFactory: (okhttp3.HttpUrl) -> HermesApiClient,
+    private val probeClientFactory: (okhttp3.HttpUrl, List<CustomHeader>) -> HermesApiClient = { url, _ -> clientFactory(url) },
     private val cookieJar: PersistentCookieJar,
 ) {
     private val _state = MutableStateFlow(restoreState())
@@ -27,9 +28,18 @@ class AuthRepository(
 
     val servers = registry.snapshot
 
-    suspend fun testConnection(serverUrlString: String): com.uzairansar.hermex.core.model.AuthStatusResponse {
+    suspend fun testConnection(
+        serverUrlString: String,
+        customHeaders: List<CustomHeader> = emptyList(),
+    ): com.uzairansar.hermex.core.model.AuthStatusResponse {
         val url = normalizeServerUrl(serverUrlString)
-        val client = clientFactory(url)
+        val client = probeClientFactory(url, customHeaders)
+        return testConnection(client)
+    }
+
+    private suspend fun testConnection(
+        client: HermesApiClient,
+    ): com.uzairansar.hermex.core.model.AuthStatusResponse {
         val health = client.health()
         if (health.status != "ok") throw ApiError.Http(200, "Unexpected health status.")
         return client.authStatus()
@@ -37,10 +47,8 @@ class AuthRepository(
 
     suspend fun configure(serverUrlString: String, password: String, customHeaders: List<CustomHeader> = emptyList()) {
         val url = normalizeServerUrl(serverUrlString)
-        val account = registry.activate(url)
-        registry.saveCustomHeaders(account.id, customHeaders)
-        val client = clientFactory(url)
-        val status = testConnection(url.toString())
+        val client = probeClientFactory(url, customHeaders)
+        val status = testConnection(client)
         if (status.authEnabled == true) {
             if (status.passwordAuthEnabled == false) {
                 throw IllegalStateException("This server signs in with passkeys, which Hermex Android does not support yet.")
@@ -49,12 +57,60 @@ class AuthRepository(
             val login = client.login(password)
             if (login.ok != true) throw ApiError.Unauthorized
         }
+        val account = registry.activate(url)
+        registry.saveCustomHeaders(account.id, customHeaders)
         _state.value = AuthState.LoggedIn(url, account)
+    }
+
+    suspend fun addServer(serverUrlString: String, password: String, customHeaders: List<CustomHeader> = emptyList()): AddServerResult {
+        val url = normalizeServerUrl(serverUrlString)
+        val serverId = ServerRegistry.normalizedId(url)
+        if (registry.snapshot.value.servers.any { it.id == serverId }) {
+            throw IllegalArgumentException("This server is already configured.")
+        }
+        val client = probeClientFactory(url, customHeaders)
+        val status = testConnection(client)
+        if (status.authEnabled == true) {
+            if (status.passwordAuthEnabled == false) {
+                throw IllegalStateException("This server signs in with passkeys, which Hermex Android does not support yet.")
+            }
+            if (password.isBlank()) return AddServerResult.NeedsPassword
+            val login = client.login(password)
+            if (login.ok != true) throw ApiError.Unauthorized
+        }
+        val account = registry.activate(url)
+        registry.saveCustomHeaders(account.id, customHeaders)
+        _state.value = AuthState.LoggedIn(url, account)
+        return AddServerResult.Added(account)
     }
 
     fun activate(id: String) {
         registry.setActive(id)
         _state.value = restoreState()
+    }
+
+    fun customHeaders(serverId: String): List<CustomHeader> =
+        registry.customHeaders(serverId)
+
+    fun saveCustomHeaders(serverId: String, headers: List<CustomHeader>) {
+        registry.saveCustomHeaders(serverId, headers)
+    }
+
+    fun updateServerIdentity(
+        account: ServerAccount,
+        displayName: String,
+        initials: String,
+        headerLogoColorHex: String,
+    ): ServerAccount? {
+        val updated = registry.update(
+            account.copy(
+                displayName = displayName,
+                initials = initials,
+                headerLogoColorHex = headerLogoColorHex,
+            ),
+        ) ?: return null
+        _state.value = restoreState()
+        return updated
     }
 
     suspend fun logout() {
@@ -90,4 +146,9 @@ class AuthRepository(
                 .build()
         }
     }
+}
+
+sealed interface AddServerResult {
+    data class Added(val account: ServerAccount) : AddServerResult
+    data object NeedsPassword : AddServerResult
 }

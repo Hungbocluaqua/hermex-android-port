@@ -22,7 +22,7 @@ class EndpointTest {
         assertEquals("1", url.queryParameter("messages"))
         assertEquals("50", url.queryParameter("msg_limit"))
         assertEquals("10", url.queryParameter("msg_before"))
-        assertEquals("true", url.queryParameter("expand_renderable"))
+        assertEquals("1", url.queryParameter("expand_renderable"))
     }
 
     @Test
@@ -31,6 +31,25 @@ class EndpointTest {
 
         assertEquals("/api/chat/stream", url.encodedPath)
         assertEquals("stream-1", url.queryParameter("stream_id"))
+        assertEquals(null, url.queryParameter("replay"))
+        assertEquals(null, url.queryParameter("after_seq"))
+    }
+
+    @Test
+    fun chatStreamReplayEndpointMatchesIosContract() {
+        val url = Endpoint.ChatStream("stream-1", replayAfterSeq = 42).url(base)
+
+        assertEquals("/api/chat/stream", url.encodedPath)
+        assertEquals("stream-1", url.queryParameter("stream_id"))
+        assertEquals("1", url.queryParameter("replay"))
+        assertEquals("42", url.queryParameter("after_seq"))
+    }
+
+    @Test
+    fun chatStreamReplayClampsNegativeSequence() {
+        val url = Endpoint.ChatStream("stream-1", replayAfterSeq = -7).url(base)
+
+        assertEquals("0", url.queryParameter("after_seq"))
     }
 
     @Test
@@ -38,8 +57,17 @@ class EndpointTest {
         val url = Endpoint.Sessions(includeArchived = true, archivedLimit = 25).url(base)
 
         assertEquals("/api/sessions", url.encodedPath)
-        assertEquals("true", url.queryParameter("include_archived"))
+        assertEquals("1", url.queryParameter("include_archived"))
         assertEquals("25", url.queryParameter("archived_limit"))
+    }
+
+    @Test
+    fun sessionsEndpointOmitsArchivedLimitUnlessArchivedIsIncluded() {
+        val url = Endpoint.Sessions(includeArchived = false, archivedLimit = 25).url(base)
+
+        assertEquals("/api/sessions", url.encodedPath)
+        assertEquals(null, url.queryParameter("include_archived"))
+        assertEquals(null, url.queryParameter("archived_limit"))
     }
 
     @Test
@@ -48,8 +76,24 @@ class EndpointTest {
 
         assertEquals("/api/sessions/search", url.encodedPath)
         assertEquals("android port", url.queryParameter("q"))
-        assertEquals("true", url.queryParameter("content"))
+        assertEquals("1", url.queryParameter("content"))
         assertEquals("5", url.queryParameter("depth"))
+    }
+
+    @Test
+    fun sessionsSearchEndpointUsesZeroForContentFalse() {
+        val url = Endpoint.SessionsSearch("android port", content = false, depth = 2).url(base)
+
+        assertEquals("0", url.queryParameter("content"))
+    }
+
+    @Test
+    fun sessionExportEndpointMatchesIosContract() {
+        val url = Endpoint.ExportSession("s1", "html").url(base)
+
+        assertEquals("/api/session/export", url.encodedPath)
+        assertEquals("s1", url.queryParameter("session_id"))
+        assertEquals("html", url.queryParameter("format"))
     }
 
     @Test
