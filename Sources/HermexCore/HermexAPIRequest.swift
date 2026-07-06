@@ -22,7 +22,7 @@ public struct HermexAPIRequestBuilder: Sendable {
     ) -> URLRequest {
         var request = URLRequest(url: endpoint.url(relativeTo: baseURL))
         request.httpMethod = method
-        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.cachePolicy = URLRequest.CachePolicy.reloadIgnoringLocalCacheData
         if let timeout {
             request.timeoutInterval = timeout
         }

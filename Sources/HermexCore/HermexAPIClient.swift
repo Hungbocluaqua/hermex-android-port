@@ -15,7 +15,7 @@ public protocol HermexHTTPTransport: Sendable {
 public final class HermexURLSessionTransport: HermexHTTPTransport, @unchecked Sendable {
     private let session: URLSession
 
-    public init(session: URLSession = .shared) {
+    public init(session: URLSession = URLSession.shared) {
         self.session = session
     }
 
@@ -63,11 +63,11 @@ public struct HermexAPIClient: @unchecked Sendable {
         self.transport = transport
 
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.keyEncodingStrategy = JSONEncoder.KeyEncodingStrategy.convertToSnakeCase
         self.encoder = encoder
 
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.keyDecodingStrategy = JSONDecoder.KeyDecodingStrategy.convertFromSnakeCase
         self.decoder = decoder
     }
 
