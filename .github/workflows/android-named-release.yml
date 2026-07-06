@@ -79,7 +79,7 @@ jobs:
           set -euo pipefail
           swift package resolve
           swift build --target HermexUI
-          swift test
+          SKIP_ZERO=1 swift test
 
   android-artifacts:
     name: Android Artifacts

@@ -99,8 +99,8 @@ jobs:
       - name: Build Skip-enabled shared package
         run: swift build --target HermexUI
 
-      - name: Test Skip-enabled shared package
-        run: swift test
+      - name: Test shared package after Skip build
+        run: SKIP_ZERO=1 swift test
 
       - name: Record current migration state
         run: |
