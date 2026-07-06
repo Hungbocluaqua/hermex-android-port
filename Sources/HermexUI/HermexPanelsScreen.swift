@@ -243,9 +243,10 @@ public struct HermexPanelsScreen: View {
     private var filteredSkills: [HermexSkillDTO] {
         let query = skillSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return state.skills }
+        let normalizedQuery = query.lowercased()
         return state.skills.filter { skill in
-            skill.name.localizedCaseInsensitiveContains(query) ||
-                (skill.summary ?? "").localizedCaseInsensitiveContains(query)
+            skill.name.lowercased().contains(normalizedQuery) ||
+                (skill.summary ?? "").lowercased().contains(normalizedQuery)
         }
     }
 
@@ -256,7 +257,7 @@ public struct HermexPanelsScreen: View {
 
     private var insightsPeriodTitle: String {
         if let period = insightNumber("periodDays") {
-            return period == 1 ? "Today" : "Last \(Int(period)) Days"
+            return Int(period) == 1 ? "Today" : "Last \(Int(period)) Days"
         }
         return selectedInsightsRange == 1 ? "Today" : "Last \(selectedInsightsRange) Days"
     }
@@ -277,7 +278,7 @@ public struct HermexPanelsScreen: View {
                 .frame(height: 48)
                 .background(selectedInsightsRange == days ? Color.blue : HermexUIColors.glassFillStrong, in: Capsule())
                 .overlay {
-                    Capsule().stroke(HermexUIColors.hairline, lineWidth: selectedInsightsRange == days ? 0 : 0.7)
+                    Capsule().stroke(HermexUIColors.hairline, lineWidth: selectedInsightsRange == days ? 0.0 : 0.7)
                 }
         }
         .buttonStyle(.plain)
@@ -300,7 +301,7 @@ public struct HermexPanelsScreen: View {
                 .frame(height: 46)
                 .background(isProminent ? Color.blue : HermexUIColors.glassFillStrong, in: Capsule())
                 .overlay {
-                    Capsule().stroke(HermexUIColors.hairline, lineWidth: isProminent ? 0 : 0.7)
+                    Capsule().stroke(HermexUIColors.hairline, lineWidth: isProminent ? 0.0 : 0.7)
                 }
         }
         .buttonStyle(.plain)

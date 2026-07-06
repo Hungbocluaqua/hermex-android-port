@@ -137,7 +137,7 @@ public struct HermexGitScreen: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(state.commitMessage.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty || state.isMutating)
-                .opacity(state.commitMessage.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty || state.isMutating ? 0.48 : 1)
+                .opacity(state.commitMessage.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty || state.isMutating ? 0.48 : 1.0)
             }
             .padding(16)
         }

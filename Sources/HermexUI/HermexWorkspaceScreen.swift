@@ -193,7 +193,9 @@ public struct HermexWorkspaceScreen: View {
     private var currentDirectoryTitle: String {
         let path = state.currentPath?.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let path, !path.isEmpty else { return "Files" }
-        return path.replacingOccurrences(of: "\\", with: "/").split(separator: "/").last.map(String.init) ?? path
+        return path.replacingOccurrences(of: "\\", with: "/").split(separator: "/").last.map { component in
+            String(component)
+        } ?? path
     }
 
     private var directorySubtitle: String {
