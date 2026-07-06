@@ -28,7 +28,10 @@ public struct HermexOnboardingScreen: View {
         self.settings = settings
         self.onEvent = onEvent
 
-        _currentPage = State(initialValue: appState.auth == .unconfigured ? 0 : Self.connectPageIndex)
+        let hasSavedServer = !onboarding.serverURLString
+            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+            .isEmpty || !settings.servers.isEmpty
+        _currentPage = State(initialValue: appState.auth == .unconfigured && !hasSavedServer ? 0 : Self.connectPageIndex)
         _serverURLString = State(initialValue: onboarding.serverURLString)
         _displayName = State(initialValue: onboarding.displayName)
         _password = State(initialValue: onboarding.password)
@@ -279,21 +282,21 @@ public struct HermexOnboardingScreen: View {
         HermexGlassPanel {
             VStack(spacing: 12) {
                 onboardingField(title: "Server URL") {
-                    TextField("http://100.64.0.1:8787", text: $serverURLString)
+                    TextField("http://100.64.0.1:8787", text: serverURLBinding)
                         .font(.body.weight(.medium))
-                        .foregroundStyle(HermexUIColors.primaryText)
+                        .foregroundStyle(Color.white)
                 }
 
                 onboardingField(title: "Name") {
-                    TextField("Hermex", text: $displayName)
+                    TextField("Hermex", text: displayNameBinding)
                         .font(.body.weight(.medium))
-                        .foregroundStyle(HermexUIColors.primaryText)
+                        .foregroundStyle(Color.white)
                 }
 
                 onboardingField(title: "Password") {
-                    SecureField("Server password", text: $password)
+                    SecureField("Server password", text: passwordBinding)
                         .font(.body.weight(.medium))
-                        .foregroundStyle(HermexUIColors.primaryText)
+                        .foregroundStyle(Color.white)
                         .textContentType(.password)
                 }
 
@@ -302,9 +305,9 @@ public struct HermexOnboardingScreen: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Color.white.opacity(0.5))
 
-                    TextEditor(text: $customHeaderText)
+                    TextEditor(text: customHeaderBinding)
                         .font(.footnote.monospaced())
-                        .foregroundStyle(HermexUIColors.primaryText)
+                        .foregroundStyle(Color.white)
                         .frame(minHeight: 74)
                         .padding(10)
                         .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -393,6 +396,46 @@ public struct HermexOnboardingScreen: View {
                 ))
             }
         }
+    }
+
+    private var serverURLBinding: Binding<String> {
+        Binding(
+            get: { serverURLString },
+            set: { value in
+                serverURLString = value
+                onEvent(.updateOnboardingServerURL(value))
+            }
+        )
+    }
+
+    private var displayNameBinding: Binding<String> {
+        Binding(
+            get: { displayName },
+            set: { value in
+                displayName = value
+                onEvent(.updateOnboardingDisplayName(value))
+            }
+        )
+    }
+
+    private var passwordBinding: Binding<String> {
+        Binding(
+            get: { password },
+            set: { value in
+                password = value
+                onEvent(.updateOnboardingPassword(value))
+            }
+        )
+    }
+
+    private var customHeaderBinding: Binding<String> {
+        Binding(
+            get: { customHeaderText },
+            set: { value in
+                customHeaderText = value
+                onEvent(.updateOnboardingCustomHeaders(value))
+            }
+        )
     }
 
     private func connectionButton(

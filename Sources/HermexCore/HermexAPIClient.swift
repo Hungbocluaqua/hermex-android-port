@@ -17,7 +17,7 @@ public final class HermexURLSessionTransport: HermexHTTPTransport, @unchecked Se
     public init(session: URLSession = URLSession.shared) {}
 
     public func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        throw HermexAPIError.network("Hermex Skip Android preview transport is not connected.")
+        throw HermexAPIError.network("Hermex Skip Android networking transport is not connected.")
     }
 }
 
@@ -50,17 +50,21 @@ public struct HermexAPIClient: @unchecked Sendable {
     private var unavailable: HermexJSONValue {
         HermexJSONValue.dictionary([
             "ok": HermexJSONValue.bool(false),
-            "error": HermexJSONValue.string("Live networking is not enabled in this Skip Android preview build.")
+            "error": HermexJSONValue.string("Live networking is not enabled in this Skip Android build yet.")
         ])
     }
 
-    public func health() async throws -> HermexJSONValue { ok }
-    public func authStatus() async throws -> HermexJSONValue { ok }
-    public func login(password: String) async throws -> HermexJSONValue { ok }
+    private func networkingUnavailable<T>() throws -> T {
+        throw HermexAPIError.network("Live networking is not enabled in this Skip Android build yet.")
+    }
+
+    public func health() async throws -> HermexJSONValue { try networkingUnavailable() }
+    public func authStatus() async throws -> HermexJSONValue { try networkingUnavailable() }
+    public func login(password: String) async throws -> HermexJSONValue { try networkingUnavailable() }
     public func logout() async throws -> HermexJSONValue { ok }
-    public func sessions(includeArchived: Bool = false, archivedLimit: Int? = nil) async throws -> HermexSessionsResponse { HermexSessionsResponse(sessions: [], projects: []) }
+    public func sessions(includeArchived: Bool = false, archivedLimit: Int? = nil) async throws -> HermexSessionsResponse { try networkingUnavailable() }
     public func searchSessions(query: String, content: Bool = true, depth: Int = 5) async throws -> HermexJSONValue { HermexJSONValue.array([]) }
-    public func session(id: String, includeMessages: Bool = true, messageLimit: Int? = 50, messageBefore: Int? = nil, expandRenderable: Bool = false) async throws -> HermexSessionResponse { HermexSessionResponse(session: nil, messages: []) }
+    public func session(id: String, includeMessages: Bool = true, messageLimit: Int? = 50, messageBefore: Int? = nil, expandRenderable: Bool = false) async throws -> HermexSessionResponse { try networkingUnavailable() }
     public func sessionStatus(id: String) async throws -> HermexJSONValue { unavailable }
     public func createSession(workspace: String? = nil, model: String? = nil, modelProvider: String? = nil, profile: String? = nil) async throws -> HermexSessionResponse { HermexSessionResponse(session: nil, messages: []) }
     public func renameSession(id: String, title: String) async throws -> HermexJSONValue { ok }
@@ -145,7 +149,7 @@ public struct HermexAPIClient: @unchecked Sendable {
     public func writeMemory(section: String, content: String) async throws -> HermexJSONValue { ok }
     public func synthesizeSpeech(text: String, voice: String) async throws -> Data { Data() }
     public func uploadFile(sessionID: String, data: Data, filename: String, contentType: String = "application/octet-stream") async throws -> HermexUploadResponse { HermexUploadResponse(filename: filename, path: nil, mime: contentType, size: nil, isImage: nil, error: nil) }
-    public func transcribeAudio(data: Data, filename: String, contentType: String = "application/octet-stream") async throws -> HermexTranscribeResponse { HermexTranscribeResponse(ok: false, transcript: nil, error: "Transcription is not enabled in this Skip Android preview build.") }
+    public func transcribeAudio(data: Data, filename: String, contentType: String = "application/octet-stream") async throws -> HermexTranscribeResponse { HermexTranscribeResponse(ok: false, transcript: nil, error: "Transcription is not enabled in this Skip Android build yet.") }
     public func streamURL(streamID: String, replayAfterSeq: Int? = nil) -> URL { baseURL }
     public func request(endpoint: HermexEndpoint, method: String, body: Data? = nil, accept: String = "application/json", timeout: TimeInterval? = nil) -> URLRequest { URLRequest(url: endpoint.url(relativeTo: baseURL)) }
 }
