@@ -28,20 +28,35 @@ python3 "$ROOT/ci/prepare_skip_hermex_app.py" \
   swift build --target "$MODULE_NAME"
 )
 
-GRADLE_DIR="$(find "$APP_DIR/.build/plugins/outputs" -path "*/$MODULE_NAME/destination/skipstone/settings.gradle.kts" -print -quit)"
-if [[ -z "$GRADLE_DIR" ]]; then
+GRADLE_SETTINGS=""
+if [[ -f "$APP_DIR/Android/settings.gradle.kts" ]]; then
+  GRADLE_SETTINGS="$APP_DIR/Android/settings.gradle.kts"
+else
+  GRADLE_SETTINGS="$(find "$APP_DIR/.build/plugins/outputs" -path "*/$MODULE_NAME/destination/skipstone/settings.gradle.kts" -print -quit)"
+fi
+
+if [[ -z "$GRADLE_SETTINGS" ]]; then
   echo "Could not locate generated Skip Gradle project for $MODULE_NAME" >&2
+  find "$APP_DIR" -maxdepth 5 \( -name 'settings.gradle.kts' -o -name 'gradlew' \) -print >&2 || true
   exit 1
 fi
-GRADLE_DIR="$(dirname "$GRADLE_DIR")"
+GRADLE_DIR="$(dirname "$GRADLE_SETTINGS")"
 
 (
   cd "$GRADLE_DIR"
-  chmod +x ./gradlew
-  ./gradlew --no-daemon assembleDebug
+  if [[ -f ./gradlew ]]; then
+    chmod +x ./gradlew
+    ./gradlew --no-daemon assembleDebug
+  elif command -v gradle >/dev/null 2>&1; then
+    gradle --no-daemon assembleDebug
+  else
+    echo "Could not locate Gradle wrapper in $GRADLE_DIR and no system gradle is installed" >&2
+    find "$APP_DIR" -maxdepth 5 \( -name 'settings.gradle.kts' -o -name 'gradlew' \) -print >&2 || true
+    exit 1
+  fi
 )
 
-find "$GRADLE_DIR" -type f \( -name '*.apk' -o -name '*.aab' \) -print0 |
+find "$GRADLE_DIR" "$APP_DIR/.build/plugins/outputs" -type f \( -name '*.apk' -o -name '*.aab' \) -print0 |
   while IFS= read -r -d '' artifact; do
     cp "$artifact" "$DIST_DIR/$(basename "$artifact")"
   done
