@@ -274,13 +274,7 @@ public struct HermexComposerSurface: View {
                         attachmentStrip
                     }
 
-                    TextField("Message Hermex", text: draftBinding)
-                        .textFieldStyle(.plain)
-                        .font(.title3)
-                        .foregroundStyle(HermexUIColors.primaryText)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)
-                        .padding(.vertical, textVerticalPadding)
+                    composerTextInput
 
                     HStack(spacing: HermexLayoutContract.composerControlSpacing) {
                         Button { onEvent(.attach) } label: {
@@ -370,7 +364,7 @@ public struct HermexComposerSurface: View {
     }
 
     private var isExpanded: Bool {
-        state.draft.contains("\n") || state.draft.count > 44
+        composerTextInputHeight > HermexLayoutContract.composerTextInputCollapsedContentHeight
     }
 
     private var composerCornerRadius: CGFloat {
@@ -385,6 +379,41 @@ public struct HermexComposerSurface: View {
         Binding(
             get: { state.draft },
             set: { onEvent(.updateDraft($0)) }
+        )
+    }
+
+    private var composerTextInput: some View {
+        ZStack(alignment: .topLeading) {
+            TextEditor(text: draftBinding)
+                .font(.title3)
+                .foregroundStyle(HermexUIColors.primaryText)
+                .frame(height: composerTextInputHeight)
+                .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)
+                .padding(.vertical, textVerticalPadding)
+                .background(Color.clear)
+
+            if state.draft.isEmpty {
+                Text("Ask anything... /commands")
+                    .font(.title3)
+                    .foregroundStyle(HermexUIColors.tertiaryText)
+                    .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)
+                    .padding(.vertical, textVerticalPadding)
+                    .allowsHitTesting(false)
+            }
+        }
+        .frame(minHeight: HermexLayoutContract.composerTextInputMinimumHeight, alignment: .topLeading)
+    }
+
+    private var composerTextInputHeight: CGFloat {
+        let explicitLineCount = state.draft
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .count
+        let wrappedLineCount = max(1, (state.draft.count / HermexLayoutContract.composerTextInputWrapColumn) + 1)
+        let lineCount = max(explicitLineCount, wrappedLineCount)
+        let measuredHeight = CGFloat(lineCount) * HermexLayoutContract.composerTextInputLineHeight
+        return min(
+            HermexLayoutContract.composerTextInputMaximumHeight,
+            max(HermexLayoutContract.composerTextInputCollapsedContentHeight, measuredHeight)
         )
     }
 

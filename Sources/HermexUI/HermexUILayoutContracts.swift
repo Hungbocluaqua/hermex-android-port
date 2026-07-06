@@ -27,6 +27,11 @@ public enum HermexLayoutContract {
     public static let composerControlSpacing: CGFloat = 12
     public static let composerCornerRadiusCollapsed: CGFloat = 22
     public static let composerCornerRadiusExpanded: CGFloat = 26
+    public static let composerTextInputMinimumHeight: CGFloat = 42
+    public static let composerTextInputMaximumHeight: CGFloat = 96
+    public static let composerTextInputCollapsedContentHeight: CGFloat = 22
+    public static let composerTextInputLineHeight: CGFloat = 22
+    public static let composerTextInputWrapColumn: Int = 44
     public static let composerTextVerticalPaddingCollapsed: CGFloat = 14
     public static let composerTextVerticalPaddingExpanded: CGFloat = 12
     public static let composerActionButtonSize: CGFloat = 30
