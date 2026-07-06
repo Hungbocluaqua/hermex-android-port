@@ -247,7 +247,7 @@ public enum HermexVisualFixtureCatalog {
                 HermexChatMessageDTO(id: "m1", role: "user", content: "Model hermes dang dung la gi?", timestamp: 1_783_381_000),
                 HermexChatMessageDTO(id: "m2", role: "assistant", content: "Hermex in this chat is using the shared SwiftUI source as the canonical UI. Android should render the same chrome, transcript rhythm, and composer structure through Skip.", timestamp: 1_783_381_020),
                 HermexChatMessageDTO(id: "m3", role: "user", content: "Reasoning effort?", timestamp: 1_783_381_120),
-                HermexChatMessageDTO(id: "m4", role: "assistant", content: "The reasoning selector comes from the same composer state as iOS, with low, medium, and high options available.", reasoning: "Checking selected model/provider before showing the reasoning menu.", timestamp: 1_783_381_140),
+                HermexChatMessageDTO(id: "m4", role: "assistant", content: "The reasoning selector comes from the same composer state as iOS, with low, medium, and high options available.", timestamp: 1_783_381_140, reasoning: "Checking selected model/provider before showing the reasoning menu."),
             ],
             composer: HermexComposerState(
                 draft: "",
