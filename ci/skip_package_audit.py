@@ -66,6 +66,20 @@ def main() -> int:
     ok &= require("assembleDebug" in export_script, "Skip app export must build the generated Android Gradle project.")
     ok &= require("skip_release_readiness_audit.py" in export_script, "Skip app export must run release readiness checks by default.")
     ok &= require("HERMEX_ALLOW_INCOMPLETE_SKIP_APK" in export_script, "Skip app export must require an explicit debug override for incomplete APKs.")
+    ok &= require("hermes_mobile_dark_icon.png" in export_script, "Skip app export must use the real Hermex launcher icon asset.")
+    ok &= require("hermex_app_icon.png" in export_script, "Skip app export must copy a Hermex launcher PNG into generated Android resources.")
+    ok &= require('android:label="Hermex"' in export_script, "Skip app export must force the generated launcher label to Hermex.")
+    ok &= require("android_app_name" in export_script, "Skip app export must rewrite generated Android app-name strings.")
+
+    store = (ROOT / "Sources" / "HermexCore" / "HermexAppStore.swift").read_text(encoding="utf-8")
+    ok &= require("isFreshInstallOnboarding" in store, "HermexAppStore must keep preview sessions out of fresh onboarding.")
+    ok &= require("shouldSeedPreviewData" in store, "HermexAppStore demo data must be gated behind non-fresh-run state.")
+
+    onboarding_screen = (ROOT / "Sources" / "HermexUI" / "HermexOnboardingScreen.swift").read_text(encoding="utf-8")
+    ok &= require(
+        "testOnboardingConnectionDraft" in onboarding_screen and "connectOnboardingDraft" in onboarding_screen,
+        "HermexOnboardingScreen must submit the locally typed connection draft on Test/Connect.",
+    )
 
     workflow = (ROOT / ".github" / "workflows" / "skip-android-named-release.yml").read_text(encoding="utf-8")
     ok &= require("ci/build_skip_android_app.sh" in workflow, "Skip Android release workflow must call the app export script.")

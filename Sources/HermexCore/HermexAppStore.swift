@@ -292,15 +292,20 @@ public final class HermexAppStore {
         environment: HermexAppEnvironment
     ) {
         let activeServer = Self.server(from: appState.auth) ?? settings.activeServer
+        let shouldSeedPreviewData = !Self.isFreshInstallOnboarding(
+            appState: appState,
+            onboarding: onboarding,
+            settings: settings
+        )
 
         self.appState = appState
         self.onboarding = onboarding
-        self.sessions = sessions.sessions.isEmpty ? Self.previewSessions() : sessions
-        self.chat = chat.messages.isEmpty ? Self.previewChat() : chat
+        self.sessions = shouldSeedPreviewData && sessions.sessions.isEmpty ? Self.previewSessions() : sessions
+        self.chat = shouldSeedPreviewData && chat.messages.isEmpty ? Self.previewChat() : chat
         self.settings = Self.previewSettings(settings, server: activeServer)
-        self.workspace = workspace.entries.isEmpty ? Self.previewWorkspace() : workspace
-        self.git = git.files.isEmpty ? Self.previewGit() : git
-        self.panels = panels.tasks.isEmpty && panels.skills.isEmpty && panels.memory.isEmpty ? Self.previewPanels() : panels
+        self.workspace = shouldSeedPreviewData && workspace.entries.isEmpty ? Self.previewWorkspace() : workspace
+        self.git = shouldSeedPreviewData && git.files.isEmpty ? Self.previewGit() : git
+        self.panels = shouldSeedPreviewData && panels.tasks.isEmpty && panels.skills.isEmpty && panels.memory.isEmpty ? Self.previewPanels() : panels
     }
 
     public func send(_ action: HermexAppAction) async {
@@ -498,6 +503,18 @@ public final class HermexAppStore {
         case .unconfigured:
             return nil
         }
+    }
+
+    private static func isFreshInstallOnboarding(
+        appState: HermexAppState,
+        onboarding: HermexOnboardingState,
+        settings: HermexSettingsState
+    ) -> Bool {
+        appState.auth == .unconfigured &&
+            appState.route == .onboarding &&
+            onboarding.serverURLString.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty &&
+            settings.servers.isEmpty &&
+            settings.activeServer == nil
     }
 
     private static func previewServer() -> HermexServerIdentity {

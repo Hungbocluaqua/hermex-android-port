@@ -54,6 +54,21 @@ public struct HermexOnboardingScreen: View {
             }
         }
         .foregroundStyle(Color.white)
+        .onChange(of: onboarding.serverURLString) { _, newValue in
+            if newValue != serverURLString {
+                serverURLString = newValue
+            }
+        }
+        .onChange(of: onboarding.displayName) { _, newValue in
+            if newValue != displayName {
+                displayName = newValue
+            }
+        }
+        .onChange(of: onboarding.customHeaderText) { _, newValue in
+            if newValue != customHeaderText {
+                customHeaderText = newValue
+            }
+        }
     }
 
     @ViewBuilder
@@ -403,7 +418,6 @@ public struct HermexOnboardingScreen: View {
             get: { serverURLString },
             set: { value in
                 serverURLString = value
-                onEvent(.updateOnboardingServerURL(value))
             }
         )
     }
@@ -413,7 +427,6 @@ public struct HermexOnboardingScreen: View {
             get: { displayName },
             set: { value in
                 displayName = value
-                onEvent(.updateOnboardingDisplayName(value))
             }
         )
     }
@@ -423,7 +436,6 @@ public struct HermexOnboardingScreen: View {
             get: { password },
             set: { value in
                 password = value
-                onEvent(.updateOnboardingPassword(value))
             }
         )
     }
@@ -433,7 +445,6 @@ public struct HermexOnboardingScreen: View {
             get: { customHeaderText },
             set: { value in
                 customHeaderText = value
-                onEvent(.updateOnboardingCustomHeaders(value))
             }
         )
     }

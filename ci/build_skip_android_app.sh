@@ -82,15 +82,24 @@ patch_android_branding() {
     res_dir="$main_dir/res"
     mkdir -p "$res_dir/values" "$res_dir/drawable" "$res_dir/drawable-nodpi" "$res_dir/mipmap-anydpi-v26"
 
-    local icon_ref round_icon_ref icon_source
+    local icon_ref round_icon_ref icon_source has_real_icon launcher_foreground_ref
     icon_ref="@mipmap/ic_launcher"
     round_icon_ref="@mipmap/ic_launcher_round"
+    has_real_icon=0
+    launcher_foreground_ref="@drawable/ic_launcher_foreground"
     icon_source="$ROOT/HermesMobile/Resources/Assets.xcassets/AppIcon.appiconset/hermes_mobile_dark_icon.png"
     [[ -f "$icon_source" ]] || icon_source="$ROOT/Sources/HermexUI/Resources/Logo/HermesAppIcon.png"
     if [[ -f "$icon_source" ]]; then
       cp "$icon_source" "$res_dir/drawable-nodpi/hermex_app_icon.png"
+      for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+        mkdir -p "$res_dir/mipmap-$density"
+        cp "$icon_source" "$res_dir/mipmap-$density/ic_launcher.png"
+        cp "$icon_source" "$res_dir/mipmap-$density/ic_launcher_round.png"
+      done
       icon_ref="@drawable/hermex_app_icon"
       round_icon_ref="@drawable/hermex_app_icon"
+      launcher_foreground_ref="@drawable/hermex_app_icon"
+      has_real_icon=1
     fi
 
     ICON_REF="$icon_ref" ROUND_ICON_REF="$round_icon_ref" perl -0pi -e 's/android:label="[^"]*"/android:label="Hermex"/g; s/android:icon="[^"]*"/android:icon="$ENV{ICON_REF}"/g; s/android:roundIcon="[^"]*"/android:roundIcon="$ENV{ROUND_ICON_REF}"/g' "$manifest"
@@ -106,10 +115,12 @@ patch_android_branding() {
 
     if [[ -f "$res_dir/values/strings.xml" ]]; then
       perl -0pi -e 's/(<string\s+name="app_name">)[^<]*(<\/string>)/${1}Hermex${2}/g' "$res_dir/values/strings.xml"
+      perl -0pi -e 's/(<string\s+name="android_app_name">)[^<]*(<\/string>)/${1}Hermex${2}/g' "$res_dir/values/strings.xml"
     else
       cat > "$res_dir/values/strings.xml" <<'XML'
 <resources>
     <string name="app_name">Hermex</string>
+    <string name="android_app_name">Hermex</string>
 </resources>
 XML
     fi
@@ -120,7 +131,8 @@ XML
 </resources>
 XML
 
-    cat > "$res_dir/drawable/ic_launcher_foreground.xml" <<'XML'
+    if [[ "$has_real_icon" != "1" ]]; then
+      cat > "$res_dir/drawable/ic_launcher_foreground.xml" <<'XML'
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -137,20 +149,23 @@ XML
         android:pathData="M22,24h10v8h-10z M76,24h10v8h-10z M22,51h64v4h-64z" />
 </vector>
 XML
+    fi
 
     cat > "$res_dir/mipmap-anydpi-v26/ic_launcher.xml" <<'XML'
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/hermex_launcher_background" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <foreground android:drawable="__LAUNCHER_FOREGROUND_REF__" />
 </adaptive-icon>
 XML
+    LAUNCHER_FOREGROUND_REF="$launcher_foreground_ref" perl -0pi -e 's/__LAUNCHER_FOREGROUND_REF__/$ENV{LAUNCHER_FOREGROUND_REF}/g' "$res_dir/mipmap-anydpi-v26/ic_launcher.xml"
 
     cat > "$res_dir/mipmap-anydpi-v26/ic_launcher_round.xml" <<'XML'
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/hermex_launcher_background" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <foreground android:drawable="__LAUNCHER_FOREGROUND_REF__" />
 </adaptive-icon>
 XML
+    LAUNCHER_FOREGROUND_REF="$launcher_foreground_ref" perl -0pi -e 's/__LAUNCHER_FOREGROUND_REF__/$ENV{LAUNCHER_FOREGROUND_REF}/g' "$res_dir/mipmap-anydpi-v26/ic_launcher_round.xml"
 
     echo "Patched Android branding into $main_dir"
   done < <(find "${search_roots[@]}" -path '*/src/main/AndroidManifest.xml' -print0)
@@ -158,6 +173,9 @@ XML
   while IFS= read -r -d '' strings_file; do
     if grep -q '<string[[:space:]]\+name="app_name">' "$strings_file"; then
       perl -0pi -e 's/(<string\s+name="app_name">)[^<]*(<\/string>)/${1}Hermex${2}/g' "$strings_file"
+    fi
+    if grep -q '<string[[:space:]]\+name="android_app_name">' "$strings_file"; then
+      perl -0pi -e 's/(<string\s+name="android_app_name">)[^<]*(<\/string>)/${1}Hermex${2}/g' "$strings_file"
     fi
   done < <(find "$APP_DIR" -path '*/src/main/res/values/*.xml' -print0)
 }

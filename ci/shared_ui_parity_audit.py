@@ -41,8 +41,12 @@ def main() -> int:
     ok &= require("TextField(" in onboarding and "SecureField(" in onboarding, "Onboarding must expose server/password inputs.")
     ok &= require("HermexAppIconMark" in onboarding and "HermesAppIcon" in chrome, "Onboarding must render the shared Hermex app icon.")
     ok &= require(
-        "serverURLBinding" in onboarding and "passwordBinding" in onboarding and "updateOnboardingServerURL" in onboarding,
-        "Onboarding fields must use explicit store-backed bindings for editable Android text input."
+        "serverURLBinding" in onboarding and "passwordBinding" in onboarding and "testOnboardingConnectionDraft" in onboarding,
+        "Onboarding fields must keep local editable drafts and submit them explicitly on Android."
+    )
+    ok &= require(
+        "onEvent(.updateOnboardingServerURL(value))" not in onboarding and "onEvent(.updateOnboardingPassword(value))" not in onboarding,
+        "Onboarding text bindings must not dispatch every keystroke through the store on Skip Android."
     )
     ok &= require("TextEditor(" in onboarding and "Custom headers" in onboarding, "Onboarding must expose custom header entry.")
     ok &= require(".testOnboardingConnection" in onboarding and ".connectOnboarding" in onboarding, "Onboarding must route connection test and login.")
