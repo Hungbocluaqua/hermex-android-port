@@ -21,10 +21,15 @@ fi
   cd "$APP_PARENT"
   skip init --transpiled-app --appid="$APP_ID" --version="$APP_VERSION" "$APP_PROJECT_NAME" "$MODULE_NAME"
 )
-python3 "$ROOT/ci/prepare_skip_hermex_app.py" \
-  --app-dir "$APP_DIR" \
-  --repo-root "$ROOT" \
+prepare_args=(
+  --app-dir "$APP_DIR"
+  --repo-root "$ROOT"
   --module-name "$MODULE_NAME"
+)
+if [[ -n "${HERMEX_VISUAL_FIXTURE_NAME:-}" ]]; then
+  prepare_args+=(--visual-fixture-name "$HERMEX_VISUAL_FIXTURE_NAME")
+fi
+python3 "$ROOT/ci/prepare_skip_hermex_app.py" "${prepare_args[@]}"
 
 (
   cd "$APP_DIR"

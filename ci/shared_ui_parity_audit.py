@@ -22,6 +22,7 @@ def require(ok: bool, message: str) -> bool:
 
 def main() -> int:
     root = read("Sources/HermexUI/HermexRootScreen.swift")
+    fixture_root = read("Sources/HermexUI/HermexVisualFixtureRootScreen.swift")
     onboarding = read("Sources/HermexUI/HermexOnboardingScreen.swift")
     session_list = read("Sources/HermexUI/HermexSessionListScreen.swift")
     chat = read("Sources/HermexUI/HermexChatScreen.swift")
@@ -38,6 +39,11 @@ def main() -> int:
     ok = True
     ok &= require("NavigationStack" not in root, "HermexRootScreen must not add platform navigation chrome.")
     ok &= require("HermexOnboardingScreen(appState: appState, onboarding: onboarding" in root, "Root screen must pass shared onboarding state.")
+    ok &= require("HermexVisualFixtureRootScreen" in fixture_root, "HermexUI must expose a renderable visual fixture root.")
+    ok &= require("HermexVisualFixtureCatalog.fixture(named:" in fixture_root, "Visual fixture root must resolve named golden screens.")
+    ok &= require("HermexRootScreen(" in fixture_root, "Visual fixture root must render through the canonical HermexRootScreen.")
+    for state in ["fixture.appState", "fixture.onboarding", "fixture.sessions", "fixture.chat", "fixture.settings", "fixture.workspace", "fixture.git", "fixture.panels"]:
+        ok &= require(state in fixture_root, f"Visual fixture root must pass {state} into HermexRootScreen.")
     ok &= require("TextField(" in onboarding and "SecureField(" in onboarding, "Onboarding must expose server/password inputs.")
     ok &= require("HermexAppIconMark" in onboarding and "HermesAppIcon" in chrome, "Onboarding must render the shared Hermex app icon.")
     ok &= require(

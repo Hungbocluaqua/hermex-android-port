@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import re
-import shutil
 import sys
 from pathlib import Path
 
@@ -51,7 +52,18 @@ def patch_package(package_path: Path, repo_root: Path, module_name: str) -> None
     package_path.write_text(text, encoding="utf-8")
 
 
-def replace_app_source(app_dir: Path, repo_root: Path, module_name: str) -> None:
+def validate_visual_fixture_name(repo_root: Path, fixture_name: str) -> None:
+    manifest_path = repo_root / "ci" / "visual-goldens" / "hermex-screens.json"
+    if not manifest_path.is_file():
+        fail(f"Visual golden screen manifest is missing: {manifest_path}")
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    screen_names = manifest.get("screens", [])
+    if fixture_name not in screen_names:
+        fail(f"Unknown visual fixture '{fixture_name}'. Expected one of: {', '.join(screen_names)}")
+
+
+def replace_app_source(app_dir: Path, repo_root: Path, module_name: str, fixture_name: str | None) -> None:
     source_dir = app_dir / "Sources" / module_name
     if not source_dir.is_dir():
         fail(f"Generated Skip source directory is missing: {source_dir}")
@@ -63,7 +75,15 @@ def replace_app_source(app_dir: Path, repo_root: Path, module_name: str) -> None
     if not template.is_file():
         fail(f"Hermex Skip app template is missing: {template}")
 
-    shutil.copyfile(template, source_dir / f"{module_name}.swift")
+    text = template.read_text(encoding="utf-8")
+    marker = "private let hermexVisualFixtureName: String? = nil"
+    if marker not in text:
+        fail("Hermex Skip app template is missing the visual fixture injection marker.")
+
+    if fixture_name:
+        text = text.replace(marker, f"private let hermexVisualFixtureName: String? = {json.dumps(fixture_name)}", 1)
+
+    (source_dir / f"{module_name}.swift").write_text(text, encoding="utf-8")
 
 
 def main() -> int:
@@ -71,16 +91,21 @@ def main() -> int:
     parser.add_argument("--app-dir", required=True, type=Path)
     parser.add_argument("--repo-root", required=True, type=Path)
     parser.add_argument("--module-name", default="HermexSkipApp")
+    parser.add_argument("--visual-fixture-name", default=None)
     args = parser.parse_args()
 
     app_dir = args.app_dir.resolve()
     repo_root = args.repo_root.resolve()
+    fixture_name = (args.visual_fixture_name or os.environ.get("HERMEX_VISUAL_FIXTURE_NAME") or "").strip() or None
     package_path = app_dir / "Package.swift"
     if not package_path.is_file():
         fail(f"Generated Skip Package.swift is missing: {package_path}")
 
+    if fixture_name:
+        validate_visual_fixture_name(repo_root, fixture_name)
+
     patch_package(package_path, repo_root, args.module_name)
-    replace_app_source(app_dir, repo_root, args.module_name)
+    replace_app_source(app_dir, repo_root, args.module_name, fixture_name)
     print(f"Prepared generated Skip app at {app_dir}")
     return 0
 

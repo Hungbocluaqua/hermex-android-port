@@ -2,16 +2,23 @@ import SwiftUI
 import HermexCore
 import HermexUI
 
+private let hermexVisualFixtureName: String? = nil
+
 public struct HermexSkipAppRootView: View {
     @State private var runtime = HermexSkipRuntime()
 
     public init() {}
 
     public var body: some View {
-        HermexStoreRootScreen(
-            store: runtime.store,
-            onUnhandledEvent: runtime.handleUnhandledEvent
-        )
+        if let fixtureName = hermexVisualFixtureName,
+           let fixture = HermexVisualFixtureCatalog.fixture(named: fixtureName) {
+            HermexVisualFixtureRootScreen(fixture: fixture)
+        } else {
+            HermexStoreRootScreen(
+                store: runtime.store,
+                onUnhandledEvent: runtime.handleUnhandledEvent
+            )
+        }
     }
 }
 

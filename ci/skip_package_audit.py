@@ -60,13 +60,23 @@ def main() -> int:
 
     launcher = (ROOT / "ci" / "skip-hermex-app" / "HermexSkipApp.swift").read_text(encoding="utf-8")
     ok &= require("HermexStoreRootScreen" in launcher, "Skip launcher must render HermexStoreRootScreen.")
+    ok &= require("hermexVisualFixtureName" in launcher, "Skip launcher must expose a visual fixture injection point.")
+    ok &= require("HermexVisualFixtureCatalog.fixture(named:" in launcher, "Skip launcher must resolve visual fixtures by golden screen name.")
+    ok &= require("HermexVisualFixtureRootScreen" in launcher, "Skip launcher must be able to render shared visual fixtures.")
     ok &= require("HermexAppEnvironment" in launcher, "Skip launcher must provide a live HermexAppEnvironment.")
     ok &= require("HermexAPIClient" in launcher, "Skip launcher must connect shared UI to HermexAPIClient.")
+
+    prepare_script = (ROOT / "ci" / "prepare_skip_hermex_app.py").read_text(encoding="utf-8")
+    ok &= require("--visual-fixture-name" in prepare_script, "Skip app preparation must accept a named visual fixture.")
+    ok &= require("HERMEX_VISUAL_FIXTURE_NAME" in prepare_script, "Skip app preparation must read the visual fixture env var.")
+    ok &= require("hermex-screens.json" in prepare_script, "Skip app preparation must validate fixture names against the golden inventory.")
+    ok &= require("hermexVisualFixtureName" in prepare_script, "Skip app preparation must inject the selected visual fixture into the launcher.")
 
     export_script = (ROOT / "ci" / "build_skip_android_app.sh").read_text(encoding="utf-8")
     ok &= require("skip init --transpiled-app" in export_script, "Skip app export must generate a transpiled app shell.")
     ok &= require("swift build --target" in export_script, "Skip app export must run the Skip-enabled Swift build.")
     ok &= require("assembleDebug" in export_script, "Skip app export must build the generated Android Gradle project.")
+    ok &= require("HERMEX_VISUAL_FIXTURE_NAME" in export_script and "--visual-fixture-name" in export_script, "Skip app export must forward named fixture builds for visual diff capture.")
     ok &= require("skip_release_readiness_audit.py" in export_script, "Skip app export must run release readiness checks by default.")
     ok &= require("HERMEX_ALLOW_INCOMPLETE_SKIP_APK" in export_script, "Skip app export must require an explicit debug override for incomplete APKs.")
     ok &= require("hermes_mobile_dark_icon.png" in export_script, "Skip app export must use the real Hermex launcher icon asset.")
@@ -79,11 +89,13 @@ def main() -> int:
     ok &= require("shouldSeedPreviewData" in store, "HermexAppStore demo data must be gated behind non-fresh-run state.")
 
     fixtures = (ROOT / "Sources" / "HermexCore" / "HermexVisualFixtures.swift").read_text(encoding="utf-8")
+    fixture_root = (ROOT / "Sources" / "HermexUI" / "HermexVisualFixtureRootScreen.swift").read_text(encoding="utf-8")
     ok &= require("HermexVisualFixtureCatalog" in fixtures, "HermexCore must expose a typed visual fixture catalog.")
     ok &= require("chat-keyboard-open" in fixtures and "prefersKeyboardVisible = true" in fixtures, "Visual fixtures must include keyboard-open chat state.")
     ok &= require("chat-slash-menu" in fixtures and "overlay = .slashMenu" in fixtures, "Visual fixtures must include slash menu chat state.")
     ok &= require("chat-attachments" in fixtures and "overlay = .attachmentPicker" in fixtures, "Visual fixtures must include attachment composer state.")
     ok &= require("chat-approval" in fixtures and "pendingApproval" in fixtures, "Visual fixtures must include approval prompt state.")
+    ok &= require("HermexRootScreen(" in fixture_root and "fixture.chat" in fixture_root, "HermexUI must render visual fixtures through shared screen state.")
 
     onboarding_screen = (ROOT / "Sources" / "HermexUI" / "HermexOnboardingScreen.swift").read_text(encoding="utf-8")
     ok &= require(

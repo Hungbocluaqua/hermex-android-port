@@ -21,6 +21,18 @@ final class HermexUICompileTests: XCTestCase {
         }
     }
 
+    func testVisualFixtureRootCanInstantiateEveryGoldenScreen() throws {
+        XCTAssertFalse(HermexVisualFixtureCatalog.all.isEmpty)
+
+        for fixture in HermexVisualFixtureCatalog.all {
+            let view = HermexVisualFixtureRootScreen(fixture: fixture)
+            XCTAssertTrue(String(describing: type(of: view)).contains("HermexVisualFixtureRootScreen"))
+            XCTAssertNotNil(HermexVisualFixtureRootScreen(screenName: fixture.screenName))
+        }
+
+        XCTAssertNil(HermexVisualFixtureRootScreen(screenName: "missing-screen"))
+    }
+
     @MainActor
     func testStoreRootCanInstantiateWithSharedStore() {
         let store = HermexAppStore(environment: HermexAppEnvironment(
