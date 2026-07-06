@@ -23,12 +23,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -73,6 +75,9 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 
+private val PanelPrimaryText = Color.White
+private val PanelSecondaryText = Color.White.copy(alpha = 0.62f)
+
 @Composable
 fun PanelsRoute(
     panelsRepository: PanelsRepository,
@@ -106,12 +111,12 @@ fun PanelsRoute(
             ) {
                 HermexIconButton("Back", "‹", onBack)
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                    Text(headerTitle, style = MaterialTheme.typography.headlineMedium)
-                    Text(headerSubtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    Text(headerTitle, style = MaterialTheme.typography.headlineMedium, color = PanelPrimaryText)
+                    Text(headerSubtitle, style = MaterialTheme.typography.bodySmall, color = PanelSecondaryText)
                 }
                 HermexIconButton("Refresh", "↻", viewModel::refresh)
             }
-            state.notice?.let { Text(it, color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodySmall) }
+            state.notice?.let { Text(it, color = PanelSecondaryText, style = MaterialTheme.typography.bodySmall) }
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             if (state.isLoading) {
                 CircularProgressIndicator(strokeWidth = 2.dp)
@@ -410,6 +415,7 @@ private fun CronRow(
                 modifier = Modifier.weight(1f),
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.titleSmall,
+                color = PanelPrimaryText,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -786,8 +792,8 @@ private fun AnalyticsMetricRow(title: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
     ) {
-        Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Text(title, style = MaterialTheme.typography.bodySmall, color = PanelSecondaryText)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = PanelPrimaryText)
     }
 }
 
@@ -815,8 +821,15 @@ private fun ModelBreakdownPanelRow(model: InsightsModelBreakdown) {
         model.cacheHitPercent?.let { add("${formattedPercent(it)} cache") }
     }
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(model.model ?: "Unknown Model", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(details.joinToString("  "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+        Text(
+            model.model ?: "Unknown Model",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            color = PanelPrimaryText,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(details.joinToString("  "), style = MaterialTheme.typography.labelSmall, color = PanelSecondaryText)
     }
 }
 
@@ -829,8 +842,8 @@ private fun DailyTokenPanelRow(day: InsightsDailyToken) {
         day.cost?.takeIf { it > 0.0 }?.let { add(formattedCost(it)) }
     }
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(day.date ?: "Unknown Date", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-        Text(details.joinToString("  "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+        Text(day.date ?: "Unknown Date", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = PanelPrimaryText)
+        Text(details.joinToString("  "), style = MaterialTheme.typography.labelSmall, color = PanelSecondaryText)
     }
 }
 
@@ -848,10 +861,11 @@ private fun TopSessionPanelRow(session: SessionSummary) {
             session.title?.takeIf { it.isNotBlank() } ?: "Untitled Session",
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.SemiBold,
+            color = PanelPrimaryText,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Text(details.joinToString("  "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+        Text(details.joinToString("  "), style = MaterialTheme.typography.labelSmall, color = PanelSecondaryText)
     }
 }
 
@@ -863,10 +877,10 @@ private fun ActivityPanelRow(title: String, value: String, detail: String) {
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-            Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+            Text(title, style = MaterialTheme.typography.labelSmall, color = PanelSecondaryText)
+            Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = PanelPrimaryText)
         }
-        Text(detail, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+        Text(detail, style = MaterialTheme.typography.labelSmall, color = PanelSecondaryText)
     }
 }
 
@@ -1027,7 +1041,7 @@ private fun SkillRow(
             )
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(skill.skillDisplayName, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(skill.skillDisplayName, fontWeight = FontWeight.SemiBold, color = PanelPrimaryText, maxLines = 2, overflow = TextOverflow.Ellipsis)
             skill.description?.trim()?.takeIf { it.isNotEmpty() }?.let { description ->
                 Text(
                     description,
@@ -1135,8 +1149,8 @@ private fun LinkedFileRow(
         ) {
             Text("doc", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
         }
-        Text(fileName, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(">", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
+        Text(fileName, modifier = Modifier.weight(1f), color = PanelPrimaryText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(">", color = PanelSecondaryText, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -1234,7 +1248,7 @@ private fun MemorySectionSummary(
                 modifier = Modifier.size(18.dp),
                 colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
             )
-            Text(section.title, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+            Text(section.title, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold, color = PanelPrimaryText)
             HermexPillButton("Edit ${section.title}", onEdit, enabled = !isSaving)
         }
         modifiedAt?.let {
@@ -1342,9 +1356,16 @@ private fun PanelCard(title: String, content: @Composable () -> Unit) {
             .hermexGlass(shape = HermexCardShape, castsShadow = false)
             .padding(12.dp),
     ) {
-        Text(title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(8.dp))
-        content()
+        CompositionLocalProvider(LocalContentColor provides PanelPrimaryText) {
+            Text(
+                title,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium,
+                color = PanelPrimaryText,
+            )
+            Spacer(Modifier.height(8.dp))
+            content()
+        }
     }
 }
 
