@@ -189,7 +189,7 @@ public struct HermexSessionListScreen: View {
                                 .foregroundStyle(Color.accentColor)
                         }
                     }
-                    .layoutPriority(2)
+                    .hermexLayoutPriority(2)
 
                     Spacer(minLength: HermexLayoutContract.sessionRowTitleDateSpacing)
 

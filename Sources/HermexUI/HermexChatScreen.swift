@@ -216,7 +216,7 @@ public struct HermexChatScreen: View {
     }
 }
 
-extension View {
+public extension View {
     @ViewBuilder
     func hermexComposerBottomReserve(_ height: CGFloat) -> some View {
 #if SKIP

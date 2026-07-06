@@ -185,13 +185,22 @@ public struct HermexPillLabel: View {
     }
 }
 
-extension View {
+public extension View {
     @ViewBuilder
     func hermexContentShapeRectangle() -> some View {
 #if SKIP
         self
 #else
         self.contentShape(Rectangle())
+#endif
+    }
+
+    @ViewBuilder
+    func hermexLayoutPriority(_ value: Double) -> some View {
+#if SKIP
+        self
+#else
+        self.layoutPriority(value)
 #endif
     }
 }
