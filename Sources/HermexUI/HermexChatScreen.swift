@@ -13,6 +13,8 @@ public struct HermexChatScreen: View {
 
     public var body: some View {
         ZStack(alignment: .bottom) {
+            HermexUIColors.systemBackground.ignoresSafeArea()
+
             VStack(spacing: 0) {
                 chatHeader
 
@@ -52,6 +54,7 @@ public struct HermexChatScreen: View {
                 }
             }
         }
+        .foregroundStyle(HermexUIColors.primaryText)
     }
 
     private var chatHeader: some View {
@@ -65,12 +68,12 @@ public struct HermexChatScreen: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(state.composer.selectedWorkspace ?? state.session?.workspace ?? "workspace")
                     .font(.title3.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HermexUIColors.secondaryText)
                     .lineLimit(1)
                 if state.isViewingCachedData {
                     Text("Cached transcript")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(HermexUIColors.secondaryText)
                 }
             }
 
@@ -113,12 +116,13 @@ public struct HermexChatScreen: View {
                 if message.role == "user" { Spacer(minLength: 42) }
                 Text(message.content ?? message.text ?? "")
                     .font(.body)
+                    .foregroundStyle(HermexUIColors.primaryText)
                     .hermexTextSelectionEnabled()
                     .padding(.horizontal, message.role == "user" ? 14.0 : 0.0)
                     .padding(.vertical, message.role == "user" ? 10.0 : 0.0)
                     .background(
                         message.role == "user"
-                            ? HermexUIColors.secondarySystemBackground
+                            ? HermexUIColors.glassFillStrong
                             : Color.clear,
                         in: RoundedRectangle(cornerRadius: 22, style: .continuous)
                     )
@@ -140,7 +144,7 @@ public struct HermexChatScreen: View {
         } icon: {
             Image(systemName: systemImage)
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(HermexUIColors.secondaryText)
         .padding(.horizontal, 10)
         .padding(.vertical, 9)
         .hermexThinMaterialBackground(in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -149,7 +153,7 @@ public struct HermexChatScreen: View {
     private var streamingIndicator: some View {
         Label(state.stream.liveToolActivity ?? "Responding", systemImage: "sparkles")
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(HermexUIColors.secondaryText)
             .padding(.vertical, 8)
     }
 
@@ -179,7 +183,7 @@ public struct HermexChatScreen: View {
                 if let details = approval.details, !details.isEmpty {
                     Text(details)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(HermexUIColors.secondaryText)
                         .lineLimit(4)
                 }
                 HStack {
@@ -268,8 +272,10 @@ public struct HermexComposerSurface: View {
                         attachmentStrip
                     }
 
-                    Text(state.draft.isEmpty ? "Message Hermex" : state.draft)
-                        .foregroundStyle(state.draft.isEmpty ? .secondary : .primary)
+                    TextField("Message Hermex", text: draftBinding)
+                        .textFieldStyle(.plain)
+                        .font(.title3)
+                        .foregroundStyle(HermexUIColors.primaryText)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)
                         .padding(.vertical, textVerticalPadding)
@@ -277,20 +283,37 @@ public struct HermexComposerSurface: View {
                     HStack(spacing: HermexLayoutContract.composerControlSpacing) {
                         Button { onEvent(.attach) } label: {
                             Image(systemName: "plus")
-                                .frame(width: HermexLayoutContract.composerPlusButtonSize, height: HermexLayoutContract.composerPlusButtonSize)
+                                .font(.system(size: 24, weight: .semibold))
+                                .frame(width: 44, height: 44)
+                                .background(HermexUIColors.glassFillStrong, in: Circle())
+                                .overlay {
+                                    Circle().stroke(HermexUIColors.hairline, lineWidth: 0.6)
+                                }
                         }
                         modelControl
                         if state.showsReasoningControl {
                             reasoningControl
                         }
                         Spacer()
-                        Button { onEvent(state.isRecordingVoice ? .stopVoice : .startVoice) } label: { Image(systemName: "waveform") }
+                        Button { onEvent(state.isRecordingVoice ? .stopVoice : .startVoice) } label: {
+                            Image(systemName: "waveform")
+                                .font(.headline.weight(.semibold))
+                                .frame(width: 44, height: 44)
+                                .background(HermexUIColors.glassFillStrong, in: Circle())
+                                .overlay {
+                                    Circle().stroke(HermexUIColors.hairline, lineWidth: 0.6)
+                                }
+                        }
                         Button { onEvent(stream.isStreaming ? .cancelStream : .sendDraft) } label: {
                             Image(systemName: stream.isStreaming ? "stop.fill" : "arrow.up")
-                                .frame(width: HermexLayoutContract.composerActionButtonSize, height: HermexLayoutContract.composerActionButtonSize)
+                                .font(.headline.weight(.semibold))
+                                .frame(width: 44, height: 44)
+                                .background(HermexUIColors.primaryText, in: Circle())
+                                .foregroundStyle(HermexUIColors.systemBackground)
                         }
                     }
                     .buttonStyle(.plain)
+                    .foregroundStyle(HermexUIColors.primaryText)
                     .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)
                     .padding(.top, HermexLayoutContract.composerSurfaceTopPadding)
                     .padding(.bottom, HermexLayoutContract.composerSurfaceBottomPadding)
@@ -314,6 +337,7 @@ public struct HermexComposerSurface: View {
         }
         .padding(.horizontal)
         .padding(.bottom, HermexLayoutContract.composerBottomAccessorySpacing)
+        .foregroundStyle(HermexUIColors.primaryText)
     }
 
     private var isExpanded: Bool {
@@ -326,6 +350,13 @@ public struct HermexComposerSurface: View {
 
     private var textVerticalPadding: CGFloat {
         isExpanded ? HermexLayoutContract.composerTextVerticalPaddingExpanded : HermexLayoutContract.composerTextVerticalPaddingCollapsed
+    }
+
+    private var draftBinding: Binding<String> {
+        Binding(
+            get: { state.draft },
+            set: { onEvent(.updateDraft($0)) }
+        )
     }
 
     @ViewBuilder
@@ -348,9 +379,14 @@ public struct HermexComposerSurface: View {
     }
 
     private var modelLabel: some View {
-        Text(state.selectedModel ?? "model")
-            .lineLimit(1)
-            .frame(maxWidth: HermexLayoutContract.composerModelControlMaxWidth, alignment: .leading)
+        HStack(spacing: 4) {
+            Text(state.selectedModel ?? "model")
+                .lineLimit(1)
+            Image(systemName: "chevron.down")
+                .font(.caption2.weight(.semibold))
+        }
+        .foregroundStyle(HermexUIColors.primaryText.opacity(0.84))
+        .frame(maxWidth: HermexLayoutContract.composerModelControlMaxWidth, alignment: .leading)
     }
 
     @ViewBuilder
@@ -373,9 +409,15 @@ public struct HermexComposerSurface: View {
     }
 
     private var reasoningLabel: some View {
-        Label(state.selectedReasoningEffort ?? "Reasoning", systemImage: "brain")
-            .lineLimit(1)
-            .frame(width: HermexLayoutContract.composerReasoningControlWidth, alignment: .leading)
+        HStack(spacing: 5) {
+            Image(systemName: "brain")
+            Text(state.selectedReasoningEffort ?? "Reasoning")
+                .lineLimit(1)
+            Image(systemName: "chevron.down")
+                .font(.caption2.weight(.semibold))
+        }
+        .foregroundStyle(HermexUIColors.primaryText.opacity(0.88))
+        .frame(width: HermexLayoutContract.composerReasoningControlWidth, alignment: .leading)
     }
 
     @ViewBuilder
@@ -419,7 +461,7 @@ public struct HermexComposerSurface: View {
     private func composerStatusBar(text: String, systemImage: String) -> some View {
         Label(text, systemImage: systemImage)
             .font(.caption.weight(.medium))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(HermexUIColors.secondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)
             .padding(.top, 10)
@@ -435,6 +477,7 @@ public struct HermexComposerSurface: View {
                         .lineLimit(1)
                         .padding(.horizontal, 9)
                         .frame(height: HermexLayoutContract.composerAttachmentStripHeight)
+                        .foregroundStyle(HermexUIColors.primaryText)
                         .hermexThinMaterialBackground(in: Capsule())
                 }
             }
@@ -449,11 +492,12 @@ public struct HermexComposerSurface: View {
         } label: {
             Text(title)
                 .font(.subheadline.weight(.medium))
+                .foregroundStyle(HermexUIColors.primaryText)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .hermexThinMaterialBackground(in: Capsule())
+                .background(HermexUIColors.glassFillStrong, in: Capsule())
                 .overlay {
-                    Capsule().stroke(Color.primary.opacity(0.14), lineWidth: 0.6)
+                    Capsule().stroke(HermexUIColors.hairline, lineWidth: 0.6)
                 }
         }
         .buttonStyle(.plain)

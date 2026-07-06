@@ -10,19 +10,16 @@ import AppKit
 enum HermexUIColors {
     static let gold = Color(red: 1.0, green: 0.843, blue: 0.0)
     static let darkBackground = Color.black
-#if canImport(UIKit)
-    static let systemBackground = Color(uiColor: .systemBackground)
-    static let secondarySystemBackground = Color(uiColor: .secondarySystemBackground)
-    static let separator = Color(uiColor: .separator)
-#elseif canImport(AppKit)
-    static let systemBackground = Color(nsColor: .windowBackgroundColor)
-    static let secondarySystemBackground = Color(nsColor: .controlBackgroundColor)
-    static let separator = Color(nsColor: .separatorColor)
-#else
     static let systemBackground = Color.black
-    static let secondarySystemBackground = Color.gray.opacity(0.22)
-    static let separator = Color.primary.opacity(0.18)
-#endif
+    static let secondarySystemBackground = Color.white.opacity(0.10)
+    static let separator = Color.white.opacity(0.14)
+    static let primaryText = Color.white
+    static let secondaryText = Color.white.opacity(0.58)
+    static let tertiaryText = Color.white.opacity(0.38)
+    static let glassFill = Color.white.opacity(0.085)
+    static let glassFillStrong = Color.white.opacity(0.12)
+    static let hairline = Color.white.opacity(0.16)
+    static let faintHairline = Color.white.opacity(0.08)
 }
 
 public struct HermexScreenTitle: View {
@@ -38,10 +35,11 @@ public struct HermexScreenTitle: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.headline.weight(.semibold))
+                .foregroundStyle(HermexUIColors.primaryText)
             if let subtitle, !subtitle.isEmpty {
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HermexUIColors.secondaryText)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -93,11 +91,16 @@ public struct HermexGlassPanel<Content: View>: View {
 
     public var body: some View {
         content
-            .hermexUltraThinMaterialBackground(in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .foregroundStyle(HermexUIColors.primaryText)
+            .background(
+                HermexUIColors.glassFill,
+                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            )
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.primary.opacity(0.14), lineWidth: 0.6)
+                    .stroke(HermexUIColors.hairline, lineWidth: 0.6)
             }
+            .shadow(color: Color.black.opacity(0.22), radius: 18, y: 8)
     }
 }
 
@@ -127,10 +130,10 @@ public struct HermexCircleIconButton: View {
             Image(systemName: systemImage)
                 .font(.system(size: size * 0.34, weight: .semibold))
                 .frame(width: size, height: size)
-                .foregroundStyle(isFilled ? Color.black : Color.primary)
-                .background(isFilled ? HermexUIColors.gold : HermexUIColors.secondarySystemBackground.opacity(0.72), in: Circle())
+                .foregroundStyle(isFilled ? Color.black : HermexUIColors.primaryText)
+                .background(isFilled ? HermexUIColors.gold : HermexUIColors.glassFillStrong, in: Circle())
                 .overlay {
-                    Circle().stroke(Color.primary.opacity(0.14), lineWidth: 0.6)
+                    Circle().stroke(HermexUIColors.hairline, lineWidth: 0.6)
                 }
         }
         .buttonStyle(.plain)
@@ -149,9 +152,9 @@ public struct HermexIconCluster<Content: View>: View {
         HStack(spacing: HermexLayoutContract.topChromeClusterSpacing) {
             content
         }
-        .hermexThinMaterialBackground(in: Capsule())
+        .background(HermexUIColors.glassFill, in: Capsule())
         .overlay {
-            Capsule().stroke(Color.primary.opacity(0.13), lineWidth: 0.6)
+            Capsule().stroke(HermexUIColors.hairline, lineWidth: 0.6)
         }
         .clipShape(Capsule())
     }
@@ -167,20 +170,22 @@ public struct HermexPillLabel: View {
     }
 
     public var body: some View {
-        Label {
-            Text(title)
-                .lineLimit(1)
-        } icon: {
+        HStack(spacing: 6) {
             if let systemImage {
                 Image(systemName: systemImage)
             }
+            Text(title)
+                .lineLimit(1)
+            Image(systemName: "chevron.down")
+                .font(.caption2.weight(.semibold))
         }
         .font(.subheadline.weight(.medium))
+        .foregroundStyle(HermexUIColors.primaryText)
         .padding(.horizontal, HermexLayoutContract.composerSecondaryBarHorizontalPadding)
         .padding(.vertical, HermexLayoutContract.composerSecondaryBarVerticalPadding)
-        .hermexThinMaterialBackground(in: Capsule())
+        .background(HermexUIColors.glassFillStrong, in: Capsule())
         .overlay {
-            Capsule().stroke(Color.primary.opacity(0.14), lineWidth: 0.6)
+            Capsule().stroke(HermexUIColors.hairline, lineWidth: 0.6)
         }
     }
 }
@@ -189,7 +194,7 @@ public extension View {
     @ViewBuilder
     func hermexThinMaterialBackground<S: Shape>(in shape: S) -> some View {
 #if SKIP
-        self.background(HermexUIColors.secondarySystemBackground.opacity(0.72), in: shape)
+        self.background(HermexUIColors.glassFillStrong, in: shape)
 #else
         self.background(.thinMaterial, in: shape)
 #endif
@@ -198,7 +203,7 @@ public extension View {
     @ViewBuilder
     func hermexUltraThinMaterialBackground<S: Shape>(in shape: S) -> some View {
 #if SKIP
-        self.background(HermexUIColors.secondarySystemBackground.opacity(0.58), in: shape)
+        self.background(HermexUIColors.glassFill, in: shape)
 #else
         self.background(.ultraThinMaterial, in: shape)
 #endif

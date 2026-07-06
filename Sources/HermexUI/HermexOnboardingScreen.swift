@@ -256,23 +256,26 @@ public struct HermexOnboardingScreen: View {
             VStack(alignment: .leading, spacing: 15) {
                 fieldLabel("Server URL")
                 TextField("https://hermes.example.com", text: serverURLBinding)
-                    .textFieldStyle(.roundedBorder)
+                    .hermexOnboardingInputStyle()
 
                 fieldLabel("Name")
                 TextField("Hermex", text: displayNameBinding)
-                    .textFieldStyle(.roundedBorder)
+                    .hermexOnboardingInputStyle()
 
                 fieldLabel("Password")
                 SecureField("Server password", text: passwordBinding)
-                    .textFieldStyle(.roundedBorder)
+                    .hermexOnboardingInputStyle()
 
                 fieldLabel("Custom headers")
                 TextEditor(text: customHeaderBinding)
                     .font(.footnote.monospaced())
+                    .foregroundStyle(HermexUIColors.primaryText)
                     .frame(minHeight: 74)
+                    .padding(10)
+                    .background(HermexUIColors.glassFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .stroke(HermexUIColors.separator, lineWidth: 0.6)
+                            .stroke(HermexUIColors.hairline, lineWidth: 0.6)
                     )
 
                 HStack(spacing: 10) {
@@ -291,7 +294,13 @@ public struct HermexOnboardingScreen: View {
                                 .font(.headline.weight(.semibold))
                         }
                     }
-                    .buttonStyle(.bordered)
+                    .foregroundStyle(HermexUIColors.primaryText)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 13)
+                    .background(HermexUIColors.glassFillStrong, in: Capsule())
+                    .overlay {
+                        Capsule().stroke(HermexUIColors.hairline, lineWidth: 0.6)
+                    }
                     .disabled(onboarding.isTestingConnection || onboarding.isSigningIn)
 
                     Button {
@@ -311,7 +320,10 @@ public struct HermexOnboardingScreen: View {
                                 .frame(maxWidth: .infinity)
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .foregroundStyle(Color.black)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 13)
+                    .background(HermexUIColors.primaryText, in: Capsule())
                     .disabled(onboarding.isTestingConnection || onboarding.isSigningIn)
                 }
                 .padding(.top, 4)
@@ -553,4 +565,20 @@ Verify it works: curl http://$(tailscale ip -4):8787/health should return a succ
 Reply with the exact server URL, the password, and any setup steps still needed on Android.
 Do not use Cloudflare. Optimize for Tailscale + Android.
 """
+}
+
+private extension View {
+    func hermexOnboardingInputStyle() -> some View {
+        self
+            .textFieldStyle(.plain)
+            .font(.body)
+            .foregroundStyle(HermexUIColors.primaryText)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 13)
+            .background(HermexUIColors.glassFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(HermexUIColors.hairline, lineWidth: 0.6)
+            }
+    }
 }

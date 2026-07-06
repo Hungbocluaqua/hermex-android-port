@@ -30,6 +30,7 @@ public struct HermexGitScreen: View {
                 .padding(.bottom, 32)
             }
         }
+        .foregroundStyle(HermexUIColors.primaryText)
     }
 
     private var topBar: some View {
@@ -50,12 +51,12 @@ public struct HermexGitScreen: View {
                     Text(state.branch ?? "No branch")
                     Spacer()
                     Text("+\(state.ahead ?? 0) -\(state.behind ?? 0)")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(HermexUIColors.secondaryText)
                 }
                 if let upstream = state.upstream {
                     Text(upstream)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(HermexUIColors.secondaryText)
                 }
             }
             .padding(14)
@@ -107,15 +108,16 @@ public struct HermexGitScreen: View {
                     HStack(spacing: 10) {
                         Text(file.status)
                             .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(HermexUIColors.secondaryText)
                             .frame(width: 42, alignment: .leading)
                         Text(file.path)
+                            .foregroundStyle(HermexUIColors.primaryText)
                             .lineLimit(1)
                         Spacer()
                         if let additions = file.additions, let deletions = file.deletions {
                             Text("+\(additions) -\(deletions)")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(HermexUIColors.secondaryText)
                         }
                     }
                     HStack(spacing: 8) {
@@ -135,7 +137,7 @@ public struct HermexGitScreen: View {
                     if state.diffPath == file.path, state.diffText != nil {
                         Text("Diff open")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(HermexUIColors.secondaryText)
                     }
                 }
                 .padding(.vertical, 10)
@@ -147,6 +149,7 @@ public struct HermexGitScreen: View {
         HermexGlassPanel(cornerRadius: 14) {
             Text(text)
                 .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(HermexUIColors.primaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
         }

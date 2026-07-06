@@ -56,8 +56,8 @@ public struct HermexSessionListScreen: View {
                     .font(.headline.weight(.semibold))
                     .padding(.horizontal, 24)
                     .padding(.vertical, 16)
-                    .background(Color.primary, in: Capsule())
-                    .foregroundStyle(HermexUIColors.systemBackground)
+                    .background(Color.white, in: Capsule())
+                    .foregroundStyle(Color.black)
                     .shadow(
                         color: .black.opacity(HermexLayoutContract.sessionListFloatingButtonShadowOpacity),
                         radius: HermexLayoutContract.sessionListFloatingButtonShadowRadius,
@@ -67,6 +67,7 @@ public struct HermexSessionListScreen: View {
             .padding(.trailing, HermexLayoutContract.sessionListFloatingButtonTrailing)
             .padding(.bottom, HermexLayoutContract.sessionListFloatingButtonBottom)
         }
+        .foregroundStyle(HermexUIColors.primaryText)
     }
 
     private var header: some View {
@@ -94,15 +95,15 @@ public struct HermexSessionListScreen: View {
         VStack(alignment: .leading, spacing: 6) {
             if state.isShowingArchived {
                 Text("Archived sessions")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HermexUIColors.secondaryText)
             }
             if state.isViewingCachedData {
                 Text("Cached data")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HermexUIColors.secondaryText)
             }
             if !state.searchQuery.isEmpty {
                 Text("Searching \"\(state.searchQuery)\"")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HermexUIColors.secondaryText)
             }
         }
         .font(.caption)
@@ -115,7 +116,7 @@ public struct HermexSessionListScreen: View {
             HStack(spacing: 10) {
                 ProgressView()
                 Text("Loading sessions")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HermexUIColors.secondaryText)
             }
             .font(.caption)
             .padding(.vertical, 24)
@@ -126,7 +127,7 @@ public struct HermexSessionListScreen: View {
                         .font(.headline.weight(.semibold))
                     Text(errorMessage)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(HermexUIColors.secondaryText)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(18)
@@ -138,7 +139,7 @@ public struct HermexSessionListScreen: View {
                         .font(.headline.weight(.semibold))
                     Text("Start a new chat from this server.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(HermexUIColors.secondaryText)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(18)
@@ -176,6 +177,7 @@ public struct HermexSessionListScreen: View {
                     width: HermexLayoutContract.sessionListUtilityIconSize,
                     height: HermexLayoutContract.sessionListUtilityIconSize
                 )
+                .foregroundStyle(HermexUIColors.primaryText)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -192,16 +194,16 @@ public struct HermexSessionListScreen: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.title3.weight(.medium))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(HermexUIColors.primaryText)
                         .lineLimit(1)
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(HermexUIColors.secondaryText)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.headline.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HermexUIColors.secondaryText)
             }
             .frame(minHeight: HermexLayoutContract.sessionListSelectorHeight)
             .hermexContentShapeRectangle()
@@ -219,6 +221,7 @@ public struct HermexSessionListScreen: View {
                     HStack(alignment: .firstTextBaseline, spacing: HermexLayoutContract.sessionRowTitlePinSpacing) {
                         Text(session.title ?? "Untitled Session")
                             .font(.headline.weight(.semibold))
+                            .foregroundStyle(HermexUIColors.primaryText)
                             .lineLimit(2)
                             .truncationMode(.tail)
 
@@ -235,7 +238,7 @@ public struct HermexSessionListScreen: View {
                     if let relativeDate = relativeDate(session) {
                         Text(relativeDate)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(HermexUIColors.secondaryText)
                             .lineLimit(1)
                     }
                 }
@@ -244,7 +247,7 @@ public struct HermexSessionListScreen: View {
                     HStack(alignment: .firstTextBaseline, spacing: HermexLayoutContract.sessionRowMetadataSpacing) {
                         Text(metadata)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(HermexUIColors.secondaryText)
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
@@ -261,9 +264,10 @@ public struct HermexSessionListScreen: View {
                         width: HermexLayoutContract.sessionListRowActionSize,
                         height: HermexLayoutContract.sessionListRowActionSize
                     )
-                    .background(HermexUIColors.secondarySystemBackground.opacity(0.72), in: Circle())
+                    .foregroundStyle(HermexUIColors.primaryText)
+                    .background(HermexUIColors.glassFillStrong, in: Circle())
                     .overlay {
-                        Circle().stroke(Color.primary.opacity(0.12), lineWidth: 0.6)
+                        Circle().stroke(HermexUIColors.hairline, lineWidth: 0.6)
                     }
             }
             .buttonStyle(.plain)
@@ -279,7 +283,7 @@ public struct HermexSessionListScreen: View {
         )
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(Color.primary.opacity(HermexLayoutContract.sessionListRowSeparatorOpacity))
+                .fill(HermexUIColors.faintHairline)
                 .frame(height: 0.6)
         }
         .hermexContentShapeRectangle()
@@ -287,7 +291,7 @@ public struct HermexSessionListScreen: View {
 
     private func sessionMetadata(_ session: HermexSessionDTO) -> String {
         let count = session.messageCount.map { "\($0) messages" }
-        return [count, session.workspace].compactMap { $0 }.joined(separator: " * ")
+        return [count, session.workspace].compactMap { $0 }.joined(separator: " • ")
     }
 
     private var primaryWorkspace: String {

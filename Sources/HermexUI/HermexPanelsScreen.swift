@@ -24,7 +24,7 @@ public struct HermexPanelsScreen: View {
 
                     if let error = state.errorMessage {
                         Text(error)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(HermexUIColors.secondaryText)
                     }
 
                     switch state.selectedPanel {
@@ -43,6 +43,7 @@ public struct HermexPanelsScreen: View {
                 .padding(.bottom, 32)
             }
         }
+        .foregroundStyle(HermexUIColors.primaryText)
     }
 
     private var topBar: some View {
@@ -101,19 +102,23 @@ public struct HermexPanelsScreen: View {
     }
 
     private func panelRow(title: String, subtitle: String, systemImage: String) -> some View {
-        Label {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(HermexUIColors.primaryText)
+                .frame(width: 32)
+
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.body.weight(.medium))
+                    .foregroundStyle(HermexUIColors.primaryText)
                 if !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(HermexUIColors.secondaryText)
                         .lineLimit(2)
                 }
             }
-        } icon: {
-            Image(systemName: systemImage)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 8)

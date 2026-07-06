@@ -21,7 +21,7 @@ public struct HermexWorkspaceScreen: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Roots")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(HermexUIColors.secondaryText)
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 8) {
                                     ForEach(state.roots) { root in
@@ -59,7 +59,7 @@ public struct HermexWorkspaceScreen: View {
                         }
                         if state.entries.isEmpty && !state.isLoading {
                             Text(state.errorMessage ?? "No files to show.")
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(HermexUIColors.secondaryText)
                                 .padding(.vertical, 20)
                         }
                     }
@@ -73,6 +73,7 @@ public struct HermexWorkspaceScreen: View {
                 .padding(.bottom, 32)
             }
         }
+        .foregroundStyle(HermexUIColors.primaryText)
     }
 
     private var topBar: some View {
@@ -88,21 +89,23 @@ public struct HermexWorkspaceScreen: View {
         HStack(spacing: 12) {
             Image(systemName: entry.isDirectory ? "folder" : "doc.text")
                 .font(.title3.weight(.semibold))
+                .foregroundStyle(HermexUIColors.primaryText)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 3) {
                 Text(entry.name)
                     .font(.body.weight(.medium))
+                    .foregroundStyle(HermexUIColors.primaryText)
                     .lineLimit(1)
                 Text(entry.path)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HermexUIColors.secondaryText)
                     .lineLimit(1)
             }
             Spacer()
             if let size = entry.size {
                 Text("\(size) B")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HermexUIColors.secondaryText)
             }
         }
         .padding(.vertical, 10)
@@ -117,6 +120,7 @@ public struct HermexWorkspaceScreen: View {
                     .lineLimit(1)
                 Text(preview.content ?? preview.mimeType ?? "Binary file")
                     .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(HermexUIColors.primaryText)
                     .lineLimit(18)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
