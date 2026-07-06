@@ -28,6 +28,22 @@ python3 "$ROOT/ci/prepare_skip_hermex_app.py" \
   swift build --target "$MODULE_NAME"
 )
 
+while IFS= read -r -d '' build_file; do
+  if grep -q '^android[[:space:]]*{' "$build_file" && ! grep -q 'com.android.library' "$build_file"; then
+    if grep -q '^plugins[[:space:]]*{' "$build_file"; then
+      perl -0pi -e 's/(plugins[[:space:]]*\{\n)/$1    id("com.android.library")\n/s' "$build_file"
+    else
+      tmp_file="${build_file}.tmp"
+      {
+        printf 'plugins {\n    id("com.android.library")\n}\n\n'
+        cat "$build_file"
+      } > "$tmp_file"
+      mv "$tmp_file" "$build_file"
+    fi
+    echo "Patched Android library plugin into $build_file"
+  fi
+done < <(find "$APP_DIR/.build/plugins/outputs" -name 'build.gradle.kts' -print0)
+
 GRADLE_SETTINGS=""
 GRADLE_TASK="assembleDebug"
 if [[ -f "$APP_DIR/Android/settings.gradle.kts" ]]; then
