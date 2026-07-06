@@ -980,6 +980,9 @@ public final class HermexAppStore {
     }
 
     private func applyStreamEvent(_ event: HermexSSEEvent) {
+#if SKIP
+        chat.stream.liveToolActivity = nil
+#else
         switch event {
         case .token(let token):
             appendAssistantToken(token)
@@ -997,6 +1000,7 @@ public final class HermexAppStore {
         case .named(let event, let data):
             applyNamedStreamEvent(event: event, data: data)
         }
+#endif
     }
 
     private func applyNamedStreamEvent(event: String, data: String) {
@@ -1023,6 +1027,9 @@ public final class HermexAppStore {
 
     private func appendAssistantToken(_ token: String) {
         guard !token.isEmpty else { return }
+#if SKIP
+        chat.messages.append(HermexChatMessageDTO(role: "assistant", content: token, timestamp: Date().timeIntervalSince1970))
+#else
         if let lastIndex = chat.messages.indices.last,
            chat.messages[lastIndex].role == "assistant" {
             let existing = chat.messages[lastIndex].content ?? ""
@@ -1030,6 +1037,7 @@ public final class HermexAppStore {
         } else {
             chat.messages.append(HermexChatMessageDTO(role: "assistant", content: token, timestamp: Date().timeIntervalSince1970))
         }
+#endif
     }
 
     private func loadWorkspace(path: String?) async {
@@ -1184,24 +1192,25 @@ public final class HermexAppStore {
         let normalizedURL = URL(string: HermexServerURLNormalizer.normalizedID(for: rawURL)) ?? rawURL
         let displayName = onboarding.displayName.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         let headers = parsedCustomHeaders()
+        var customHeaders: [String: String] = [:]
+        for header in headers {
+            customHeaders[header.sanitizedName] = header.sanitizedValue
+        }
         return HermexServerIdentity(
             baseURL: normalizedURL,
             displayName: displayName.isEmpty ? (normalizedURL.host ?? normalizedURL.absoluteString) : displayName,
-            customHeaders: headers.reduce(into: [:]) { result, header in
-                result[header.sanitizedName] = header.sanitizedValue
-            }
+            customHeaders: customHeaders
         )
     }
 
     private func parsedCustomHeaders() -> [HermexCustomHeader] {
-        onboarding.customHeaderText
-            .split(separator: "\n")
-            .compactMap { rawLine -> HermexCustomHeader? in
-                let pieces = rawLine.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
-                guard pieces.count == 2 else { return nil }
-                return HermexCustomHeader(name: String(pieces[0]), value: String(pieces[1]))
-            }
-            .sanitizedForClient()
+        var headers: [HermexCustomHeader] = []
+        for rawLine in onboarding.customHeaderText.split(separator: "\n") {
+            let pieces = rawLine.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+            guard pieces.count == 2 else { continue }
+            headers.append(HermexCustomHeader(name: String(pieces[0]), value: String(pieces[1])))
+        }
+        return headers.sanitizedForClient()
     }
 
     private func upsertServer(_ server: HermexServerIdentity) {
@@ -1219,20 +1228,18 @@ public final class HermexAppStore {
 private extension HermexAttachmentDTO {
     var jsonValue: HermexJSONValue {
         var fields: [String: HermexJSONValue] = [:]
-        if let name { fields["name"] = .string(name) }
-        if let path { fields["path"] = .string(path) }
-        if let mime { fields["mime"] = .string(mime) }
-        if let size { fields["size"] = .number(Double(size)) }
-        if let isImage { fields["is_image"] = .bool(isImage) }
+        if let name = name { fields["name"] = .string(name) }
+        if let path = path { fields["path"] = .string(path) }
+        if let mime = mime { fields["mime"] = .string(mime) }
+        if let size = size { fields["size"] = .number(Double(size)) }
+        if let isImage = isImage { fields["is_image"] = .bool(isImage) }
         return .dictionary(fields)
     }
 }
 
 private extension HermexJSONValue {
     func stringValue(forKey key: String) -> String? {
-        guard case .dictionary(let fields) = self else { return nil }
-        guard case .string(let value) = fields[key] else { return nil }
-        return value
+        objectValue?.stringValue(key)
     }
 }
 #endif
