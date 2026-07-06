@@ -1,5 +1,7 @@
 import Foundation
+#if !SKIP
 import Observation
+#endif
 
 public enum HermexAppAction: Equatable, Sendable {
     case openRoute(HermexRoute)
@@ -264,6 +266,300 @@ public struct HermexAppEnvironment: Sendable {
     }
 }
 
+#if SKIP
+@MainActor
+public final class HermexAppStore {
+    public private(set) var appState: HermexAppState
+    public private(set) var onboarding: HermexOnboardingState
+    public private(set) var sessions: HermexSessionListState
+    public private(set) var chat: HermexChatState
+    public private(set) var settings: HermexSettingsState
+    public private(set) var workspace: HermexWorkspaceState
+    public private(set) var git: HermexGitState
+    public private(set) var panels: HermexPanelsState
+
+    public init(
+        appState: HermexAppState = HermexAppState(),
+        onboarding: HermexOnboardingState = HermexOnboardingState(),
+        sessions: HermexSessionListState = HermexSessionListState(),
+        chat: HermexChatState = HermexChatState(),
+        settings: HermexSettingsState = HermexSettingsState(),
+        workspace: HermexWorkspaceState = HermexWorkspaceState(),
+        git: HermexGitState = HermexGitState(),
+        panels: HermexPanelsState = HermexPanelsState(),
+        environment: HermexAppEnvironment
+    ) {
+        let server = Self.previewServer()
+        var seededAppState = appState
+        if seededAppState.auth == .unconfigured {
+            seededAppState.auth = .loggedIn(server: server)
+            seededAppState.route = .sessions
+        }
+
+        self.appState = seededAppState
+        self.onboarding = onboarding
+        self.sessions = sessions.sessions.isEmpty ? Self.previewSessions() : sessions
+        self.chat = chat.messages.isEmpty ? Self.previewChat() : chat
+        self.settings = Self.previewSettings(settings, server: server)
+        self.workspace = workspace.entries.isEmpty ? Self.previewWorkspace() : workspace
+        self.git = git.files.isEmpty ? Self.previewGit() : git
+        self.panels = panels.tasks.isEmpty && panels.skills.isEmpty && panels.memory.isEmpty ? Self.previewPanels() : panels
+    }
+
+    public func send(_ action: HermexAppAction) async {
+        switch action {
+        case .openRoute(let route):
+            appState.route = route
+        case .refresh:
+            break
+        case .updateOnboardingServerURL(let value):
+            onboarding.serverURLString = value
+            onboarding.errorMessage = nil
+            onboarding.statusMessage = nil
+        case .updateOnboardingDisplayName(let value):
+            onboarding.displayName = value
+        case .updateOnboardingPassword(let value):
+            onboarding.password = value
+        case .updateOnboardingCustomHeaders(let value):
+            onboarding.customHeaderText = value
+        case .testOnboardingConnection:
+            onboarding.statusMessage = "Preview server reachable"
+            onboarding.errorMessage = nil
+        case .connectOnboarding:
+            let server = Self.previewServer()
+            appState.auth = .loggedIn(server: server)
+            appState.route = .sessions
+            settings.activeServer = server
+            onboarding.password = ""
+        case .selectServer(let server):
+            appState.auth = .loggedIn(server: server)
+            settings.activeServer = server
+            appState.route = .sessions
+        case .openSession(let sessionID):
+            appState.selectedSessionID = sessionID
+            appState.route = .chat
+            chat.session = sessions.sessions.first(where: { $0.sessionId == sessionID }) ?? chat.session
+        case .newChat:
+            appState.selectedSessionID = nil
+            appState.route = .chat
+            chat = Self.previewChat()
+            chat.messages = []
+        case .searchSessions(let query):
+            sessions.searchQuery = query
+        case .toggleArchived:
+            sessions.isShowingArchived.toggle()
+        case .updateDraft(let draft):
+            chat.composer.draft = draft
+        case .appendDraftText(let text):
+            appendDraftText(text)
+        case .applySharedDraft(let draft):
+            appState.pendingSharedDraft = draft
+            appState.route = .chat
+            if let text = draft.text {
+                appendDraftText(text)
+            }
+        case .hydrateCachedSessions(let cachedSessions):
+            sessions.sessions = cachedSessions
+            sessions.isViewingCachedData = true
+        case .hydrateCachedMessages(let sessionID, let messages):
+            appState.selectedSessionID = sessionID
+            appState.route = .chat
+            chat.messages = messages
+            chat.isViewingCachedData = true
+        case .setVoiceRecording(let isRecording):
+            chat.composer.isRecordingVoice = isRecording
+        case .refreshComposerConfiguration:
+            chat.composer.isLoadingConfiguration = false
+        case .selectModel(let model):
+            chat.composer.selectedModel = model.id
+            chat.composer.selectedModelProvider = model.provider
+        case .selectWorkspace(let workspace):
+            chat.composer.selectedWorkspace = workspace.path
+        case .selectProfile(let profile):
+            chat.composer.selectedProfile = profile.name
+        case .selectReasoningEffort(let effort):
+            chat.composer.selectedReasoningEffort = effort
+        case .sendDraft:
+            sendPreviewDraft()
+        case .cancelStream:
+            chat.stream = HermexStreamState()
+        case .undo, .retry, .compress:
+            chat.errorMessage = nil
+        case .approval(_):
+            chat.pendingApproval = nil
+        case .clarify(_):
+            chat.pendingClarification = nil
+        case .applyStreamEvent(_):
+            break
+        case .openWorkspaceEntry(let entry):
+            appState.route = .workspace
+            if entry.isDirectory {
+                workspace.currentPath = entry.path
+                workspace.preview = nil
+            } else {
+                workspace.preview = HermexFilePreview(path: entry.path, content: "Preview content for \(entry.name)")
+            }
+        case .openFile(let path):
+            appState.route = .workspace
+            workspace.preview = HermexFilePreview(path: path, content: "Preview content for \(path)")
+        case .gitAction(_):
+            appState.route = .git
+        case .gitCommand(let command):
+            appState.route = .git
+            if case .diff(let path, _) = command {
+                git.diffPath = path
+                git.diffText = "diff --git a/\(path) b/\(path)\n+Skip Android preview diff"
+            }
+        case .updateGitCommitMessage(let message):
+            git.commitMessage = message
+        case .selectPanel(let panel):
+            panels.selectedPanel = panel
+            appState.route = .panels
+        case .signOut:
+            if let server = settings.activeServer {
+                appState.auth = .loggedOut(server: server)
+            } else {
+                appState.auth = .unconfigured
+            }
+            appState.route = .onboarding
+            onboarding.password = ""
+        }
+    }
+
+    private func appendDraftText(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if chat.composer.draft.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
+            chat.composer.draft = trimmed
+        } else {
+            chat.composer.draft += "\n\(trimmed)"
+        }
+    }
+
+    private func sendPreviewDraft() {
+        let draft = chat.composer.draft.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !draft.isEmpty else { return }
+        chat.composer.draft = ""
+        chat.messages.append(HermexChatMessageDTO(role: "user", content: draft))
+        chat.messages.append(HermexChatMessageDTO(
+            role: "assistant",
+            content: "This Skip Android APK is rendering the shared SwiftUI Hermex interface. Live backend calls are intentionally stubbed in this preview build."
+        ))
+    }
+
+    private static func previewServer() -> HermexServerIdentity {
+        HermexServerIdentity(
+            baseURL: URL(string: "https://hermex.local")!,
+            displayName: "Hermex Preview"
+        )
+    }
+
+    private static func previewSettings(_ settings: HermexSettingsState, server: HermexServerIdentity) -> HermexSettingsState {
+        var updated = settings
+        updated.activeServer = updated.activeServer ?? server
+        if updated.servers.isEmpty {
+            updated.servers = [server]
+        }
+        updated.defaultModel = updated.defaultModel ?? "gpt-5.5"
+        updated.defaultProfile = updated.defaultProfile ?? "default"
+        return updated
+    }
+
+    private static func previewSessions() -> HermexSessionListState {
+        HermexSessionListState(
+            sessions: [
+                HermexSessionDTO(sessionId: "preview-chat", title: "Skip Android parity preview", updatedAt: 1783382400, messageCount: 8, workspace: "workspace", pinned: true, model: "gpt-5.5"),
+                HermexSessionDTO(sessionId: "workspace-review", title: "Workspace and git review", updatedAt: 1783378800, messageCount: 48, workspace: "workspace", model: "deepseek-v4-pro"),
+                HermexSessionDTO(sessionId: "long-running-stream", title: "Long running stream", updatedAt: 1783314000, messageCount: 54, workspace: "workspace", model: "cx/gpt-5.5")
+            ],
+            projects: [
+                HermexProjectDTO(projectId: "default", name: "default", color: "#f8d84a")
+            ],
+            activeProfileName: "default"
+        )
+    }
+
+    private static func previewChat() -> HermexChatState {
+        HermexChatState(
+            session: HermexSessionDTO(sessionId: "preview-chat", title: "Skip Android parity preview", messageCount: 4, workspace: "workspace", model: "gpt-5.5"),
+            messages: [
+                HermexChatMessageDTO(role: "user", content: "Model hermes đang dùng là gì?"),
+                HermexChatMessageDTO(role: "assistant", content: "Hermex Skip Android is using the shared SwiftUI interface from the iOS app. This preview APK is ready for visual parity checks while Android platform services are wired behind shims."),
+                HermexChatMessageDTO(role: "user", content: "Reasoning effort?"),
+                HermexChatMessageDTO(role: "assistant", content: "Reasoning controls are rendered from the same composer state and picker contracts as iOS.")
+            ],
+            composer: HermexComposerState(
+                selectedModel: "gpt-5.5",
+                selectedWorkspace: "Home",
+                selectedProfile: "default",
+                selectedReasoningEffort: "medium",
+                availableModels: [
+                    HermexModelOption(id: "gpt-5.5", name: "gpt-5.5"),
+                    HermexModelOption(id: "deepseek-v4-pro", name: "deepseek-v4-pro")
+                ],
+                availableProfiles: [
+                    HermexProfileOption(name: "default", displayName: "default", isActive: true)
+                ],
+                availableWorkspaces: [
+                    HermexWorkspaceRootDTO(path: "Home", name: "Home", exists: true),
+                    HermexWorkspaceRootDTO(path: "workspace", name: "workspace", exists: true)
+                ],
+                supportedReasoningEfforts: ["low", "medium", "high"]
+            )
+        )
+    }
+
+    private static func previewWorkspace() -> HermexWorkspaceState {
+        HermexWorkspaceState(
+            roots: [
+                HermexWorkspaceRootDTO(path: "Home", name: "Home", exists: true),
+                HermexWorkspaceRootDTO(path: "workspace", name: "workspace", exists: true)
+            ],
+            currentPath: "workspace",
+            entries: [
+                HermexWorkspaceEntryDTO(name: "Sources", path: "workspace/Sources", type: "directory", isDirectory: true),
+                HermexWorkspaceEntryDTO(name: "Package.swift", path: "workspace/Package.swift", type: "swift", isDirectory: false, size: 4096),
+                HermexWorkspaceEntryDTO(name: "README.md", path: "workspace/README.md", type: "markdown", isDirectory: false, size: 8192)
+            ]
+        )
+    }
+
+    private static func previewGit() -> HermexGitState {
+        HermexGitState(
+            isRepository: true,
+            branch: "master",
+            upstream: "fork/master",
+            ahead: 1,
+            behind: 0,
+            files: [
+                HermexGitFileChange(path: "Sources/HermexCore/HermexAppStore.swift", status: "modified", additions: 212, deletions: 0, isStaged: false),
+                HermexGitFileChange(path: "ci/skip-hermex-app/HermexSkipApp.swift", status: "modified", additions: 4, deletions: 1, isStaged: false)
+            ],
+            commitMessage: "Port Hermex SwiftUI through Skip"
+        )
+    }
+
+    private static func previewPanels() -> HermexPanelsState {
+        HermexPanelsState(
+            tasks: [
+                HermexTaskDTO(id: "weekly-graphics", title: "Weekly computer graphics research digest", status: "Active", schedule: "0 9 * * 1")
+            ],
+            skills: [
+                HermexSkillDTO(name: "coding-agent-delegation", enabled: true, summary: "Delegate coding tasks to external agent CLIs."),
+                HermexSkillDTO(name: "architecture-diagram", enabled: true, summary: "Generate dark-themed architecture diagrams.")
+            ],
+            memory: [
+                HermexMemorySectionDTO(section: "My Notes", content: "Shared SwiftUI memory panel preview for Android visual parity.")
+            ],
+            insights: HermexJSONValue.dictionary([
+                "sessions": HermexJSONValue.number(30),
+                "messages": HermexJSONValue.number(1312)
+            ]),
+            selectedPanel: .tasks
+        )
+    }
+}
+#else
 @MainActor
 public final class HermexAppStore {
     public private(set) var appState: HermexAppState
@@ -939,3 +1235,4 @@ private extension HermexJSONValue {
         return value
     }
 }
+#endif

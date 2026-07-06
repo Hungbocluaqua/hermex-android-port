@@ -1,10 +1,17 @@
 import Foundation
 
-public enum HermexAuthState: Codable, Equatable, Sendable {
+#if SKIP
+public protocol HermexStateCodable {}
+#else
+public typealias HermexStateCodable = Codable
+#endif
+
+public enum HermexAuthState: HermexStateCodable, Equatable, Sendable {
     case unconfigured
     case loggedOut(server: HermexServerIdentity)
     case loggedIn(server: HermexServerIdentity)
 
+#if !SKIP
     private enum CodingKeys: String, CodingKey {
         case kind
         case server
@@ -46,9 +53,10 @@ public enum HermexAuthState: Codable, Equatable, Sendable {
             try container.encode(server, forKey: .server)
         }
     }
+#endif
 }
 
-public struct HermexAppState: Codable, Equatable, Sendable {
+public struct HermexAppState: HermexStateCodable, Equatable, Sendable {
     public var auth: HermexAuthState
     public var selectedSessionID: String?
     public var pendingSharedDraft: HermexSharedDraft?
@@ -67,7 +75,7 @@ public struct HermexAppState: Codable, Equatable, Sendable {
     }
 }
 
-public struct HermexOnboardingState: Codable, Equatable, Sendable {
+public struct HermexOnboardingState: HermexStateCodable, Equatable, Sendable {
     public var serverURLString: String
     public var displayName: String
     public var password: String
@@ -137,7 +145,7 @@ public struct HermexOnboardingState: Codable, Equatable, Sendable {
     }
 }
 
-public enum HermexRoute: String, Codable, Equatable, Sendable {
+public enum HermexRoute: String, HermexStateCodable, Equatable, Sendable {
     case onboarding
     case sessions
     case chat
@@ -147,7 +155,7 @@ public enum HermexRoute: String, Codable, Equatable, Sendable {
     case panels
 }
 
-public struct HermexSessionListState: Codable, Equatable, Sendable {
+public struct HermexSessionListState: HermexStateCodable, Equatable, Sendable {
     public var sessions: [HermexSessionDTO]
     public var projects: [HermexProjectDTO]
     public var searchQuery: String
@@ -181,7 +189,7 @@ public struct HermexSessionListState: Codable, Equatable, Sendable {
     }
 }
 
-public struct HermexChatState: Codable, Equatable, Sendable {
+public struct HermexChatState: HermexStateCodable, Equatable, Sendable {
     public var session: HermexSessionDTO?
     public var messages: [HermexChatMessageDTO]
     public var composer: HermexComposerState
@@ -215,7 +223,7 @@ public struct HermexChatState: Codable, Equatable, Sendable {
     }
 }
 
-public struct HermexComposerState: Codable, Equatable, Sendable {
+public struct HermexComposerState: HermexStateCodable, Equatable, Sendable {
     public var draft: String
     public var selectedModel: String?
     public var selectedModelProvider: String?
@@ -270,7 +278,7 @@ public struct HermexComposerState: Codable, Equatable, Sendable {
     }
 }
 
-public struct HermexStreamState: Codable, Equatable, Sendable {
+public struct HermexStreamState: HermexStateCodable, Equatable, Sendable {
     public var streamID: String?
     public var isStreaming: Bool
     public var isRecovering: Bool
@@ -292,7 +300,7 @@ public struct HermexStreamState: Codable, Equatable, Sendable {
     }
 }
 
-public struct HermexApprovalPrompt: Codable, Equatable, Sendable {
+public struct HermexApprovalPrompt: HermexStateCodable, Equatable, Sendable {
     public var approvalID: String?
     public var title: String?
     public var command: String?
@@ -306,7 +314,7 @@ public struct HermexApprovalPrompt: Codable, Equatable, Sendable {
     }
 }
 
-public struct HermexClarificationPrompt: Codable, Equatable, Sendable {
+public struct HermexClarificationPrompt: HermexStateCodable, Equatable, Sendable {
     public var promptID: String?
     public var question: String
     public var options: [String]
@@ -320,7 +328,7 @@ public struct HermexClarificationPrompt: Codable, Equatable, Sendable {
     }
 }
 
-public struct HermexWorkspaceState: Codable, Equatable, Sendable {
+public struct HermexWorkspaceState: HermexStateCodable, Equatable, Sendable {
     public var roots: [HermexWorkspaceRootDTO]
     public var currentPath: String?
     public var entries: [HermexWorkspaceEntryDTO]
@@ -345,7 +353,7 @@ public struct HermexWorkspaceState: Codable, Equatable, Sendable {
     }
 }
 
-public struct HermexWorkspaceEntryDTO: Codable, Identifiable, Equatable, Sendable {
+public struct HermexWorkspaceEntryDTO: HermexStateCodable, Identifiable, Equatable, Sendable {
     public var id: String { path }
     public var name: String
     public var path: String
@@ -362,7 +370,7 @@ public struct HermexWorkspaceEntryDTO: Codable, Identifiable, Equatable, Sendabl
     }
 }
 
-public struct HermexFilePreview: Codable, Equatable, Sendable {
+public struct HermexFilePreview: HermexStateCodable, Equatable, Sendable {
     public var path: String
     public var content: String?
     public var mimeType: String?
@@ -376,7 +384,7 @@ public struct HermexFilePreview: Codable, Equatable, Sendable {
     }
 }
 
-public struct HermexGitState: Codable, Equatable, Sendable {
+public struct HermexGitState: HermexStateCodable, Equatable, Sendable {
     public var isRepository: Bool
     public var branch: String?
     public var upstream: String?
@@ -427,7 +435,7 @@ public enum HermexGitCommand: Equatable, Sendable {
     case commit(message: String)
 }
 
-public struct HermexPanelsState: Codable, Equatable, Sendable {
+public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
     public var tasks: [HermexTaskDTO]
     public var skills: [HermexSkillDTO]
     public var memory: [HermexMemorySectionDTO]
@@ -455,14 +463,14 @@ public struct HermexPanelsState: Codable, Equatable, Sendable {
     }
 }
 
-public enum HermexPanel: String, Codable, Equatable, Sendable {
+public enum HermexPanel: String, HermexStateCodable, Equatable, Sendable {
     case tasks
     case skills
     case memory
     case insights
 }
 
-public struct HermexTaskDTO: Codable, Identifiable, Equatable, Sendable {
+public struct HermexTaskDTO: HermexStateCodable, Identifiable, Equatable, Sendable {
     public var id: String
     public var title: String?
     public var status: String?
@@ -476,7 +484,7 @@ public struct HermexTaskDTO: Codable, Identifiable, Equatable, Sendable {
     }
 }
 
-public struct HermexSkillDTO: Codable, Identifiable, Equatable, Sendable {
+public struct HermexSkillDTO: HermexStateCodable, Identifiable, Equatable, Sendable {
     public var id: String { name }
     public var name: String
     public var enabled: Bool?
@@ -489,7 +497,7 @@ public struct HermexSkillDTO: Codable, Identifiable, Equatable, Sendable {
     }
 }
 
-public struct HermexMemorySectionDTO: Codable, Identifiable, Equatable, Sendable {
+public struct HermexMemorySectionDTO: HermexStateCodable, Identifiable, Equatable, Sendable {
     public var id: String { section }
     public var section: String
     public var content: String
@@ -500,7 +508,7 @@ public struct HermexMemorySectionDTO: Codable, Identifiable, Equatable, Sendable
     }
 }
 
-public struct HermexSettingsState: Codable, Equatable, Sendable {
+public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
     public var activeServer: HermexServerIdentity?
     public var servers: [HermexServerIdentity]
     public var appTheme: String
