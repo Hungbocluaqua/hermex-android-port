@@ -43,6 +43,12 @@ while IFS= read -r -d '' build_file; do
     fi
     echo "Patched Android library plugin into $build_file"
   fi
+
+  if grep -q '^android[[:space:]]*{' "$build_file" &&
+    ! grep -q 'compileSdk[[:space:]]*=' "$build_file"; then
+    perl -0pi -e 's/(android[[:space:]]*\{\n)/$1    compileSdk = libs.versions.android.sdk.compile.get().toInt()\n    compileOptions {\n        sourceCompatibility = JavaVersion.toVersion(libs.versions.jvm.get())\n        targetCompatibility = JavaVersion.toVersion(libs.versions.jvm.get())\n    }\n    defaultConfig {\n        minSdk = libs.versions.android.sdk.min.get().toInt()\n    }\n/s' "$build_file"
+    echo "Patched Android SDK settings into $build_file"
+  fi
 done < <(find "$APP_DIR/.build/plugins/outputs" -name 'build.gradle.kts' -print0)
 
 GRADLE_SETTINGS=""
