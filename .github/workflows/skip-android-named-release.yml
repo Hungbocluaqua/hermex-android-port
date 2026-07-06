@@ -55,14 +55,6 @@ jobs:
             exit 1
           fi
 
-      - name: Check Skip toolchain
-        run: |
-          set -euo pipefail
-          if ! skip checkup; then
-            cat /tmp/skip-checkup-*.txt 2>/dev/null || true
-            echo "skip checkup reported a hosted-runner diagnostic issue; continuing to the export gate."
-          fi
-
       - name: Build shared Swift package
         run: |
           set -euo pipefail
@@ -99,7 +91,6 @@ jobs:
 
           Build gates:
           - shared Swift package build and tests with `SKIP_ZERO=1`
-          - Skip toolchain check
           - generated Skip app shell build
           - `skip export --debug` Android export
 
