@@ -38,6 +38,9 @@ jobs:
       - name: Install visual comparison dependencies
         run: python3 -m pip install -r ci/visual-goldens/requirements.txt
 
+      - name: Validate shared visual fixture catalog
+        run: python3 ci/visual-goldens/validate_fixture_catalog.py
+
       - name: Download iOS screenshot artifact
         env:
           GH_TOKEN: ${{ github.token }}

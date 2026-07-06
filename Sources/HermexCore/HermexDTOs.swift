@@ -217,6 +217,14 @@ public struct HermexAttachmentDTO: Codable, Identifiable, Equatable, Sendable {
     public var size: Int?
     public var isImage: Bool?
 
+    public init(name: String? = nil, path: String? = nil, mime: String? = nil, size: Int? = nil, isImage: Bool? = nil) {
+        self.name = name
+        self.path = path
+        self.mime = mime
+        self.size = size
+        self.isImage = isImage
+    }
+
     enum CodingKeys: String, CodingKey {
         case name
         case path

@@ -170,6 +170,9 @@ jobs:
       - name: Self-test screenshot inventory validation
         run: python3 ci/visual-goldens/validate_screenshot_inventory.py --self-test
 
+      - name: Validate shared visual fixture catalog
+        run: python3 ci/visual-goldens/validate_fixture_catalog.py
+
   endpoint-parity:
     name: Endpoint Parity
     runs-on: ubuntu-latest

@@ -33,6 +33,7 @@ def main() -> int:
     ok &= require((ROOT / "ci" / "prepare_skip_hermex_app.py").is_file(), "Skip Android app preparation script is missing.")
     ok &= require((ROOT / "ci" / "skip_release_readiness_audit.py").is_file(), "Skip Android release readiness audit is missing.")
     ok &= require((ROOT / "ci" / "visual-goldens" / "validate_screenshot_inventory.py").is_file(), "Screenshot inventory validator is missing.")
+    ok &= require((ROOT / "ci" / "visual-goldens" / "validate_fixture_catalog.py").is_file(), "Visual fixture catalog validator is missing.")
     ok &= require((ROOT / "ci" / "skip-hermex-app" / "HermexSkipApp.swift").is_file(), "Skip Android app Swift launcher template is missing.")
     ok &= require((ROOT / ".github" / "workflows" / "skip-android-named-release.yml").is_file(), "Skip Android release workflow is missing.")
     ok &= require((ROOT / ".github" / "workflows" / "visual-golden-compare.yml").is_file(), "Visual Golden Compare workflow is missing.")
@@ -77,6 +78,13 @@ def main() -> int:
     ok &= require("isFreshInstallOnboarding" in store, "HermexAppStore must keep preview sessions out of fresh onboarding.")
     ok &= require("shouldSeedPreviewData" in store, "HermexAppStore demo data must be gated behind non-fresh-run state.")
 
+    fixtures = (ROOT / "Sources" / "HermexCore" / "HermexVisualFixtures.swift").read_text(encoding="utf-8")
+    ok &= require("HermexVisualFixtureCatalog" in fixtures, "HermexCore must expose a typed visual fixture catalog.")
+    ok &= require("chat-keyboard-open" in fixtures and "prefersKeyboardVisible = true" in fixtures, "Visual fixtures must include keyboard-open chat state.")
+    ok &= require("chat-slash-menu" in fixtures and "overlay = .slashMenu" in fixtures, "Visual fixtures must include slash menu chat state.")
+    ok &= require("chat-attachments" in fixtures and "overlay = .attachmentPicker" in fixtures, "Visual fixtures must include attachment composer state.")
+    ok &= require("chat-approval" in fixtures and "pendingApproval" in fixtures, "Visual fixtures must include approval prompt state.")
+
     onboarding_screen = (ROOT / "Sources" / "HermexUI" / "HermexOnboardingScreen.swift").read_text(encoding="utf-8")
     ok &= require(
         "testOnboardingConnectionDraft" in onboarding_screen and "connectOnboardingDraft" in onboarding_screen,
@@ -93,6 +101,7 @@ def main() -> int:
 
     visual_workflow = (ROOT / ".github" / "workflows" / "visual-golden-compare.yml").read_text(encoding="utf-8")
     ok &= require("validate_screenshot_inventory.py" in visual_workflow, "Visual Golden Compare must validate screenshot inventory coverage.")
+    ok &= require("validate_fixture_catalog.py" in visual_workflow, "Visual Golden Compare must validate shared fixture coverage.")
     ok &= require("compare_screenshots.py" in visual_workflow, "Visual Golden Compare must run the screenshot pixel diff.")
 
     parity_workflow = (ROOT / ".github" / "workflows" / "skip-android-parity.yml").read_text(encoding="utf-8")
