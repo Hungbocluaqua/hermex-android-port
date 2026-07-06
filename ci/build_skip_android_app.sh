@@ -26,12 +26,29 @@ python3 "$ROOT/ci/prepare_skip_hermex_app.py" \
   cd "$APP_DIR"
   swift package resolve
   swift build --target "$MODULE_NAME"
-  skip export --debug --dir "$DIST_DIR"
 )
+
+GRADLE_DIR="$(find "$APP_DIR/.build/plugins/outputs" -path "*/$MODULE_NAME/destination/skipstone/settings.gradle.kts" -print -quit)"
+if [[ -z "$GRADLE_DIR" ]]; then
+  echo "Could not locate generated Skip Gradle project for $MODULE_NAME" >&2
+  exit 1
+fi
+GRADLE_DIR="$(dirname "$GRADLE_DIR")"
+
+(
+  cd "$GRADLE_DIR"
+  chmod +x ./gradlew
+  ./gradlew --no-daemon assembleDebug
+)
+
+find "$GRADLE_DIR" -type f \( -name '*.apk' -o -name '*.aab' \) -print0 |
+  while IFS= read -r -d '' artifact; do
+    cp "$artifact" "$DIST_DIR/$(basename "$artifact")"
+  done
 
 mapfile -t artifacts < <(find "$DIST_DIR" -type f \( -name '*.apk' -o -name '*.aab' \) | sort)
 if [[ "${#artifacts[@]}" -eq 0 ]]; then
-  echo "Skip export did not produce an APK or AAB under $DIST_DIR" >&2
+  echo "The generated Skip Gradle project did not produce an APK or AAB under $DIST_DIR" >&2
   exit 1
 fi
 

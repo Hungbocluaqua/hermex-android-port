@@ -89,12 +89,12 @@ jobs:
           cat > release-notes.md <<'EOF'
           Hermex Skip Android release.
 
-          This release contains a runnable Android artifact exported from a generated Skip transpiled-app shell that launches the shared SwiftUI `HermexStoreRootScreen`.
+          This release contains a runnable Android artifact built from a generated Skip transpiled-app shell that launches the shared SwiftUI `HermexStoreRootScreen`.
 
           Build gates:
           - shared Swift package build and tests with `SKIP_ZERO=1`
-          - generated Skip app shell build
-          - `skip export --debug` Android export
+          - generated Skip app shell build through `skipstone`
+          - generated Skip Android Gradle `assembleDebug`
 
           The APK is debug-signed for direct installation and smoke testing.
           EOF

@@ -61,7 +61,8 @@ def main() -> int:
 
     export_script = (ROOT / "ci" / "build_skip_android_app.sh").read_text(encoding="utf-8")
     ok &= require("skip init --transpiled-app" in export_script, "Skip app export must generate a transpiled app shell.")
-    ok &= require("skip export --debug" in export_script, "Skip app export must produce Android artifacts with skip export.")
+    ok &= require("swift build --target" in export_script, "Skip app export must run the Skip-enabled Swift build.")
+    ok &= require("assembleDebug" in export_script, "Skip app export must build the generated Android Gradle project.")
 
     workflow = (ROOT / ".github" / "workflows" / "skip-android-named-release.yml").read_text(encoding="utf-8")
     ok &= require("ci/build_skip_android_app.sh" in workflow, "Skip Android release workflow must call the app export script.")
