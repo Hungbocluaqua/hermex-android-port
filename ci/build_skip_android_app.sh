@@ -13,6 +13,10 @@ APP_PROJECT_NAME="$(basename "$APP_DIR")"
 rm -rf "$APP_DIR" "$DIST_DIR"
 mkdir -p "$APP_PARENT" "$DIST_DIR"
 
+if [[ "${HERMEX_ALLOW_INCOMPLETE_SKIP_APK:-0}" != "1" ]]; then
+  python3 "$ROOT/ci/skip_release_readiness_audit.py"
+fi
+
 (
   cd "$APP_PARENT"
   skip init --transpiled-app --appid="$APP_ID" --version="$APP_VERSION" "$APP_PROJECT_NAME" "$MODULE_NAME"

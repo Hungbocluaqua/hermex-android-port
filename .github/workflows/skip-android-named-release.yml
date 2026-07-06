@@ -16,6 +16,14 @@ on:
         required: true
         default: "0.3.1"
         type: string
+      confirm_visual_parity:
+        description: "Type visual-parity-passed after iOS/Android screenshot goldens pass"
+        required: true
+        type: string
+      confirm_live_networking:
+        description: "Type live-networking-passed after real server auth/session/chat smoke passes"
+        required: true
+        type: string
       prerelease:
         description: "Publish as a prerelease"
         required: true
@@ -30,10 +38,32 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  release-guard:
+    name: Release Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Require visual and live-networking confirmations
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirm_visual_parity }}" != "visual-parity-passed" ]; then
+            echo "Refusing to publish: run and pass the iOS/Android visual-golden screenshot diff first."
+            exit 1
+          fi
+          if [ "${{ inputs.confirm_live_networking }}" != "live-networking-passed" ]; then
+            echo "Refusing to publish: smoke test real server auth, session loading, chat send/stream, and reconnect first."
+            exit 1
+          fi
+          python3 ci/skip_release_readiness_audit.py
+
   skip-android-release:
     name: Build And Release Skip Android App
     runs-on: macos-26
     timeout-minutes: 90
+    needs: release-guard
     env:
       HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
     steps:
@@ -89,14 +119,17 @@ jobs:
           cat > release-notes.md <<'EOF'
           Hermex Skip Android release.
 
-          This release contains a runnable Android artifact built from a generated Skip transpiled-app shell that launches the shared SwiftUI `HermexStoreRootScreen`.
+          This release contains an Android artifact built from a generated Skip transpiled-app shell that launches the shared SwiftUI `HermexStoreRootScreen`.
 
-          This build starts from the real onboarding route instead of seeded preview sessions, and stamps the Android launcher label/icon as Hermex.
+          This build is allowed to publish only after the live networking smoke test and iOS/Android visual-golden screenshot diff have passed.
 
           Build gates:
           - shared Swift package build and tests with `SKIP_ZERO=1`
+          - Skip release readiness audit
           - generated Skip app shell build through `skipstone`
           - generated Skip Android Gradle `assembleDebug`
+          - manual confirmation of real-server auth/session/chat networking
+          - manual confirmation of visual-golden parity
 
           The APK is debug-signed for direct installation and smoke testing.
           EOF
