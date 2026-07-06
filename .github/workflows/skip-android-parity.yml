@@ -108,6 +108,47 @@ jobs:
           echo "Hermex shared Swift package is wired for Skip."
           echo "Android emulator screenshot capture is still gated by visual-golden implementation."
 
+  skip-generated-apk-smoke:
+    name: Skip Generated APK Smoke
+    runs-on: macos-26
+    timeout-minutes: 90
+    if: github.event_name == 'workflow_dispatch'
+    env:
+      HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
+      HERMEX_ALLOW_INCOMPLETE_SKIP_APK: "1"
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Install Skip
+        run: |
+          set -euo pipefail
+          brew tap skiptools/skip || true
+          brew trust skiptools/skip
+          brew install skiptools/skip/skip || brew upgrade skiptools/skip/skip
+
+      - name: Install Android SDK for Skip
+        run: |
+          set -euo pipefail
+          if ! skip android sdk install; then
+            cat /tmp/skip-install-*.txt 2>/dev/null || true
+            exit 1
+          fi
+
+      - name: Build incomplete generated Skip APK for inspection
+        run: |
+          set -euo pipefail
+          bash ci/build_skip_android_app.sh "$RUNNER_TEMP/hermex-skip-smoke"
+
+      - name: Upload generated Skip APK smoke artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: hermex-skip-generated-apk-smoke
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/hermex-skip-smoke/*.apk
+            ${{ runner.temp }}/hermex-skip-smoke/*.aab
+
   visual-golden-manifest:
     name: Visual Golden Harness
     runs-on: ubuntu-latest

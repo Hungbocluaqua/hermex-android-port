@@ -74,6 +74,11 @@ def main() -> int:
     ok &= require("confirm_live_networking" in workflow and "live-networking-passed" in workflow, "Skip Android release workflow must require live networking confirmation.")
     ok &= require("ci/skip_release_readiness_audit.py" in workflow, "Skip Android release workflow must run release readiness checks.")
 
+    parity_workflow = (ROOT / ".github" / "workflows" / "skip-android-parity.yml").read_text(encoding="utf-8")
+    ok &= require("Skip Generated APK Smoke" in parity_workflow, "Skip parity workflow must expose a generated APK smoke job.")
+    ok &= require("HERMEX_ALLOW_INCOMPLETE_SKIP_APK" in parity_workflow, "Skip APK smoke job must explicitly mark generated artifacts incomplete.")
+    ok &= require("actions/upload-artifact" in parity_workflow, "Skip APK smoke job must upload generated artifacts for inspection.")
+
     if ok:
         print("Skip package audit OK")
     return 0 if ok else 1
