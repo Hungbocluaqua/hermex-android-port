@@ -145,7 +145,12 @@ jobs:
           PRERELEASE_FLAG: ${{ inputs.prerelease && '--prerelease' || '' }}
         run: |
           set -euo pipefail
-          gh release create "${{ inputs.tag_name }}" dist/* \
+          mapfile -t release_assets < <(find dist -type f | sort)
+          if [ "${#release_assets[@]}" -eq 0 ]; then
+            echo "No release assets found in dist"
+            exit 1
+          fi
+          gh release create "${{ inputs.tag_name }}" "${release_assets[@]}" \
             --repo "${{ github.repository }}" \
             --title "${{ inputs.release_name }}" \
             --notes-file release-notes.md \
