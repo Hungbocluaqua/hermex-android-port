@@ -556,7 +556,7 @@ public struct HermexAPIClient: @unchecked Sendable {
         }
 
         guard (200..<300).contains(response.statusCode) else {
-            throw HermexAPIError.http(statusCode: response.statusCode, body: String(data: responseData, encoding: .utf8))
+            throw HermexAPIError.http(statusCode: response.statusCode, body: String(data: responseData, encoding: String.Encoding.utf8))
         }
 
         return try decode(HermexTranscribeResponse.self, from: responseData)
@@ -607,7 +607,7 @@ public struct HermexAPIClient: @unchecked Sendable {
         }
 
         guard (200..<300).contains(response.statusCode) else {
-            throw HermexAPIError.http(statusCode: response.statusCode, body: String(data: data, encoding: .utf8))
+            throw HermexAPIError.http(statusCode: response.statusCode, body: String(data: data, encoding: String.Encoding.utf8))
         }
 
         return data
@@ -635,7 +635,7 @@ public struct HermexAPIClient: @unchecked Sendable {
         }
 
         guard (200..<300).contains(response.statusCode) else {
-            throw HermexAPIError.http(statusCode: response.statusCode, body: String(data: data, encoding: .utf8))
+            throw HermexAPIError.http(statusCode: response.statusCode, body: String(data: data, encoding: String.Encoding.utf8))
         }
 
         return data
@@ -719,6 +719,6 @@ private extension HermexJSONValue {
     }
 
     static func strings(_ values: [String]) -> HermexJSONValue {
-        .array(values.map { .string($0) })
+        .array(values.map { HermexJSONValue.string($0) })
     }
 }
