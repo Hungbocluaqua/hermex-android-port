@@ -900,7 +900,7 @@ public final class HermexAppStore {
 
     private func parsedCustomHeaders() -> [HermexCustomHeader] {
         onboarding.customHeaderText
-            .split(whereSeparator: \.isNewline)
+            .split(separator: "\n")
             .compactMap { rawLine -> HermexCustomHeader? in
                 let pieces = rawLine.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
                 guard pieces.count == 2 else { return nil }
