@@ -92,13 +92,18 @@ jobs:
         run: |
           set -euo pipefail
           sdkmanager --install "platform-tools" "emulator" "platforms;android-35"
+          set +o pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          set -o pipefail
           if [[ "$(uname -m)" == "arm64" ]]; then
             system_image="system-images;android-35;google_apis;arm64-v8a"
           else
             system_image="system-images;android-35;google_apis;x86_64"
           fi
+          set +o pipefail
+          yes | sdkmanager --install "$system_image"
+          set -o pipefail
           sdkmanager --install "$system_image"
-          yes | sdkmanager --licenses >/dev/null || true
           echo "no" | avdmanager create avd \
             --force \
             --name hermex-visual \

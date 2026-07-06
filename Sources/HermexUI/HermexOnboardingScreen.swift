@@ -69,6 +69,18 @@ public struct HermexOnboardingScreen: View {
                 customHeaderText = newValue
             }
         }
+        .onChange(of: serverURLString) { _, newValue in
+            onEvent(.updateOnboardingServerURL(newValue))
+        }
+        .onChange(of: displayName) { _, newValue in
+            onEvent(.updateOnboardingDisplayName(newValue))
+        }
+        .onChange(of: password) { _, newValue in
+            onEvent(.updateOnboardingPassword(newValue))
+        }
+        .onChange(of: customHeaderText) { _, newValue in
+            onEvent(.updateOnboardingCustomHeaders(newValue))
+        }
     }
 
     @ViewBuilder
@@ -297,22 +309,28 @@ public struct HermexOnboardingScreen: View {
         HermexGlassPanel {
             VStack(spacing: 12) {
                 onboardingField(title: "Server URL") {
-                    TextField("http://100.64.0.1:8787", text: serverURLBinding)
+                    TextField("http://100.64.0.1:8787", text: $serverURLString)
                         .font(.body.weight(.medium))
                         .foregroundStyle(Color.white)
+                        .submitLabel(.next)
                 }
 
                 onboardingField(title: "Name") {
-                    TextField("Hermex", text: displayNameBinding)
+                    TextField("Hermex", text: $displayName)
                         .font(.body.weight(.medium))
                         .foregroundStyle(Color.white)
+                        .submitLabel(.next)
                 }
 
                 onboardingField(title: "Password") {
-                    SecureField("Server password", text: passwordBinding)
+                    SecureField("Server password", text: $password)
                         .font(.body.weight(.medium))
                         .foregroundStyle(Color.white)
                         .textContentType(.password)
+                        .submitLabel(.done)
+                        .onSubmit {
+                            submitConnection()
+                        }
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -320,7 +338,7 @@ public struct HermexOnboardingScreen: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Color.white.opacity(0.5))
 
-                    TextEditor(text: customHeaderBinding)
+                    TextEditor(text: $customHeaderText)
                         .font(.footnote.monospaced())
                         .foregroundStyle(Color.white)
                         .frame(minHeight: 74)
@@ -403,50 +421,9 @@ public struct HermexOnboardingScreen: View {
                 isPrimary: true,
                 isDisabled: onboarding.isTestingConnection || onboarding.isSigningIn || !canSubmitConnection
             ) {
-                onEvent(.connectOnboardingDraft(
-                    serverURLString: serverURLString,
-                    displayName: displayName,
-                    password: password,
-                    customHeaderText: customHeaderText
-                ))
+                submitConnection()
             }
         }
-    }
-
-    private var serverURLBinding: Binding<String> {
-        Binding(
-            get: { serverURLString },
-            set: { value in
-                serverURLString = value
-            }
-        )
-    }
-
-    private var displayNameBinding: Binding<String> {
-        Binding(
-            get: { displayName },
-            set: { value in
-                displayName = value
-            }
-        )
-    }
-
-    private var passwordBinding: Binding<String> {
-        Binding(
-            get: { password },
-            set: { value in
-                password = value
-            }
-        )
-    }
-
-    private var customHeaderBinding: Binding<String> {
-        Binding(
-            get: { customHeaderText },
-            set: { value in
-                customHeaderText = value
-            }
-        )
     }
 
     private func connectionButton(
@@ -603,13 +580,18 @@ public struct HermexOnboardingScreen: View {
         if currentPage < Self.connectPageIndex {
             currentPage += 1
         } else {
-            onEvent(.connectOnboardingDraft(
-                serverURLString: serverURLString,
-                displayName: displayName,
-                password: password,
-                customHeaderText: customHeaderText
-            ))
+            submitConnection()
         }
+    }
+
+    private func submitConnection() {
+        guard canSubmitConnection else { return }
+        onEvent(.connectOnboardingDraft(
+            serverURLString: serverURLString,
+            displayName: displayName,
+            password: password,
+            customHeaderText: customHeaderText
+        ))
     }
 
     private var primaryButtonTitle: String {

@@ -130,6 +130,9 @@ def main() -> int:
     ok &= require("ci/capture_skip_android_fixture.sh" in android_visual_workflow, "Android visual workflow must call the fixture capture script.")
     ok &= require("workflow_dispatch" in android_visual_workflow and "screen:" in android_visual_workflow, "Android visual workflow must expose manual fixture selection.")
     ok &= require("emulator" in android_visual_workflow and "adb wait-for-device" in android_visual_workflow, "Android visual workflow must boot an emulator.")
+    ok &= require("yes | sdkmanager --licenses" in android_visual_workflow, "Android visual workflow must accept SDK licenses before installing system images.")
+    ok &= require("yes | sdkmanager --install \"$system_image\"" in android_visual_workflow, "Android visual workflow must install emulator images non-interactively.")
+    ok &= require("for attempt in 1 2 3" in android_visual_workflow and "install_skip()" in android_visual_workflow, "Android visual workflow must retry flaky Skip installs.")
     ok &= require("actions/upload-artifact" in android_visual_workflow, "Android visual workflow must upload screenshot artifacts.")
 
     parity_workflow = (ROOT / ".github" / "workflows" / "skip-android-parity.yml").read_text(encoding="utf-8")
@@ -137,6 +140,7 @@ def main() -> int:
     ok &= require("HERMEX_ALLOW_INCOMPLETE_SKIP_APK" in parity_workflow, "Skip APK smoke job must explicitly mark generated artifacts incomplete.")
     ok &= require("actions/upload-artifact" in parity_workflow, "Skip APK smoke job must upload generated artifacts for inspection.")
     ok &= require("capture_skip_android_fixture.sh --self-test" in parity_workflow, "Skip parity workflow must self-test Android visual capture wiring.")
+    ok &= require("for attempt in 1 2 3" in parity_workflow and "install_skip()" in parity_workflow, "Skip APK smoke job must retry flaky Skip installs.")
 
     if ok:
         print("Skip package audit OK")

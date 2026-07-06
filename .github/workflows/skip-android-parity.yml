@@ -131,7 +131,17 @@ jobs:
           set -euo pipefail
           brew tap skiptools/skip || true
           brew trust skiptools/skip
-          brew install skiptools/skip/skip || brew upgrade skiptools/skip/skip
+          install_skip() {
+            brew install skiptools/skip/skip || brew upgrade skiptools/skip/skip
+          }
+          for attempt in 1 2 3; do
+            if install_skip; then
+              exit 0
+            fi
+            echo "Skip install attempt $attempt failed; retrying after a short delay."
+            sleep $((attempt * 20))
+          done
+          install_skip
 
       - name: Install Android SDK for Skip
         run: |
