@@ -1,0 +1,145 @@
+name: Android Named Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Git tag to create, for example android-v0.2.0"
+        required: true
+        type: string
+      release_name:
+        description: "Human-readable release name"
+        required: true
+        type: string
+      prerelease:
+        description: "Publish as a prerelease"
+        required: true
+        default: true
+        type: boolean
+      confirm_visual_parity:
+        description: "Type visual-parity-passed after the iOS/Android golden screenshots pass"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-named-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-guard:
+    name: Release Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require visual parity confirmation
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirm_visual_parity }}" != "visual-parity-passed" ]; then
+            echo "Refusing to publish: run the Skip visual parity workflow first, then enter visual-parity-passed."
+            exit 1
+          fi
+
+  shared-swift-and-skip:
+    name: Shared Swift And Skip
+    runs-on: macos-26
+    timeout-minutes: 45
+    needs: release-guard
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Build shared Swift package without Skip
+        run: |
+          set -euo pipefail
+          python3 ci/shared_ui_parity_audit.py
+          export SKIP_ZERO=1
+          swift build
+          swift test
+
+      - name: Install Skip
+        run: |
+          set -euo pipefail
+          brew tap skiptools/skip || true
+          brew install skip || brew upgrade skip
+
+      - name: Check Skip toolchain
+        run: skip checkup
+
+      - name: Build and test Skip-enabled package
+        run: |
+          set -euo pipefail
+          swift package resolve
+          swift build --target HermexUI
+          swift test
+
+  android-artifacts:
+    name: Android Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: release-guard
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Test and build Android artifacts
+        working-directory: android
+        run: ./gradlew testDebugUnitTest assembleDebug bundleRelease
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: hermex-android-artifacts
+          if-no-files-found: error
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/bundle/release/app-release.aab
+
+  github-release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - shared-swift-and-skip
+      - android-artifacts
+    steps:
+      - name: Download Android artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: hermex-android-artifacts
+          path: dist
+
+      - name: Create release notes
+        run: |
+          set -euo pipefail
+          cat > release-notes.md <<'EOF'
+          Hermex Android release artifact.
+
+          This release was gated by:
+          - shared Swift package build and tests
+          - Skip-enabled shared package build and tests
+          - Android unit tests, debug APK build, and release AAB build
+          - manual confirmation that iOS/Android visual parity goldens passed
+          EOF
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE_FLAG: ${{ inputs.prerelease && '--prerelease' || '' }}
+        run: |
+          set -euo pipefail
+          gh release create "${{ inputs.tag_name }}" dist/* \
+            --title "${{ inputs.release_name }}" \
+            --notes-file release-notes.md \
+            $PRERELEASE_FLAG

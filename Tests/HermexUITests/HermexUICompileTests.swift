@@ -1,0 +1,116 @@
+import XCTest
+import SwiftUI
+import HermexCore
+@testable import HermexUI
+
+final class HermexUICompileTests: XCTestCase {
+    func testRootCanInstantiateEveryTopLevelRoute() {
+        let routes: [HermexRoute] = [
+            .onboarding,
+            .sessions,
+            .chat,
+            .settings,
+            .workspace,
+            .git,
+            .panels
+        ]
+
+        for route in routes {
+            let view = HermexRootScreen(appState: HermexAppState(route: route))
+            XCTAssertTrue(String(describing: type(of: view)).contains("HermexRootScreen"))
+        }
+    }
+
+    @MainActor
+    func testStoreRootCanInstantiateWithSharedStore() {
+        let store = HermexAppStore(environment: HermexAppEnvironment(
+            testServerConnection: { _ in .object(["ok": .bool(true)]) },
+            loginToServer: { _, _ in .object(["ok": .bool(true)]) },
+            loadSessions: { _, _ in HermexSessionsResponse() },
+            loadSession: { _ in HermexSessionResponse() },
+            startChat: { _, _, _, _, _, _, _ in .object(["ok": .bool(true)]) },
+            cancelStream: { _ in .object(["ok": .bool(true)]) },
+            respondApproval: { _, _, _ in .object(["ok": .bool(true)]) },
+            respondClarification: { _, _, _ in .object(["ok": .bool(true)]) },
+            undoSession: { _ in .object(["ok": .bool(true)]) },
+            retrySession: { _ in .object(["ok": .bool(true)]) },
+            compressSession: { _, _ in .object(["ok": .bool(true)]) },
+            loadModels: { HermexModelsResponse() },
+            loadProfiles: { HermexProfilesResponse() },
+            loadWorkspaces: { HermexWorkspacesResponse() },
+            loadReasoning: { _, _ in HermexReasoningResponse() },
+            saveReasoningEffort: { _, _, _ in .object(["ok": .bool(true)]) },
+            loadDirectory: { _, _ in .object([:]) },
+            loadFile: { _, _ in .object([:]) },
+            loadGitStatus: { _ in .object([:]) },
+            performGitAction: { _, _ in .object(["ok": .bool(true)]) },
+            performGitCommand: { _, _ in .object(["ok": .bool(true)]) },
+            loadTasks: { .object([:]) },
+            loadSkills: { .object([:]) },
+            loadMemory: { .object([:]) },
+            loadInsights: { _ in .object([:]) },
+            logout: { .object(["ok": .bool(true)]) }
+        ))
+        let view = HermexStoreRootScreen(store: store)
+
+        XCTAssertTrue(String(describing: type(of: view)).contains("HermexStoreRootScreen"))
+    }
+
+    func testSharedLayoutTokensMatchIOSContracts() {
+        XCTAssertEqual(HermexLayoutContract.chatToolbarActionSlotSize, 44)
+        XCTAssertEqual(HermexLayoutContract.hermexLogoAspectRatio, 643 / 185)
+        XCTAssertEqual(HermexLayoutContract.sessionListLogoWidth, 172)
+        XCTAssertEqual(HermexLayoutContract.topChromeCircleSize, 58)
+        XCTAssertEqual(HermexLayoutContract.topChromeClusterSpacing, 0)
+        XCTAssertEqual(HermexLayoutContract.sessionListUtilityRailWidth, 58)
+        XCTAssertEqual(HermexLayoutContract.sessionListUtilityIconSize, 44)
+        XCTAssertEqual(HermexLayoutContract.sessionListSelectorHeight, 68)
+        XCTAssertEqual(HermexLayoutContract.sessionListRowActionSize, 54)
+        XCTAssertEqual(HermexLayoutContract.chatTopBarHeight, 76)
+        XCTAssertEqual(HermexLayoutContract.chatTranscriptMessageSpacing, 10)
+        XCTAssertEqual(HermexLayoutContract.composerCornerRadiusCollapsed, 22)
+        XCTAssertEqual(HermexLayoutContract.composerCornerRadiusExpanded, 26)
+        XCTAssertEqual(HermexLayoutContract.composerActionButtonSize, 30)
+        XCTAssertEqual(HermexLayoutContract.composerPlusButtonSize, 28)
+        XCTAssertEqual(HermexLayoutContract.composerModelControlMaxWidth, 132)
+        XCTAssertEqual(HermexLayoutContract.composerReasoningControlWidth, 104)
+        XCTAssertEqual(HermexLayoutContract.composerAttachmentStripHeight, 32)
+        XCTAssertEqual(HermexLayoutContract.pendingPromptCornerRadius, 18)
+        XCTAssertEqual(HermexLayoutContract.sessionRowMinimumHeight, 46)
+        XCTAssertEqual(HermexLayoutContract.sessionRowSupplementalMinimumHeight, 54)
+        XCTAssertEqual(HermexLayoutContract.sessionListFloatingButtonShadowRadius, 18)
+        XCTAssertEqual(HermexLayoutContract.pressedScale, 0.975)
+    }
+
+    func testPlatformHandledUIEventsStayOutOfSharedStoreActions() {
+        XCTAssertNil(HermexUIEvent.attach.appAction)
+        XCTAssertNil(HermexUIEvent.startVoice.appAction)
+        XCTAssertNil(HermexUIEvent.stopVoice.appAction)
+        XCTAssertEqual(
+            HermexUIEvent.chooseModel(HermexModelOption(id: "m", provider: "p")).appAction,
+            .selectModel(HermexModelOption(id: "m", provider: "p"))
+        )
+        XCTAssertEqual(
+            HermexUIEvent.chooseWorkspace(HermexWorkspaceRootDTO(path: "/repo")).appAction,
+            .selectWorkspace(HermexWorkspaceRootDTO(path: "/repo"))
+        )
+        XCTAssertEqual(
+            HermexUIEvent.chooseProfile(HermexProfileOption(name: "default")).appAction,
+            .selectProfile(HermexProfileOption(name: "default"))
+        )
+        XCTAssertEqual(HermexUIEvent.chooseReasoningEffort("high").appAction, .selectReasoningEffort("high"))
+        XCTAssertEqual(HermexUIEvent.updateOnboardingServerURL("https://example.test").appAction, .updateOnboardingServerURL("https://example.test"))
+        XCTAssertEqual(HermexUIEvent.updateOnboardingPassword("secret").appAction, .updateOnboardingPassword("secret"))
+        XCTAssertEqual(HermexUIEvent.testOnboardingConnection.appAction, .testOnboardingConnection)
+        XCTAssertEqual(HermexUIEvent.connectOnboarding.appAction, .connectOnboarding)
+        XCTAssertEqual(HermexUIEvent.gitCommand(.stage(path: "README.md")).appAction, .gitCommand(.stage(path: "README.md")))
+        XCTAssertEqual(HermexUIEvent.updateGitCommitMessage("Update").appAction, .updateGitCommitMessage("Update"))
+        XCTAssertEqual(
+            HermexUIEvent.openWorkspaceEntry(HermexWorkspaceEntryDTO(name: "README.md", path: "/repo/README.md", isDirectory: false)).appAction,
+            .openWorkspaceEntry(HermexWorkspaceEntryDTO(name: "README.md", path: "/repo/README.md", isDirectory: false))
+        )
+        XCTAssertEqual(HermexUIEvent.undo.appAction, .undo)
+        XCTAssertEqual(HermexUIEvent.retry.appAction, .retry)
+        XCTAssertEqual(HermexUIEvent.compress.appAction, .compress)
+    }
+}

@@ -1,8 +1,12 @@
 # Hermex Android
 
-Native Android port of Hermex. This project intentionally mirrors the iOS app's
-contract-first shape: the server remains `hermes-webui`, and Android talks to the
-existing REST + SSE API.
+Native Android fallback port of Hermex. This project intentionally mirrors the
+iOS app's contract-first shape: the server remains `hermes-webui`, and Android
+talks to the existing REST + SSE API.
+
+The pixel-identical release path is moving to the Skip-first shared SwiftUI
+package at the repo root. Keep this Kotlin/Compose app buildable as a safety
+net until the Skip-generated Android app passes the iOS golden screenshot gate.
 
 ## Build
 

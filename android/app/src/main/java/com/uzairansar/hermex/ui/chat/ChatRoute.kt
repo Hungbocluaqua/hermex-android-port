@@ -34,11 +34,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -85,7 +88,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -266,6 +271,7 @@ fun ChatRoute(
         }
     }
     val context = LocalContext.current
+    val density = LocalDensity.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var appIsActive by remember(lifecycleOwner) {
         mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
@@ -324,6 +330,10 @@ fun ChatRoute(
     var editMessageDraft by remember { mutableStateOf("") }
     var turnDiffPresentation by remember { mutableStateOf<TurnDiffPresentation?>(null) }
     var autoVoiceConsumed by remember(sessionId, autoStartVoice) { mutableStateOf(false) }
+    var composerHeight by remember { mutableStateOf(0.dp) }
+    val imeBottomInset = with(density) { WindowInsets.ime.getBottom(this).toDp() }
+    val navigationBottomInset = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
+    val transcriptBottomInset = composerHeight + maxOf(imeBottomInset, navigationBottomInset) + 28.dp
 
     LaunchedEffect(state.showsReasoningControl) {
         if (!state.showsReasoningControl) {
@@ -473,7 +483,11 @@ fun ChatRoute(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        Column(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+        ) {
             ChatTopBar(
                 title = state.headerTitle,
                 subtitle = state.headerSubtitle,
@@ -536,7 +550,7 @@ fun ChatRoute(
                         start = 14.dp,
                         end = 14.dp,
                         top = 8.dp,
-                        bottom = 244.dp,
+                        bottom = transcriptBottomInset,
                     ),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -674,6 +688,11 @@ fun ChatRoute(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .onSizeChanged { size ->
+                    composerHeight = with(density) { size.height.toDp() }
+                }
+                .imePadding()
+                .navigationBarsPadding()
                 .background(
                     Brush.verticalGradient(
                         listOf(

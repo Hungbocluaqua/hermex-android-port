@@ -1,0 +1,104 @@
+{
+  "required_feature_areas": [
+    "AppIntents",
+    "Auth",
+    "Config",
+    "Features/Chat",
+    "Features/Insights",
+    "Features/Memory",
+    "Features/Onboarding",
+    "Features/SessionList",
+    "Features/Settings",
+    "Features/Share",
+    "Features/Shared",
+    "Features/Skills",
+    "Features/Tasks",
+    "Features/Workspace",
+    "LiveActivities",
+    "Models",
+    "Networking",
+    "Persistence"
+  ],
+  "migration_targets": {
+    "HermexCore": [
+      "Auth",
+      "Config",
+      "Models",
+      "Networking",
+      "Persistence"
+    ],
+    "HermexPlatform": [
+      "AppIntents",
+      "Features/Share",
+      "LiveActivities"
+    ],
+    "HermexUI": [
+      "Features/Chat",
+      "Features/Insights",
+      "Features/Memory",
+      "Features/Onboarding",
+      "Features/SessionList",
+      "Features/Settings",
+      "Features/Shared",
+      "Features/Skills",
+      "Features/Tasks",
+      "Features/Workspace"
+    ]
+  },
+  "status": {
+    "AppIntents": "platform-shim-started",
+    "Auth": "core-contract-started",
+    "Config": "core-contract-started",
+    "Features/Chat": "ui-contract-started",
+    "Features/Insights": "ui-contract-started",
+    "Features/Memory": "ui-contract-started",
+    "Features/Onboarding": "ui-contract-started",
+    "Features/SessionList": "ui-contract-started",
+    "Features/Settings": "ui-contract-started",
+    "Features/Share": "platform-shim-started",
+    "Features/Shared": "ui-contract-started",
+    "Features/Skills": "ui-contract-started",
+    "Features/Tasks": "ui-contract-started",
+    "Features/Workspace": "ui-contract-started",
+    "LiveActivities": "platform-shim-started",
+    "Models": "core-contract-started",
+    "Networking": "core-contract-started",
+    "Persistence": "platform-shim-started"
+  },
+  "shared_ui_entrypoints": {
+    "Features/Chat": [
+      "Sources/HermexUI/HermexChatScreen.swift"
+    ],
+    "Features/Insights": [
+      "Sources/HermexUI/HermexPanelsScreen.swift"
+    ],
+    "Features/Memory": [
+      "Sources/HermexUI/HermexPanelsScreen.swift"
+    ],
+    "Features/Onboarding": [
+      "Sources/HermexUI/HermexOnboardingScreen.swift"
+    ],
+    "Features/SessionList": [
+      "Sources/HermexUI/HermexSessionListScreen.swift"
+    ],
+    "Features/Settings": [
+      "Sources/HermexUI/HermexSettingsScreen.swift"
+    ],
+    "Features/Shared": [
+      "Sources/HermexUI/HermexRootScreen.swift",
+      "Sources/HermexUI/HermexStoreRootScreen.swift",
+      "Sources/HermexUI/HermexSharedChrome.swift",
+      "Sources/HermexUI/HermexUILayoutContracts.swift"
+    ],
+    "Features/Skills": [
+      "Sources/HermexUI/HermexPanelsScreen.swift"
+    ],
+    "Features/Tasks": [
+      "Sources/HermexUI/HermexPanelsScreen.swift"
+    ],
+    "Features/Workspace": [
+      "Sources/HermexUI/HermexWorkspaceScreen.swift",
+      "Sources/HermexUI/HermexGitScreen.swift"
+    ]
+  }
+}

@@ -1,0 +1,164 @@
+name: Skip Android Parity
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - Package.swift
+      - Sources/**
+      - Tests/**
+      - android/**
+      - ci/visual-goldens/**
+      - ci/endpoint_parity.py
+      - ci/skip_migration_audit.py
+      - ci/skip_migration_manifest.json
+      - ci/skip_package_audit.py
+      - ci/shared_ui_parity_audit.py
+      - docs/android-skip-port.md
+      - .github/workflows/skip-android-parity.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: skip-android-parity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shared-swift-contracts:
+    name: Shared Swift Contracts
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Strip Skip plugins for plain Swift package checks
+        run: echo "SKIP_ZERO=1" >> "$GITHUB_ENV"
+
+      - name: Show Xcode and Swift versions
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          swift --version
+
+      - name: Build shared Swift package
+        run: swift build
+
+      - name: Test shared Swift package
+        run: swift test
+
+  android-compose-safety:
+    name: Android Compose Safety Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Unit test and assemble fallback Android app
+        working-directory: android
+        run: ./gradlew testDebugUnitTest assembleDebug
+
+  skip-toolchain-check:
+    name: Skip Toolchain Check
+    runs-on: macos-26
+    timeout-minutes: 45
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Install Skip
+        run: |
+          set -euo pipefail
+          brew tap skiptools/skip || true
+          brew install skip || brew upgrade skip
+
+      - name: Run Skip checkup
+        run: skip checkup
+
+      - name: Resolve Skip package dependencies
+        run: swift package resolve
+
+      - name: Build Skip-enabled shared package
+        run: swift build --target HermexUI
+
+      - name: Test Skip-enabled shared package
+        run: swift test
+
+      - name: Record current migration state
+        run: |
+          set -euo pipefail
+          echo "Hermex shared Swift package is wired for Skip."
+          echo "Android emulator screenshot capture is still gated by visual-golden implementation."
+
+  visual-golden-manifest:
+    name: Visual Golden Harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Validate manifest JSON
+        run: python3 -m json.tool ci/visual-goldens/hermex-screens.json >/dev/null
+
+      - name: Install visual comparison dependencies
+        run: python3 -m pip install -r ci/visual-goldens/requirements.txt
+
+      - name: Self-test visual comparison
+        run: python3 ci/visual-goldens/compare_screenshots.py --self-test
+
+  endpoint-parity:
+    name: Endpoint Parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Compare endpoint path sets
+        run: python3 ci/endpoint_parity.py
+
+  skip-migration-audit:
+    name: Skip Migration Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Audit migration feature coverage
+        run: python3 ci/skip_migration_audit.py
+
+  skip-package-audit:
+    name: Skip Package Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Audit Skip package wiring
+        run: python3 ci/skip_package_audit.py
+
+  shared-ui-parity-audit:
+    name: Shared UI Parity Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Audit shared SwiftUI parity guardrails
+        run: python3 ci/shared_ui_parity_audit.py
