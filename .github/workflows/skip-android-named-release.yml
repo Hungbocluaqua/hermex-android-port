@@ -14,7 +14,7 @@ on:
       app_version:
         description: "Android app versionName/version used by Skip"
         required: true
-        default: "0.3.0"
+        default: "0.3.1"
         type: string
       prerelease:
         description: "Publish as a prerelease"
@@ -90,6 +90,8 @@ jobs:
           Hermex Skip Android release.
 
           This release contains a runnable Android artifact built from a generated Skip transpiled-app shell that launches the shared SwiftUI `HermexStoreRootScreen`.
+
+          This build starts from the real onboarding route instead of seeded preview sessions, and stamps the Android launcher label/icon as Hermex.
 
           Build gates:
           - shared Swift package build and tests with `SKIP_ZERO=1`

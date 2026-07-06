@@ -266,7 +266,7 @@ public struct HermexAppEnvironment: Sendable {
     }
 }
 
-#if SKIP
+#if HERMEX_SKIP_PREVIEW_STORE
 @MainActor
 public final class HermexAppStore {
     public private(set) var appState: HermexAppState

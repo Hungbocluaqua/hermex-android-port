@@ -3,6 +3,7 @@ import HermexCore
 
 public struct HermexStoreRootScreen: View {
     @State private var store: HermexAppStore
+    @State private var renderRevision = 0
     private let onUnhandledEvent: (HermexUIEvent) -> Void
 
     public init(
@@ -25,7 +26,10 @@ public struct HermexStoreRootScreen: View {
             panels: store.panels
         ) { event in
             if let action = event.appAction {
-                Task { await store.send(action) }
+                Task { @MainActor in
+                    await store.send(action)
+                    renderRevision += 1
+                }
             } else {
                 onUnhandledEvent(event)
             }
@@ -33,6 +37,7 @@ public struct HermexStoreRootScreen: View {
         .task(id: store.appState.route) {
             if store.appState.route != .onboarding {
                 await store.send(.refreshComposerConfiguration)
+                renderRevision += 1
             }
         }
     }

@@ -39,15 +39,7 @@ public struct HermexSessionListScreen: View {
                                 statusRows
                             }
 
-                            LazyVStack(spacing: 0) {
-                                ForEach(state.sessions) { session in
-                                    sessionRow(session)
-                                        .hermexContentShapeRectangle()
-                                        .onTapGesture {
-                                            onEvent(.openSession(session.id))
-                                        }
-                                }
-                            }
+                            sessionContent
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -115,6 +107,53 @@ public struct HermexSessionListScreen: View {
         }
         .font(.caption)
         .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private var sessionContent: some View {
+        if state.isLoading {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading sessions")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.caption)
+            .padding(.vertical, 24)
+        } else if let errorMessage = state.errorMessage, !errorMessage.isEmpty {
+            HermexGlassPanel(cornerRadius: 18) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Could not load sessions")
+                        .font(.headline.weight(.semibold))
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(18)
+            }
+        } else if state.sessions.isEmpty {
+            HermexGlassPanel(cornerRadius: 18) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("No sessions yet")
+                        .font(.headline.weight(.semibold))
+                    Text("Start a new chat from this server.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(18)
+            }
+        } else {
+            LazyVStack(spacing: 0) {
+                ForEach(state.sessions) { session in
+                    sessionRow(session)
+                        .hermexContentShapeRectangle()
+                        .onTapGesture {
+                            onEvent(.openSession(session.id))
+                        }
+                }
+            }
+        }
     }
 
     private var utilityRail: some View {

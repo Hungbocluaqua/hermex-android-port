@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="${SKIP_APP_WORKDIR:-"${RUNNER_TEMP:-"$ROOT/.build"}/hermex-skip-app"}"
 DIST_DIR="${1:-"$ROOT/dist/skip-android"}"
-APP_VERSION="${HERMEX_SKIP_VERSION:-0.3.0}"
+APP_VERSION="${HERMEX_SKIP_VERSION:-0.3.1}"
 APP_ID="${HERMEX_SKIP_APP_ID:-com.uzairansar.hermex}"
 MODULE_NAME="HermexSkipApp"
 APP_PARENT="$(dirname "$APP_DIR")"
@@ -66,6 +66,92 @@ if [[ -z "$GRADLE_SETTINGS" ]]; then
   exit 1
 fi
 GRADLE_DIR="$(dirname "$GRADLE_SETTINGS")"
+
+patch_android_branding() {
+  local search_roots=("$GRADLE_DIR")
+  [[ -d "$APP_DIR/.build/Android" ]] && search_roots+=("$APP_DIR/.build/Android")
+  [[ -d "$APP_DIR/.build/plugins/outputs" ]] && search_roots+=("$APP_DIR/.build/plugins/outputs")
+
+  while IFS= read -r -d '' manifest; do
+    local main_dir res_dir
+    main_dir="$(dirname "$manifest")"
+    res_dir="$main_dir/res"
+    mkdir -p "$res_dir/values" "$res_dir/drawable" "$res_dir/drawable-nodpi" "$res_dir/mipmap-anydpi-v26"
+
+    local icon_ref round_icon_ref icon_source
+    icon_ref="@mipmap/ic_launcher"
+    round_icon_ref="@mipmap/ic_launcher_round"
+    icon_source="$ROOT/HermesMobile/Resources/Assets.xcassets/AppIcon.appiconset/hermes_mobile_dark_icon.png"
+    if [[ -f "$icon_source" ]]; then
+      cp "$icon_source" "$res_dir/drawable-nodpi/hermex_app_icon.png"
+      icon_ref="@drawable/hermex_app_icon"
+      round_icon_ref="@drawable/hermex_app_icon"
+    fi
+
+    ICON_REF="$icon_ref" ROUND_ICON_REF="$round_icon_ref" perl -0pi -e 's/android:label="[^"]*"/android:label="Hermex"/g; s/android:icon="[^"]*"/android:icon="$ENV{ICON_REF}"/g; s/android:roundIcon="[^"]*"/android:roundIcon="$ENV{ROUND_ICON_REF}"/g' "$manifest"
+    if ! grep -q 'android:label=' "$manifest"; then
+      perl -0pi -e 's/<application\b/<application android:label="Hermex"/' "$manifest"
+    fi
+    if ! grep -q 'android:icon=' "$manifest"; then
+      ICON_REF="$icon_ref" perl -0pi -e 's/<application\b/<application android:icon="$ENV{ICON_REF}"/' "$manifest"
+    fi
+    if ! grep -q 'android:roundIcon=' "$manifest"; then
+      ROUND_ICON_REF="$round_icon_ref" perl -0pi -e 's/<application\b/<application android:roundIcon="$ENV{ROUND_ICON_REF}"/' "$manifest"
+    fi
+
+    if [[ -f "$res_dir/values/strings.xml" ]]; then
+      perl -0pi -e 's/(<string\s+name="app_name">)[^<]*(<\/string>)/${1}Hermex${2}/g' "$res_dir/values/strings.xml"
+    else
+      cat > "$res_dir/values/strings.xml" <<'XML'
+<resources>
+    <string name="app_name">Hermex</string>
+</resources>
+XML
+    fi
+
+    cat > "$res_dir/values/hermex_launcher.xml" <<'XML'
+<resources>
+    <color name="hermex_launcher_background">#000000</color>
+</resources>
+XML
+
+    cat > "$res_dir/drawable/ic_launcher_foreground.xml" <<'XML'
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#2D2500"
+        android:pathData="M20,24h18v64h-18z M70,24h18v64h-18z M20,49h68v16h-68z" />
+    <path
+        android:fillColor="#F8D84A"
+        android:pathData="M18,20h18v64h-18z M72,20h18v64h-18z M18,47h72v16h-72z" />
+    <path
+        android:fillColor="#FFF2A6"
+        android:pathData="M22,24h10v8h-10z M76,24h10v8h-10z M22,51h64v4h-64z" />
+</vector>
+XML
+
+    cat > "$res_dir/mipmap-anydpi-v26/ic_launcher.xml" <<'XML'
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/hermex_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
+XML
+
+    cat > "$res_dir/mipmap-anydpi-v26/ic_launcher_round.xml" <<'XML'
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/hermex_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
+XML
+
+    echo "Patched Android branding into $main_dir"
+  done < <(find "${search_roots[@]}" -path '*/src/main/AndroidManifest.xml' -print0)
+}
+
+patch_android_branding
 
 dump_generated_kotlin_diagnostics() {
   echo "::group::Generated Kotlin diagnostics"
