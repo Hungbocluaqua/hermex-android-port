@@ -282,16 +282,12 @@ public struct HermexOnboardingScreen: View {
                     TextField("http://100.64.0.1:8787", text: $serverURLString)
                         .font(.body.weight(.medium))
                         .foregroundStyle(HermexUIColors.primaryText)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
                 }
 
                 onboardingField(title: "Name") {
                     TextField("Hermex", text: $displayName)
                         .font(.body.weight(.medium))
                         .foregroundStyle(HermexUIColors.primaryText)
-                        .textInputAutocapitalization(.words)
-                        .autocorrectionDisabled()
                 }
 
                 onboardingField(title: "Password") {
@@ -301,30 +297,22 @@ public struct HermexOnboardingScreen: View {
                         .textContentType(.password)
                 }
 
-                DisclosureGroup {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Custom headers")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color.white.opacity(0.5))
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Custom headers")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.5))
 
-                        TextEditor(text: $customHeaderText)
-                            .font(.footnote.monospaced())
-                            .foregroundStyle(HermexUIColors.primaryText)
-                            .frame(minHeight: 74)
-                            .padding(10)
-                            .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                            }
-                    }
-                    .padding(.top, 10)
-                } label: {
-                    Text("Advanced")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.white.opacity(0.85))
+                    TextEditor(text: $customHeaderText)
+                        .font(.footnote.monospaced())
+                        .foregroundStyle(HermexUIColors.primaryText)
+                        .frame(minHeight: 74)
+                        .padding(10)
+                        .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        }
                 }
-                .tint(Color.white.opacity(0.6))
             }
             .padding(14)
         }
