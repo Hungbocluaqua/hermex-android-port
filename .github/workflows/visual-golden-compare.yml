@@ -1,0 +1,78 @@
+name: Visual Golden Compare
+
+on:
+  workflow_dispatch:
+    inputs:
+      ios_run_id:
+        description: "Workflow run ID containing the iOS golden screenshot artifact"
+        required: true
+        type: string
+      android_run_id:
+        description: "Workflow run ID containing the Android screenshot artifact"
+        required: true
+        type: string
+      ios_artifact_name:
+        description: "Artifact name for iOS screenshots"
+        required: true
+        default: "hermex-ios-visual-goldens"
+        type: string
+      android_artifact_name:
+        description: "Artifact name for Android screenshots"
+        required: true
+        default: "hermex-android-visual-screens"
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  compare:
+    name: Compare iOS And Android Screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Install visual comparison dependencies
+        run: python3 -m pip install -r ci/visual-goldens/requirements.txt
+
+      - name: Download iOS screenshot artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/visual-goldens/ios"
+          gh run download "${{ inputs.ios_run_id }}" \
+            --repo "${{ github.repository }}" \
+            --name "${{ inputs.ios_artifact_name }}" \
+            --dir "$RUNNER_TEMP/visual-goldens/ios"
+
+      - name: Download Android screenshot artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/visual-goldens/android"
+          gh run download "${{ inputs.android_run_id }}" \
+            --repo "${{ github.repository }}" \
+            --name "${{ inputs.android_artifact_name }}" \
+            --dir "$RUNNER_TEMP/visual-goldens/android"
+
+      - name: Validate screenshot inventories
+        run: |
+          set -euo pipefail
+          python3 ci/visual-goldens/validate_screenshot_inventory.py \
+            --label iOS \
+            --root "$RUNNER_TEMP/visual-goldens/ios"
+          python3 ci/visual-goldens/validate_screenshot_inventory.py \
+            --label Android \
+            --root "$RUNNER_TEMP/visual-goldens/android"
+
+      - name: Compare screenshots
+        run: |
+          set -euo pipefail
+          python3 ci/visual-goldens/compare_screenshots.py \
+            --ios-root "$RUNNER_TEMP/visual-goldens/ios" \
+            --android-root "$RUNNER_TEMP/visual-goldens/android"

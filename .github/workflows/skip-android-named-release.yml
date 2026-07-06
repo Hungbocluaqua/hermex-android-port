@@ -20,6 +20,10 @@ on:
         description: "Type visual-parity-passed after iOS/Android screenshot goldens pass"
         required: true
         type: string
+      visual_golden_run_id:
+        description: "Successful Visual Golden Compare run ID"
+        required: true
+        type: string
       confirm_live_networking:
         description: "Type live-networking-passed after real server auth/session/chat smoke passes"
         required: true
@@ -32,6 +36,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: skip-android-named-release-${{ github.ref }}
@@ -47,10 +52,19 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Require visual and live-networking confirmations
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if [ "${{ inputs.confirm_visual_parity }}" != "visual-parity-passed" ]; then
             echo "Refusing to publish: run and pass the iOS/Android visual-golden screenshot diff first."
+            exit 1
+          fi
+          visual_conclusion="$(gh run view "${{ inputs.visual_golden_run_id }}" --repo "${{ github.repository }}" --json conclusion --jq '.conclusion')"
+          visual_workflow="$(gh run view "${{ inputs.visual_golden_run_id }}" --repo "${{ github.repository }}" --json workflowName --jq '.workflowName')"
+          if [ "$visual_workflow" != "Visual Golden Compare" ] || [ "$visual_conclusion" != "success" ]; then
+            echo "Refusing to publish: visual_golden_run_id must point to a successful Visual Golden Compare run."
+            echo "workflow=$visual_workflow conclusion=$visual_conclusion"
             exit 1
           fi
           if [ "${{ inputs.confirm_live_networking }}" != "live-networking-passed" ]; then

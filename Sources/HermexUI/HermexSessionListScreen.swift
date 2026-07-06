@@ -101,7 +101,7 @@ public struct HermexSessionListScreen: View {
             onEvent(.newChat)
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: "square.and.pencil")
+                Image(systemName: HermexSystemImageName("square.and.pencil"))
                     .font(.title3.weight(.semibold))
 
                 Text("Chat")

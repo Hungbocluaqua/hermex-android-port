@@ -71,6 +71,8 @@ def main() -> int:
     ok &= require("sessionListBottomSpacerHeight" in session_list, "Session list must reserve the iOS bottom spacer behind the floating chat button.")
     ok &= require("sessionListRowActionSize" in session_list, "Session rows must preserve the trailing action button contract.")
     ok &= require("searchChrome" in session_list and "searchChromeIsExpanded" in session_list, "Session list must expose iOS-style expandable search chrome.")
+    ok &= require("HermexSystemImageName(\"square.and.pencil\")" in session_list, "Skip Android must not render a warning placeholder for the floating Chat icon.")
+    ok &= require("func HermexSystemImageName" in chrome, "Shared chrome must expose Skip-safe system image mapping.")
     ok &= require("activeServerSection" in settings and "serverManagementSection" in settings, "Settings screen must expose iOS-style active server and server management cards.")
     ok &= require("serverCard" in settings and ".selectServer(server)" in settings, "Settings screen must allow switching saved servers.")
     ok &= require("Add Server" in settings and ".openRoute(.onboarding)" in settings, "Settings screen must expose add-server onboarding affordance.")

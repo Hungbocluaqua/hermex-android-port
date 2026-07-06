@@ -9,6 +9,7 @@ on:
       - Tests/**
       - android/**
       - ci/visual-goldens/**
+      - .github/workflows/visual-golden-compare.yml
       - ci/endpoint_parity.py
       - ci/skip_migration_audit.py
       - ci/skip_migration_manifest.json
@@ -165,6 +166,9 @@ jobs:
 
       - name: Self-test visual comparison
         run: python3 ci/visual-goldens/compare_screenshots.py --self-test
+
+      - name: Self-test screenshot inventory validation
+        run: python3 ci/visual-goldens/validate_screenshot_inventory.py --self-test
 
   endpoint-parity:
     name: Endpoint Parity

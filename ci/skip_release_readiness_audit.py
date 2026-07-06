@@ -28,6 +28,7 @@ def fail(message: str) -> bool:
 def main() -> int:
     api_client = read("Sources/HermexCore/HermexAPIClient.swift")
     workflow = read(".github/workflows/skip-android-named-release.yml")
+    visual_workflow = read(".github/workflows/visual-golden-compare.yml")
     manifest = read("ci/visual-goldens/hermex-screens.json")
 
     ok = True
@@ -51,11 +52,26 @@ def main() -> int:
     ok &= "visual-parity-passed" in workflow or fail(
         "Skip Android release workflow must name the visual parity passphrase."
     )
+    ok &= "visual_golden_run_id" in workflow or fail(
+        "Skip Android release workflow must require a successful Visual Golden Compare run ID."
+    )
+    ok &= "Visual Golden Compare" in workflow or fail(
+        "Skip Android release workflow must verify the Visual Golden Compare workflow name."
+    )
+    ok &= "gh run view" in workflow or fail(
+        "Skip Android release workflow must inspect the visual compare run result."
+    )
     ok &= "live-networking-passed" in workflow or fail(
         "Skip Android release workflow must name the live networking passphrase."
     )
     ok &= "chat-keyboard-open" in manifest and "panels-insights" in manifest or fail(
         "Visual-golden manifest must cover keyboard/chat and panel parity screens."
+    )
+    ok &= "validate_screenshot_inventory.py" in visual_workflow or fail(
+        "Visual Golden Compare must validate complete screenshot inventories."
+    )
+    ok &= "compare_screenshots.py" in visual_workflow or fail(
+        "Visual Golden Compare must run the pixel diff."
     )
 
     if ok:

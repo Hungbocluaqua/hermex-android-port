@@ -22,6 +22,33 @@ enum HermexUIColors {
     static let faintHairline = Color.white.opacity(0.08)
 }
 
+func HermexSystemImageName(_ name: String) -> String {
+#if SKIP
+    switch name {
+    case "square.and.pencil":
+        return "pencil"
+    case "brain.head.profile":
+        return "brain"
+    case "calendar.badge.clock":
+        return "calendar"
+    case "key.horizontal":
+        return "key"
+    case "server.rack":
+        return "server"
+    case "externaldrive.badge.checkmark":
+        return "externaldrive"
+    case "rectangle.portrait.and.arrow.right":
+        return "rectangle.portrait"
+    case "point.3.connected.trianglepath.dotted":
+        return "point.3.connected.trianglepath"
+    default:
+        return name
+    }
+#else
+    return name
+#endif
+}
+
 public struct HermexScreenTitle: View {
     private let title: String
     private let subtitle: String?
@@ -157,7 +184,7 @@ public struct HermexCircleIconButton: View {
 
     public var body: some View {
         Button(action: action) {
-            Image(systemName: systemImage)
+            Image(systemName: HermexSystemImageName(systemImage))
                 .font(.system(size: size * 0.34, weight: .semibold))
                 .frame(width: size, height: size)
                 .foregroundStyle(isFilled ? Color.black : HermexUIColors.primaryText)
@@ -202,11 +229,11 @@ public struct HermexPillLabel: View {
     public var body: some View {
         HStack(spacing: 6) {
             if let systemImage {
-                Image(systemName: systemImage)
+                Image(systemName: HermexSystemImageName(systemImage))
             }
             Text(title)
                 .lineLimit(1)
-            Image(systemName: "chevron.down")
+            Image(systemName: HermexSystemImageName("chevron.down"))
                 .font(.caption2.weight(.semibold))
         }
         .font(.subheadline.weight(.medium))

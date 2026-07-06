@@ -32,8 +32,10 @@ def main() -> int:
     ok &= require((ROOT / "ci" / "build_skip_android_app.sh").is_file(), "Skip Android app export script is missing.")
     ok &= require((ROOT / "ci" / "prepare_skip_hermex_app.py").is_file(), "Skip Android app preparation script is missing.")
     ok &= require((ROOT / "ci" / "skip_release_readiness_audit.py").is_file(), "Skip Android release readiness audit is missing.")
+    ok &= require((ROOT / "ci" / "visual-goldens" / "validate_screenshot_inventory.py").is_file(), "Screenshot inventory validator is missing.")
     ok &= require((ROOT / "ci" / "skip-hermex-app" / "HermexSkipApp.swift").is_file(), "Skip Android app Swift launcher template is missing.")
     ok &= require((ROOT / ".github" / "workflows" / "skip-android-named-release.yml").is_file(), "Skip Android release workflow is missing.")
+    ok &= require((ROOT / ".github" / "workflows" / "visual-golden-compare.yml").is_file(), "Visual Golden Compare workflow is missing.")
     ok &= require('resources: [.process("Resources")]' in text, "HermexUI must process shared resources.")
 
     for relative in [
@@ -85,8 +87,13 @@ def main() -> int:
     ok &= require("ci/build_skip_android_app.sh" in workflow, "Skip Android release workflow must call the app export script.")
     ok &= require("gh release create" in workflow, "Skip Android release workflow must publish a GitHub release.")
     ok &= require("confirm_visual_parity" in workflow and "visual-parity-passed" in workflow, "Skip Android release workflow must require visual parity confirmation.")
+    ok &= require("visual_golden_run_id" in workflow and "gh run view" in workflow, "Skip Android release workflow must verify a successful Visual Golden Compare run.")
     ok &= require("confirm_live_networking" in workflow and "live-networking-passed" in workflow, "Skip Android release workflow must require live networking confirmation.")
     ok &= require("ci/skip_release_readiness_audit.py" in workflow, "Skip Android release workflow must run release readiness checks.")
+
+    visual_workflow = (ROOT / ".github" / "workflows" / "visual-golden-compare.yml").read_text(encoding="utf-8")
+    ok &= require("validate_screenshot_inventory.py" in visual_workflow, "Visual Golden Compare must validate screenshot inventory coverage.")
+    ok &= require("compare_screenshots.py" in visual_workflow, "Visual Golden Compare must run the screenshot pixel diff.")
 
     parity_workflow = (ROOT / ".github" / "workflows" / "skip-android-parity.yml").read_text(encoding="utf-8")
     ok &= require("Skip Generated APK Smoke" in parity_workflow, "Skip parity workflow must expose a generated APK smoke job.")
