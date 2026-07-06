@@ -43,12 +43,17 @@ jobs:
           set -euo pipefail
           brew tap skiptools/skip || true
           brew trust skiptools/skip
-          brew install skip || brew upgrade skip
+          brew install skiptools/skip/skip || brew upgrade skiptools/skip/skip
 
       - name: Install Android SDK for Skip
         run: |
           set -euo pipefail
-          skip android sdk install
+          brew tap aws/tap || true
+          brew trust aws/tap || true
+          if ! skip android sdk install; then
+            cat /tmp/skip-install-*.txt 2>/dev/null || true
+            exit 1
+          fi
 
       - name: Check Skip toolchain
         run: |
