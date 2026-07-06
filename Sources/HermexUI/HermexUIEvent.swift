@@ -11,7 +11,9 @@ public enum HermexUIEvent: Equatable, Sendable {
     case updateOnboardingPassword(String)
     case updateOnboardingCustomHeaders(String)
     case testOnboardingConnection
+    case testOnboardingConnectionDraft(serverURLString: String, displayName: String, password: String, customHeaderText: String)
     case connectOnboarding
+    case connectOnboardingDraft(serverURLString: String, displayName: String, password: String, customHeaderText: String)
     case selectServer(HermexServerIdentity)
     case searchSessions(String)
     case selectProject(String?)
@@ -65,8 +67,22 @@ public extension HermexUIEvent {
             return .updateOnboardingCustomHeaders(value)
         case .testOnboardingConnection:
             return .testOnboardingConnection
+        case .testOnboardingConnectionDraft(let serverURLString, let displayName, let password, let customHeaderText):
+            return .testOnboardingConnectionDraft(
+                serverURLString: serverURLString,
+                displayName: displayName,
+                password: password,
+                customHeaderText: customHeaderText
+            )
         case .connectOnboarding:
             return .connectOnboarding
+        case .connectOnboardingDraft(let serverURLString, let displayName, let password, let customHeaderText):
+            return .connectOnboardingDraft(
+                serverURLString: serverURLString,
+                displayName: displayName,
+                password: password,
+                customHeaderText: customHeaderText
+            )
         case .selectServer(let server):
             return .selectServer(server)
         case .searchSessions(let query):

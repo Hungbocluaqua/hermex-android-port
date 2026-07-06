@@ -11,7 +11,9 @@ public enum HermexAppAction: Equatable, Sendable {
     case updateOnboardingPassword(String)
     case updateOnboardingCustomHeaders(String)
     case testOnboardingConnection
+    case testOnboardingConnectionDraft(serverURLString: String, displayName: String, password: String, customHeaderText: String)
     case connectOnboarding
+    case connectOnboardingDraft(serverURLString: String, displayName: String, password: String, customHeaderText: String)
     case selectServer(HermexServerIdentity)
     case openSession(String)
     case newChat
@@ -613,7 +615,23 @@ public final class HermexAppStore {
             onboarding.customHeaderText = value
         case .testOnboardingConnection:
             await testOnboardingConnection()
+        case .testOnboardingConnectionDraft(let serverURLString, let displayName, let password, let customHeaderText):
+            applyOnboardingDraft(
+                serverURLString: serverURLString,
+                displayName: displayName,
+                password: password,
+                customHeaderText: customHeaderText
+            )
+            await testOnboardingConnection()
         case .connectOnboarding:
+            await connectOnboarding()
+        case .connectOnboardingDraft(let serverURLString, let displayName, let password, let customHeaderText):
+            applyOnboardingDraft(
+                serverURLString: serverURLString,
+                displayName: displayName,
+                password: password,
+                customHeaderText: customHeaderText
+            )
             await connectOnboarding()
         case .selectServer(let server):
             selectServer(server)
@@ -716,6 +734,20 @@ public final class HermexAppStore {
         default:
             break
         }
+    }
+
+    private func applyOnboardingDraft(
+        serverURLString: String,
+        displayName: String,
+        password: String,
+        customHeaderText: String
+    ) {
+        onboarding.serverURLString = serverURLString
+        onboarding.displayName = displayName
+        onboarding.password = password
+        onboarding.customHeaderText = customHeaderText
+        onboarding.errorMessage = nil
+        onboarding.statusMessage = nil
     }
 
     private func refreshSessions() async {
