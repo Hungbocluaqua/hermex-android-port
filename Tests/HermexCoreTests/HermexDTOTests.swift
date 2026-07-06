@@ -90,26 +90,26 @@ final class HermexDTOTests: XCTestCase {
     }
 
     func testSharedStateMappersExtractWorkspaceGitAndPanelState() throws {
-        let directory = HermexWorkspaceState.fromDirectoryResponse(.object([
+        let directory = HermexWorkspaceState.fromDirectoryResponse(.dictionary([
             "path": .string("/repo"),
             "entries": .array([
-                .object(["name": .string("Sources"), "path": .string("/repo/Sources"), "type": .string("dir")]),
-                .object(["name": .string("README.md"), "path": .string("/repo/README.md"), "size": .number(42)])
+                .dictionary(["name": .string("Sources"), "path": .string("/repo/Sources"), "type": .string("dir")]),
+                .dictionary(["name": .string("README.md"), "path": .string("/repo/README.md"), "size": .number(42)])
             ])
         ]), fallbackPath: nil)
-        let git = HermexGitState.fromStatusResponse(.object([
+        let git = HermexGitState.fromStatusResponse(.dictionary([
             "branch": .string("main"),
             "files": .array([
-                .object(["path": .string("README.md"), "status": .string("M"), "additions": .number(2), "deletions": .number(1)])
+                .dictionary(["path": .string("README.md"), "status": .string("M"), "additions": .number(2), "deletions": .number(1)])
             ])
         ]))
-        let tasks = HermexPanelsState.tasks(from: .object([
-            "jobs": .array([.object(["id": .string("job-1"), "title": .string("Morning")])])
+        let tasks = HermexPanelsState.tasks(from: .dictionary([
+            "jobs": .array([.dictionary(["id": .string("job-1"), "title": .string("Morning")])])
         ]))
-        let skills = HermexPanelsState.skills(from: .object([
-            "skills": .array([.object(["name": .string("swift"), "enabled": .bool(true)])])
+        let skills = HermexPanelsState.skills(from: .dictionary([
+            "skills": .array([.dictionary(["name": .string("swift"), "enabled": .bool(true)])])
         ]))
-        let memory = HermexPanelsState.memory(from: .object(["profile": .string("Concise")]))
+        let memory = HermexPanelsState.memory(from: .dictionary(["profile": .string("Concise")]))
 
         XCTAssertEqual(directory.currentPath, "/repo")
         XCTAssertEqual(directory.entries.first?.isDirectory, true)

@@ -135,37 +135,37 @@ final class HermexPlatformCoordinatorTests: XCTestCase {
 private extension HermexAppEnvironment {
     static var testValue: HermexAppEnvironment {
         HermexAppEnvironment(
-            testServerConnection: { _ in .object(["ok": .bool(true)]) },
-            loginToServer: { _, _ in .object(["ok": .bool(true)]) },
+            testServerConnection: { _ in .dictionary(["ok": .bool(true)]) },
+            loginToServer: { _, _ in .dictionary(["ok": .bool(true)]) },
             loadSessions: { _, _ in HermexSessionsResponse() },
             loadSession: { _ in HermexSessionResponse() },
             startChat: { sessionID, _, _, _, _, _, _ in
-                .object([
+                .dictionary([
                     "session_id": .string(sessionID ?? "s1"),
                     "stream_id": .string("stream-1")
                 ])
             },
-            cancelStream: { _ in .object(["ok": .bool(true)]) },
-            respondApproval: { _, _, _ in .object(["ok": .bool(true)]) },
-            respondClarification: { _, _, _ in .object(["ok": .bool(true)]) },
-            undoSession: { _ in .object(["ok": .bool(true)]) },
-            retrySession: { _ in .object(["ok": .bool(true)]) },
-            compressSession: { _, _ in .object(["ok": .bool(true)]) },
+            cancelStream: { _ in .dictionary(["ok": .bool(true)]) },
+            respondApproval: { _, _, _ in .dictionary(["ok": .bool(true)]) },
+            respondClarification: { _, _, _ in .dictionary(["ok": .bool(true)]) },
+            undoSession: { _ in .dictionary(["ok": .bool(true)]) },
+            retrySession: { _ in .dictionary(["ok": .bool(true)]) },
+            compressSession: { _, _ in .dictionary(["ok": .bool(true)]) },
             loadModels: { HermexModelsResponse() },
             loadProfiles: { HermexProfilesResponse() },
             loadWorkspaces: { HermexWorkspacesResponse() },
             loadReasoning: { _, _ in HermexReasoningResponse() },
-            saveReasoningEffort: { _, _, _ in .object(["ok": .bool(true)]) },
-            loadDirectory: { _, _ in .object([:]) },
-            loadFile: { _, _ in .object([:]) },
-            loadGitStatus: { _ in .object([:]) },
-            performGitAction: { _, _ in .object(["ok": .bool(true)]) },
-            performGitCommand: { _, _ in .object(["ok": .bool(true)]) },
-            loadTasks: { .object([:]) },
-            loadSkills: { .object([:]) },
-            loadMemory: { .object([:]) },
-            loadInsights: { _ in .object([:]) },
-            logout: { .object(["ok": .bool(true)]) }
+            saveReasoningEffort: { _, _, _ in .dictionary(["ok": .bool(true)]) },
+            loadDirectory: { _, _ in .dictionary([:]) },
+            loadFile: { _, _ in .dictionary([:]) },
+            loadGitStatus: { _ in .dictionary([:]) },
+            performGitAction: { _, _ in .dictionary(["ok": .bool(true)]) },
+            performGitCommand: { _, _ in .dictionary(["ok": .bool(true)]) },
+            loadTasks: { .dictionary([:]) },
+            loadSkills: { .dictionary([:]) },
+            loadMemory: { .dictionary([:]) },
+            loadInsights: { _ in .dictionary([:]) },
+            logout: { .dictionary(["ok": .bool(true)]) }
         )
     }
 }

@@ -4,7 +4,7 @@ public enum HermexJSONValue: Codable, Equatable, Sendable {
     case string(String)
     case number(Double)
     case bool(Bool)
-    case object([String: HermexJSONValue])
+    case dictionary([String: HermexJSONValue])
     case array([HermexJSONValue])
     case null
 
@@ -21,7 +21,7 @@ public enum HermexJSONValue: Codable, Equatable, Sendable {
         } else if let value = try? container.decode([HermexJSONValue].self) {
             self = .array(value)
         } else if let value = try? container.decode([String: HermexJSONValue].self) {
-            self = .object(value)
+            self = .dictionary(value)
         } else {
             self = .null
         }
@@ -36,7 +36,7 @@ public enum HermexJSONValue: Codable, Equatable, Sendable {
             try container.encode(value)
         case .bool(let value):
             try container.encode(value)
-        case .object(let value):
+        case .dictionary(let value):
             try container.encode(value)
         case .array(let value):
             try container.encode(value)

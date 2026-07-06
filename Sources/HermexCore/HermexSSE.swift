@@ -29,17 +29,19 @@ public struct HermexSSEDecoder: Sendable {
         }
 
         let data = dataLines.joined(separator: "\n")
-        switch eventName {
-        case nil, "message", "token":
+        let name = eventName ?? "message"
+        if name == "message" || name == "token" {
             return .token(data)
-        case "usage":
-            return .usage(data)
-        case "done":
-            return .done(data.isEmpty ? nil : data)
-        case "error":
-            return .error(data)
-        case let name?:
-            return .named(event: name, data: data)
         }
+        if name == "usage" {
+            return .usage(data)
+        }
+        if name == "done" {
+            return .done(data.isEmpty ? nil : data)
+        }
+        if name == "error" {
+            return .error(data)
+        }
+        return .named(event: name, data: data)
     }
 }

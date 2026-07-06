@@ -252,9 +252,14 @@ public struct HermexModelsResponse: Codable, Equatable, Sendable {
     }
 
     public var normalizedModels: [HermexModelOption] {
-        let direct = (models ?? []).flatMap { $0.modelOptions(inheritedProvider: activeProvider) }
-        let grouped = (groups ?? []).flatMap { $0.modelOptions(inheritedProvider: activeProvider) }
-        return (direct + grouped).uniqueModels()
+        var options: [HermexModelOption] = []
+        for model in models ?? [] {
+            options.append(contentsOf: model.modelOptions(inheritedProvider: activeProvider))
+        }
+        for group in groups ?? [] {
+            options.append(contentsOf: group.modelOptions(inheritedProvider: activeProvider))
+        }
+        return options.uniqueModels()
     }
 }
 
@@ -409,20 +414,29 @@ private extension HermexJSONValue {
     func modelOptions(inheritedProvider: String?) -> [HermexModelOption] {
         switch self {
         case .array(let values):
-            return values.flatMap { $0.modelOptions(inheritedProvider: inheritedProvider) }
-        case .object(let object):
+            var options: [HermexModelOption] = []
+            for value in values {
+                options.append(contentsOf: value.modelOptions(inheritedProvider: inheritedProvider))
+            }
+            return options
+        case .dictionary(let object):
             let provider = object.stringValue("provider") ?? object.stringValue("provider_id") ?? inheritedProvider
             let nestedKeys = ["models", "items", "slash_autocomplete_models"]
-            let nested = nestedKeys.flatMap { key in
-                object[key]?.modelOptions(inheritedProvider: provider) ?? []
+            var nested: [HermexModelOption] = []
+            for key in nestedKeys {
+                if let nestedValue = object[key] {
+                    nested.append(contentsOf: nestedValue.modelOptions(inheritedProvider: provider))
+                }
             }
             if let id = object.stringValue("id") ?? object.stringValue("model") ?? object.stringValue("name") {
-                return [HermexModelOption(
+                var options = [HermexModelOption(
                     id: id,
                     name: object.stringValue("name"),
                     provider: provider,
                     label: object.stringValue("label") ?? object.stringValue("display_name")
-                )] + nested
+                )]
+                options.append(contentsOf: nested)
+                return options
             }
             return nested
         case .string(let value):

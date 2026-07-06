@@ -2,7 +2,7 @@ import Foundation
 
 public extension HermexJSONValue {
     var objectValue: [String: HermexJSONValue]? {
-        guard case .object(let value) = self else { return nil }
+        guard case .dictionary(let value) = self else { return nil }
         return value
     }
 
@@ -67,8 +67,12 @@ public extension Dictionary where Key == String, Value == HermexJSONValue {
 public extension HermexWorkspaceState {
     static func fromDirectoryResponse(_ response: HermexJSONValue, fallbackPath: String?) -> HermexWorkspaceState {
         let object = response.objectValue ?? [:]
-        let entries = object.arrayValue("entries", "files", "items")
-            .compactMap(HermexWorkspaceEntryDTO.fromJSON)
+        var entries: [HermexWorkspaceEntryDTO] = []
+        for entry in object.arrayValue("entries", "files", "items") {
+            if let mappedEntry = HermexWorkspaceEntryDTO.fromJSON(entry) {
+                entries.append(mappedEntry)
+            }
+        }
         return HermexWorkspaceState(
             currentPath: object.stringValue("path", "workspace") ?? fallbackPath,
             entries: entries,
@@ -82,7 +86,7 @@ public extension HermexWorkspaceEntryDTO {
     static func fromJSON(_ value: HermexJSONValue) -> HermexWorkspaceEntryDTO? {
         guard let object = value.objectValue else { return nil }
         let path = object.stringValue("path", "workspace_path")
-        let name = object.stringValue("name") ?? path?.split(separator: "/").last.map(String.init)
+        let name = object.stringValue("name") ?? path?.split(separator: "/").last.map { String($0) }
         guard let resolvedPath = path, let resolvedName = name else { return nil }
         let type = object.stringValue("type", "kind")
         let isDirectory = object.boolValue("is_directory", "is_dir", "directory")
@@ -112,8 +116,12 @@ public extension HermexFilePreview {
 public extension HermexGitState {
     static func fromStatusResponse(_ response: HermexJSONValue) -> HermexGitState {
         let object = response.objectValue ?? [:]
-        let files = object.arrayValue("files", "changes", "status")
-            .compactMap(HermexGitFileChange.fromJSON)
+        var files: [HermexGitFileChange] = []
+        for file in object.arrayValue("files", "changes", "status") {
+            if let mappedFile = HermexGitFileChange.fromJSON(file) {
+                files.append(mappedFile)
+            }
+        }
         return HermexGitState(
             isRepository: object.boolValue("is_repo", "is_repository", "repository") ?? true,
             branch: object.stringValue("branch", "current_branch", "head"),
@@ -157,22 +165,39 @@ public extension HermexGitFileChange {
 public extension HermexPanelsState {
     static func tasks(from response: HermexJSONValue, selectedPanel: HermexPanel = .tasks) -> HermexPanelsState {
         let object = response.objectValue ?? [:]
-        let tasks = object.arrayValue("jobs", "crons", "tasks").compactMap(HermexTaskDTO.fromJSON)
+        var tasks: [HermexTaskDTO] = []
+        for task in object.arrayValue("jobs", "crons", "tasks") {
+            if let mappedTask = HermexTaskDTO.fromJSON(task) {
+                tasks.append(mappedTask)
+            }
+        }
         return HermexPanelsState(tasks: tasks, selectedPanel: selectedPanel, errorMessage: object.stringValue("error"))
     }
 
     static func skills(from response: HermexJSONValue, selectedPanel: HermexPanel = .skills) -> HermexPanelsState {
         let object = response.objectValue ?? [:]
-        let skills = object.arrayValue("skills", "items").compactMap(HermexSkillDTO.fromJSON)
+        var skills: [HermexSkillDTO] = []
+        for skill in object.arrayValue("skills", "items") {
+            if let mappedSkill = HermexSkillDTO.fromJSON(skill) {
+                skills.append(mappedSkill)
+            }
+        }
         return HermexPanelsState(skills: skills, selectedPanel: selectedPanel, errorMessage: object.stringValue("error"))
     }
 
     static func memory(from response: HermexJSONValue, selectedPanel: HermexPanel = .memory) -> HermexPanelsState {
         let object = response.objectValue ?? [:]
-        let sections = object.arrayValue("sections", "memory").compactMap(HermexMemorySectionDTO.fromJSON)
-        let objectSections = object.compactMap { key, value -> HermexMemorySectionDTO? in
-            guard !["sections", "memory", "error"].contains(key), let content = value.stringValue else { return nil }
-            return HermexMemorySectionDTO(section: key, content: content)
+        var sections: [HermexMemorySectionDTO] = []
+        for section in object.arrayValue("sections", "memory") {
+            if let mappedSection = HermexMemorySectionDTO.fromJSON(section) {
+                sections.append(mappedSection)
+            }
+        }
+        var objectSections: [HermexMemorySectionDTO] = []
+        for (key, value) in object {
+            if !["sections", "memory", "error"].contains(key), let content = value.stringValue {
+                objectSections.append(HermexMemorySectionDTO(section: key, content: content))
+            }
         }
         return HermexPanelsState(memory: sections + objectSections, selectedPanel: selectedPanel, errorMessage: object.stringValue("error"))
     }

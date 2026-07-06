@@ -222,7 +222,7 @@ public struct HermexAppEnvironment: Sendable {
                 case "fetch": return try await git.fetch(sessionID: sessionID)
                 case "pull": return try await git.pull(sessionID: sessionID)
                 case "push": return try await git.push(sessionID: sessionID)
-                default: return .object(["ok": .bool(false), "error": .string("Unsupported git action")])
+                default: return .dictionary(["ok": .bool(false), "error": .string("Unsupported git action")])
                 }
             },
             performGitCommand: { sessionID, command in
@@ -265,7 +265,6 @@ public struct HermexAppEnvironment: Sendable {
 }
 
 @MainActor
-@Observable
 public final class HermexAppStore {
     public private(set) var appState: HermexAppState
     public private(set) var onboarding: HermexOnboardingState
@@ -929,13 +928,13 @@ private extension HermexAttachmentDTO {
         if let mime { object["mime"] = .string(mime) }
         if let size { object["size"] = .number(Double(size)) }
         if let isImage { object["is_image"] = .bool(isImage) }
-        return .object(object)
+        return .dictionary(object)
     }
 }
 
 private extension HermexJSONValue {
     func stringValue(forKey key: String) -> String? {
-        guard case .object(let object) = self else { return nil }
+        guard case .dictionary(let object) = self else { return nil }
         guard case .string(let value) = object[key] else { return nil }
         return value
     }

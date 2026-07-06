@@ -29,7 +29,7 @@ public enum HermexEndpoints {
             path: "/api/sessions",
             queryItems: [
                 URLQueryItem(name: "include_archived", value: includeArchived ? "1" : nil),
-                URLQueryItem(name: "archived_limit", value: includeArchived ? archivedLimit.map(String.init) : nil)
+                URLQueryItem(name: "archived_limit", value: includeArchived ? archivedLimit.map { String($0) } : nil)
             ].filter { $0.value != nil }
         )
     }
@@ -57,8 +57,8 @@ public enum HermexEndpoints {
             queryItems: [
                 URLQueryItem(name: "session_id", value: id),
                 URLQueryItem(name: "messages", value: includeMessages ? "1" : "0"),
-                URLQueryItem(name: "msg_limit", value: messageLimit.map(String.init)),
-                URLQueryItem(name: "msg_before", value: messageBefore.map(String.init)),
+                URLQueryItem(name: "msg_limit", value: messageLimit.map { String($0) }),
+                URLQueryItem(name: "msg_before", value: messageBefore.map { String($0) }),
                 URLQueryItem(name: "expand_renderable", value: expandRenderable ? "1" : nil)
             ].filter { $0.value != nil }
         )
@@ -244,7 +244,7 @@ public enum HermexEndpoints {
     public static func cronOutput(jobID: String, limit: Int? = nil) -> HermexEndpoint {
         HermexEndpoint(path: "/api/crons/output", queryItems: [
             URLQueryItem(name: "job_id", value: jobID),
-            URLQueryItem(name: "limit", value: limit.map(String.init))
+            URLQueryItem(name: "limit", value: limit.map { String($0) })
         ].filter { $0.value != nil })
     }
 

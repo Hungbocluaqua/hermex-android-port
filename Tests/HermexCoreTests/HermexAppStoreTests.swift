@@ -210,7 +210,7 @@ final class HermexAppStoreTests: XCTestCase {
         await store.send(.selectPanel(.memory))
         XCTAssertEqual(store.panels.memory.map(\.section), ["profile"])
         await store.send(.selectPanel(.insights))
-        XCTAssertEqual(store.panels.insights, .object(["ok": .bool(true)]))
+        XCTAssertEqual(store.panels.insights, .dictionary(["ok": .bool(true)]))
     }
 
     private func environment(probe: StoreProbe) -> HermexAppEnvironment {
@@ -328,13 +328,13 @@ private actor StoreProbe {
 
     func testServerConnection(server: HermexServerIdentity) async throws -> HermexJSONValue {
         testedServer = server
-        return .object(["ok": .bool(true)])
+        return .dictionary(["ok": .bool(true)])
     }
 
     func loginToServer(server: HermexServerIdentity, password: String) async throws -> HermexJSONValue {
         loginServer = server
         loginPassword = password
-        return .object(["ok": .bool(true)])
+        return .dictionary(["ok": .bool(true)])
     }
 
     func loadSessions(includeArchived: Bool, archivedLimit: Int?) async throws -> HermexSessionsResponse {
@@ -368,7 +368,7 @@ private actor StoreProbe {
             modelProvider: modelProvider,
             profile: profile
         )
-        return .object([
+        return .dictionary([
             "session_id": .string(sessionID ?? "s1"),
             "stream_id": .string("stream-1")
         ])
@@ -376,37 +376,37 @@ private actor StoreProbe {
 
     func cancelStream(streamID: String) async throws -> HermexJSONValue {
         cancelledStreamID = streamID
-        return .object(["ok": .bool(true)])
+        return .dictionary(["ok": .bool(true)])
     }
 
     func respondApproval(sessionID: String, choice: String, approvalID: String?) async throws -> HermexJSONValue {
-        .object(["ok": .bool(true)])
+        .dictionary(["ok": .bool(true)])
     }
 
     func respondClarification(sessionID: String, response: String, clarifyID: String?) async throws -> HermexJSONValue {
-        .object(["ok": .bool(true)])
+        .dictionary(["ok": .bool(true)])
     }
 
     func undoSession(sessionID: String) async throws -> HermexJSONValue {
         mutations.append("undo:\(sessionID)")
-        return .object(["ok": .bool(true)])
+        return .dictionary(["ok": .bool(true)])
     }
 
     func retrySession(sessionID: String) async throws -> HermexJSONValue {
         mutations.append("retry:\(sessionID)")
-        return .object(["ok": .bool(true)])
+        return .dictionary(["ok": .bool(true)])
     }
 
     func compressSession(sessionID: String, focusTopic: String?) async throws -> HermexJSONValue {
         mutations.append("compress:\(sessionID)")
-        return .object(["ok": .bool(true)])
+        return .dictionary(["ok": .bool(true)])
     }
 
     func loadModels() async throws -> HermexModelsResponse {
         HermexModelsResponse(
             groups: nil,
             models: [
-                .object([
+                .dictionary([
                     "id": .string("gpt-5.5"),
                     "provider": .string("codex"),
                     "label": .string("GPT 5.5")
@@ -434,14 +434,14 @@ private actor StoreProbe {
 
     func saveReasoningEffort(effort: String, model: String?, provider: String?) async throws -> HermexJSONValue {
         savedReasoningEffort = effort
-        return .object(["ok": .bool(true)])
+        return .dictionary(["ok": .bool(true)])
     }
 
     func loadDirectory(sessionID: String, path: String?) async throws -> HermexJSONValue {
-        .object([
+        .dictionary([
             "path": .string(path ?? "/repo"),
             "entries": .array([
-                .object([
+                .dictionary([
                     "name": .string("README.md"),
                     "path": .string("/repo/README.md"),
                     "type": .string("file"),
@@ -452,30 +452,30 @@ private actor StoreProbe {
     }
 
     func loadFile(sessionID: String, path: String) async throws -> HermexJSONValue {
-        .object(["path": .string(path), "content": .string("Hello"), "mime_type": .string("text/markdown")])
+        .dictionary(["path": .string(path), "content": .string("Hello"), "mime_type": .string("text/markdown")])
     }
 
     func loadGitStatus(sessionID: String) async throws -> HermexJSONValue {
-        .object([
+        .dictionary([
             "branch": .string("main"),
             "ahead": .number(1),
             "behind": .number(0),
             "files": .array([
-                .object(["path": .string("README.md"), "status": .string("M"), "additions": .number(2), "deletions": .number(1)])
+                .dictionary(["path": .string("README.md"), "status": .string("M"), "additions": .number(2), "deletions": .number(1)])
             ])
         ])
     }
 
     func performGitAction(sessionID: String, action: String) async throws -> HermexJSONValue {
         gitActions.append(action)
-        return .object(["ok": .bool(true)])
+        return .dictionary(["ok": .bool(true)])
     }
 
     func performGitCommand(sessionID: String, command: HermexGitCommand) async throws -> HermexJSONValue {
         switch command {
         case .diff:
             gitCommands.append("diff")
-            return .object(["diff": .string("diff --git README.md")])
+            return .dictionary(["diff": .string("diff --git README.md")])
         case .stage:
             gitCommands.append("stage")
         case .unstage:
@@ -491,26 +491,26 @@ private actor StoreProbe {
         case .push:
             gitCommands.append("push")
         }
-        return .object(["ok": .bool(true)])
+        return .dictionary(["ok": .bool(true)])
     }
 
     func loadTasks() async throws -> HermexJSONValue {
-        .object(["jobs": .array([.object(["id": .string("job-1"), "title": .string("Morning"), "status": .string("active")])])])
+        .dictionary(["jobs": .array([.dictionary(["id": .string("job-1"), "title": .string("Morning"), "status": .string("active")])])])
     }
 
     func loadSkills() async throws -> HermexJSONValue {
-        .object(["skills": .array([.object(["name": .string("swift"), "enabled": .bool(true), "summary": .string("Swift helper")])])])
+        .dictionary(["skills": .array([.dictionary(["name": .string("swift"), "enabled": .bool(true), "summary": .string("Swift helper")])])])
     }
 
     func loadMemory() async throws -> HermexJSONValue {
-        .object(["profile": .string("Likes concise answers")])
+        .dictionary(["profile": .string("Likes concise answers")])
     }
 
     func loadInsights(days: Int) async throws -> HermexJSONValue {
-        .object(["ok": .bool(true)])
+        .dictionary(["ok": .bool(true)])
     }
 
     func logout() async throws -> HermexJSONValue {
-        .object(["ok": .bool(true)])
+        .dictionary(["ok": .bool(true)])
     }
 }
