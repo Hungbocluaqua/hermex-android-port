@@ -41,10 +41,6 @@ jobs:
     env:
       HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
       HERMEX_ALLOW_INCOMPLETE_SKIP_APK: "1"
-      HERMEX_VISUAL_OUTPUT_ROOT: ${{ runner.temp }}/android-visual-screens
-      HERMEX_VISUAL_APK_DIR: ${{ runner.temp }}/hermex-skip-visual-apk
-      ANDROID_HOME: ${{ runner.temp }}/android-sdk
-      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
     steps:
       - name: Check out
         uses: actions/checkout@v7
@@ -66,6 +62,9 @@ jobs:
         run: |
           set -euo pipefail
           skip android sdk install
+          echo "ANDROID_HOME=$HOME/Library/Android/sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$HOME/Library/Android/sdk" >> "$GITHUB_ENV"
+          export ANDROID_HOME="$HOME/Library/Android/sdk"
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
@@ -128,8 +127,8 @@ jobs:
             --screen "${{ inputs.screen }}" \
             --state "${{ inputs.state }}" \
             --device-name "${{ inputs.device_name }}" \
-            --output-root "$HERMEX_VISUAL_OUTPUT_ROOT" \
-            --apk-dir "$HERMEX_VISUAL_APK_DIR"
+            --output-root "$RUNNER_TEMP/android-visual-screens" \
+            --apk-dir "$RUNNER_TEMP/hermex-skip-visual-apk"
 
       - name: Upload Android screenshot artifact
         uses: actions/upload-artifact@v5
