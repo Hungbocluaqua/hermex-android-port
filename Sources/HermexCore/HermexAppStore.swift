@@ -922,20 +922,20 @@ public final class HermexAppStore {
 
 private extension HermexAttachmentDTO {
     var jsonValue: HermexJSONValue {
-        var object: [String: HermexJSONValue] = [:]
-        if let name { object["name"] = .string(name) }
-        if let path { object["path"] = .string(path) }
-        if let mime { object["mime"] = .string(mime) }
-        if let size { object["size"] = .number(Double(size)) }
-        if let isImage { object["is_image"] = .bool(isImage) }
-        return .dictionary(object)
+        var fields: [String: HermexJSONValue] = [:]
+        if let name { fields["name"] = .string(name) }
+        if let path { fields["path"] = .string(path) }
+        if let mime { fields["mime"] = .string(mime) }
+        if let size { fields["size"] = .number(Double(size)) }
+        if let isImage { fields["is_image"] = .bool(isImage) }
+        return .dictionary(fields)
     }
 }
 
 private extension HermexJSONValue {
     func stringValue(forKey key: String) -> String? {
-        guard case .dictionary(let object) = self else { return nil }
-        guard case .string(let value) = object[key] else { return nil }
+        guard case .dictionary(let fields) = self else { return nil }
+        guard case .string(let value) = fields[key] else { return nil }
         return value
     }
 }

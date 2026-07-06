@@ -419,21 +419,21 @@ private extension HermexJSONValue {
                 options.append(contentsOf: value.modelOptions(inheritedProvider: inheritedProvider))
             }
             return options
-        case .dictionary(let object):
-            let provider = object.stringValue("provider") ?? object.stringValue("provider_id") ?? inheritedProvider
+        case .dictionary(let fields):
+            let provider = fields.stringValue("provider") ?? fields.stringValue("provider_id") ?? inheritedProvider
             let nestedKeys = ["models", "items", "slash_autocomplete_models"]
             var nested: [HermexModelOption] = []
             for key in nestedKeys {
-                if let nestedValue = object[key] {
+                if let nestedValue = fields[key] {
                     nested.append(contentsOf: nestedValue.modelOptions(inheritedProvider: provider))
                 }
             }
-            if let id = object.stringValue("id") ?? object.stringValue("model") ?? object.stringValue("name") {
+            if let id = fields.stringValue("id") ?? fields.stringValue("model") ?? fields.stringValue("name") {
                 var options = [HermexModelOption(
                     id: id,
-                    name: object.stringValue("name"),
+                    name: fields.stringValue("name"),
                     provider: provider,
-                    label: object.stringValue("label") ?? object.stringValue("display_name")
+                    label: fields.stringValue("label") ?? fields.stringValue("display_name")
                 )]
                 options.append(contentsOf: nested)
                 return options

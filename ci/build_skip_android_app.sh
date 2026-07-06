@@ -67,7 +67,35 @@ if [[ -z "$GRADLE_SETTINGS" ]]; then
 fi
 GRADLE_DIR="$(dirname "$GRADLE_SETTINGS")"
 
-(
+dump_generated_kotlin_diagnostics() {
+  echo "::group::Generated Kotlin diagnostics"
+  while IFS= read -r -d '' kotlin_file; do
+    echo "--- $kotlin_file"
+    nl -ba "$kotlin_file" | sed -n '1,120p'
+    case "$kotlin_file" in
+      *HermexDTOs.kt)
+        nl -ba "$kotlin_file" | sed -n '1660,1725p'
+        ;;
+      *HermexStateMapping.kt)
+        nl -ba "$kotlin_file" | sed -n '1,220p'
+        ;;
+      *HermexSharedModels.kt)
+        nl -ba "$kotlin_file" | sed -n '460,520p'
+        ;;
+    esac
+  done < <(
+    find "$APP_DIR/.build/plugins/outputs" "$APP_DIR/.build/Android" \
+      -type f \( \
+        -name 'HermexJSONValue.kt' -o \
+        -name 'HermexDTOs.kt' -o \
+        -name 'HermexStateMapping.kt' -o \
+        -name 'HermexSharedModels.kt' \
+      \) -print0
+  )
+  echo "::endgroup::"
+}
+
+if ! (
   cd "$GRADLE_DIR"
   if command -v skip >/dev/null 2>&1; then
     skip gradle -p "$GRADLE_DIR" "$GRADLE_TASK"
@@ -81,7 +109,10 @@ GRADLE_DIR="$(dirname "$GRADLE_SETTINGS")"
     find "$APP_DIR" -maxdepth 5 \( -name 'settings.gradle.kts' -o -name 'gradlew' \) -print >&2 || true
     exit 1
   fi
-)
+); then
+  dump_generated_kotlin_diagnostics
+  exit 1
+fi
 
 find "$GRADLE_DIR" "$APP_DIR/.build/Android" "$APP_DIR/.build/plugins/outputs" -type f \( -name '*.apk' -o -name '*.aab' \) -print0 |
   while IFS= read -r -d '' artifact; do
