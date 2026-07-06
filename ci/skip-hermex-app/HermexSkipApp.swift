@@ -192,7 +192,10 @@ private final class HermexSkipRuntime {
                 case "push":
                     return try await git.push(sessionID: sessionID)
                 default:
-                    return .object(["ok": .bool(false), "error": .string("Unsupported git action")])
+                    return HermexJSONValue.dictionary([
+                        "ok": HermexJSONValue.bool(false),
+                        "error": HermexJSONValue.string("Unsupported git action")
+                    ])
                 }
             },
             performGitCommand: { sessionID, command in
