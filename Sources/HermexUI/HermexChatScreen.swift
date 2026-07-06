@@ -262,12 +262,14 @@ public struct HermexComposerSurface: View {
 
     public var body: some View {
         VStack(spacing: HermexLayoutContract.composerContainerSpacing) {
+            composerStatusStack
+
+            if showsSlashCommandHint {
+                slashCommandHint
+            }
+
             HermexGlassPanel(cornerRadius: composerCornerRadius) {
                 VStack(spacing: 0) {
-                    if state.isRecordingVoice {
-                        composerStatusBar(text: "Recording voice", systemImage: "waveform")
-                    }
-
                     if !state.attachments.isEmpty {
                         attachmentStrip
                     }
@@ -282,13 +284,7 @@ public struct HermexComposerSurface: View {
 
                     HStack(spacing: HermexLayoutContract.composerControlSpacing) {
                         Button { onEvent(.attach) } label: {
-                            Image(systemName: "plus")
-                                .font(.system(size: 24, weight: .semibold))
-                                .frame(width: 44, height: 44)
-                                .background(HermexUIColors.glassFillStrong, in: Circle())
-                                .overlay {
-                                    Circle().stroke(HermexUIColors.hairline, lineWidth: 0.6)
-                                }
+                            composerControlGlyph("plus", size: HermexLayoutContract.composerPlusButtonSize)
                         }
                         modelControl
                         if state.showsReasoningControl {
@@ -296,20 +292,10 @@ public struct HermexComposerSurface: View {
                         }
                         Spacer()
                         Button { onEvent(state.isRecordingVoice ? .stopVoice : .startVoice) } label: {
-                            Image(systemName: "waveform")
-                                .font(.headline.weight(.semibold))
-                                .frame(width: 44, height: 44)
-                                .background(HermexUIColors.glassFillStrong, in: Circle())
-                                .overlay {
-                                    Circle().stroke(HermexUIColors.hairline, lineWidth: 0.6)
-                                }
+                            composerControlGlyph("waveform", size: HermexLayoutContract.composerActionButtonSize)
                         }
                         Button { onEvent(stream.isStreaming ? .cancelStream : .sendDraft) } label: {
-                            Image(systemName: stream.isStreaming ? "stop.fill" : "arrow.up")
-                                .font(.headline.weight(.semibold))
-                                .frame(width: 44, height: 44)
-                                .background(HermexUIColors.primaryText, in: Circle())
-                                .foregroundStyle(HermexUIColors.systemBackground)
+                            composerActionGlyph
                         }
                     }
                     .buttonStyle(.plain)
@@ -340,6 +326,49 @@ public struct HermexComposerSurface: View {
         .foregroundStyle(HermexUIColors.primaryText)
     }
 
+    @ViewBuilder
+    private var composerStatusStack: some View {
+        VStack(spacing: 6) {
+            if state.isRecordingVoice {
+                composerStatusBar(text: "Recording voice", systemImage: "waveform", isError: false)
+            }
+            if state.isUploadingAttachment {
+                composerStatusBar(text: "Uploading attachment", systemImage: "paperclip", isError: false)
+            }
+            if state.isLoadingConfiguration {
+                composerStatusBar(text: "Loading composer settings", systemImage: "gearshape", isError: false)
+            }
+            if stream.isRecovering {
+                composerStatusBar(text: "Reconnecting stream", systemImage: "arrow.clockwise", isError: false)
+            }
+            if let error = state.configurationErrorMessage, !error.isEmpty {
+                composerStatusBar(text: error, systemImage: "exclamationmark.triangle", isError: true)
+            }
+        }
+    }
+
+    private var showsSlashCommandHint: Bool {
+        state.draft.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/")
+    }
+
+    private var slashCommandHint: some View {
+        HermexGlassPanel(cornerRadius: 14) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Commands")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(HermexUIColors.secondaryText)
+                    .textCase(.uppercase)
+                Text("Continue typing a slash command from this server.")
+                    .font(.footnote)
+                    .foregroundStyle(HermexUIColors.primaryText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+        }
+        .padding(.horizontal)
+    }
+
     private var isExpanded: Bool {
         state.draft.contains("\n") || state.draft.count > 44
     }
@@ -357,6 +386,28 @@ public struct HermexComposerSurface: View {
             get: { state.draft },
             set: { onEvent(.updateDraft($0)) }
         )
+    }
+
+    private func composerControlGlyph(_ systemImage: String, size: CGFloat) -> some View {
+        Image(systemName: systemImage)
+            .font(.system(size: size == HermexLayoutContract.composerPlusButtonSize ? 24 : 17, weight: .semibold))
+            .frame(width: size, height: size)
+            .frame(width: HermexLayoutContract.chatToolbarActionSlotSize, height: HermexLayoutContract.chatToolbarActionSlotSize)
+    }
+
+    private var composerActionGlyph: some View {
+        Image(systemName: stream.isStreaming ? "stop.fill" : "arrow.up")
+            .font(.system(size: 15, weight: .semibold))
+            .frame(
+                width: HermexLayoutContract.composerActionButtonSize,
+                height: HermexLayoutContract.composerActionButtonSize
+            )
+            .background(HermexUIColors.primaryText, in: Circle())
+            .foregroundStyle(HermexUIColors.systemBackground)
+            .frame(
+                width: HermexLayoutContract.chatToolbarActionSlotSize,
+                height: HermexLayoutContract.chatToolbarActionSlotSize
+            )
     }
 
     @ViewBuilder
@@ -458,14 +509,22 @@ public struct HermexComposerSurface: View {
         }
     }
 
-    private func composerStatusBar(text: String, systemImage: String) -> some View {
+    private func composerStatusBar(text: String, systemImage: String, isError: Bool) -> some View {
         Label(text, systemImage: systemImage)
             .font(.caption.weight(.medium))
-            .foregroundStyle(HermexUIColors.secondaryText)
+            .foregroundStyle(isError ? Color.red.opacity(0.95) : HermexUIColors.secondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)
-            .padding(.top, 10)
-            .padding(.bottom, 4)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                isError ? Color.red.opacity(0.10) : HermexUIColors.glassFillStrong,
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(isError ? Color.red.opacity(0.28) : HermexUIColors.hairline, lineWidth: 0.6)
+            }
+            .padding(.horizontal)
     }
 
     private var attachmentStrip: some View {

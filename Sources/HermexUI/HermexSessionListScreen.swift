@@ -2,12 +2,19 @@ import SwiftUI
 import HermexCore
 
 public struct HermexSessionListScreen: View {
+    private static let searchChromeIconVisualSize: CGFloat = 36
+    private static let searchChromeIconHitTarget: CGFloat = 44
+
     private let state: HermexSessionListState
     private let onEvent: (HermexUIEvent) -> Void
+    @State private var searchChromeIsExpanded: Bool
+    @State private var searchText: String
 
     public init(state: HermexSessionListState, onEvent: @escaping (HermexUIEvent) -> Void = { _ in }) {
         self.state = state
         self.onEvent = onEvent
+        _searchChromeIsExpanded = State(initialValue: !state.searchQuery.isEmpty)
+        _searchText = State(initialValue: state.searchQuery)
     }
 
     public var body: some View {
@@ -71,23 +78,119 @@ public struct HermexSessionListScreen: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .center, spacing: searchChromeIsExpanded ? 0 : 16) {
             HermexLogoMark()
+                .frame(width: searchChromeIsExpanded ? 0 : HermexLayoutContract.sessionListLogoWidth, alignment: .leading)
+                .opacity(searchChromeIsExpanded ? 0 : 1)
+                .clipped()
             Spacer(minLength: 12)
-            HermexIconCluster {
-                HermexCircleIconButton(
-                    systemImage: "magnifyingglass",
-                    accessibilityLabel: "Search sessions",
-                    action: { onEvent(.searchSessions(state.searchQuery)) }
-                )
-                HermexCircleIconButton(
-                    systemImage: "gearshape.fill",
-                    accessibilityLabel: "Settings",
-                    isFilled: true,
-                    action: { onEvent(.openRoute(.settings)) }
+            searchChrome
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+    }
+
+    private var searchChrome: some View {
+        HStack(spacing: searchChromeIsExpanded ? 8 : 4) {
+            Button {
+                if searchChromeIsExpanded {
+                    submitSearch()
+                } else {
+                    searchChromeIsExpanded = true
+                }
+            } label: {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(searchChromeIsExpanded ? HermexUIColors.secondaryText : HermexUIColors.primaryText)
+                    .frame(
+                        width: Self.searchChromeIconVisualSize,
+                        height: Self.searchChromeIconVisualSize
+                    )
+                    .frame(
+                        width: Self.searchChromeIconHitTarget,
+                        height: Self.searchChromeIconHitTarget
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(searchChromeIsExpanded ? "Search sessions" : "Open session search")
+
+            TextField("Search sessions", text: $searchText)
+                .textFieldStyle(.plain)
+                .font(.subheadline)
+                .foregroundStyle(HermexUIColors.primaryText)
+                .lineLimit(1)
+                .frame(maxWidth: searchChromeIsExpanded ? .infinity : 0)
+                .opacity(searchChromeIsExpanded ? 1 : 0)
+                .clipped()
+
+            if searchChromeIsExpanded && !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                    onEvent(.searchSessions(""))
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(HermexUIColors.secondaryText)
+                        .frame(
+                            width: Self.searchChromeIconVisualSize,
+                            height: Self.searchChromeIconVisualSize
+                        )
+                        .frame(
+                            width: Self.searchChromeIconHitTarget,
+                            height: Self.searchChromeIconHitTarget
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+
+            Button {
+                if searchChromeIsExpanded {
+                    searchChromeIsExpanded = false
+                    searchText = ""
+                    onEvent(.searchSessions(""))
+                } else {
+                    onEvent(.openRoute(.settings))
+                }
+            } label: {
+                ZStack {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(Color.black)
+                        .frame(
+                            width: Self.searchChromeIconVisualSize,
+                            height: Self.searchChromeIconVisualSize
+                        )
+                        .background(HermexUIColors.gold, in: Circle())
+                        .opacity(searchChromeIsExpanded ? 0 : 1)
+
+                    Image(systemName: "xmark")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundStyle(HermexUIColors.primaryText)
+                        .frame(
+                            width: Self.searchChromeIconVisualSize,
+                            height: Self.searchChromeIconVisualSize
+                        )
+                        .opacity(searchChromeIsExpanded ? 1 : 0)
+                }
+                .frame(
+                    width: Self.searchChromeIconHitTarget,
+                    height: Self.searchChromeIconHitTarget
                 )
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(searchChromeIsExpanded ? "Close search" : "Settings")
         }
+        .padding(.vertical, 2)
+        .frame(maxWidth: searchChromeIsExpanded ? .infinity : nil, alignment: .trailing)
+        .background(HermexUIColors.glassFill, in: Capsule())
+        .overlay {
+            Capsule().stroke(HermexUIColors.hairline, lineWidth: 0.6)
+        }
+        .clipShape(Capsule())
+    }
+
+    private func submitSearch() {
+        onEvent(.searchSessions(searchText.trimmingCharacters(in: .whitespacesAndNewlines)))
     }
 
     @ViewBuilder
