@@ -134,7 +134,7 @@ jobs:
 
           This release was gated by:
           - shared Swift package build and tests
-          - Skip-enabled shared package build and tests
+          - Skip-enabled shared package build, followed by shared Swift tests
           - Android unit tests, debug APK build, and release AAB build
           - manual confirmation that iOS/Android visual parity goldens passed
           EOF
@@ -146,6 +146,7 @@ jobs:
         run: |
           set -euo pipefail
           gh release create "${{ inputs.tag_name }}" dist/* \
+            --repo "${{ github.repository }}" \
             --title "${{ inputs.release_name }}" \
             --notes-file release-notes.md \
             $PRERELEASE_FLAG
