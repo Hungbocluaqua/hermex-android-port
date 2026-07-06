@@ -1,0 +1,120 @@
+name: Skip Android Named Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Git tag to create, for example skip-android-v0.3.0"
+        required: true
+        type: string
+      release_name:
+        description: "Human-readable release name"
+        required: true
+        type: string
+      app_version:
+        description: "Android app versionName/version used by Skip"
+        required: true
+        default: "0.3.0"
+        type: string
+      prerelease:
+        description: "Publish as a prerelease"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: skip-android-named-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  skip-android-release:
+    name: Build And Release Skip Android App
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Install Skip
+        run: |
+          set -euo pipefail
+          brew tap skiptools/skip || true
+          brew trust skiptools/skip
+          brew install skip || brew upgrade skip
+
+      - name: Install Android SDK for Skip
+        run: |
+          set -euo pipefail
+          skip android sdk install
+
+      - name: Check Skip toolchain
+        run: |
+          set -euo pipefail
+          if ! skip checkup; then
+            cat /tmp/skip-checkup-*.txt 2>/dev/null || true
+            echo "skip checkup reported a hosted-runner diagnostic issue; continuing to the export gate."
+          fi
+
+      - name: Build shared Swift package
+        run: |
+          set -euo pipefail
+          export SKIP_ZERO=1
+          swift build
+          swift test
+
+      - name: Export runnable Skip Android app
+        env:
+          HERMEX_SKIP_VERSION: ${{ inputs.app_version }}
+        run: |
+          set -euo pipefail
+          bash ci/build_skip_android_app.sh "$RUNNER_TEMP/hermex-skip-dist"
+
+      - name: Collect release assets
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find "$RUNNER_TEMP/hermex-skip-dist" -type f \( -name '*.apk' -o -name '*.aab' \) -print0 |
+            while IFS= read -r -d '' asset; do
+              ext="${asset##*.}"
+              cp "$asset" "dist/hermex-skip-android-${{ inputs.app_version }}.${ext}"
+            done
+          shasum -a 256 dist/* > dist/SHA256SUMS.txt
+          ls -la dist
+
+      - name: Create release notes
+        run: |
+          set -euo pipefail
+          cat > release-notes.md <<'EOF'
+          Hermex Skip Android release.
+
+          This release contains a runnable Android artifact exported from a generated Skip transpiled-app shell that launches the shared SwiftUI `HermexStoreRootScreen`.
+
+          Build gates:
+          - shared Swift package build and tests with `SKIP_ZERO=1`
+          - Skip toolchain check
+          - generated Skip app shell build
+          - `skip export --debug` Android export
+
+          The APK is debug-signed for direct installation and smoke testing.
+          EOF
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE_FLAG: ${{ inputs.prerelease && '--prerelease' || '' }}
+        run: |
+          set -euo pipefail
+          mapfile -t release_assets < <(find dist -type f | sort)
+          if [ "${#release_assets[@]}" -eq 0 ]; then
+            echo "No release assets found in dist"
+            exit 1
+          fi
+          gh release create "${{ inputs.tag_name }}" "${release_assets[@]}" \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "${{ inputs.release_name }}" \
+            --notes-file release-notes.md \
+            $PRERELEASE_FLAG

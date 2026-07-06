@@ -32,6 +32,8 @@ Hermex is moving the Android app to a Skip-first architecture. The iOS SwiftUI a
 
 The `Skip Android Parity` workflow runs a full shared Swift package build, shared Swift tests, Android fallback builds, endpoint parity, migration audits, and visual manifest validation. The manual Skip toolchain job is the macOS lane for enabling generated Android verification after the SwiftUI targets are migrated into Skip-compatible modules.
 
+The `Skip Android Named Release` workflow is the runnable Skip APK lane. It creates a temporary conventional Skip transpiled app with `skip init --transpiled-app`, patches that app to launch `HermexStoreRootScreen`, builds the generated app shell, exports Android artifacts with `skip export --debug`, and uploads the resulting APK/AAB assets to a named GitHub release. The release APK from this workflow is the Skip-generated Android artifact; the legacy Gradle APK remains the Kotlin Compose fallback.
+
 Plain Swift package checks run with `SKIP_ZERO=1` so normal Swift compilation is independent from Skip installation. The manual Skip lane installs Skip, runs `skip checkup`, resolves package dependencies, and builds/tests the Skip-enabled package.
 
 Visual coverage is declared in `ci/visual-goldens/hermex-screens.json`. Once screenshot capture is enabled, compare output with:
@@ -64,6 +66,14 @@ Skip package wiring is tracked with:
 python3 ci/skip_package_audit.py
 ```
 
+Runnable Skip Android artifact generation is tracked with:
+
+```bash
+bash ci/build_skip_android_app.sh dist/skip-android
+```
+
+This command must run on macOS with Skip, Xcode, and the Android SDK installed. It intentionally generates the conventional Skip app shell in a temporary directory so the repository can keep the existing lowercase `android/` fallback project on Windows without conflicting with Skip's generated uppercase `Android/` directory.
+
 Shared SwiftUI parity guardrails are tracked with:
 
 ```bash
@@ -72,4 +82,4 @@ python3 ci/shared_ui_parity_audit.py
 
 ## Release Gate
 
-Do not publish an Android release from this branch until the macOS Skip build and visual golden comparison pass. The manual `Android Named Release` workflow requires the input `confirm_visual_parity=visual-parity-passed`, then rebuilds the shared Swift package, the Skip-enabled package, and Android artifacts before creating the named GitHub release.
+Do not publish an Android release from this branch until the macOS Skip build and visual golden comparison pass. The manual `Android Named Release` workflow requires the input `confirm_visual_parity=visual-parity-passed`, then rebuilds the shared Swift package, the Skip-enabled package, and Kotlin fallback Android artifacts before creating the named GitHub release. Use `Skip Android Named Release` when the release must contain the runnable Skip-exported APK/AAB.

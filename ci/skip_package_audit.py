@@ -29,6 +29,10 @@ def main() -> int:
     ok &= require((ROOT / "Sources" / "HermexCore" / "Skip" / "skip.yml").is_file(), "HermexCore Skip config is missing.")
     ok &= require((ROOT / "Sources" / "HermexPlatform" / "Skip" / "skip.yml").is_file(), "HermexPlatform Skip config is missing.")
     ok &= require((ROOT / "Sources" / "HermexUI" / "Skip" / "skip.yml").is_file(), "HermexUI Skip config is missing.")
+    ok &= require((ROOT / "ci" / "build_skip_android_app.sh").is_file(), "Skip Android app export script is missing.")
+    ok &= require((ROOT / "ci" / "prepare_skip_hermex_app.py").is_file(), "Skip Android app preparation script is missing.")
+    ok &= require((ROOT / "ci" / "skip-hermex-app" / "HermexSkipApp.swift").is_file(), "Skip Android app Swift launcher template is missing.")
+    ok &= require((ROOT / ".github" / "workflows" / "skip-android-named-release.yml").is_file(), "Skip Android release workflow is missing.")
     ok &= require('resources: [.process("Resources")]' in text, "HermexUI must process shared resources.")
 
     for relative in [
@@ -49,6 +53,19 @@ def main() -> int:
             (ROOT / "Sources" / "HermexUI" / "Resources" / "Logo" / asset).is_file(),
             f"Shared Hermex logo asset is missing: {asset}.",
         )
+
+    launcher = (ROOT / "ci" / "skip-hermex-app" / "HermexSkipApp.swift").read_text(encoding="utf-8")
+    ok &= require("HermexStoreRootScreen" in launcher, "Skip launcher must render HermexStoreRootScreen.")
+    ok &= require("HermexAppEnvironment" in launcher, "Skip launcher must provide a live HermexAppEnvironment.")
+    ok &= require("HermexAPIClient" in launcher, "Skip launcher must connect shared UI to HermexAPIClient.")
+
+    export_script = (ROOT / "ci" / "build_skip_android_app.sh").read_text(encoding="utf-8")
+    ok &= require("skip init --transpiled-app" in export_script, "Skip app export must generate a transpiled app shell.")
+    ok &= require("skip export --debug" in export_script, "Skip app export must produce Android artifacts with skip export.")
+
+    workflow = (ROOT / ".github" / "workflows" / "skip-android-named-release.yml").read_text(encoding="utf-8")
+    ok &= require("ci/build_skip_android_app.sh" in workflow, "Skip Android release workflow must call the app export script.")
+    ok &= require("gh release create" in workflow, "Skip Android release workflow must publish a GitHub release.")
 
     if ok:
         print("Skip package audit OK")
