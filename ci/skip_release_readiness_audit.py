@@ -29,6 +29,7 @@ def main() -> int:
     api_client = read("Sources/HermexCore/HermexAPIClient.swift")
     workflow = read(".github/workflows/skip-android-named-release.yml")
     visual_workflow = read(".github/workflows/visual-golden-compare.yml")
+    android_visual_workflow = read(".github/workflows/android-visual-screens.yml")
     manifest = read("ci/visual-goldens/hermex-screens.json")
 
     ok = True
@@ -72,6 +73,12 @@ def main() -> int:
     )
     ok &= "compare_screenshots.py" in visual_workflow or fail(
         "Visual Golden Compare must run the pixel diff."
+    )
+    ok &= "ci/capture_skip_android_fixture.sh" in android_visual_workflow or fail(
+        "Android Visual Screens must capture Skip fixture screenshots from an emulator."
+    )
+    ok &= "actions/upload-artifact" in android_visual_workflow or fail(
+        "Android Visual Screens must upload screenshot artifacts for visual comparison."
     )
 
     if ok:

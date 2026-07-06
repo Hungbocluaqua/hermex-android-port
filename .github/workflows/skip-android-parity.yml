@@ -8,10 +8,12 @@ on:
       - Sources/**
       - Tests/**
       - android/**
+      - ci/capture_skip_android_fixture.sh
       - ci/build_skip_android_app.sh
       - ci/visual-goldens/**
       - ci/prepare_skip_hermex_app.py
       - ci/skip-hermex-app/**
+      - .github/workflows/android-visual-screens.yml
       - .github/workflows/visual-golden-compare.yml
       - ci/endpoint_parity.py
       - ci/skip_migration_audit.py
@@ -110,7 +112,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "Hermex shared Swift package is wired for Skip."
-          echo "Android emulator screenshot capture is still gated by visual-golden implementation."
+          echo "Android Visual Screens can capture one named Skip fixture screen from an emulator."
 
   skip-generated-apk-smoke:
     name: Skip Generated APK Smoke
@@ -175,6 +177,9 @@ jobs:
 
       - name: Validate shared visual fixture catalog
         run: python3 ci/visual-goldens/validate_fixture_catalog.py
+
+      - name: Self-test Android fixture capture wiring
+        run: bash ci/capture_skip_android_fixture.sh --self-test --screen session-list --state dark --device-name compact-phone
 
   endpoint-parity:
     name: Endpoint Parity

@@ -30,12 +30,14 @@ def main() -> int:
     ok &= require((ROOT / "Sources" / "HermexPlatform" / "Skip" / "skip.yml").is_file(), "HermexPlatform Skip config is missing.")
     ok &= require((ROOT / "Sources" / "HermexUI" / "Skip" / "skip.yml").is_file(), "HermexUI Skip config is missing.")
     ok &= require((ROOT / "ci" / "build_skip_android_app.sh").is_file(), "Skip Android app export script is missing.")
+    ok &= require((ROOT / "ci" / "capture_skip_android_fixture.sh").is_file(), "Android visual fixture capture script is missing.")
     ok &= require((ROOT / "ci" / "prepare_skip_hermex_app.py").is_file(), "Skip Android app preparation script is missing.")
     ok &= require((ROOT / "ci" / "skip_release_readiness_audit.py").is_file(), "Skip Android release readiness audit is missing.")
     ok &= require((ROOT / "ci" / "visual-goldens" / "validate_screenshot_inventory.py").is_file(), "Screenshot inventory validator is missing.")
     ok &= require((ROOT / "ci" / "visual-goldens" / "validate_fixture_catalog.py").is_file(), "Visual fixture catalog validator is missing.")
     ok &= require((ROOT / "ci" / "skip-hermex-app" / "HermexSkipApp.swift").is_file(), "Skip Android app Swift launcher template is missing.")
     ok &= require((ROOT / ".github" / "workflows" / "skip-android-named-release.yml").is_file(), "Skip Android release workflow is missing.")
+    ok &= require((ROOT / ".github" / "workflows" / "android-visual-screens.yml").is_file(), "Android visual screenshot workflow is missing.")
     ok &= require((ROOT / ".github" / "workflows" / "visual-golden-compare.yml").is_file(), "Visual Golden Compare workflow is missing.")
     ok &= require('resources: [.process("Resources")]' in text, "HermexUI must process shared resources.")
 
@@ -84,6 +86,14 @@ def main() -> int:
     ok &= require('android:label="Hermex"' in export_script, "Skip app export must force the generated launcher label to Hermex.")
     ok &= require("android_app_name" in export_script, "Skip app export must rewrite generated Android app-name strings.")
 
+    capture_script = (ROOT / "ci" / "capture_skip_android_fixture.sh").read_text(encoding="utf-8")
+    ok &= require("HERMEX_VISUAL_FIXTURE_NAME" in capture_script, "Android visual capture must build a named shared fixture.")
+    ok &= require("ci/visual-goldens/hermex-screens.json" in capture_script, "Android visual capture must validate against the golden manifest.")
+    ok &= require("cmd uimode night" in capture_script, "Android visual capture must set light/dark system appearance.")
+    ok &= require("wm size" in capture_script and "wm density" in capture_script, "Android visual capture must pin emulator display dimensions.")
+    ok &= require("screencap -p" in capture_script, "Android visual capture must collect a real emulator screenshot.")
+    ok &= require("chat-keyboard-open" in capture_script and "input tap" in capture_script, "Android visual capture must attempt keyboard-open fixture focus.")
+
     store = (ROOT / "Sources" / "HermexCore" / "HermexAppStore.swift").read_text(encoding="utf-8")
     ok &= require("isFreshInstallOnboarding" in store, "HermexAppStore must keep preview sessions out of fresh onboarding.")
     ok &= require("shouldSeedPreviewData" in store, "HermexAppStore demo data must be gated behind non-fresh-run state.")
@@ -116,10 +126,17 @@ def main() -> int:
     ok &= require("validate_fixture_catalog.py" in visual_workflow, "Visual Golden Compare must validate shared fixture coverage.")
     ok &= require("compare_screenshots.py" in visual_workflow, "Visual Golden Compare must run the screenshot pixel diff.")
 
+    android_visual_workflow = (ROOT / ".github" / "workflows" / "android-visual-screens.yml").read_text(encoding="utf-8")
+    ok &= require("ci/capture_skip_android_fixture.sh" in android_visual_workflow, "Android visual workflow must call the fixture capture script.")
+    ok &= require("workflow_dispatch" in android_visual_workflow and "screen:" in android_visual_workflow, "Android visual workflow must expose manual fixture selection.")
+    ok &= require("emulator" in android_visual_workflow and "adb wait-for-device" in android_visual_workflow, "Android visual workflow must boot an emulator.")
+    ok &= require("actions/upload-artifact" in android_visual_workflow, "Android visual workflow must upload screenshot artifacts.")
+
     parity_workflow = (ROOT / ".github" / "workflows" / "skip-android-parity.yml").read_text(encoding="utf-8")
     ok &= require("Skip Generated APK Smoke" in parity_workflow, "Skip parity workflow must expose a generated APK smoke job.")
     ok &= require("HERMEX_ALLOW_INCOMPLETE_SKIP_APK" in parity_workflow, "Skip APK smoke job must explicitly mark generated artifacts incomplete.")
     ok &= require("actions/upload-artifact" in parity_workflow, "Skip APK smoke job must upload generated artifacts for inspection.")
+    ok &= require("capture_skip_android_fixture.sh --self-test" in parity_workflow, "Skip parity workflow must self-test Android visual capture wiring.")
 
     if ok:
         print("Skip package audit OK")

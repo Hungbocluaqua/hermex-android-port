@@ -30,13 +30,23 @@ Hermex is moving the Android app to a Skip-first architecture. The iOS SwiftUI a
 
 ## Verification
 
-The `Skip Android Parity` workflow runs a full shared Swift package build, shared Swift tests, Android fallback builds, endpoint parity, migration audits, and visual manifest validation. The manual Skip toolchain job is the macOS lane for enabling generated Android verification after the SwiftUI targets are migrated into Skip-compatible modules.
+The `Skip Android Parity` workflow runs a full shared Swift package build, shared Swift tests, Android fallback builds, endpoint parity, migration audits, visual manifest validation, and an Android fixture-capture wiring self-test. The manual Skip toolchain job is the macOS lane for enabling generated Android verification after the SwiftUI targets are migrated into Skip-compatible modules.
 
 The `Skip Android Named Release` workflow is the runnable Skip APK lane. It creates a temporary conventional Skip transpiled app with `skip init --transpiled-app`, patches that app to launch `HermexStoreRootScreen`, runs the Skip-enabled Swift build so `skipstone` generates the Android Gradle project, builds that generated project with `assembleDebug`, and uploads the resulting APK/AAB assets to a named GitHub release. The release APK from this workflow is the Skip-generated Android artifact; the legacy Gradle APK remains the Kotlin Compose fallback.
 
 Plain Swift package checks run with `SKIP_ZERO=1` so normal Swift compilation is independent from Skip installation. The manual Skip lane installs Skip, runs `skip checkup`, resolves package dependencies, and builds/tests the Skip-enabled package.
 
-Visual coverage is declared in `ci/visual-goldens/hermex-screens.json`. Once screenshot capture is enabled, compare output with:
+Visual coverage is declared in `ci/visual-goldens/hermex-screens.json`. The manual `Android Visual Screens` workflow builds a Skip APK for one named shared SwiftUI fixture, installs it in an emulator, pins the Android display size/state from the manifest, and uploads the captured screenshot in the same `<device>/<state>/<screen>.png` layout consumed by the comparer. The local capture command expects an already-running emulator:
+
+```bash
+bash ci/capture_skip_android_fixture.sh \
+  --screen session-list \
+  --state dark \
+  --device-name compact-phone \
+  --output-root artifacts/android-skip
+```
+
+Compare complete iOS and Android screenshot inventories with:
 
 ```bash
 python3 ci/visual-goldens/compare_screenshots.py \
