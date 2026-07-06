@@ -80,6 +80,36 @@ public struct HermexLogoMark: View {
     }
 }
 
+public struct HermexAppIconMark: View {
+    private let size: CGFloat
+
+    public init(size: CGFloat = 124) {
+        self.size = size
+    }
+
+    public var body: some View {
+        appIconImage
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                    .stroke(Color.white.opacity(0.22), lineWidth: 1)
+            }
+            .shadow(color: HermexUIColors.gold.opacity(0.34), radius: 24, y: 10)
+            .accessibilityLabel("Hermex")
+    }
+
+    private var appIconImage: Image {
+#if SWIFT_PACKAGE
+        return Image("HermesAppIcon", bundle: .module)
+#else
+        return Image("HermesAppIcon")
+#endif
+    }
+}
+
 public struct HermexGlassPanel<Content: View>: View {
     private let content: Content
     private let cornerRadius: CGFloat

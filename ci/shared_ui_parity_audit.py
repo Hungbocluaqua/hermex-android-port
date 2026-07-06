@@ -38,6 +38,8 @@ def main() -> int:
     ok &= require("NavigationStack" not in root, "HermexRootScreen must not add platform navigation chrome.")
     ok &= require("HermexOnboardingScreen(appState: appState, onboarding: onboarding" in root, "Root screen must pass shared onboarding state.")
     ok &= require("TextField(" in onboarding and "SecureField(" in onboarding, "Onboarding must expose server/password inputs.")
+    ok &= require("HermexAppIconMark" in onboarding and "HermesAppIcon" in chrome, "Onboarding must render the shared Hermex app icon.")
+    ok &= require('text: $serverURLString' in onboarding and 'text: $password' in onboarding, "Onboarding fields must use direct SwiftUI state bindings for editable Android text input.")
     ok &= require("TextEditor(" in onboarding and "Custom headers" in onboarding, "Onboarding must expose custom header entry.")
     ok &= require(".testOnboardingConnection" in onboarding and ".connectOnboarding" in onboarding, "Onboarding must route connection test and login.")
     for action in [
@@ -50,6 +52,8 @@ def main() -> int:
         ok &= require(action in events and action in store, f"Shared onboarding action is missing {action}.")
     ok &= require("testServerConnection" in store and "loginToServer" in store, "Shared store is missing auth/server environment hooks.")
     ok &= require("onboarding.password = \"\"" in store, "Shared store must clear transient onboarding passwords.")
+    ok &= require("seededAppState.auth = .loggedIn" not in store, "Shared store must not auto-log in or seed sessions on first launch.")
+    ok &= require("Self.server(from: appState.auth)" in store, "Preview store must derive active server without changing first-run auth.")
     ok &= require("HermexLogoMark()" in session_list, "Session list must render the shared HERMEX logo.")
     ok &= require("utilityRail" in session_list, "Session list must expose the iOS utility rail contract.")
     ok &= require("sessionListRowActionSize" in session_list, "Session rows must preserve the trailing action button contract.")

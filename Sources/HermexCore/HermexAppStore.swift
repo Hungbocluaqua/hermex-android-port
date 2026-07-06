@@ -291,18 +291,13 @@ public final class HermexAppStore {
         panels: HermexPanelsState = HermexPanelsState(),
         environment: HermexAppEnvironment
     ) {
-        let server = Self.previewServer()
-        var seededAppState = appState
-        if seededAppState.auth == .unconfigured {
-            seededAppState.auth = .loggedIn(server: server)
-            seededAppState.route = .sessions
-        }
+        let activeServer = Self.server(from: appState.auth) ?? settings.activeServer
 
-        self.appState = seededAppState
+        self.appState = appState
         self.onboarding = onboarding
         self.sessions = sessions.sessions.isEmpty ? Self.previewSessions() : sessions
         self.chat = chat.messages.isEmpty ? Self.previewChat() : chat
-        self.settings = Self.previewSettings(settings, server: server)
+        self.settings = Self.previewSettings(settings, server: activeServer)
         self.workspace = workspace.entries.isEmpty ? Self.previewWorkspace() : workspace
         self.git = git.files.isEmpty ? Self.previewGit() : git
         self.panels = panels.tasks.isEmpty && panels.skills.isEmpty && panels.memory.isEmpty ? Self.previewPanels() : panels
@@ -327,11 +322,33 @@ public final class HermexAppStore {
         case .testOnboardingConnection:
             onboarding.statusMessage = "Preview server reachable"
             onboarding.errorMessage = nil
+        case .testOnboardingConnectionDraft(let serverURLString, let displayName, let password, let customHeaderText):
+            applyOnboardingDraft(
+                serverURLString: serverURLString,
+                displayName: displayName,
+                password: password,
+                customHeaderText: customHeaderText
+            )
+            onboarding.statusMessage = "Preview server reachable"
+            onboarding.errorMessage = nil
         case .connectOnboarding:
             let server = Self.previewServer()
             appState.auth = .loggedIn(server: server)
             appState.route = .sessions
             settings.activeServer = server
+            onboarding.password = ""
+        case .connectOnboardingDraft(let serverURLString, let displayName, let password, let customHeaderText):
+            applyOnboardingDraft(
+                serverURLString: serverURLString,
+                displayName: displayName,
+                password: password,
+                customHeaderText: customHeaderText
+            )
+            let server = Self.previewServer(from: onboarding)
+            appState.auth = .loggedIn(server: server)
+            appState.route = .sessions
+            settings.activeServer = server
+            upsertPreviewServer(server)
             onboarding.password = ""
         case .selectServer(let server):
             appState.auth = .loggedIn(server: server)
@@ -449,6 +466,40 @@ public final class HermexAppStore {
         ))
     }
 
+    private func applyOnboardingDraft(
+        serverURLString: String,
+        displayName: String,
+        password: String,
+        customHeaderText: String
+    ) {
+        onboarding.serverURLString = serverURLString
+        onboarding.displayName = displayName
+        onboarding.password = password
+        onboarding.customHeaderText = customHeaderText
+        onboarding.errorMessage = nil
+        onboarding.statusMessage = nil
+    }
+
+    private func upsertPreviewServer(_ server: HermexServerIdentity) {
+        settings.activeServer = server
+        if let existingIndex = settings.servers.firstIndex(where: {
+            HermexServerURLNormalizer.normalizedID(for: $0.baseURL) == HermexServerURLNormalizer.normalizedID(for: server.baseURL)
+        }) {
+            settings.servers[existingIndex] = server
+        } else {
+            settings.servers.append(server)
+        }
+    }
+
+    private static func server(from auth: HermexAuthState) -> HermexServerIdentity? {
+        switch auth {
+        case .loggedIn(let server), .loggedOut(let server):
+            return server
+        case .unconfigured:
+            return nil
+        }
+    }
+
     private static func previewServer() -> HermexServerIdentity {
         HermexServerIdentity(
             baseURL: URL(string: "https://hermex.local")!,
@@ -456,11 +507,25 @@ public final class HermexAppStore {
         )
     }
 
-    private static func previewSettings(_ settings: HermexSettingsState, server: HermexServerIdentity) -> HermexSettingsState {
+    private static func previewServer(from onboarding: HermexOnboardingState) -> HermexServerIdentity {
+        let trimmed = onboarding.serverURLString.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        let candidate = trimmed.contains("://") ? trimmed : "https://\(trimmed)"
+        let url = URL(string: candidate) ?? URL(string: "https://hermex.local")!
+        let normalizedURL = URL(string: HermexServerURLNormalizer.normalizedID(for: url)) ?? url
+        let displayName = onboarding.displayName.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        return HermexServerIdentity(
+            baseURL: normalizedURL,
+            displayName: displayName.isEmpty ? (normalizedURL.host ?? "Hermex") : displayName
+        )
+    }
+
+    private static func previewSettings(_ settings: HermexSettingsState, server: HermexServerIdentity?) -> HermexSettingsState {
         var updated = settings
-        updated.activeServer = updated.activeServer ?? server
-        if updated.servers.isEmpty {
-            updated.servers = [server]
+        if let server {
+            updated.activeServer = updated.activeServer ?? server
+            if updated.servers.isEmpty {
+                updated.servers = [server]
+            }
         }
         updated.defaultModel = updated.defaultModel ?? "gpt-5.5"
         updated.defaultProfile = updated.defaultProfile ?? "default"

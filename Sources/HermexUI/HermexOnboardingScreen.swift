@@ -35,6 +35,10 @@ public struct HermexOnboardingScreen: View {
         _customHeaderText = State(initialValue: onboarding.customHeaderText)
     }
 
+    private var canSubmitConnection: Bool {
+        !serverURLString.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty
+    }
+
     public var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
@@ -66,31 +70,61 @@ public struct HermexOnboardingScreen: View {
     }
 
     private var welcomePage: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(spacing: 0) {
             Spacer(minLength: 24)
 
-            VStack(alignment: .leading, spacing: 18) {
-                HermexLogoMark()
-                    .frame(width: min(HermexLayoutContract.sessionListLogoWidth, 240))
+            ZStack {
+                RadialGradient(
+                    colors: [
+                        HermexUIColors.gold.opacity(0.55),
+                        Color(red: 1.0, green: 0.62, blue: 0.08).opacity(0.22),
+                        Color.clear
+                    ],
+                    center: .center,
+                    startRadius: 8,
+                    endRadius: 180
+                )
+                .frame(width: 320, height: 320)
+                .blur(radius: 18)
 
-                Text("Control your Hermes agent from Android.")
-                    .font(.system(size: 32, weight: .bold))
-                    .lineLimit(nil)
+                RadialGradient(
+                    colors: [
+                        Color(red: 1.0, green: 0.78, blue: 0.18).opacity(0.35),
+                        Color.clear
+                    ],
+                    center: .center,
+                    startRadius: 4,
+                    endRadius: 116
+                )
+                .frame(width: 224, height: 224)
+
+                HermexAppIconMark(size: 124)
+            }
+
+            Spacer(minLength: 32)
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Control your Hermes agent from iPhone.")
+                    .font(.system(size: 31, weight: .bold))
+                    .foregroundStyle(Color.white)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.86)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text("Connect to your self-hosted Web UI over Tailscale.")
-                    .font(.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.white.opacity(0.58))
-            }
+                    .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 8) {
-                heroBadge("Password protected")
-                heroBadge("Tailscale ready")
+                HStack(spacing: 8) {
+                    heroBadge("Password protected")
+                    heroBadge("Tailscale ready")
+                }
             }
-
-            Spacer(minLength: 24)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 28)
+            .padding(.bottom, 16)
         }
-        .padding(.horizontal, 28)
-        .padding(.top, 28)
     }
 
     private var featuresPage: some View {
@@ -98,11 +132,11 @@ public struct HermexOnboardingScreen: View {
             VStack(alignment: .leading, spacing: 28) {
                 centeredHeader(
                     title: "What you get",
-                    subtitle: "Your Hermes agent, reachable from Android over Tailscale."
+                    subtitle: "Your Hermes agent, reachable from iPhone over Tailscale."
                 )
 
                 featureRow(
-                    title: "Chat with your Hermes agent from Android",
+                    title: "Chat with your Hermes agent from iPhone",
                     subtitle: "Drive conversations from anywhere on your tailnet."
                 )
                 featureRow(
@@ -189,23 +223,13 @@ public struct HermexOnboardingScreen: View {
     private var connectPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                HStack(alignment: .center) {
-                    HermexLogoMark()
-                        .frame(width: min(HermexLayoutContract.sessionListLogoWidth, 220))
-                    Spacer()
-                    if appState.auth != .unconfigured {
-                        HermexCircleIconButton(systemImage: "xmark", accessibilityLabel: "Sessions") {
-                            onEvent(.openRoute(.sessions))
-                        }
-                    }
-                }
-
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Connect to Hermex")
-                        .font(.system(size: 34, weight: .bold))
+                    Text("Connect")
+                        .font(.title3.weight(.bold))
                     Text(statusText)
-                        .font(.title3)
-                        .foregroundStyle(Color.white.opacity(0.55))
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.5))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 serverPicker
@@ -253,82 +277,56 @@ public struct HermexOnboardingScreen: View {
 
     private var connectionForm: some View {
         HermexGlassPanel {
-            VStack(alignment: .leading, spacing: 15) {
-                fieldLabel("Server URL")
-                TextField("https://hermes.example.com", text: serverURLBinding)
-                    .hermexOnboardingInputStyle()
-
-                fieldLabel("Name")
-                TextField("Hermex", text: displayNameBinding)
-                    .hermexOnboardingInputStyle()
-
-                fieldLabel("Password")
-                SecureField("Server password", text: passwordBinding)
-                    .hermexOnboardingInputStyle()
-
-                fieldLabel("Custom headers")
-                TextEditor(text: customHeaderBinding)
-                    .font(.footnote.monospaced())
-                    .foregroundStyle(HermexUIColors.primaryText)
-                    .frame(minHeight: 74)
-                    .padding(10)
-                    .background(HermexUIColors.glassFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(HermexUIColors.hairline, lineWidth: 0.6)
-                    )
-
-                HStack(spacing: 10) {
-                    Button {
-                        onEvent(.testOnboardingConnectionDraft(
-                            serverURLString: serverURLString,
-                            displayName: displayName,
-                            password: password,
-                            customHeaderText: customHeaderText
-                        ))
-                    } label: {
-                        if onboarding.isTestingConnection {
-                            ProgressView()
-                        } else {
-                            Text("Test")
-                                .font(.headline.weight(.semibold))
-                        }
-                    }
-                    .foregroundStyle(HermexUIColors.primaryText)
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 13)
-                    .background(HermexUIColors.glassFillStrong, in: Capsule())
-                    .overlay {
-                        Capsule().stroke(HermexUIColors.hairline, lineWidth: 0.6)
-                    }
-                    .disabled(onboarding.isTestingConnection || onboarding.isSigningIn)
-
-                    Button {
-                        onEvent(.connectOnboardingDraft(
-                            serverURLString: serverURLString,
-                            displayName: displayName,
-                            password: password,
-                            customHeaderText: customHeaderText
-                        ))
-                    } label: {
-                        if onboarding.isSigningIn {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        } else {
-                            Text("Connect")
-                                .font(.headline.weight(.semibold))
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .foregroundStyle(Color.black)
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 13)
-                    .background(HermexUIColors.primaryText, in: Capsule())
-                    .disabled(onboarding.isTestingConnection || onboarding.isSigningIn)
+            VStack(spacing: 12) {
+                onboardingField(title: "Server URL") {
+                    TextField("http://100.64.0.1:8787", text: $serverURLString)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(HermexUIColors.primaryText)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                 }
-                .padding(.top, 4)
+
+                onboardingField(title: "Name") {
+                    TextField("Hermex", text: $displayName)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(HermexUIColors.primaryText)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                }
+
+                onboardingField(title: "Password") {
+                    SecureField("Server password", text: $password)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(HermexUIColors.primaryText)
+                        .textContentType(.password)
+                }
+
+                DisclosureGroup {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Custom headers")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.white.opacity(0.5))
+
+                        TextEditor(text: $customHeaderText)
+                            .font(.footnote.monospaced())
+                            .foregroundStyle(HermexUIColors.primaryText)
+                            .frame(minHeight: 74)
+                            .padding(10)
+                            .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            }
+                    }
+                    .padding(.top, 10)
+                } label: {
+                    Text("Advanced")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.85))
+                }
+                .tint(Color.white.opacity(0.6))
             }
-            .padding(18)
+            .padding(14)
         }
     }
 
@@ -336,40 +334,108 @@ public struct HermexOnboardingScreen: View {
         VStack(spacing: 14) {
             pageIndicator
 
-            HStack(spacing: 10) {
-                if currentPage < Self.connectPageIndex {
-                    Button {
-                        currentPage = Self.connectPageIndex
-                    } label: {
-                        Text("I already have a server")
-                            .font(.callout.weight(.semibold))
-                    }
-                    .buttonStyle(.bordered)
-                } else {
-                    Button {
-                        currentPage = max(0, currentPage - 1)
-                    } label: {
-                        Text("Back")
-                            .font(.callout.weight(.semibold))
-                    }
-                    .buttonStyle(.bordered)
-                }
-
+            if currentPage == Self.connectPageIndex {
+                connectActionButtons
+            } else {
                 Button {
                     advance()
                 } label: {
                     Text(primaryButtonTitle)
-                        .font(.headline.weight(.semibold))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.black)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(HermexUIColors.gold, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(currentPage == Self.connectPageIndex && serverURLString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .buttonStyle(.plain)
+
+                if currentPage < Self.connectPageIndex {
+                    Button("Already have a server?") {
+                        currentPage = Self.connectPageIndex
+                    }
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Color.white.opacity(0.55))
+                    .buttonStyle(.plain)
+                }
             }
         }
         .padding(.horizontal, 24)
-        .padding(.top, 14)
-        .padding(.bottom, 18)
-        .background(Color.black.opacity(0.92))
+        .padding(.top, 12)
+        .padding(.bottom, 12)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.clear,
+                    Color.black.opacity(0.6),
+                    Color.black
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+    }
+
+    private var connectActionButtons: some View {
+        HStack(spacing: 10) {
+            connectionButton(
+                title: onboarding.isTestingConnection ? "Checking..." : "Test Connection",
+                isPrimary: false,
+                isDisabled: onboarding.isTestingConnection || onboarding.isSigningIn || !canSubmitConnection
+            ) {
+                onEvent(.testOnboardingConnectionDraft(
+                    serverURLString: serverURLString,
+                    displayName: displayName,
+                    password: password,
+                    customHeaderText: customHeaderText
+                ))
+            }
+
+            connectionButton(
+                title: onboarding.isSigningIn ? "Connecting..." : "Connect",
+                isPrimary: true,
+                isDisabled: onboarding.isTestingConnection || onboarding.isSigningIn || !canSubmitConnection
+            ) {
+                onEvent(.connectOnboardingDraft(
+                    serverURLString: serverURLString,
+                    displayName: displayName,
+                    password: password,
+                    customHeaderText: customHeaderText
+                ))
+            }
+        }
+    }
+
+    private func connectionButton(
+        title: String,
+        isPrimary: Bool,
+        isDisabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isPrimary ? Color.black : Color.white.opacity(0.84))
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 15)
+                .background(
+                    isPrimary ? HermexUIColors.gold : Color.white.opacity(0.065),
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                )
+                .overlay {
+                    if !isPrimary {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.55 : 1)
     }
 
     private var pageIndicator: some View {
@@ -399,8 +465,8 @@ public struct HermexOnboardingScreen: View {
 
     private func heroBadge(_ title: String) -> some View {
         Text(title)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(Color.white.opacity(0.72))
+            .font(.caption.weight(.medium))
+            .foregroundStyle(Color.white.opacity(0.68))
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(Color.white.opacity(0.06), in: Capsule())
@@ -470,10 +536,25 @@ public struct HermexOnboardingScreen: View {
         }
     }
 
-    private func fieldLabel(_ title: String) -> some View {
-        Text(title)
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(Color.white.opacity(0.62))
+    private func onboardingField<Content: View>(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.5))
+
+            content()
+        }
+        .padding(.horizontal, 13)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        }
     }
 
     private func advance() {
@@ -502,46 +583,6 @@ public struct HermexOnboardingScreen: View {
         return "Continue"
     }
 
-    private var serverURLBinding: Binding<String> {
-        Binding(
-            get: { serverURLString },
-            set: {
-                serverURLString = $0
-                onEvent(.updateOnboardingServerURL($0))
-            }
-        )
-    }
-
-    private var displayNameBinding: Binding<String> {
-        Binding(
-            get: { displayName },
-            set: {
-                displayName = $0
-                onEvent(.updateOnboardingDisplayName($0))
-            }
-        )
-    }
-
-    private var passwordBinding: Binding<String> {
-        Binding(
-            get: { password },
-            set: {
-                password = $0
-                onEvent(.updateOnboardingPassword($0))
-            }
-        )
-    }
-
-    private var customHeaderBinding: Binding<String> {
-        Binding(
-            get: { customHeaderText },
-            set: {
-                customHeaderText = $0
-                onEvent(.updateOnboardingCustomHeaders($0))
-            }
-        )
-    }
-
     private var statusText: String {
         switch appState.auth {
         case .unconfigured:
@@ -554,7 +595,7 @@ public struct HermexOnboardingScreen: View {
     }
 
     private static let agentSetupPrompt = """
-Set up Hermes Web UI on this machine for access from my Android phone via Tailscale.
+Set up Hermes Web UI on this machine for access from my iPhone via Tailscale.
 
 Clone and install https://github.com/nesquena/hermes-webui. It is a Node.js web app. Install dependencies and start it on port 8787.
 Enable password authentication by setting the HERMES_WEBUI_PASSWORD environment variable. Generate a secure random password and save it.
@@ -562,23 +603,7 @@ Install Tailscale on this machine. Authenticate to my Tailscale account, then ma
 Try tailscale serve --bg 8787 first. If Tailscale Serve is disabled, bind the server to 0.0.0.0 only after confirming password auth is active.
 Set up auto-start so the WebUI survives reboots.
 Verify it works: curl http://$(tailscale ip -4):8787/health should return a success response.
-Reply with the exact server URL, the password, and any setup steps still needed on Android.
-Do not use Cloudflare. Optimize for Tailscale + Android.
+Reply with the exact server URL, the password, and any setup steps still needed on my iPhone.
+Do not use Cloudflare. Optimize for Tailscale + iPhone.
 """
-}
-
-private extension View {
-    func hermexOnboardingInputStyle() -> some View {
-        self
-            .textFieldStyle(.plain)
-            .font(.body)
-            .foregroundStyle(HermexUIColors.primaryText)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 13)
-            .background(HermexUIColors.glassFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(HermexUIColors.hairline, lineWidth: 0.6)
-            }
-    }
 }

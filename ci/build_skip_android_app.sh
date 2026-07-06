@@ -68,7 +68,7 @@ fi
 GRADLE_DIR="$(dirname "$GRADLE_SETTINGS")"
 
 patch_android_branding() {
-  local search_roots=("$GRADLE_DIR")
+  local search_roots=("$APP_DIR" "$GRADLE_DIR")
   [[ -d "$APP_DIR/.build/Android" ]] && search_roots+=("$APP_DIR/.build/Android")
   [[ -d "$APP_DIR/.build/plugins/outputs" ]] && search_roots+=("$APP_DIR/.build/plugins/outputs")
 
@@ -82,6 +82,7 @@ patch_android_branding() {
     icon_ref="@mipmap/ic_launcher"
     round_icon_ref="@mipmap/ic_launcher_round"
     icon_source="$ROOT/HermesMobile/Resources/Assets.xcassets/AppIcon.appiconset/hermes_mobile_dark_icon.png"
+    [[ -f "$icon_source" ]] || icon_source="$ROOT/Sources/HermexUI/Resources/Logo/HermesAppIcon.png"
     if [[ -f "$icon_source" ]]; then
       cp "$icon_source" "$res_dir/drawable-nodpi/hermex_app_icon.png"
       icon_ref="@drawable/hermex_app_icon"
@@ -149,6 +150,12 @@ XML
 
     echo "Patched Android branding into $main_dir"
   done < <(find "${search_roots[@]}" -path '*/src/main/AndroidManifest.xml' -print0)
+
+  while IFS= read -r -d '' strings_file; do
+    if grep -q '<string[[:space:]]\+name="app_name">' "$strings_file"; then
+      perl -0pi -e 's/(<string\s+name="app_name">)[^<]*(<\/string>)/${1}Hermex${2}/g' "$strings_file"
+    fi
+  done < <(find "$APP_DIR" -path '*/src/main/res/values/*.xml' -print0)
 }
 
 patch_android_branding
