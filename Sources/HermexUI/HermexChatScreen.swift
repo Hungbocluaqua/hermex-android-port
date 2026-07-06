@@ -390,7 +390,7 @@ public struct HermexComposerSurface: View {
 
     private func composerControlGlyph(_ systemImage: String, size: CGFloat) -> some View {
         Image(systemName: systemImage)
-            .font(.system(size: size == HermexLayoutContract.composerPlusButtonSize ? 24 : 17, weight: .semibold))
+            .font(.system(size: size == HermexLayoutContract.composerPlusButtonSize ? 24.0 : 17.0, weight: .semibold))
             .frame(width: size, height: size)
             .frame(width: HermexLayoutContract.chatToolbarActionSlotSize, height: HermexLayoutContract.chatToolbarActionSlotSize)
     }

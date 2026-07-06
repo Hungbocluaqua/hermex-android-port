@@ -78,10 +78,10 @@ public struct HermexSessionListScreen: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: searchChromeIsExpanded ? 0 : 16) {
+        HStack(alignment: .center, spacing: searchChromeIsExpanded ? 0.0 : 16.0) {
             HermexLogoMark()
-                .frame(width: searchChromeIsExpanded ? 0 : HermexLayoutContract.sessionListLogoWidth, alignment: .leading)
-                .opacity(searchChromeIsExpanded ? 0 : 1)
+                .frame(width: searchChromeIsExpanded ? 0.0 : HermexLayoutContract.sessionListLogoWidth, alignment: .leading)
+                .opacity(searchChromeIsExpanded ? 0.0 : 1.0)
                 .clipped()
             Spacer(minLength: 12)
             searchChrome
@@ -90,7 +90,7 @@ public struct HermexSessionListScreen: View {
     }
 
     private var searchChrome: some View {
-        HStack(spacing: searchChromeIsExpanded ? 8 : 4) {
+        HStack(spacing: searchChromeIsExpanded ? 8.0 : 4.0) {
             Button {
                 if searchChromeIsExpanded {
                     submitSearch()
@@ -118,8 +118,8 @@ public struct HermexSessionListScreen: View {
                 .font(.subheadline)
                 .foregroundStyle(HermexUIColors.primaryText)
                 .lineLimit(1)
-                .frame(maxWidth: searchChromeIsExpanded ? .infinity : 0)
-                .opacity(searchChromeIsExpanded ? 1 : 0)
+                .frame(maxWidth: searchChromeIsExpanded ? .infinity : 0.0)
+                .opacity(searchChromeIsExpanded ? 1.0 : 0.0)
                 .clipped()
 
             if searchChromeIsExpanded && !searchText.isEmpty {
@@ -161,7 +161,7 @@ public struct HermexSessionListScreen: View {
                             height: Self.searchChromeIconVisualSize
                         )
                         .background(HermexUIColors.gold, in: Circle())
-                        .opacity(searchChromeIsExpanded ? 0 : 1)
+                        .opacity(searchChromeIsExpanded ? 0.0 : 1.0)
 
                     Image(systemName: "xmark")
                         .font(.system(size: 22, weight: .medium))
@@ -170,7 +170,7 @@ public struct HermexSessionListScreen: View {
                             width: Self.searchChromeIconVisualSize,
                             height: Self.searchChromeIconVisualSize
                         )
-                        .opacity(searchChromeIsExpanded ? 1 : 0)
+                        .opacity(searchChromeIsExpanded ? 1.0 : 0.0)
                 }
                 .frame(
                     width: Self.searchChromeIconHitTarget,

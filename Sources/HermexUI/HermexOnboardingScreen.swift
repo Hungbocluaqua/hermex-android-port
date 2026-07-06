@@ -423,7 +423,7 @@ public struct HermexOnboardingScreen: View {
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
-        .opacity(isDisabled ? 0.55 : 1)
+        .opacity(isDisabled ? 0.55 : 1.0)
     }
 
     private var pageIndicator: some View {
