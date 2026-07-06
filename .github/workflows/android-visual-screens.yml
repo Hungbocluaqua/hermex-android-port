@@ -113,16 +113,37 @@ jobs:
       - name: Start Android emulator
         run: |
           set -euo pipefail
+          adb start-server
           nohup emulator \
             -avd hermex-visual \
             -no-window \
             -gpu swiftshader_indirect \
             -noaudio \
             -no-boot-anim \
+            -no-snapshot \
+            -no-metrics \
+            -wipe-data \
             -camera-back none \
             -camera-front none \
             > "$RUNNER_TEMP/hermex-visual-emulator.log" 2>&1 &
-          adb wait-for-device
+          connected=""
+          for _ in {1..120}; do
+            if adb devices | awk 'NR > 1 && $2 == "device" { found = 1 } END { exit found ? 0 : 1 }'; then
+              connected="1"
+              break
+            fi
+            if ! pgrep -f "emulator.*hermex-visual" >/dev/null; then
+              cat "$RUNNER_TEMP/hermex-visual-emulator.log" || true
+              echo "Android emulator process exited before adb could connect." >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          if [[ "$connected" != "1" ]]; then
+            cat "$RUNNER_TEMP/hermex-visual-emulator.log" || true
+            echo "Android emulator did not appear in adb devices." >&2
+            exit 1
+          fi
           booted=""
           for _ in {1..60}; do
             booted="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"

@@ -129,10 +129,12 @@ def main() -> int:
     android_visual_workflow = (ROOT / ".github" / "workflows" / "android-visual-screens.yml").read_text(encoding="utf-8")
     ok &= require("ci/capture_skip_android_fixture.sh" in android_visual_workflow, "Android visual workflow must call the fixture capture script.")
     ok &= require("workflow_dispatch" in android_visual_workflow and "screen:" in android_visual_workflow, "Android visual workflow must expose manual fixture selection.")
-    ok &= require("emulator" in android_visual_workflow and "adb wait-for-device" in android_visual_workflow, "Android visual workflow must boot an emulator.")
+    ok &= require("emulator" in android_visual_workflow and "adb devices" in android_visual_workflow, "Android visual workflow must boot an emulator and wait for adb registration.")
     ok &= require("yes | sdkmanager --licenses" in android_visual_workflow, "Android visual workflow must accept SDK licenses before installing system images.")
     ok &= require("yes | sdkmanager --install \"$system_image\"" in android_visual_workflow, "Android visual workflow must install emulator images non-interactively.")
     ok &= require("for attempt in 1 2 3" in android_visual_workflow and "install_skip()" in android_visual_workflow, "Android visual workflow must retry flaky Skip installs.")
+    ok &= require("adb start-server" in android_visual_workflow and "pgrep -f \"emulator.*hermex-visual\"" in android_visual_workflow, "Android visual workflow must bound emulator boot waits and dump logs on failure.")
+    ok &= require("-no-snapshot" in android_visual_workflow and "-wipe-data" in android_visual_workflow, "Android visual workflow must start a deterministic fresh emulator.")
     ok &= require("actions/upload-artifact" in android_visual_workflow, "Android visual workflow must upload screenshot artifacts.")
 
     parity_workflow = (ROOT / ".github" / "workflows" / "skip-android-parity.yml").read_text(encoding="utf-8")
