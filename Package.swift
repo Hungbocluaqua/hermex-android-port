@@ -14,18 +14,25 @@ let package = Package(
         .library(name: "HermexUI", type: .dynamic, targets: ["HermexUI"])
     ],
     dependencies: [
+        .package(url: "https://source.skip.tools/skip-foundation.git", from: "1.4.1"),
         .package(url: "https://source.skip.tools/skip.git", from: "1.7.2"),
         .package(url: "https://source.skip.tools/skip-ui.git", from: "1.0.0")
     ],
     targets: [
         .target(
             name: "HermexCore",
+            dependencies: [
+                .product(name: "SkipFoundation", package: "skip-foundation")
+            ],
             path: "Sources/HermexCore",
             plugins: [.plugin(name: "skipstone", package: "skip")]
         ),
         .target(
             name: "HermexPlatform",
-            dependencies: ["HermexCore"],
+            dependencies: [
+                "HermexCore",
+                .product(name: "SkipFoundation", package: "skip-foundation")
+            ],
             path: "Sources/HermexPlatform",
             plugins: [.plugin(name: "skipstone", package: "skip")]
         ),
@@ -33,6 +40,7 @@ let package = Package(
             name: "HermexUI",
             dependencies: [
                 "HermexCore",
+                .product(name: "SkipFoundation", package: "skip-foundation"),
                 .product(name: "SkipUI", package: "skip-ui")
             ],
             path: "Sources/HermexUI",
