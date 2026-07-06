@@ -4,6 +4,48 @@ public enum HermexAuthState: Codable, Equatable, Sendable {
     case unconfigured
     case loggedOut(server: HermexServerIdentity)
     case loggedIn(server: HermexServerIdentity)
+
+    private enum CodingKeys: String, CodingKey {
+        case kind
+        case server
+    }
+
+    private enum Kind: String, Codable {
+        case unconfigured
+        case loggedOut
+        case loggedIn
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let kind = try container.decodeIfPresent(Kind.self, forKey: .kind) ?? .unconfigured
+
+        switch kind {
+        case .unconfigured:
+            self = .unconfigured
+        case .loggedOut:
+            let server = try container.decode(HermexServerIdentity.self, forKey: .server)
+            self = .loggedOut(server: server)
+        case .loggedIn:
+            let server = try container.decode(HermexServerIdentity.self, forKey: .server)
+            self = .loggedIn(server: server)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        switch self {
+        case .unconfigured:
+            try container.encode(Kind.unconfigured, forKey: .kind)
+        case .loggedOut(let server):
+            try container.encode(Kind.loggedOut, forKey: .kind)
+            try container.encode(server, forKey: .server)
+        case .loggedIn(let server):
+            try container.encode(Kind.loggedIn, forKey: .kind)
+            try container.encode(server, forKey: .server)
+        }
+    }
 }
 
 public struct HermexAppState: Codable, Equatable, Sendable {
