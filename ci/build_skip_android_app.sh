@@ -7,11 +7,16 @@ DIST_DIR="${1:-"$ROOT/dist/skip-android"}"
 APP_VERSION="${HERMEX_SKIP_VERSION:-0.3.0}"
 APP_ID="${HERMEX_SKIP_APP_ID:-com.uzairansar.hermex}"
 MODULE_NAME="HermexSkipApp"
+APP_PARENT="$(dirname "$APP_DIR")"
+APP_PROJECT_NAME="$(basename "$APP_DIR")"
 
 rm -rf "$APP_DIR" "$DIST_DIR"
-mkdir -p "$(dirname "$APP_DIR")" "$DIST_DIR"
+mkdir -p "$APP_PARENT" "$DIST_DIR"
 
-skip init --transpiled-app --appid="$APP_ID" --version="$APP_VERSION" "$APP_DIR" "$MODULE_NAME"
+(
+  cd "$APP_PARENT"
+  skip init --transpiled-app --appid="$APP_ID" --version="$APP_VERSION" "$APP_PROJECT_NAME" "$MODULE_NAME"
+)
 python3 "$ROOT/ci/prepare_skip_hermex_app.py" \
   --app-dir "$APP_DIR" \
   --repo-root "$ROOT" \
