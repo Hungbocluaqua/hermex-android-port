@@ -101,8 +101,11 @@ fun OnboardingRoute(
         }
     })
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val initialPage = remember(authRepository) {
-        if (authRepository.state.value is AuthState.LoggedOut) {
+    val initialPage = remember(authRepository, viewModel) {
+        if (
+            authRepository.state.value is AuthState.LoggedOut &&
+            viewModel.state.value.serverUrl.isNotBlank()
+        ) {
             OnboardingFlowPolicy.ConnectPageIndex
         } else {
             0
