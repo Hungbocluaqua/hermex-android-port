@@ -2,17 +2,65 @@ import SwiftUI
 import HermexCore
 import HermexUI
 
-@main
-struct HermexSkipApp: App {
-    private let runtime = HermexSkipRuntime()
+public struct HermexSkipAppRootView: View {
+    @State private var runtime = HermexSkipRuntime()
 
-    var body: some Scene {
-        WindowGroup {
-            HermexStoreRootScreen(
-                store: runtime.store,
-                onUnhandledEvent: runtime.handleUnhandledEvent
-            )
-        }
+    public init() {}
+
+    public var body: some View {
+        HermexStoreRootScreen(
+            store: runtime.store,
+            onUnhandledEvent: runtime.handleUnhandledEvent
+        )
+    }
+}
+
+public final class HermexSkipAppAppDelegate: Sendable {
+    public static let shared = HermexSkipAppAppDelegate()
+
+    private init() {}
+
+    public func onInit() {}
+    public func onLaunch() {}
+    public func onResume() {}
+    public func onPause() {}
+    public func onStop() {}
+    public func onDestroy() {}
+    public func onLowMemory() {}
+}
+
+public typealias HermexSkipRootView = HermexSkipAppRootView
+public final class HermexSkipAppDelegate: Sendable {
+    public static let shared = HermexSkipAppDelegate()
+
+    private init() {}
+
+    public func onInit() {
+        HermexSkipAppAppDelegate.shared.onInit()
+    }
+
+    public func onLaunch() {
+        HermexSkipAppAppDelegate.shared.onLaunch()
+    }
+
+    public func onResume() {
+        HermexSkipAppAppDelegate.shared.onResume()
+    }
+
+    public func onPause() {
+        HermexSkipAppAppDelegate.shared.onPause()
+    }
+
+    public func onStop() {
+        HermexSkipAppAppDelegate.shared.onStop()
+    }
+
+    public func onDestroy() {
+        HermexSkipAppAppDelegate.shared.onDestroy()
+    }
+
+    public func onLowMemory() {
+        HermexSkipAppAppDelegate.shared.onLowMemory()
     }
 }
 
