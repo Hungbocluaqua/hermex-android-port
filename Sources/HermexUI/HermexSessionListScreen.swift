@@ -22,55 +22,62 @@ public struct HermexSessionListScreen: View {
             HermexUIColors.systemBackground.ignoresSafeArea()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                     header
+                        .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+                        .padding(.top, HermexLayoutContract.sessionListTopPadding)
+                        .padding(.bottom, HermexLayoutContract.sessionListTopChromeBottomPadding)
 
-                    HStack(alignment: .top, spacing: 20) {
-                        utilityRail
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            selectorRow(
-                                icon: "person.crop.circle.badge.gearshape",
-                                title: state.activeProfileName ?? "default",
-                                subtitle: "Profile",
-                                event: .selectProfile
-                            )
-                            selectorRow(
-                                icon: "folder",
-                                title: primaryWorkspace,
-                                subtitle: "Workspace",
-                                event: .selectWorkspace
-                            )
-
-                            if !state.searchQuery.isEmpty || state.isShowingArchived || state.isViewingCachedData {
-                                statusRows
-                            }
-
-                            sessionContent
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if state.isViewingCachedData {
+                        statusRow(
+                            title: "Cached data",
+                            description: "Showing locally cached sessions.",
+                            systemImage: "wifi.slash"
+                        )
+                        .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+                        .padding(.bottom, HermexLayoutContract.sessionListUtilityRowSpacing)
                     }
+
+                    if !searchChromeIsExpanded {
+                        utilityRows
+                            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+                            .padding(.top, HermexLayoutContract.sessionListUtilityTopPadding)
+                            .padding(.bottom, HermexLayoutContract.sessionListUtilityRowSpacing)
+
+                        selectorRow(
+                            icon: "person.crop.circle.badge.gearshape",
+                            title: state.activeProfileName ?? "default",
+                            subtitle: "Profile",
+                            event: .selectProfile
+                        )
+                        .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+                        .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
+
+                        selectorRow(
+                            icon: "folder",
+                            title: primaryWorkspace,
+                            subtitle: "Workspace",
+                            event: .selectWorkspace
+                        )
+                        .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+                        .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
+                    }
+
+                    if !state.searchQuery.isEmpty || state.isShowingArchived {
+                        statusRows
+                            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+                            .padding(.top, 8)
+                    }
+
+                    sessionContent
+
+                    Color.clear
+                        .frame(height: HermexLayoutContract.sessionListBottomSpacerHeight)
+                        .accessibilityHidden(true)
                 }
-                .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-                .padding(.top, HermexLayoutContract.sessionListTopPadding)
-                .padding(.bottom, 112)
             }
 
-            Button {
-                onEvent(.newChat)
-            } label: {
-                Label("Chat", systemImage: "square.and.pencil")
-                    .font(.headline.weight(.semibold))
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 16)
-                    .background(Color.white, in: Capsule())
-                    .foregroundStyle(Color.black)
-                    .shadow(
-                        color: .black.opacity(HermexLayoutContract.sessionListFloatingButtonShadowOpacity),
-                        radius: HermexLayoutContract.sessionListFloatingButtonShadowRadius,
-                        y: HermexLayoutContract.sessionListFloatingButtonShadowYOffset
-                    )
-            }
+            newSessionButton
             .padding(.trailing, HermexLayoutContract.sessionListFloatingButtonTrailing)
             .padding(.bottom, HermexLayoutContract.sessionListFloatingButtonBottom)
         }
@@ -87,6 +94,31 @@ public struct HermexSessionListScreen: View {
             searchChrome
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
+    }
+
+    private var newSessionButton: some View {
+        Button {
+            onEvent(.newChat)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "square.and.pencil")
+                    .font(.title3.weight(.semibold))
+
+                Text("Chat")
+                    .font(.headline.weight(.semibold))
+            }
+            .foregroundStyle(Color.black)
+            .padding(.horizontal, 22)
+            .frame(height: HermexLayoutContract.sessionListFloatingButtonHeight)
+            .background(Color.white, in: Capsule())
+            .shadow(
+                color: .black.opacity(HermexLayoutContract.sessionListFloatingButtonShadowOpacity),
+                radius: HermexLayoutContract.sessionListFloatingButtonShadowRadius,
+                y: HermexLayoutContract.sessionListFloatingButtonShadowYOffset
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("New Session")
     }
 
     private var searchChrome: some View {
@@ -213,6 +245,33 @@ public struct HermexSessionListScreen: View {
         .padding(.vertical, 4)
     }
 
+    private func statusRow(title: String, description: String?, systemImage: String) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: systemImage)
+                .font(.body)
+                .foregroundStyle(HermexUIColors.secondaryText)
+                .frame(width: 24)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(HermexUIColors.secondaryText)
+                    .lineLimit(2)
+
+                if let description, !description.isEmpty {
+                    Text(description)
+                        .font(.footnote)
+                        .foregroundStyle(HermexUIColors.secondaryText)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: 42)
+    }
+
     @ViewBuilder
     private var sessionContent: some View {
         if state.isLoading {
@@ -251,6 +310,7 @@ public struct HermexSessionListScreen: View {
             LazyVStack(spacing: 0) {
                 ForEach(state.sessions) { session in
                     sessionRow(session)
+                        .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
                         .hermexContentShapeRectangle()
                         .onTapGesture {
                             onEvent(.openSession(session.id))
@@ -260,55 +320,69 @@ public struct HermexSessionListScreen: View {
         }
     }
 
-    private var utilityRail: some View {
-        VStack(spacing: 24) {
-            railButton("calendar.badge.clock", "Tasks", .selectPanel(.tasks))
-            railButton("hammer", "Skills", .selectPanel(.skills))
-            railButton("brain.head.profile", "Memory", .selectPanel(.memory))
-            railButton("chart.bar", "Insights", .selectPanel(.insights))
+    private var utilityRows: some View {
+        VStack(alignment: .leading, spacing: HermexLayoutContract.sessionListUtilityRowSpacing) {
+            sidebarNavigationRow("calendar.badge.clock", "Tasks", .selectPanel(.tasks))
+            sidebarNavigationRow("hammer", "Skills", .selectPanel(.skills))
+            sidebarNavigationRow("brain.head.profile", "Memory", .selectPanel(.memory))
+            sidebarNavigationRow("chart.bar", "Insights", .selectPanel(.insights))
         }
-        .frame(width: HermexLayoutContract.sessionListUtilityRailWidth)
     }
 
-    private func railButton(_ systemImage: String, _ label: String, _ event: HermexUIEvent) -> some View {
+    private func sidebarNavigationRow(_ systemImage: String, _ title: String, _ event: HermexUIEvent) -> some View {
         Button {
             onEvent(event)
         } label: {
-            Image(systemName: systemImage)
-                .font(.system(size: 23, weight: .semibold))
-                .frame(
-                    width: HermexLayoutContract.sessionListUtilityIconSize,
-                    height: HermexLayoutContract.sessionListUtilityIconSize
-                )
-                .foregroundStyle(HermexUIColors.primaryText)
+            HStack(spacing: 18) {
+                Image(systemName: systemImage)
+                    .font(.system(size: HermexLayoutContract.sessionListUtilityIconSize, weight: .semibold))
+                    .frame(width: HermexLayoutContract.sessionListUtilityIconSlotWidth)
+                    .foregroundStyle(HermexUIColors.primaryText)
+                    .accessibilityHidden(true)
+
+                Text(title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(HermexUIColors.primaryText)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+            }
+            .frame(minHeight: HermexLayoutContract.sessionListUtilityRowMinimumHeight)
+            .hermexContentShapeRectangle()
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(label)
+        .accessibilityLabel(title)
     }
 
     private func selectorRow(icon: String, title: String, subtitle: String, event: HermexUIEvent) -> some View {
         Button {
             onEvent(event)
         } label: {
-            HStack(spacing: 16) {
+            HStack(alignment: .center, spacing: 18) {
                 Image(systemName: icon)
-                    .font(.system(size: 26, weight: .semibold))
-                    .frame(width: 34)
-                VStack(alignment: .leading, spacing: 3) {
+                    .font(.system(size: HermexLayoutContract.sessionListUtilityIconSize, weight: .semibold))
+                    .frame(width: HermexLayoutContract.sessionListUtilityIconSlotWidth)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.title3.weight(.medium))
+                        .font(.body.weight(.semibold))
                         .foregroundStyle(HermexUIColors.primaryText)
                         .lineLimit(1)
                     Text(subtitle)
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundStyle(HermexUIColors.secondaryText)
                 }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.headline.weight(.semibold))
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.forward")
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(HermexUIColors.secondaryText)
+                    .frame(width: 24, height: 40)
+                    .accessibilityHidden(true)
             }
-            .frame(minHeight: HermexLayoutContract.sessionListSelectorHeight)
+            .frame(maxWidth: .infinity, minHeight: HermexLayoutContract.sessionListSelectorHeight, alignment: .leading)
             .hermexContentShapeRectangle()
         }
         .buttonStyle(.plain)

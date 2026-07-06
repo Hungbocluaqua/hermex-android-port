@@ -2,12 +2,14 @@ import SwiftUI
 
 public enum HermexLayoutContract {
     public static let hermexLogoAspectRatio: CGFloat = 643.0 / 185.0
-    public static let sessionListLogoWidth: CGFloat = 172
+    public static let sessionListLogoWidth: CGFloat = 160
     public static let topChromeCircleSize: CGFloat = 58
     public static let topChromeCompactCircleSize: CGFloat = 46
     public static let topChromeClusterSpacing: CGFloat = 0
-    public static let sessionListUtilityRailWidth: CGFloat = 58
-    public static let sessionListUtilityIconSize: CGFloat = 44
+    public static let sessionListUtilityIconSlotWidth: CGFloat = 28
+    public static let sessionListUtilityIconSize: CGFloat = 21
+    public static let sessionListUtilityRowSpacing: CGFloat = 2
+    public static let sessionListUtilityRowMinimumHeight: CGFloat = 44
     public static let sessionListSelectorHeight: CGFloat = 68
     public static let sessionListRowActionSize: CGFloat = 54
     public static let sessionListRowSeparatorOpacity: Double = 0.12
@@ -45,10 +47,14 @@ public enum HermexLayoutContract {
     public static let pendingPromptHorizontalPadding: CGFloat = 16
     public static let pendingPromptBottomSpacing: CGFloat = 10
     public static let pendingPromptCornerRadius: CGFloat = 18
-    public static let sessionListHorizontalPadding: CGFloat = 16
-    public static let sessionListTopPadding: CGFloat = 18
+    public static let sessionListHorizontalPadding: CGFloat = 24
+    public static let sessionListTopPadding: CGFloat = 28
+    public static let sessionListTopChromeBottomPadding: CGFloat = 18
+    public static let sessionListUtilityTopPadding: CGFloat = 10
+    public static let sessionListBottomSpacerHeight: CGFloat = 104
     public static let sessionListFloatingButtonTrailing: CGFloat = 24
     public static let sessionListFloatingButtonBottom: CGFloat = 22
+    public static let sessionListFloatingButtonHeight: CGFloat = 58
     public static let sessionRowHorizontalPadding: CGFloat = 12
     public static let sessionRowVerticalPadding: CGFloat = 8
     public static let sessionRowHorizontalSpacing: CGFloat = 10
