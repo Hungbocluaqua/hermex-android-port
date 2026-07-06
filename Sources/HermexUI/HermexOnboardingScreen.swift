@@ -365,7 +365,7 @@ public struct HermexOnboardingScreen: View {
             ForEach(0..<Self.pageCount, id: \.self) { index in
                 Circle()
                     .fill(index == currentPage ? Color.white : Color.white.opacity(0.24))
-                    .frame(width: index == currentPage ? 8 : 6, height: index == currentPage ? 8 : 6)
+                    .frame(width: index == currentPage ? 8.0 : 6.0, height: index == currentPage ? 8.0 : 6.0)
             }
         }
     }
