@@ -114,8 +114,8 @@ public struct HermexChatScreen: View {
                 Text(message.content ?? message.text ?? "")
                     .font(.body)
                     .hermexTextSelectionEnabled()
-                    .padding(.horizontal, message.role == "user" ? 14 : 0)
-                    .padding(.vertical, message.role == "user" ? 10 : 0)
+                    .padding(.horizontal, message.role == "user" ? 14.0 : 0.0)
+                    .padding(.vertical, message.role == "user" ? 10.0 : 0.0)
                     .background(
                         message.role == "user"
                             ? HermexUIColors.secondarySystemBackground
@@ -143,7 +143,7 @@ public struct HermexChatScreen: View {
         .foregroundStyle(.secondary)
         .padding(.horizontal, 10)
         .padding(.vertical, 9)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .hermexThinMaterialBackground(in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private var streamingIndicator: some View {
@@ -435,7 +435,7 @@ public struct HermexComposerSurface: View {
                         .lineLimit(1)
                         .padding(.horizontal, 9)
                         .frame(height: HermexLayoutContract.composerAttachmentStripHeight)
-                        .background(.thinMaterial, in: Capsule())
+                        .hermexThinMaterialBackground(in: Capsule())
                 }
             }
             .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)
@@ -451,7 +451,7 @@ public struct HermexComposerSurface: View {
                 .font(.subheadline.weight(.medium))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(.thinMaterial, in: Capsule())
+                .hermexThinMaterialBackground(in: Capsule())
                 .overlay {
                     Capsule().stroke(Color.primary.opacity(0.14), lineWidth: 0.6)
                 }

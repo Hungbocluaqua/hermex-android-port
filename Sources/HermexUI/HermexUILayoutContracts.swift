@@ -1,7 +1,7 @@
 import SwiftUI
 
 public enum HermexLayoutContract {
-    public static let hermexLogoAspectRatio: CGFloat = 643 / 185
+    public static let hermexLogoAspectRatio: CGFloat = 643.0 / 185.0
     public static let sessionListLogoWidth: CGFloat = 172
     public static let topChromeCircleSize: CGFloat = 58
     public static let topChromeCompactCircleSize: CGFloat = 46

@@ -93,7 +93,7 @@ public struct HermexGlassPanel<Content: View>: View {
 
     public var body: some View {
         content
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .hermexUltraThinMaterialBackground(in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(Color.primary.opacity(0.14), lineWidth: 0.6)
@@ -149,7 +149,7 @@ public struct HermexIconCluster<Content: View>: View {
         HStack(spacing: HermexLayoutContract.topChromeClusterSpacing) {
             content
         }
-        .background(.thinMaterial, in: Capsule())
+        .hermexThinMaterialBackground(in: Capsule())
         .overlay {
             Capsule().stroke(Color.primary.opacity(0.13), lineWidth: 0.6)
         }
@@ -178,7 +178,7 @@ public struct HermexPillLabel: View {
         .font(.subheadline.weight(.medium))
         .padding(.horizontal, HermexLayoutContract.composerSecondaryBarHorizontalPadding)
         .padding(.vertical, HermexLayoutContract.composerSecondaryBarVerticalPadding)
-        .background(.thinMaterial, in: Capsule())
+        .hermexThinMaterialBackground(in: Capsule())
         .overlay {
             Capsule().stroke(Color.primary.opacity(0.14), lineWidth: 0.6)
         }
@@ -186,6 +186,24 @@ public struct HermexPillLabel: View {
 }
 
 public extension View {
+    @ViewBuilder
+    func hermexThinMaterialBackground<S: Shape>(in shape: S) -> some View {
+#if SKIP
+        self.background(HermexUIColors.secondarySystemBackground.opacity(0.72), in: shape)
+#else
+        self.background(.thinMaterial, in: shape)
+#endif
+    }
+
+    @ViewBuilder
+    func hermexUltraThinMaterialBackground<S: Shape>(in shape: S) -> some View {
+#if SKIP
+        self.background(HermexUIColors.secondarySystemBackground.opacity(0.58), in: shape)
+#else
+        self.background(.ultraThinMaterial, in: shape)
+#endif
+    }
+
     @ViewBuilder
     func hermexContentShapeRectangle() -> some View {
 #if SKIP

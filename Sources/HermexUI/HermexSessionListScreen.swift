@@ -257,7 +257,7 @@ public struct HermexSessionListScreen: View {
 
     private func relativeDate(_ session: HermexSessionDTO) -> String? {
         guard let timestamp = session.lastMessageAt ?? session.updatedAt ?? session.createdAt else { return nil }
-        let seconds = max(0, Date().timeIntervalSince1970 - timestamp)
+        let seconds = max(0.0, Date().timeIntervalSince1970 - timestamp)
         if seconds < 60 { return "now" }
         if seconds < 3_600 { return "\(Int(seconds / 60))m ago" }
         if seconds < 86_400 { return "\(Int(seconds / 3_600))h ago" }
