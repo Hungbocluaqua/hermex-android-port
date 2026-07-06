@@ -119,10 +119,11 @@ find "$GRADLE_DIR" "$APP_DIR/.build/Android" "$APP_DIR/.build/plugins/outputs" -
     cp "$artifact" "$DIST_DIR/$(basename "$artifact")"
   done
 
-mapfile -t artifacts < <(find "$DIST_DIR" -type f \( -name '*.apk' -o -name '*.aab' \) | sort)
-if [[ "${#artifacts[@]}" -eq 0 ]]; then
+artifacts_list="$DIST_DIR/artifacts.txt"
+find "$DIST_DIR" -type f \( -name '*.apk' -o -name '*.aab' \) | sort > "$artifacts_list"
+if [[ ! -s "$artifacts_list" ]]; then
   echo "The generated Skip Gradle project did not produce an APK or AAB under $DIST_DIR" >&2
   exit 1
 fi
 
-printf '%s\n' "${artifacts[@]}"
+cat "$artifacts_list"

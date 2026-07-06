@@ -105,7 +105,10 @@ jobs:
           PRERELEASE_FLAG: ${{ inputs.prerelease && '--prerelease' || '' }}
         run: |
           set -euo pipefail
-          mapfile -t release_assets < <(find dist -type f | sort)
+          release_assets=()
+          while IFS= read -r asset; do
+            release_assets+=("$asset")
+          done < <(find dist -type f | sort)
           if [ "${#release_assets[@]}" -eq 0 ]; then
             echo "No release assets found in dist"
             exit 1
