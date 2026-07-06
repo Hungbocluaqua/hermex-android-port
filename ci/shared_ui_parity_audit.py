@@ -101,7 +101,14 @@ def main() -> int:
     ok &= require("case .diff" in store and "case .stage" in store and "case .commit" in store, "Shared store is missing typed git command handling.")
     ok &= require("fromStatusResponse" in mapping, "Git status mapper is missing.")
     ok &= require("diffText(from" in mapping and "mergingStatus" in mapping, "Git diff/status merge helpers are missing.")
-    ok &= require("panelPicker" in panels and "taskRows" in panels and "skillRows" in panels and "memoryRows" in panels, "Panels screen must expose tasks/skills/memory/insights sections.")
+    ok &= require("Server Panels" in panels and "selectedPanelCard" in panels, "Panels screen must use the iOS-style Server Panels card shell.")
+    ok &= require("panelPicker" not in panels, "Panels screen must not regress to the placeholder segmented picker.")
+    ok &= require("taskRows" in panels and "skillRows" in panels and "memoryRows" in panels and "insightsPanel" in panels, "Panels screen must expose tasks/skills/memory/insights sections.")
+    ok &= require("Search skills..." in panels and "filteredSkills" in panels, "Skills panel must expose the iOS-style search field.")
+    ok &= require("New Task" in panels and "Details" in panels and "Run" in panels, "Tasks panel must expose iOS-style task actions.")
+    ok &= require("Edit \\(section.section)" in panels, "Memory panel must expose iOS-style edit action chrome.")
+    ok &= require("Last 30 Days" in panels and "Estimated Cost" in panels and "Cache Hit Rate" in panels, "Insights panel must expose iOS-style analytics rows.")
+    ok &= require(".foregroundStyle(HermexUIColors.primaryText)" in panels, "Panels screen must explicitly style dark-surface primary text.")
     for closure in ["loadTasks", "loadSkills", "loadMemory", "loadInsights"]:
         ok &= require(closure in store, f"Shared store is missing panel loader {closure}.")
     for asset in [
