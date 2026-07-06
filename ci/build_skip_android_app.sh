@@ -29,13 +29,14 @@ python3 "$ROOT/ci/prepare_skip_hermex_app.py" \
 )
 
 while IFS= read -r -d '' build_file; do
-  if grep -q '^android[[:space:]]*{' "$build_file" && ! grep -q 'com.android.library' "$build_file"; then
+  if grep -q '^android[[:space:]]*{' "$build_file" &&
+    ! grep -q 'com.android.library\|android.library' "$build_file"; then
     if grep -q '^plugins[[:space:]]*{' "$build_file"; then
-      perl -0pi -e 's/(plugins[[:space:]]*\{\n)/$1    id("com.android.library")\n/s' "$build_file"
+      perl -0pi -e 's/(plugins[[:space:]]*\{\n)/$1    alias(libs.plugins.android.library)\n/s' "$build_file"
     else
       tmp_file="${build_file}.tmp"
       {
-        printf 'plugins {\n    id("com.android.library")\n}\n\n'
+        printf 'plugins {\n    alias(libs.plugins.android.library)\n}\n\n'
         cat "$build_file"
       } > "$tmp_file"
       mv "$tmp_file" "$build_file"
