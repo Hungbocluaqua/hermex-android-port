@@ -51,6 +51,32 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: SwiftPM cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-${{ runner.arch }}-swiftpm-visual-${{ hashFiles('Package.swift', 'Package.resolved', 'Sources/**/*.swift') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-swiftpm-visual-
+            ${{ runner.os }}-${{ runner.arch }}-swiftpm-
+
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Android SDK cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Android/sdk/cmdline-tools
+            ~/Library/Android/sdk/emulator
+            ~/Library/Android/sdk/platform-tools
+            ~/Library/Android/sdk/platforms
+            ~/Library/Android/sdk/system-images
+            ~/.android/cache
+          key: ${{ runner.os }}-${{ runner.arch }}-android-sdk-35-visual-v1
+
       - name: Install Skip
         run: |
           set -euo pipefail
@@ -88,14 +114,6 @@ jobs:
             --state "${{ inputs.state }}" \
             --device-name "${{ inputs.device_name }}"
 
-      - name: Build visual fixture APK
-        timeout-minutes: 35
-        run: |
-          set -euo pipefail
-          export HERMEX_ALLOW_INCOMPLETE_SKIP_APK=1
-          export HERMEX_VISUAL_FIXTURE_NAME="${{ inputs.screen }}"
-          bash ci/build_skip_android_app.sh "$RUNNER_TEMP/hermex-skip-visual-apk"
-
       - name: Create Android emulator
         run: |
           set -euo pipefail
@@ -118,7 +136,7 @@ jobs:
             --package "$system_image" \
             --device pixel_7
 
-      - name: Start Android emulator
+      - name: Start Android emulator in background
         run: |
           set -euo pipefail
           adb start-server
@@ -152,10 +170,25 @@ jobs:
             echo "Android emulator did not appear in adb devices." >&2
             exit 1
           fi
+          echo "Android emulator is registered with adb; boot continues during the APK build."
+
+      - name: Build visual fixture APK
+        timeout-minutes: 35
+        run: |
+          set -euo pipefail
+          export HERMEX_ALLOW_INCOMPLETE_SKIP_APK=1
+          export HERMEX_VISUAL_FIXTURE_NAME="${{ inputs.screen }}"
+          bash ci/build_skip_android_app.sh "$RUNNER_TEMP/hermex-skip-visual-apk"
+
+      - name: Wait for Android emulator boot
+        run: |
+          set -euo pipefail
+          adb wait-for-device
           booted=""
           for _ in {1..180}; do
             booted="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
             if [[ "$booted" == "1" ]]; then
+              echo "Android emulator boot completed."
               exit 0
             fi
             sleep 5
