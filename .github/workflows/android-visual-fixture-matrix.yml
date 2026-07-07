@@ -173,8 +173,34 @@ jobs:
           fi
           echo "Android emulator is registered with adb; boot continues during the reusable APK build."
 
+      - name: Build reusable Skip APK
+        timeout-minutes: 35
+        run: |
+          set -euo pipefail
+          export HERMEX_ALLOW_INCOMPLETE_SKIP_APK=1
+          unset HERMEX_VISUAL_FIXTURE_NAME
+          bash ci/build_skip_android_app.sh "$RUNNER_TEMP/hermex-skip-visual-apk"
+
+      - name: Wait for Android emulator boot
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          adb wait-for-device
+          booted=""
+          for _ in {1..180}; do
+            booted="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
+            if [[ "$booted" == "1" ]]; then
+              echo "Android emulator boot completed."
+              exit 0
+            fi
+            sleep 5
+          done
+          cat "$RUNNER_TEMP/hermex-visual-emulator.log" || true
+          echo "Android emulator did not finish booting." >&2
+          exit 1
+
       - name: Capture Android screenshots
-        timeout-minutes: 90
+        timeout-minutes: 25
         run: |
           set -euo pipefail
           bash ci/capture_skip_android_fixture_matrix.sh \
@@ -182,7 +208,8 @@ jobs:
             --state "${{ inputs.state }}" \
             --device-name "${{ inputs.device_name }}" \
             --output-root "$RUNNER_TEMP/android-visual-screens" \
-            --apk-dir "$RUNNER_TEMP/hermex-skip-visual-apk"
+            --apk-dir "$RUNNER_TEMP/hermex-skip-visual-apk" \
+            --reuse-apk
 
       - name: Upload Android screenshot artifact
         uses: actions/upload-artifact@v5
