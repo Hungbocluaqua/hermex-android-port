@@ -345,9 +345,7 @@ public struct HermexOnboardingScreen: View {
                         TextField("", text: $serverURLString)
                             .font(.body.weight(.medium))
                             .foregroundStyle(Color.white)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .keyboardType(.URL)
+                            .hermexURLInputTraits()
                             .submitLabel(.go)
                             .tint(Color(red: 1.0, green: 0.74, blue: 0.10))
                             .focused($focusedField, equals: .serverURL)
@@ -374,30 +372,33 @@ public struct HermexOnboardingScreen: View {
                         }
                 }
 
-                DisclosureGroup(isExpanded: $isShowingAdvanced) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Custom headers")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color.white.opacity(0.5))
+                DisclosureGroup(
+                    isExpanded: $isShowingAdvanced,
+                    content: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Custom headers")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.white.opacity(0.5))
 
-                        TextEditor(text: $customHeaderText)
-                            .font(.footnote.monospaced())
-                            .foregroundStyle(Color.white)
-                            .frame(minHeight: 74)
-                            .padding(10)
-                            .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                            }
+                            TextEditor(text: $customHeaderText)
+                                .font(.footnote.monospaced())
+                                .foregroundStyle(Color.white)
+                                .frame(minHeight: 74)
+                                .padding(10)
+                                .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                }
                         }
+                        .padding(.top, 10)
+                    },
+                    label: {
+                        Label("Advanced", systemImage: HermexSystemImageName("slider.horizontal.3"))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.white.opacity(0.85))
                     }
-                    .padding(.top, 10)
-                } label: {
-                    Label("Advanced", systemImage: HermexSystemImageName("slider.horizontal.3"))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.white.opacity(0.85))
-                }
+                )
                 .tint(Color.white.opacity(0.6))
             }
             .padding(14)
@@ -717,6 +718,19 @@ Do not use Cloudflare. Optimize for Tailscale + iPhone.
 }
 
 private extension View {
+    @ViewBuilder
+    func hermexURLInputTraits() -> some View {
+#if canImport(UIKit)
+        self
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .keyboardType(.URL)
+#else
+        self
+            .autocorrectionDisabled()
+#endif
+    }
+
     @ViewBuilder
     func hermexOnboardingKeyboardInset<Inset: View>(
         isVisible: Bool,
