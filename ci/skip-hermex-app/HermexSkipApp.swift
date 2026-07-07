@@ -5,6 +5,7 @@ import HermexUI
 
 private let hermexVisualFixtureName: String? = nil
 private let hermexRuntimeVisualFixtureFileName = "hermex_visual_fixture.txt"
+private let hermexAndroidRuntimeVisualFixturePath = "/data/data/com.uzairansar.hermex/files/hermex_visual_fixture.txt"
 
 private func resolvedHermexVisualFixtureName() -> String? {
     if let fixtureName = hermexVisualFixtureName?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -17,19 +18,22 @@ private func resolvedHermexVisualFixtureName() -> String? {
         return fixtureName
     }
 
-    let fileManager = FileManager.default
-    var candidateURLs = fileManager.urls(for: .documentDirectory, in: .userDomainMask)
-    candidateURLs.append(URL(fileURLWithPath: "/data/data/com.uzairansar.hermex/files"))
-
-    for directory in candidateURLs {
-        let selectorURL = directory.appendingPathComponent(hermexRuntimeVisualFixtureFileName)
-        guard let fixtureName = try? String(contentsOf: selectorURL, encoding: .utf8)
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !fixtureName.isEmpty else {
-            continue
-        }
+    #if SKIP
+    if let fixtureName = try? String(contentsOfFile: hermexAndroidRuntimeVisualFixturePath, encoding: .utf8)
+        .trimmingCharacters(in: .whitespacesAndNewlines),
+       !fixtureName.isEmpty {
         return fixtureName
     }
+    #else
+    if let documentDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+        let selectorURL = documentDirectory.appendingPathComponent(hermexRuntimeVisualFixtureFileName)
+        if let fixtureName = try? String(contentsOf: selectorURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !fixtureName.isEmpty {
+            return fixtureName
+        }
+    }
+    #endif
 
     return nil
 }
