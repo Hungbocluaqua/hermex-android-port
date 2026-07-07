@@ -17,6 +17,10 @@ HEIGHT=""
 SELF_TEST=0
 PYTHON_BIN="${PYTHON_BIN:-}"
 
+log() {
+  printf '[%s] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*" >&2
+}
+
 usage() {
   cat <<'USAGE'
 Usage: capture_skip_android_fixture.sh [options]
@@ -248,9 +252,12 @@ assert_hermex_focus_for_screenshot() {
 }
 
 if [[ "$REUSE_APK" != "1" ]]; then
+  log "Building Skip Android visual fixture APK for screen=$SCREEN"
   export HERMEX_ALLOW_INCOMPLETE_SKIP_APK=1
   export HERMEX_VISUAL_FIXTURE_NAME="$SCREEN"
   bash "$ROOT/ci/build_skip_android_app.sh" "$APK_DIR"
+else
+  log "Reusing existing APK from $APK_DIR"
 fi
 
 APK_PATH="$(find "$APK_DIR" -type f -name '*.apk' | sort | head -n 1)"
@@ -258,8 +265,11 @@ if [[ -z "$APK_PATH" ]]; then
   echo "No APK was produced in $APK_DIR" >&2
   exit 1
 fi
+log "Using APK: $APK_PATH ($(du -h "$APK_PATH" | awk '{ print $1 }'))"
 
+log "Waiting for Android device"
 "$ADB" wait-for-device
+log "Configuring emulator display ${WIDTH}x${HEIGHT}"
 "$ADB" shell settings put global window_animation_scale 0 >/dev/null 2>&1 || true
 "$ADB" shell settings put global transition_animation_scale 0 >/dev/null 2>&1 || true
 "$ADB" shell settings put global animator_duration_scale 0 >/dev/null 2>&1 || true
@@ -272,10 +282,14 @@ else
   "$ADB" shell cmd uimode night no >/dev/null 2>&1 || true
 fi
 
+log "Installing Hermex APK"
 "$ADB" install -r "$APK_PATH" >/dev/null
+log "Clearing Hermex app data"
 "$ADB" shell pm clear "$PACKAGE_ID" >/dev/null 2>&1 || true
 dismiss_system_dialogs
+log "Launching Hermex"
 launch_app
+log "Waiting for Hermex focus"
 wait_for_app_focus
 sleep "$SETTLE_SECONDS"
 
@@ -286,6 +300,7 @@ fi
 
 SCREENSHOT_PATH="$OUTPUT_ROOT/$DEVICE_NAME/$STATE/$SCREEN.png"
 mkdir -p "$(dirname "$SCREENSHOT_PATH")"
+log "Capturing screenshot to $SCREENSHOT_PATH"
 "$ADB" exec-out screencap -p > "$SCREENSHOT_PATH"
 
 if [[ ! -s "$SCREENSHOT_PATH" ]]; then
@@ -294,6 +309,7 @@ if [[ ! -s "$SCREENSHOT_PATH" ]]; then
 fi
 
 assert_hermex_focus_for_screenshot
+log "Inspecting screenshot pixels"
 "$PYTHON_BIN" "$ROOT/ci/assert_android_capture_not_system_dialog.py" "$SCREENSHOT_PATH"
 
 echo "$SCREENSHOT_PATH"

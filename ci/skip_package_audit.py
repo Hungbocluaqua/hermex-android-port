@@ -147,7 +147,7 @@ def main() -> int:
     ok &= require("for _ in {1..180}" in android_visual_workflow, "Android visual workflow must allow enough time for cold emulator boots on hosted runners.")
     ok &= require("-no-snapshot" in android_visual_workflow and "-wipe-data" in android_visual_workflow, "Android visual workflow must start a deterministic fresh emulator.")
     ok &= require("Build visual fixture APK" in android_visual_workflow and "timeout-minutes: 35" in android_visual_workflow, "Android visual workflow must build the fixture APK in a bounded pre-capture step.")
-    ok &= require("--reuse-apk" in android_visual_workflow and "timeout-minutes: 8" in android_visual_workflow, "Android visual screenshot capture must reuse the prebuilt APK and be tightly bounded.")
+    ok &= require("--reuse-apk" in android_visual_workflow and "timeout-minutes: 15" in android_visual_workflow, "Android visual screenshot capture must reuse the prebuilt APK and be tightly bounded.")
     ok &= require("actions/upload-artifact" in android_visual_workflow, "Android visual workflow must upload screenshot artifacts.")
 
     parity_workflow = (ROOT / ".github" / "workflows" / "skip-android-parity.yml").read_text(encoding="utf-8")

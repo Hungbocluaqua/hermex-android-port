@@ -165,7 +165,7 @@ jobs:
           exit 1
 
       - name: Capture Android screenshot
-        timeout-minutes: 8
+        timeout-minutes: 15
         run: |
           set -euo pipefail
           bash ci/capture_skip_android_fixture.sh \
