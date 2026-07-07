@@ -19,7 +19,7 @@ private func resolvedHermexVisualFixtureName() -> String? {
     }
 
     #if SKIP
-    if let fixtureName = try? String(contentsOfFile: hermexAndroidRuntimeVisualFixturePath, encoding: .utf8)
+    if let fixtureName = try? String(contentsOfFile: hermexAndroidRuntimeVisualFixturePath, encoding: String.Encoding.utf8)
         .trimmingCharacters(in: .whitespacesAndNewlines),
        !fixtureName.isEmpty {
         return fixtureName
@@ -27,7 +27,7 @@ private func resolvedHermexVisualFixtureName() -> String? {
     #else
     if let documentDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
         let selectorURL = documentDirectory.appendingPathComponent(hermexRuntimeVisualFixtureFileName)
-        if let fixtureName = try? String(contentsOf: selectorURL, encoding: .utf8)
+        if let fixtureName = try? String(contentsOf: selectorURL, encoding: String.Encoding.utf8)
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !fixtureName.isEmpty {
             return fixtureName
