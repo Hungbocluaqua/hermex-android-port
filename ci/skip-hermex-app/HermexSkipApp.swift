@@ -40,17 +40,6 @@ private func resolvedHermexVisualFixtureName() -> String? {
     return nil
 }
 
-@main
-public struct HermexSkipAppApp: App {
-    public init() {}
-
-    public var body: some Scene {
-        WindowGroup {
-            HermexSkipAppRootView()
-        }
-    }
-}
-
 public struct ContentView: View {
     public init() {}
 
