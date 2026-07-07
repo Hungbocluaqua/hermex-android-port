@@ -6,9 +6,23 @@ APP_DIR="${SKIP_APP_WORKDIR:-"${RUNNER_TEMP:-"$ROOT/.build"}/hermex-skip-app"}"
 DIST_DIR="${1:-"$ROOT/dist/skip-android"}"
 APP_VERSION="${HERMEX_SKIP_VERSION:-0.3.1}"
 APP_ID="${HERMEX_SKIP_APP_ID:-com.uzairansar.hermex}"
+ANDROID_VARIANT="${HERMEX_SKIP_ANDROID_VARIANT:-debug}"
 MODULE_NAME="HermexSkipApp"
 APP_PARENT="$(dirname "$APP_DIR")"
 APP_PROJECT_NAME="$(basename "$APP_DIR")"
+
+case "$ANDROID_VARIANT" in
+  debug)
+    GRADLE_VARIANT_TASK="assembleDebug"
+    ;;
+  release)
+    GRADLE_VARIANT_TASK="assembleRelease"
+    ;;
+  *)
+    echo "HERMEX_SKIP_ANDROID_VARIANT must be debug or release, got: $ANDROID_VARIANT" >&2
+    exit 2
+    ;;
+esac
 
 rm -rf "$APP_DIR" "$DIST_DIR"
 mkdir -p "$APP_PARENT" "$DIST_DIR"
@@ -61,10 +75,10 @@ while IFS= read -r -d '' build_file; do
 done < <(find "$APP_DIR/.build/plugins/outputs" -name 'build.gradle.kts' -print0)
 
 GRADLE_SETTINGS=""
-GRADLE_TASK="assembleDebug"
+GRADLE_TASK="$GRADLE_VARIANT_TASK"
 if [[ -f "$APP_DIR/Android/settings.gradle.kts" ]]; then
   GRADLE_SETTINGS="$APP_DIR/Android/settings.gradle.kts"
-  GRADLE_TASK=":app:assembleDebug"
+  GRADLE_TASK=":app:$GRADLE_VARIANT_TASK"
 else
   GRADLE_SETTINGS="$(find "$APP_DIR/.build/plugins/outputs" -path "*/$MODULE_NAME/destination/skipstone/settings.gradle.kts" -print -quit)"
 fi
@@ -235,8 +249,75 @@ if ! (
   exit 1
 fi
 
+sign_release_apks_if_requested() {
+  if [[ "$ANDROID_VARIANT" != "release" ]]; then
+    return 0
+  fi
+
+  local required_signing_env=(
+    HERMEX_ANDROID_KEYSTORE_FILE
+    HERMEX_ANDROID_KEYSTORE_PASSWORD
+    HERMEX_ANDROID_KEY_ALIAS
+    HERMEX_ANDROID_KEY_PASSWORD
+  )
+  for env_name in "${required_signing_env[@]}"; do
+    if [[ -z "${!env_name:-}" ]]; then
+      echo "Release APK signing skipped: $env_name is not set." >&2
+      return 0
+    fi
+  done
+
+  local android_home="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+  if [[ -z "$android_home" || ! -d "$android_home/build-tools" ]]; then
+    echo "Release APK signing skipped: Android build-tools were not found." >&2
+    return 0
+  fi
+
+  local build_tools
+  build_tools="$(find "$android_home/build-tools" -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)"
+  local zipalign="$build_tools/zipalign"
+  local apksigner="$build_tools/apksigner"
+  if [[ ! -x "$zipalign" || ! -x "$apksigner" ]]; then
+    echo "Release APK signing skipped: zipalign/apksigner were not executable in $build_tools." >&2
+    return 0
+  fi
+
+  while IFS= read -r -d '' apk; do
+    if "$apksigner" verify "$apk" >/dev/null 2>&1; then
+      echo "Release APK already signed: $apk"
+      continue
+    fi
+
+    local aligned signed final
+    aligned="${apk%.apk}-aligned.apk"
+    signed="${apk%.apk}-signed.apk"
+    final="${apk/-unsigned.apk/.apk}"
+    if [[ "$final" == "$apk" ]]; then
+      final="${apk%.apk}-signed-release.apk"
+    fi
+
+    "$zipalign" -p -f 4 "$apk" "$aligned"
+    "$apksigner" sign \
+      --ks "$HERMEX_ANDROID_KEYSTORE_FILE" \
+      --ks-pass "pass:$HERMEX_ANDROID_KEYSTORE_PASSWORD" \
+      --ks-key-alias "$HERMEX_ANDROID_KEY_ALIAS" \
+      --key-pass "pass:$HERMEX_ANDROID_KEY_PASSWORD" \
+      --out "$signed" \
+      "$aligned"
+    mv "$signed" "$final"
+    mv "$apk" "${apk}.unsigned"
+    mv "$aligned" "${aligned}.signed-input"
+    echo "Signed release APK: $final"
+  done < <(find "$GRADLE_DIR" "$APP_DIR/.build/Android" "$APP_DIR/.build/plugins/outputs" -type f -name '*release*.apk' -print0)
+}
+
+sign_release_apks_if_requested
+
 find "$GRADLE_DIR" "$APP_DIR/.build/Android" "$APP_DIR/.build/plugins/outputs" -type f \( -name '*.apk' -o -name '*.aab' \) -print0 |
   while IFS= read -r -d '' artifact; do
+    if [[ "$ANDROID_VARIANT" == "release" && "$artifact" == *.unsigned ]]; then
+      continue
+    fi
     cp "$artifact" "$DIST_DIR/$(basename "$artifact")"
   done
 
