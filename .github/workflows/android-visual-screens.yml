@@ -145,7 +145,7 @@ jobs:
             exit 1
           fi
           booted=""
-          for _ in {1..60}; do
+          for _ in {1..180}; do
             booted="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
             if [[ "$booted" == "1" ]]; then
               exit 0

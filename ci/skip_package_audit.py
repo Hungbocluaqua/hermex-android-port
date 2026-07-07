@@ -135,6 +135,7 @@ def main() -> int:
     ok &= require("yes | sdkmanager --install \"$system_image\"" in android_visual_workflow, "Android visual workflow must install emulator images non-interactively.")
     ok &= require("for attempt in 1 2 3" in android_visual_workflow and "install_skip()" in android_visual_workflow, "Android visual workflow must retry flaky Skip installs.")
     ok &= require("adb start-server" in android_visual_workflow and "pgrep -f \"emulator.*hermex-visual\"" in android_visual_workflow, "Android visual workflow must bound emulator boot waits and dump logs on failure.")
+    ok &= require("for _ in {1..180}" in android_visual_workflow, "Android visual workflow must allow enough time for cold emulator boots on hosted runners.")
     ok &= require("-no-snapshot" in android_visual_workflow and "-wipe-data" in android_visual_workflow, "Android visual workflow must start a deterministic fresh emulator.")
     ok &= require("actions/upload-artifact" in android_visual_workflow, "Android visual workflow must upload screenshot artifacts.")
 
