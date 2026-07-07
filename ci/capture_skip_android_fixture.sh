@@ -348,6 +348,11 @@ fi
 
 assert_hermex_focus_for_screenshot
 log "Inspecting screenshot pixels"
-"$PYTHON_BIN" "$ROOT/ci/assert_android_capture_not_system_dialog.py" "$SCREENSHOT_PATH"
+if ! "$PYTHON_BIN" "$ROOT/ci/assert_android_capture_not_system_dialog.py" "$SCREENSHOT_PATH"; then
+  echo "Recent Android logcat lines after failed Hermex screenshot inspection:" >&2
+  adb_shell_bounded 10 logcat -d -t 300 |
+    grep -Ei 'hermex|skip|fatal|exception|androidruntime|crash|mainactivity' >&2 || true
+  exit 1
+fi
 
 echo "$SCREENSHOT_PATH"

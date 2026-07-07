@@ -140,6 +140,18 @@ def center_light_pixel_ratio(width: int, height: int, rgba: bytes) -> float:
     return light / total if total else 0.0
 
 
+def visible_pixel_ratio(width: int, height: int, rgba: bytes) -> float:
+    visible = 0
+    total = width * height
+
+    for index in range(0, len(rgba), 4):
+        r, g, b, a = rgba[index : index + 4]
+        if a > 16 and max(r, g, b) > 10:
+            visible += 1
+
+    return visible / total if total else 0.0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("screenshot", type=Path)
@@ -148,6 +160,12 @@ def main() -> int:
         type=float,
         default=0.16,
         help="Reject captures with a large light system-dialog panel in the center.",
+    )
+    parser.add_argument(
+        "--min-visible-pixel-ratio",
+        type=float,
+        default=0.003,
+        help="Reject blank captures with too few non-black visible pixels.",
     )
     args = parser.parse_args()
 
@@ -166,7 +184,19 @@ def main() -> int:
         )
         return 1
 
-    print(f"Android screenshot system-dialog guard OK: center_light_ratio={ratio:.3f}")
+    visible_ratio = visible_pixel_ratio(width, height, rgba)
+    if visible_ratio < args.min_visible_pixel_ratio:
+        print(
+            "Android screenshot looks blank instead of Hermex "
+            f"(visible pixel ratio {visible_ratio:.4f} < {args.min_visible_pixel_ratio:.4f}): {args.screenshot}",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(
+        "Android screenshot pixel guard OK: "
+        f"center_light_ratio={ratio:.3f} visible_ratio={visible_ratio:.4f}"
+    )
     return 0
 
 
