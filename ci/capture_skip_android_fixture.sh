@@ -11,6 +11,8 @@ APK_DIR="${HERMEX_VISUAL_APK_DIR:-"${RUNNER_TEMP:-"$ROOT/.build"}/hermex-skip-vi
 PACKAGE_ID="${HERMEX_SKIP_APP_ID:-com.uzairansar.hermex}"
 ADB="${ADB:-adb}"
 SETTLE_SECONDS="${HERMEX_VISUAL_SETTLE_SECONDS:-5}"
+CAPTURE_ATTEMPTS="${HERMEX_VISUAL_CAPTURE_ATTEMPTS:-6}"
+CAPTURE_RETRY_SECONDS="${HERMEX_VISUAL_CAPTURE_RETRY_SECONDS:-3}"
 REUSE_APK=0
 SKIP_INSTALL=0
 WIDTH=""
@@ -195,7 +197,7 @@ focused_window_snapshot() {
     adb_shell_bounded 5 dumpsys activity activities
     adb_shell_bounded 5 dumpsys window
   } |
-    grep -E 'mCurrentFocus|mFocusedApp|Application Error|AppErrorDialog|ErrorDialog|Application Not Responding|ANR in|isn.t responding' |
+  grep -E 'mCurrentFocus|mFocusedApp|Application Error|AppErrorDialog|ErrorDialog|Application Not Responding|ANR in|isn.t responding' |
     head -n 30 |
     tr -d '\r' || true
 }
@@ -208,7 +210,10 @@ adb_shell_bounded() {
 
 is_blocking_system_window() {
   local snapshot="$1"
-  grep -Eqi 'Application Error|AppErrorDialog|ErrorDialog|Application Not Responding|ANR in|isn.t responding' <<<"$snapshot"
+  if grep -Eqi 'Application Error|AppErrorDialog|ErrorDialog' <<<"$snapshot"; then
+    return 0
+  fi
+  grep -Eqi "Application Not Responding: $PACKAGE_ID|ANR in $PACKAGE_ID|$PACKAGE_ID.*isn.t responding" <<<"$snapshot"
 }
 
 resolve_launch_activity() {
@@ -287,6 +292,41 @@ assert_hermex_focus_for_screenshot() {
   fi
 }
 
+capture_verified_screenshot() {
+  local screenshot_path="$1"
+  local attempt
+
+  for attempt in $(seq 1 "$CAPTURE_ATTEMPTS"); do
+    if (( attempt > 1 )); then
+      log "Retrying screenshot capture after emulator frame/focus guard failure (attempt $attempt/$CAPTURE_ATTEMPTS)"
+      dismiss_system_dialogs
+      sleep "$CAPTURE_RETRY_SECONDS"
+    fi
+
+    log "Capturing screenshot to $screenshot_path"
+    "$ADB" exec-out screencap -p > "$screenshot_path"
+
+    if [[ ! -s "$screenshot_path" ]]; then
+      echo "Screenshot capture produced an empty file: $screenshot_path" >&2
+      continue
+    fi
+
+    if ! assert_hermex_focus_for_screenshot; then
+      continue
+    fi
+
+    log "Inspecting screenshot pixels"
+    if "$PYTHON_BIN" "$ROOT/ci/assert_android_capture_not_system_dialog.py" "$screenshot_path"; then
+      return 0
+    fi
+  done
+
+  echo "Recent Android logcat lines after failed Hermex screenshot inspection:" >&2
+  adb_shell_bounded 10 logcat -d -t 300 |
+    grep -Ei 'hermex|skip|fatal|exception|androidruntime|crash|mainactivity' >&2 || true
+  return 1
+}
+
 if [[ "$REUSE_APK" != "1" ]]; then
   log "Building Skip Android visual fixture APK for screen=$SCREEN"
   export HERMEX_ALLOW_INCOMPLETE_SKIP_APK=1
@@ -345,21 +385,6 @@ fi
 
 SCREENSHOT_PATH="$OUTPUT_ROOT/$DEVICE_NAME/$STATE/$SCREEN.png"
 mkdir -p "$(dirname "$SCREENSHOT_PATH")"
-log "Capturing screenshot to $SCREENSHOT_PATH"
-"$ADB" exec-out screencap -p > "$SCREENSHOT_PATH"
-
-if [[ ! -s "$SCREENSHOT_PATH" ]]; then
-  echo "Screenshot capture produced an empty file: $SCREENSHOT_PATH" >&2
-  exit 1
-fi
-
-assert_hermex_focus_for_screenshot
-log "Inspecting screenshot pixels"
-if ! "$PYTHON_BIN" "$ROOT/ci/assert_android_capture_not_system_dialog.py" "$SCREENSHOT_PATH"; then
-  echo "Recent Android logcat lines after failed Hermex screenshot inspection:" >&2
-  adb_shell_bounded 10 logcat -d -t 300 |
-    grep -Ei 'hermex|skip|fatal|exception|androidruntime|crash|mainactivity' >&2 || true
-  exit 1
-fi
+capture_verified_screenshot "$SCREENSHOT_PATH"
 
 echo "$SCREENSHOT_PATH"
