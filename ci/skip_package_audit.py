@@ -129,6 +129,7 @@ def main() -> int:
     android_visual_workflow = (ROOT / ".github" / "workflows" / "android-visual-screens.yml").read_text(encoding="utf-8")
     ok &= require("ci/capture_skip_android_fixture.sh" in android_visual_workflow, "Android visual workflow must call the fixture capture script.")
     ok &= require("workflow_dispatch" in android_visual_workflow and "screen:" in android_visual_workflow, "Android visual workflow must expose manual fixture selection.")
+    ok &= require("macos-26-intel" in android_visual_workflow, "Android visual workflow must use an Intel macOS runner for emulator acceleration.")
     ok &= require("emulator" in android_visual_workflow and "adb devices" in android_visual_workflow, "Android visual workflow must boot an emulator and wait for adb registration.")
     ok &= require("yes | sdkmanager --licenses" in android_visual_workflow, "Android visual workflow must accept SDK licenses before installing system images.")
     ok &= require("yes | sdkmanager --install \"$system_image\"" in android_visual_workflow, "Android visual workflow must install emulator images non-interactively.")

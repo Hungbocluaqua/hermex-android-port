@@ -36,7 +36,7 @@ permissions:
 jobs:
   capture:
     name: Capture Android Fixture Screenshot
-    runs-on: macos-26
+    runs-on: macos-26-intel
     timeout-minutes: 120
     env:
       HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
