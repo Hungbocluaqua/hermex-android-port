@@ -177,7 +177,7 @@ dismiss_system_dialogs() {
 }
 
 focused_window_snapshot() {
-  "$ADB" shell dumpsys window 2>/dev/null |
+  "$ADB" shell dumpsys -t 3 window 2>/dev/null |
     grep -E 'mCurrentFocus|mFocusedApp|Application Error|AppErrorDialog|ErrorDialog|ANR|isn.t responding|com.android.systemui' |
     head -n 30 |
     tr -d '\r' || true
@@ -213,7 +213,10 @@ launch_app() {
 
 wait_for_app_focus() {
   local focus
-  for _ in {1..45}; do
+  for attempt in {1..24}; do
+    if (( attempt == 1 || attempt % 6 == 0 )); then
+      log "Hermex focus check attempt $attempt"
+    fi
     focus="$(focused_window_snapshot)"
     if is_blocking_system_window "$focus"; then
       dismiss_system_dialogs

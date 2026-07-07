@@ -96,7 +96,7 @@ def main() -> int:
     ok &= require("chat-keyboard-open" in capture_script and "input tap" in capture_script, "Android visual capture must attempt keyboard-open fixture focus.")
     ok &= require("resolve_launch_activity" in capture_script and "am start -W" in capture_script, "Android visual capture must launch Hermex directly, not through a flaky launcher surface.")
     ok &= require("--reuse-apk" in capture_script and "REUSE_APK" in capture_script, "Android visual capture must support reusing a prebuilt fixture APK.")
-    ok &= require("wait_for_app_focus" in capture_script and "dumpsys window" in capture_script, "Android visual capture must verify Hermex owns the focused window before screenshots.")
+    ok &= require("wait_for_app_focus" in capture_script and "dumpsys -t 3 window" in capture_script, "Android visual capture must verify Hermex owns the focused window with bounded dumpsys calls.")
     ok &= require("Screenshot was not captured with Hermex focused" in capture_script, "Android visual capture must reject screenshots of system dialogs or the launcher.")
     ok &= require("assert_android_capture_not_system_dialog.py" in capture_script, "Android visual capture must inspect the actual PNG before upload.")
     ok &= require("focused_window_snapshot" in capture_script and "is_blocking_system_window" in capture_script, "Android visual capture must reject blocking system/ANR dialogs from focus snapshots.")
