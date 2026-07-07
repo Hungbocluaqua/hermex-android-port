@@ -1,8 +1,38 @@
+import Foundation
 import SwiftUI
 import HermexCore
 import HermexUI
 
 private let hermexVisualFixtureName: String? = nil
+private let hermexRuntimeVisualFixtureFileName = "hermex_visual_fixture.txt"
+
+private func resolvedHermexVisualFixtureName() -> String? {
+    if let fixtureName = hermexVisualFixtureName?.trimmingCharacters(in: .whitespacesAndNewlines),
+       !fixtureName.isEmpty {
+        return fixtureName
+    }
+
+    if let fixtureName = ProcessInfo.processInfo.environment["HERMEX_VISUAL_FIXTURE_NAME"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+       !fixtureName.isEmpty {
+        return fixtureName
+    }
+
+    let fileManager = FileManager.default
+    var candidateURLs = fileManager.urls(for: .documentDirectory, in: .userDomainMask)
+    candidateURLs.append(URL(fileURLWithPath: "/data/data/com.uzairansar.hermex/files"))
+
+    for directory in candidateURLs {
+        let selectorURL = directory.appendingPathComponent(hermexRuntimeVisualFixtureFileName)
+        guard let fixtureName = try? String(contentsOf: selectorURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !fixtureName.isEmpty else {
+            continue
+        }
+        return fixtureName
+    }
+
+    return nil
+}
 
 public struct HermexSkipAppRootView: View {
     @State private var runtime = HermexSkipRuntime()
@@ -10,7 +40,7 @@ public struct HermexSkipAppRootView: View {
     public init() {}
 
     public var body: some View {
-        if let fixtureName = hermexVisualFixtureName,
+        if let fixtureName = resolvedHermexVisualFixtureName(),
            let fixture = HermexVisualFixtureCatalog.fixture(named: fixtureName) {
             HermexVisualFixtureRootScreen(fixture: fixture)
         } else {

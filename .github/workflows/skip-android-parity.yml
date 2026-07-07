@@ -9,11 +9,13 @@ on:
       - Tests/**
       - android/**
       - ci/capture_skip_android_fixture.sh
+      - ci/capture_skip_android_fixture_matrix.sh
       - ci/build_skip_android_app.sh
       - ci/visual-goldens/**
       - ci/prepare_skip_hermex_app.py
       - ci/skip-hermex-app/**
       - .github/workflows/android-visual-screens.yml
+      - .github/workflows/android-visual-fixture-matrix.yml
       - .github/workflows/visual-golden-compare.yml
       - ci/endpoint_parity.py
       - ci/skip_migration_audit.py

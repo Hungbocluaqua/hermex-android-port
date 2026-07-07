@@ -30,6 +30,7 @@ def main() -> int:
     workflow = read(".github/workflows/skip-android-named-release.yml")
     visual_workflow = read(".github/workflows/visual-golden-compare.yml")
     android_visual_workflow = read(".github/workflows/android-visual-screens.yml")
+    android_matrix_workflow = read(".github/workflows/android-visual-fixture-matrix.yml")
     manifest = read("ci/visual-goldens/hermex-screens.json")
 
     ok = True
@@ -79,6 +80,12 @@ def main() -> int:
     )
     ok &= "actions/upload-artifact" in android_visual_workflow or fail(
         "Android Visual Screens must upload screenshot artifacts for visual comparison."
+    )
+    ok &= "ci/capture_skip_android_fixture_matrix.sh" in android_matrix_workflow or fail(
+        "Android Visual Fixture Matrix must capture multiple screens from one reusable APK."
+    )
+    ok &= "Start Android emulator in background" in android_matrix_workflow or fail(
+        "Android Visual Fixture Matrix must overlap emulator startup with APK build work."
     )
 
     if ok:

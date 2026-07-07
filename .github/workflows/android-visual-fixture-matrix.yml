@@ -1,12 +1,12 @@
-name: Android Visual Screens
+name: Android Visual Fixture Matrix
 
 on:
   workflow_dispatch:
     inputs:
-      screen:
-        description: "Visual fixture screen name from ci/visual-goldens/hermex-screens.json"
+      screens:
+        description: "Comma-separated fixture names from ci/visual-goldens/hermex-screens.json, or all"
         required: true
-        default: "session-list"
+        default: "all"
         type: string
       state:
         description: "System appearance"
@@ -25,9 +25,9 @@ on:
           - compact-phone
           - large-phone
       artifact_name:
-        description: "Artifact name for the captured Android screenshot"
+        description: "Artifact name for captured Android screenshots"
         required: true
-        default: "hermex-android-visual-screen"
+        default: "hermex-android-visual-fixture-matrix"
         type: string
 
 permissions:
@@ -35,9 +35,9 @@ permissions:
 
 jobs:
   capture:
-    name: Capture Android Fixture Screenshot
+    name: Capture Android Fixture Matrix
     runs-on: macos-26-intel
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
       HERMEX_ALLOW_INCOMPLETE_SKIP_APK: "1"
@@ -105,12 +105,13 @@ jobs:
           echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
 
-      - name: Validate capture script
+      - name: Validate visual fixture wiring
         run: |
           set -euo pipefail
+          python3 ci/visual-goldens/validate_fixture_catalog.py
           bash ci/capture_skip_android_fixture.sh \
             --self-test \
-            --screen "${{ inputs.screen }}" \
+            --screen session-list \
             --state "${{ inputs.state }}" \
             --device-name "${{ inputs.device_name }}"
 
@@ -170,44 +171,18 @@ jobs:
             echo "Android emulator did not appear in adb devices." >&2
             exit 1
           fi
-          echo "Android emulator is registered with adb; boot continues during the APK build."
+          echo "Android emulator is registered with adb; boot continues during the reusable APK build."
 
-      - name: Build reusable Skip APK
-        timeout-minutes: 35
+      - name: Capture Android screenshots
+        timeout-minutes: 90
         run: |
           set -euo pipefail
-          export HERMEX_ALLOW_INCOMPLETE_SKIP_APK=1
-          unset HERMEX_VISUAL_FIXTURE_NAME
-          bash ci/build_skip_android_app.sh "$RUNNER_TEMP/hermex-skip-visual-apk"
-
-      - name: Wait for Android emulator boot
-        run: |
-          set -euo pipefail
-          adb wait-for-device
-          booted=""
-          for _ in {1..180}; do
-            booted="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
-            if [[ "$booted" == "1" ]]; then
-              echo "Android emulator boot completed."
-              exit 0
-            fi
-            sleep 5
-          done
-          cat "$RUNNER_TEMP/hermex-visual-emulator.log" || true
-          echo "Android emulator did not finish booting." >&2
-          exit 1
-
-      - name: Capture Android screenshot
-        timeout-minutes: 15
-        run: |
-          set -euo pipefail
-          bash ci/capture_skip_android_fixture.sh \
-            --screen "${{ inputs.screen }}" \
+          bash ci/capture_skip_android_fixture_matrix.sh \
+            --screens "${{ inputs.screens }}" \
             --state "${{ inputs.state }}" \
             --device-name "${{ inputs.device_name }}" \
             --output-root "$RUNNER_TEMP/android-visual-screens" \
-            --apk-dir "$RUNNER_TEMP/hermex-skip-visual-apk" \
-            --reuse-apk
+            --apk-dir "$RUNNER_TEMP/hermex-skip-visual-apk"
 
       - name: Upload Android screenshot artifact
         uses: actions/upload-artifact@v5

@@ -12,10 +12,12 @@ PACKAGE_ID="${HERMEX_SKIP_APP_ID:-com.uzairansar.hermex}"
 ADB="${ADB:-adb}"
 SETTLE_SECONDS="${HERMEX_VISUAL_SETTLE_SECONDS:-5}"
 REUSE_APK=0
+SKIP_INSTALL=0
 WIDTH=""
 HEIGHT=""
 SELF_TEST=0
 PYTHON_BIN="${PYTHON_BIN:-}"
+RUNTIME_FIXTURE_FILE="hermex_visual_fixture.txt"
 
 log() {
   printf '[%s] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*" >&2
@@ -25,8 +27,8 @@ usage() {
   cat <<'USAGE'
 Usage: capture_skip_android_fixture.sh [options]
 
-Build a Skip Android APK for one Hermex visual fixture, install it on the
-currently connected emulator, and capture:
+Build or reuse a Skip Android APK, select one Hermex visual fixture, install it
+on the currently connected emulator, and capture:
   <output-root>/<device-name>/<state>/<screen>.png
 
 Options:
@@ -37,6 +39,7 @@ Options:
   --apk-dir DIR        Temporary Skip APK build output directory
   --package-id ID      Android package id
   --reuse-apk          Install an existing APK from --apk-dir instead of rebuilding
+  --skip-install       Reuse the already installed app and only clear fixture state
   --width PX           Override emulator screenshot width
   --height PX          Override emulator screenshot height
   --settle-seconds N   Seconds to wait after launch before screenshot
@@ -71,6 +74,11 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --reuse-apk)
+      REUSE_APK=1
+      shift
+      ;;
+    --skip-install)
+      SKIP_INSTALL=1
       REUSE_APK=1
       shift
       ;;
@@ -220,6 +228,20 @@ launch_app() {
   fi
 }
 
+write_visual_fixture_selection() {
+  log "Writing runtime visual fixture selector: $SCREEN"
+  if ! "$ADB" shell run-as "$PACKAGE_ID" mkdir -p files >/dev/null 2>&1; then
+    echo "Could not write runtime fixture selector with run-as for $PACKAGE_ID." >&2
+    echo "The visual APK must be a debuggable Skip build so CI can select screens at runtime." >&2
+    return 1
+  fi
+
+  if ! printf '%s' "$SCREEN" | "$ADB" shell run-as "$PACKAGE_ID" sh -c "cat > files/$RUNTIME_FIXTURE_FILE"; then
+    echo "Could not write runtime fixture selector file for $SCREEN." >&2
+    return 1
+  fi
+}
+
 wait_for_app_focus() {
   local pid
   for attempt in {1..30}; do
@@ -268,12 +290,17 @@ else
   log "Reusing existing APK from $APK_DIR"
 fi
 
-APK_PATH="$(find "$APK_DIR" -type f -name '*.apk' | sort | head -n 1)"
-if [[ -z "$APK_PATH" ]]; then
-  echo "No APK was produced in $APK_DIR" >&2
-  exit 1
+APK_PATH=""
+if [[ "$SKIP_INSTALL" != "1" ]]; then
+  APK_PATH="$(find "$APK_DIR" -type f -name '*.apk' | sort | head -n 1)"
+  if [[ -z "$APK_PATH" ]]; then
+    echo "No APK was produced in $APK_DIR" >&2
+    exit 1
+  fi
+  log "Using APK: $APK_PATH ($(du -h "$APK_PATH" | awk '{ print $1 }'))"
+else
+  log "Reusing already installed Hermex app package $PACKAGE_ID"
 fi
-log "Using APK: $APK_PATH ($(du -h "$APK_PATH" | awk '{ print $1 }'))"
 
 log "Waiting for Android device"
 "$ADB" wait-for-device
@@ -290,10 +317,13 @@ else
   "$ADB" shell cmd uimode night no >/dev/null 2>&1 || true
 fi
 
-log "Installing Hermex APK"
-"$ADB" install -r "$APK_PATH" >/dev/null
+if [[ "$SKIP_INSTALL" != "1" ]]; then
+  log "Installing Hermex APK"
+  "$ADB" install -r "$APK_PATH" >/dev/null
+fi
 log "Clearing Hermex app data"
 "$ADB" shell pm clear "$PACKAGE_ID" >/dev/null 2>&1 || true
+write_visual_fixture_selection
 dismiss_system_dialogs
 log "Launching Hermex"
 launch_app
