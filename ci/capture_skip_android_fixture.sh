@@ -229,14 +229,15 @@ launch_app() {
 }
 
 write_visual_fixture_selection() {
+  local fixture_dir="/data/data/$PACKAGE_ID/files"
   log "Writing runtime visual fixture selector: $SCREEN"
-  if ! "$ADB" shell run-as "$PACKAGE_ID" mkdir -p files >/dev/null 2>&1; then
+  if ! "$ADB" shell run-as "$PACKAGE_ID" mkdir -p "$fixture_dir" >/dev/null 2>&1; then
     echo "Could not write runtime fixture selector with run-as for $PACKAGE_ID." >&2
     echo "The visual APK must be a debuggable Skip build so CI can select screens at runtime." >&2
     return 1
   fi
 
-  if ! printf '%s' "$SCREEN" | "$ADB" shell run-as "$PACKAGE_ID" sh -c "cat > files/$RUNTIME_FIXTURE_FILE"; then
+  if ! printf '%s' "$SCREEN" | "$ADB" shell run-as "$PACKAGE_ID" sh -c "cat > '$fixture_dir/$RUNTIME_FIXTURE_FILE'"; then
     echo "Could not write runtime fixture selector file for $SCREEN." >&2
     return 1
   fi
