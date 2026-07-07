@@ -1,6 +1,11 @@
 import SwiftUI
 import HermexCore
 
+private enum HermexOnboardingConnectField: Hashable {
+    case serverURL
+    case password
+}
+
 public struct HermexOnboardingScreen: View {
     private static let connectPageIndex = 4
     private static let pageCount = 5
@@ -12,10 +17,14 @@ public struct HermexOnboardingScreen: View {
 
     @State private var currentPage: Int
     @State private var hasCopiedAgentPrompt = false
+    @State private var hasBypassedCopyReminder = false
+    @State private var isShowingCopyReminder = false
+    @State private var isShowingAdvanced = false
     @State private var serverURLString: String
     @State private var displayName: String
     @State private var password: String
     @State private var customHeaderText: String
+    @FocusState private var focusedField: HermexOnboardingConnectField?
 
     public init(
         appState: HermexAppState,
@@ -42,6 +51,10 @@ public struct HermexOnboardingScreen: View {
         !serverURLString.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty
     }
 
+    private var isEditingConnectionField: Bool {
+        currentPage == Self.connectPageIndex && focusedField != nil
+    }
+
     public var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
@@ -54,6 +67,19 @@ public struct HermexOnboardingScreen: View {
             }
         }
         .foregroundStyle(Color.white)
+        .hermexOnboardingKeyboardInset(isVisible: isEditingConnectionField) {
+            keyboardActionBar
+        }
+        .animation(.easeInOut(duration: 0.18), value: isEditingConnectionField)
+        .alert("Copy the setup prompt first", isPresented: $isShowingCopyReminder) {
+            Button("Stay Here", role: .cancel) {}
+            Button("Continue Anyway") {
+                hasBypassedCopyReminder = true
+                advance()
+            }
+        } message: {
+            Text("Copy the agent setup prompt on your desktop before continuing so Hermes Web UI and Tailscale are configured correctly.")
+        }
         .onChange(of: onboarding.serverURLString) { _, newValue in
             if newValue != serverURLString {
                 serverURLString = newValue
@@ -251,12 +277,12 @@ public struct HermexOnboardingScreen: View {
     }
 
     private var connectPage: some View {
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Connect")
                         .font(.title3.weight(.bold))
-                    Text(statusText)
+                    Text(connectPageSubtitle)
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.5))
                         .fixedSize(horizontal: false, vertical: true)
@@ -308,47 +334,71 @@ public struct HermexOnboardingScreen: View {
     private var connectionForm: some View {
         HermexGlassPanel {
             VStack(spacing: 12) {
-                onboardingField(title: "Server URL") {
-                    TextField("http://100.64.0.1:8787", text: $serverURLString)
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(Color.white)
-                        .submitLabel(.next)
+                onboardingField(systemImage: "link", title: "Server URL") {
+                    ZStack(alignment: .leading) {
+                        if serverURLString.isEmpty {
+                            Text(verbatim: "http://100.64.0.1:8787")
+                                .foregroundStyle(Color.white.opacity(0.38))
+                                .allowsHitTesting(false)
+                        }
+
+                        TextField("", text: $serverURLString)
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(Color.white)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .keyboardType(.URL)
+                            .submitLabel(.go)
+                            .tint(Color(red: 1.0, green: 0.74, blue: 0.10))
+                            .focused($focusedField, equals: .serverURL)
+                            .onSubmit {
+                                submitConnection()
+                            }
+                    }
                 }
 
-                onboardingField(title: "Name") {
-                    TextField("Hermex", text: $displayName)
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(Color.white)
-                        .submitLabel(.next)
-                }
-
-                onboardingField(title: "Password") {
-                    SecureField("Server password", text: $password)
+                onboardingField(systemImage: "key.fill", title: "Password") {
+                    SecureField(
+                        "",
+                        text: $password,
+                        prompt: Text("Server password")
+                            .foregroundStyle(Color.white.opacity(0.38))
+                    )
                         .font(.body.weight(.medium))
                         .foregroundStyle(Color.white)
                         .textContentType(.password)
-                        .submitLabel(.done)
+                        .submitLabel(.go)
+                        .focused($focusedField, equals: .password)
                         .onSubmit {
                             submitConnection()
                         }
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Custom headers")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.white.opacity(0.5))
+                DisclosureGroup(isExpanded: $isShowingAdvanced) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Custom headers")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.white.opacity(0.5))
 
-                    TextEditor(text: $customHeaderText)
-                        .font(.footnote.monospaced())
-                        .foregroundStyle(Color.white)
-                        .frame(minHeight: 74)
-                        .padding(10)
-                        .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        TextEditor(text: $customHeaderText)
+                            .font(.footnote.monospaced())
+                            .foregroundStyle(Color.white)
+                            .frame(minHeight: 74)
+                            .padding(10)
+                            .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            }
                         }
+                    }
+                    .padding(.top, 10)
+                } label: {
+                    Label("Advanced", systemImage: HermexSystemImageName("slider.horizontal.3"))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.85))
                 }
+                .tint(Color.white.opacity(0.6))
             }
             .padding(14)
         }
@@ -359,10 +409,12 @@ public struct HermexOnboardingScreen: View {
             pageIndicator
 
             if currentPage == Self.connectPageIndex {
-                connectActionButtons
+                if !isEditingConnectionField {
+                    connectActionButtons
+                }
             } else {
                 Button {
-                    advance()
+                    handlePrimaryAction()
                 } label: {
                     Text(primaryButtonTitle)
                         .font(.subheadline.weight(.semibold))
@@ -405,6 +457,7 @@ public struct HermexOnboardingScreen: View {
         HStack(spacing: 10) {
             connectionButton(
                 title: onboarding.isTestingConnection ? "Checking..." : "Test Connection",
+                systemImage: "network",
                 isPrimary: false,
                 isDisabled: onboarding.isTestingConnection || onboarding.isSigningIn || !canSubmitConnection
             ) {
@@ -418,6 +471,7 @@ public struct HermexOnboardingScreen: View {
 
             connectionButton(
                 title: onboarding.isSigningIn ? "Connecting..." : "Connect",
+                systemImage: "checkmark.circle.fill",
                 isPrimary: true,
                 isDisabled: onboarding.isTestingConnection || onboarding.isSigningIn || !canSubmitConnection
             ) {
@@ -428,12 +482,13 @@ public struct HermexOnboardingScreen: View {
 
     private func connectionButton(
         title: String,
+        systemImage: String,
         isPrimary: Bool,
         isDisabled: Bool,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Text(title)
+            Label(title, systemImage: HermexSystemImageName(systemImage))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(isPrimary ? Color.black : Color.white.opacity(0.84))
                 .lineLimit(1)
@@ -455,6 +510,15 @@ public struct HermexOnboardingScreen: View {
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.55 : 1.0)
+    }
+
+    private var keyboardActionBar: some View {
+        VStack(spacing: 10) {
+            connectActionButtons
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
     }
 
     private var pageIndicator: some View {
@@ -556,15 +620,24 @@ public struct HermexOnboardingScreen: View {
     }
 
     private func onboardingField<Content: View>(
+        systemImage: String,
         title: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Color.white.opacity(0.5))
+        HStack(spacing: 12) {
+            Image(systemName: HermexSystemImageName(systemImage))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color(red: 1.0, green: 0.74, blue: 0.10))
+                .frame(width: 24)
+                .accessibilityHidden(true)
 
-            content()
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.5))
+
+                content()
+            }
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 12)
@@ -576,9 +649,20 @@ public struct HermexOnboardingScreen: View {
         }
     }
 
+    private func handlePrimaryAction() {
+        if currentPage == 2 && !hasCopiedAgentPrompt && !hasBypassedCopyReminder {
+            isShowingCopyReminder = true
+            return
+        }
+        advance()
+    }
+
     private func advance() {
         if currentPage < Self.connectPageIndex {
             currentPage += 1
+            if currentPage != Self.connectPageIndex {
+                focusedField = nil
+            }
         } else {
             submitConnection()
         }
@@ -607,10 +691,10 @@ public struct HermexOnboardingScreen: View {
         return "Continue"
     }
 
-    private var statusText: String {
+    private var connectPageSubtitle: String {
         switch appState.auth {
         case .unconfigured:
-            return "Add your server to start chatting."
+            return "Enter the Tailscale URL your agent returned, for example `http://<tailnet-ip>:8787`."
         case .loggedOut(let server):
             return "Sign in to \(server.displayName)."
         case .loggedIn(let server):
@@ -630,4 +714,27 @@ Verify it works: curl http://$(tailscale ip -4):8787/health should return a succ
 Reply with the exact server URL, the password, and any setup steps still needed on my iPhone.
 Do not use Cloudflare. Optimize for Tailscale + iPhone.
 """
+}
+
+private extension View {
+    @ViewBuilder
+    func hermexOnboardingKeyboardInset<Inset: View>(
+        isVisible: Bool,
+        @ViewBuilder inset: () -> Inset
+    ) -> some View {
+#if SKIP
+        self.overlay(alignment: .bottom) {
+            if isVisible {
+                inset()
+                    .background(Color.black.opacity(0.92))
+            }
+        }
+#else
+        self.safeAreaInset(edge: .bottom, spacing: 0) {
+            if isVisible {
+                inset()
+            }
+        }
+#endif
+    }
 }

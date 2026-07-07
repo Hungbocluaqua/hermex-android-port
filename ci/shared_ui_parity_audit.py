@@ -55,6 +55,16 @@ def main() -> int:
         "Onboarding keyboard submit must route through the same connection action."
     )
     ok &= require(
+        "@FocusState private var focusedField" in onboarding and "keyboardActionBar" in onboarding and "hermexOnboardingKeyboardInset" in onboarding,
+        "Onboarding must preserve the iOS focused-field keyboard action bar."
+    )
+    ok &= require(
+        'onboardingField(systemImage: "link"' in onboarding
+        and 'onboardingField(systemImage: "key.fill"' in onboarding
+        and "HermexSystemImageName(systemImage)" in onboarding,
+        "Onboarding field icons must use Skip-safe system image mapping."
+    )
+    ok &= require(
         "onEvent(.updateOnboardingServerURL(newValue))" in onboarding and "onEvent(.updateOnboardingPassword(newValue))" in onboarding,
         "Onboarding text changes must mirror into shared store state so Skip Android does not lose typed input."
     )

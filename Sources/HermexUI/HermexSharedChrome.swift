@@ -26,13 +26,23 @@ func HermexSystemImageName(_ name: String) -> String {
 #if SKIP
     switch name {
     case "square.and.pencil":
-        return "pencil"
+        return "edit"
     case "brain.head.profile":
         return "brain"
     case "calendar.badge.clock":
         return "calendar"
+    case "link":
+        return "globe"
     case "key.horizontal":
         return "key"
+    case "key.fill":
+        return "key"
+    case "slider.horizontal.3":
+        return "slider.horizontal.3"
+    case "network":
+        return "wifi"
+    case "checkmark.circle.fill":
+        return "checkmark.circle"
     case "server.rack":
         return "server"
     case "externaldrive.badge.checkmark":
