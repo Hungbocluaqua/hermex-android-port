@@ -209,7 +209,8 @@ dump_generated_kotlin_diagnostics() {
         -name 'HermexJSONValue.kt' -o \
         -name 'HermexDTOs.kt' -o \
         -name 'HermexStateMapping.kt' -o \
-        -name 'HermexSharedModels.kt' \
+        -name 'HermexSharedModels.kt' -o \
+        -name 'HermexSkipApp.kt' \
       \) -print0
   )
   echo "::endgroup::"

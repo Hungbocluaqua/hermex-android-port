@@ -19,7 +19,9 @@ private func resolvedHermexVisualFixtureName() -> String? {
     }
 
     #if SKIP
-    if let fixtureName = try? String(contentsOfFile: hermexAndroidRuntimeVisualFixturePath, encoding: String.Encoding.utf8)
+    let selectorURL = URL(fileURLWithPath: hermexAndroidRuntimeVisualFixturePath)
+    if let selectorData = try? Data(contentsOf: selectorURL),
+       let fixtureName = String(data: selectorData, encoding: String.Encoding.utf8)?
         .trimmingCharacters(in: .whitespacesAndNewlines),
        !fixtureName.isEmpty {
         return fixtureName
