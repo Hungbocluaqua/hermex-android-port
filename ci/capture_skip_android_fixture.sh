@@ -157,10 +157,25 @@ cleanup_display() {
 trap cleanup_display EXIT
 
 dismiss_system_dialogs() {
+  "$ADB" shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
+  "$ADB" shell input keyevent KEYCODE_ESCAPE >/dev/null 2>&1 || true
+  "$ADB" shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
   "$ADB" shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
   "$ADB" shell am force-stop com.google.android.apps.nexuslauncher >/dev/null 2>&1 || true
   "$ADB" shell am force-stop com.android.launcher3 >/dev/null 2>&1 || true
   "$ADB" shell cmd statusbar collapse >/dev/null 2>&1 || true
+}
+
+focused_window_snapshot() {
+  "$ADB" shell dumpsys window 2>/dev/null |
+    grep -E 'mCurrentFocus|mFocusedApp|Application Error|AppErrorDialog|ErrorDialog|ANR|isn.t responding|com.android.systemui' |
+    head -n 30 |
+    tr -d '\r' || true
+}
+
+is_blocking_system_window() {
+  local snapshot="$1"
+  grep -Eqi 'Application Error|AppErrorDialog|ErrorDialog|ANR|isn.t responding|mCurrentFocus.*com.android.systemui|mFocusedApp.*com.android.systemui' <<<"$snapshot"
 }
 
 resolve_launch_activity() {
@@ -189,11 +204,17 @@ launch_app() {
 wait_for_app_focus() {
   local focus
   for _ in {1..45}; do
-    focus="$("$ADB" shell dumpsys window 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | head -n 8 | tr -d '\r' || true)"
+    focus="$(focused_window_snapshot)"
+    if is_blocking_system_window "$focus"; then
+      dismiss_system_dialogs
+      launch_app
+      sleep 1
+      continue
+    fi
     if grep -q "$PACKAGE_ID" <<<"$focus"; then
       return 0
     fi
-    if grep -Eqi 'Application Error|AppErrorDialog|Launcher|isn.t responding' <<<"$focus"; then
+    if grep -Eqi 'Launcher' <<<"$focus"; then
       dismiss_system_dialogs
       launch_app
     fi
@@ -201,8 +222,23 @@ wait_for_app_focus() {
   done
 
   echo "Hermex did not become the focused Android window." >&2
-  "$ADB" shell dumpsys window 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | head -n 20 >&2 || true
+  focused_window_snapshot >&2
   return 1
+}
+
+assert_hermex_focus_for_screenshot() {
+  local focus
+  focus="$(focused_window_snapshot)"
+  if is_blocking_system_window "$focus"; then
+    echo "Screenshot was blocked by a system/ANR dialog; refusing to upload it as a Hermex screen." >&2
+    echo "$focus" >&2
+    return 1
+  fi
+  if ! grep -q "$PACKAGE_ID" <<<"$focus"; then
+    echo "Screenshot was not captured with Hermex focused; refusing to upload a system-dialog image." >&2
+    echo "$focus" >&2
+    return 1
+  fi
 }
 
 export HERMEX_ALLOW_INCOMPLETE_SKIP_APK=1
@@ -249,10 +285,7 @@ if [[ ! -s "$SCREENSHOT_PATH" ]]; then
   exit 1
 fi
 
-if ! "$ADB" shell dumpsys window 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | grep -q "$PACKAGE_ID"; then
-  echo "Screenshot was not captured with Hermex focused; refusing to upload a system-dialog image." >&2
-  "$ADB" shell dumpsys window 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | head -n 20 >&2 || true
-  exit 1
-fi
+assert_hermex_focus_for_screenshot
+"$PYTHON_BIN" "$ROOT/ci/assert_android_capture_not_system_dialog.py" "$SCREENSHOT_PATH"
 
 echo "$SCREENSHOT_PATH"

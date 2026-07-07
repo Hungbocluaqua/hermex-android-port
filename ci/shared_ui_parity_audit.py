@@ -61,8 +61,13 @@ def main() -> int:
     ok &= require(
         'onboardingField(systemImage: "link"' in onboarding
         and 'onboardingField(systemImage: "key.fill"' in onboarding
-        and "HermexSystemImageName(systemImage)" in onboarding,
-        "Onboarding field icons must use Skip-safe system image mapping."
+        and "#if !SKIP" in onboarding,
+        "Onboarding field icons must be hidden on Skip Android when SF Symbol mapping would render warning placeholders."
+    )
+    ok &= require(
+        "connectionButtonLabel(title: title, systemImage: systemImage)" in onboarding
+        and "#if SKIP\n        Text(title)" in onboarding,
+        "Onboarding connection buttons must avoid unsupported Skip system images."
     )
     ok &= require(
         "onEvent(.updateOnboardingServerURL(newValue))" in onboarding and "onEvent(.updateOnboardingPassword(newValue))" in onboarding,

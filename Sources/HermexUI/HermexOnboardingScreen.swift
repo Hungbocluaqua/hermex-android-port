@@ -394,9 +394,15 @@ public struct HermexOnboardingScreen: View {
                         .padding(.top, 10)
                     },
                     label: {
+#if SKIP
+                        Text("Advanced")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.white.opacity(0.85))
+#else
                         Label("Advanced", systemImage: HermexSystemImageName("slider.horizontal.3"))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Color.white.opacity(0.85))
+#endif
                     }
                 )
                 .tint(Color.white.opacity(0.6))
@@ -489,7 +495,7 @@ public struct HermexOnboardingScreen: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Label(title, systemImage: HermexSystemImageName(systemImage))
+            connectionButtonLabel(title: title, systemImage: systemImage)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(isPrimary ? Color.black : Color.white.opacity(0.84))
                 .lineLimit(1)
@@ -511,6 +517,15 @@ public struct HermexOnboardingScreen: View {
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.55 : 1.0)
+    }
+
+    @ViewBuilder
+    private func connectionButtonLabel(title: String, systemImage: String) -> some View {
+#if SKIP
+        Text(title)
+#else
+        Label(title, systemImage: HermexSystemImageName(systemImage))
+#endif
     }
 
     private var keyboardActionBar: some View {
@@ -626,11 +641,13 @@ public struct HermexOnboardingScreen: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         HStack(spacing: 12) {
+#if !SKIP
             Image(systemName: HermexSystemImageName(systemImage))
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Color(red: 1.0, green: 0.74, blue: 0.10))
                 .frame(width: 24)
                 .accessibilityHidden(true)
+#endif
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
