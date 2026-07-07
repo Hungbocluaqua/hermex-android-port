@@ -189,7 +189,7 @@ focused_window_snapshot() {
     adb_shell_bounded 5 dumpsys activity activities
     adb_shell_bounded 5 dumpsys window
   } |
-    grep -E 'mCurrentFocus|mFocusedApp|Application Error|AppErrorDialog|ErrorDialog|ANR|isn.t responding|com.android.systemui' |
+    grep -E 'mCurrentFocus|mFocusedApp|Application Error|AppErrorDialog|ErrorDialog|Application Not Responding|ANR in|isn.t responding' |
     head -n 30 |
     tr -d '\r' || true
 }
@@ -202,7 +202,7 @@ adb_shell_bounded() {
 
 is_blocking_system_window() {
   local snapshot="$1"
-  grep -Eqi 'Application Error|AppErrorDialog|ErrorDialog|ANR|isn.t responding|mCurrentFocus.*com.android.systemui|mFocusedApp.*com.android.systemui' <<<"$snapshot"
+  grep -Eqi 'Application Error|AppErrorDialog|ErrorDialog|Application Not Responding|ANR in|isn.t responding' <<<"$snapshot"
 }
 
 resolve_launch_activity() {
