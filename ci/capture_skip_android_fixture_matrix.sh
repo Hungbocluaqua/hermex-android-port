@@ -93,7 +93,10 @@ if [[ -z "$PYTHON_BIN" ]]; then
   exit 1
 fi
 
-mapfile -t SCREENS < <(
+SCREENS=()
+while IFS= read -r screen; do
+  [[ -n "$screen" ]] && SCREENS+=("$screen")
+done < <(
   "$PYTHON_BIN" - "$MANIFEST" "$SCREEN_LIST" <<'PY'
 import json
 import sys
