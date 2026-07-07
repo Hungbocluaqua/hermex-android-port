@@ -175,10 +175,16 @@ cleanup_display() {
 trap cleanup_display EXIT
 
 dismiss_system_dialogs() {
+  quiet_background_system_apps
   "$ADB" shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
   "$ADB" shell input keyevent KEYCODE_ESCAPE >/dev/null 2>&1 || true
   "$ADB" shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
   "$ADB" shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
+}
+
+quiet_background_system_apps() {
+  adb_shell_bounded 5 pm disable-user --user 0 com.google.android.googlesdksetup >/dev/null 2>&1 || true
+  adb_shell_bounded 5 am force-stop com.google.android.googlesdksetup >/dev/null 2>&1 || true
   "$ADB" shell am force-stop com.google.android.apps.nexuslauncher >/dev/null 2>&1 || true
   "$ADB" shell am force-stop com.android.launcher3 >/dev/null 2>&1 || true
   "$ADB" shell cmd statusbar collapse >/dev/null 2>&1 || true
@@ -330,6 +336,7 @@ launch_app
 log "Waiting for Hermex focus"
 wait_for_app_focus
 sleep "$SETTLE_SECONDS"
+quiet_background_system_apps
 
 if [[ "$SCREEN" == "chat-keyboard-open" ]]; then
   "$ADB" shell input tap "$((WIDTH / 2))" "$((HEIGHT - 128))" >/dev/null 2>&1 || true
