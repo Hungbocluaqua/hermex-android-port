@@ -11,6 +11,7 @@ APK_DIR="${HERMEX_VISUAL_APK_DIR:-"${RUNNER_TEMP:-"$ROOT/.build"}/hermex-skip-vi
 PACKAGE_ID="${HERMEX_SKIP_APP_ID:-com.uzairansar.hermex}"
 ADB="${ADB:-adb}"
 SETTLE_SECONDS="${HERMEX_VISUAL_SETTLE_SECONDS:-5}"
+REUSE_APK=0
 WIDTH=""
 HEIGHT=""
 SELF_TEST=0
@@ -31,6 +32,7 @@ Options:
   --output-root DIR    Screenshot artifact root
   --apk-dir DIR        Temporary Skip APK build output directory
   --package-id ID      Android package id
+  --reuse-apk          Install an existing APK from --apk-dir instead of rebuilding
   --width PX           Override emulator screenshot width
   --height PX          Override emulator screenshot height
   --settle-seconds N   Seconds to wait after launch before screenshot
@@ -63,6 +65,10 @@ while [[ $# -gt 0 ]]; do
     --package-id)
       PACKAGE_ID="$2"
       shift 2
+      ;;
+    --reuse-apk)
+      REUSE_APK=1
+      shift
       ;;
     --width)
       WIDTH="$2"
@@ -241,9 +247,11 @@ assert_hermex_focus_for_screenshot() {
   fi
 }
 
-export HERMEX_ALLOW_INCOMPLETE_SKIP_APK=1
-export HERMEX_VISUAL_FIXTURE_NAME="$SCREEN"
-bash "$ROOT/ci/build_skip_android_app.sh" "$APK_DIR"
+if [[ "$REUSE_APK" != "1" ]]; then
+  export HERMEX_ALLOW_INCOMPLETE_SKIP_APK=1
+  export HERMEX_VISUAL_FIXTURE_NAME="$SCREEN"
+  bash "$ROOT/ci/build_skip_android_app.sh" "$APK_DIR"
+fi
 
 APK_PATH="$(find "$APK_DIR" -type f -name '*.apk' | sort | head -n 1)"
 if [[ -z "$APK_PATH" ]]; then

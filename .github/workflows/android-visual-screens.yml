@@ -88,6 +88,14 @@ jobs:
             --state "${{ inputs.state }}" \
             --device-name "${{ inputs.device_name }}"
 
+      - name: Build visual fixture APK
+        timeout-minutes: 35
+        run: |
+          set -euo pipefail
+          export HERMEX_ALLOW_INCOMPLETE_SKIP_APK=1
+          export HERMEX_VISUAL_FIXTURE_NAME="${{ inputs.screen }}"
+          bash ci/build_skip_android_app.sh "$RUNNER_TEMP/hermex-skip-visual-apk"
+
       - name: Create Android emulator
         run: |
           set -euo pipefail
@@ -157,6 +165,7 @@ jobs:
           exit 1
 
       - name: Capture Android screenshot
+        timeout-minutes: 8
         run: |
           set -euo pipefail
           bash ci/capture_skip_android_fixture.sh \
@@ -164,7 +173,8 @@ jobs:
             --state "${{ inputs.state }}" \
             --device-name "${{ inputs.device_name }}" \
             --output-root "$RUNNER_TEMP/android-visual-screens" \
-            --apk-dir "$RUNNER_TEMP/hermex-skip-visual-apk"
+            --apk-dir "$RUNNER_TEMP/hermex-skip-visual-apk" \
+            --reuse-apk
 
       - name: Upload Android screenshot artifact
         uses: actions/upload-artifact@v5

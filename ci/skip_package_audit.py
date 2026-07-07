@@ -95,6 +95,7 @@ def main() -> int:
     ok &= require("screencap -p" in capture_script, "Android visual capture must collect a real emulator screenshot.")
     ok &= require("chat-keyboard-open" in capture_script and "input tap" in capture_script, "Android visual capture must attempt keyboard-open fixture focus.")
     ok &= require("resolve_launch_activity" in capture_script and "am start -W" in capture_script, "Android visual capture must launch Hermex directly, not through a flaky launcher surface.")
+    ok &= require("--reuse-apk" in capture_script and "REUSE_APK" in capture_script, "Android visual capture must support reusing a prebuilt fixture APK.")
     ok &= require("wait_for_app_focus" in capture_script and "dumpsys window" in capture_script, "Android visual capture must verify Hermex owns the focused window before screenshots.")
     ok &= require("Screenshot was not captured with Hermex focused" in capture_script, "Android visual capture must reject screenshots of system dialogs or the launcher.")
     ok &= require("assert_android_capture_not_system_dialog.py" in capture_script, "Android visual capture must inspect the actual PNG before upload.")
@@ -145,6 +146,8 @@ def main() -> int:
     ok &= require("adb start-server" in android_visual_workflow and "pgrep -f \"emulator.*hermex-visual\"" in android_visual_workflow, "Android visual workflow must bound emulator boot waits and dump logs on failure.")
     ok &= require("for _ in {1..180}" in android_visual_workflow, "Android visual workflow must allow enough time for cold emulator boots on hosted runners.")
     ok &= require("-no-snapshot" in android_visual_workflow and "-wipe-data" in android_visual_workflow, "Android visual workflow must start a deterministic fresh emulator.")
+    ok &= require("Build visual fixture APK" in android_visual_workflow and "timeout-minutes: 35" in android_visual_workflow, "Android visual workflow must build the fixture APK in a bounded pre-capture step.")
+    ok &= require("--reuse-apk" in android_visual_workflow and "timeout-minutes: 8" in android_visual_workflow, "Android visual screenshot capture must reuse the prebuilt APK and be tightly bounded.")
     ok &= require("actions/upload-artifact" in android_visual_workflow, "Android visual workflow must upload screenshot artifacts.")
 
     parity_workflow = (ROOT / ".github" / "workflows" / "skip-android-parity.yml").read_text(encoding="utf-8")
