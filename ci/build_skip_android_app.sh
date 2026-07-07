@@ -201,6 +201,34 @@ XML
 
 patch_android_branding
 
+ensure_skip_release_keystore() {
+  if [[ "$ANDROID_VARIANT" != "release" ]]; then
+    return 0
+  fi
+  local debug_keystore="$HOME/.android/debug.keystore"
+  if [[ -f "$debug_keystore" ]]; then
+    return 0
+  fi
+  if ! command -v keytool >/dev/null 2>&1; then
+    echo "Release APK build may fail: keytool is unavailable and $debug_keystore does not exist." >&2
+    return 0
+  fi
+  mkdir -p "$(dirname "$debug_keystore")"
+  keytool -genkeypair \
+    -v \
+    -keystore "$debug_keystore" \
+    -storepass android \
+    -keypass android \
+    -alias androiddebugkey \
+    -keyalg RSA \
+    -keysize 2048 \
+    -validity 10000 \
+    -dname "CN=Android Debug,O=Android,C=US"
+  echo "Created default Android keystore for Skip release build: $debug_keystore"
+}
+
+ensure_skip_release_keystore
+
 dump_generated_kotlin_diagnostics() {
   echo "::group::Generated Kotlin diagnostics"
   while IFS= read -r -d '' kotlin_file; do
