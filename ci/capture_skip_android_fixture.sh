@@ -177,10 +177,19 @@ dismiss_system_dialogs() {
 }
 
 focused_window_snapshot() {
-  "$ADB" shell dumpsys -t 3 window 2>/dev/null |
+  {
+    adb_shell_bounded 5 dumpsys activity activities
+    adb_shell_bounded 5 dumpsys window
+  } |
     grep -E 'mCurrentFocus|mFocusedApp|Application Error|AppErrorDialog|ErrorDialog|ANR|isn.t responding|com.android.systemui' |
     head -n 30 |
     tr -d '\r' || true
+}
+
+adb_shell_bounded() {
+  local seconds="$1"
+  shift
+  perl -e 'alarm shift; exec @ARGV' "$seconds" "$ADB" shell "$@" 2>/dev/null || true
 }
 
 is_blocking_system_window() {
@@ -212,43 +221,39 @@ launch_app() {
 }
 
 wait_for_app_focus() {
-  local focus
-  for attempt in {1..24}; do
-    if (( attempt == 1 || attempt % 6 == 0 )); then
-      log "Hermex focus check attempt $attempt"
+  local pid
+  for attempt in {1..30}; do
+    if (( attempt == 1 || attempt % 5 == 0 )); then
+      log "Hermex process check attempt $attempt"
     fi
-    focus="$(focused_window_snapshot)"
-    if is_blocking_system_window "$focus"; then
-      dismiss_system_dialogs
-      launch_app
-      sleep 1
-      continue
-    fi
-    if grep -q "$PACKAGE_ID" <<<"$focus"; then
+    pid="$(adb_shell_bounded 5 pidof "$PACKAGE_ID" | tr -d '\r[:space:]')"
+    if [[ -n "$pid" ]]; then
       return 0
     fi
-    if grep -Eqi 'Launcher' <<<"$focus"; then
+    if (( attempt == 10 || attempt == 20 )); then
       dismiss_system_dialogs
       launch_app
     fi
     sleep 1
   done
 
-  echo "Hermex did not become the focused Android window." >&2
+  echo "Hermex process did not start after launch." >&2
   focused_window_snapshot >&2
   return 1
 }
 
 assert_hermex_focus_for_screenshot() {
+  local pid
   local focus
+  pid="$(adb_shell_bounded 5 pidof "$PACKAGE_ID" | tr -d '\r[:space:]')"
+  if [[ -z "$pid" ]]; then
+    echo "Hermex process was not running at screenshot time." >&2
+    focused_window_snapshot >&2
+    return 1
+  fi
   focus="$(focused_window_snapshot)"
   if is_blocking_system_window "$focus"; then
     echo "Screenshot was blocked by a system/ANR dialog; refusing to upload it as a Hermex screen." >&2
-    echo "$focus" >&2
-    return 1
-  fi
-  if ! grep -q "$PACKAGE_ID" <<<"$focus"; then
-    echo "Screenshot was not captured with Hermex focused; refusing to upload a system-dialog image." >&2
     echo "$focus" >&2
     return 1
   fi
