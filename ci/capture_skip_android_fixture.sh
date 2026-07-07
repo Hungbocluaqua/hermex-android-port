@@ -156,6 +156,55 @@ cleanup_display() {
 }
 trap cleanup_display EXIT
 
+dismiss_system_dialogs() {
+  "$ADB" shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
+  "$ADB" shell am force-stop com.google.android.apps.nexuslauncher >/dev/null 2>&1 || true
+  "$ADB" shell am force-stop com.android.launcher3 >/dev/null 2>&1 || true
+  "$ADB" shell cmd statusbar collapse >/dev/null 2>&1 || true
+}
+
+resolve_launch_activity() {
+  "$ADB" shell cmd package resolve-activity \
+    --brief \
+    -a android.intent.action.MAIN \
+    -c android.intent.category.LAUNCHER \
+    -p "$PACKAGE_ID" 2>/dev/null |
+    tr -d '\r' |
+    awk '/\// { line = $0 } END { print line }'
+}
+
+launch_app() {
+  local activity
+  activity="$(resolve_launch_activity)"
+  if [[ -n "$activity" ]]; then
+    "$ADB" shell am start -W \
+      -n "$activity" \
+      -a android.intent.action.MAIN \
+      -c android.intent.category.LAUNCHER >/dev/null
+  else
+    "$ADB" shell monkey -p "$PACKAGE_ID" -c android.intent.category.LAUNCHER 1 >/dev/null
+  fi
+}
+
+wait_for_app_focus() {
+  local focus
+  for _ in {1..45}; do
+    focus="$("$ADB" shell dumpsys window 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | head -n 8 | tr -d '\r' || true)"
+    if grep -q "$PACKAGE_ID" <<<"$focus"; then
+      return 0
+    fi
+    if grep -Eqi 'Application Error|AppErrorDialog|Launcher|isn.t responding' <<<"$focus"; then
+      dismiss_system_dialogs
+      launch_app
+    fi
+    sleep 1
+  done
+
+  echo "Hermex did not become the focused Android window." >&2
+  "$ADB" shell dumpsys window 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | head -n 20 >&2 || true
+  return 1
+}
+
 export HERMEX_ALLOW_INCOMPLETE_SKIP_APK=1
 export HERMEX_VISUAL_FIXTURE_NAME="$SCREEN"
 bash "$ROOT/ci/build_skip_android_app.sh" "$APK_DIR"
@@ -181,7 +230,9 @@ fi
 
 "$ADB" install -r "$APK_PATH" >/dev/null
 "$ADB" shell pm clear "$PACKAGE_ID" >/dev/null 2>&1 || true
-"$ADB" shell monkey -p "$PACKAGE_ID" -c android.intent.category.LAUNCHER 1 >/dev/null
+dismiss_system_dialogs
+launch_app
+wait_for_app_focus
 sleep "$SETTLE_SECONDS"
 
 if [[ "$SCREEN" == "chat-keyboard-open" ]]; then
@@ -195,6 +246,12 @@ mkdir -p "$(dirname "$SCREENSHOT_PATH")"
 
 if [[ ! -s "$SCREENSHOT_PATH" ]]; then
   echo "Screenshot capture produced an empty file: $SCREENSHOT_PATH" >&2
+  exit 1
+fi
+
+if ! "$ADB" shell dumpsys window 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | grep -q "$PACKAGE_ID"; then
+  echo "Screenshot was not captured with Hermex focused; refusing to upload a system-dialog image." >&2
+  "$ADB" shell dumpsys window 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | head -n 20 >&2 || true
   exit 1
 fi
 

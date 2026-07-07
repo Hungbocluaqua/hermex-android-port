@@ -93,6 +93,10 @@ def main() -> int:
     ok &= require("wm size" in capture_script and "wm density" in capture_script, "Android visual capture must pin emulator display dimensions.")
     ok &= require("screencap -p" in capture_script, "Android visual capture must collect a real emulator screenshot.")
     ok &= require("chat-keyboard-open" in capture_script and "input tap" in capture_script, "Android visual capture must attempt keyboard-open fixture focus.")
+    ok &= require("resolve_launch_activity" in capture_script and "am start -W" in capture_script, "Android visual capture must launch Hermex directly, not through a flaky launcher surface.")
+    ok &= require("wait_for_app_focus" in capture_script and "dumpsys window" in capture_script, "Android visual capture must verify Hermex owns the focused window before screenshots.")
+    ok &= require("Screenshot was not captured with Hermex focused" in capture_script, "Android visual capture must reject screenshots of system dialogs or the launcher.")
+    ok &= require("com.google.android.apps.nexuslauncher" in capture_script, "Android visual capture must dismiss hosted-runner launcher ANRs before retrying Hermex launch.")
 
     store = (ROOT / "Sources" / "HermexCore" / "HermexAppStore.swift").read_text(encoding="utf-8")
     ok &= require("isFreshInstallOnboarding" in store, "HermexAppStore must keep preview sessions out of fresh onboarding.")
