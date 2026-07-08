@@ -96,16 +96,24 @@ public struct HermexOnboardingScreen: View {
             }
         }
         .onChange(of: serverURLString) { _, newValue in
+#if !SKIP
             onEvent(.updateOnboardingServerURL(newValue))
+#endif
         }
         .onChange(of: displayName) { _, newValue in
+#if !SKIP
             onEvent(.updateOnboardingDisplayName(newValue))
+#endif
         }
         .onChange(of: password) { _, newValue in
+#if !SKIP
             onEvent(.updateOnboardingPassword(newValue))
+#endif
         }
         .onChange(of: customHeaderText) { _, newValue in
+#if !SKIP
             onEvent(.updateOnboardingCustomHeaders(newValue))
+#endif
         }
     }
 
