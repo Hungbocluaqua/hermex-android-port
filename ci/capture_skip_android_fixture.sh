@@ -243,6 +243,25 @@ adb_shell_bounded() {
   perl -e 'alarm shift; exec @ARGV' "$seconds" "$ADB" shell "$@" 2>/dev/null || true
 }
 
+wait_for_window_service() {
+  local service_state
+  for attempt in {1..60}; do
+    service_state="$(adb_shell_bounded 5 service check window | tr -d '\r')"
+    if grep -Eqi 'found|window:' <<<"$service_state"; then
+      return 0
+    fi
+    if (( attempt == 1 || attempt % 10 == 0 )); then
+      log "Waiting for Android window service (attempt $attempt)"
+      [[ -n "$service_state" ]] && echo "$service_state" >&2
+    fi
+    sleep 2
+  done
+
+  echo "Android window service was not ready after emulator boot." >&2
+  adb_shell_bounded 5 service list >&2 || true
+  return 1
+}
+
 has_hermex_focus() {
   local snapshot="$1"
   grep -Fq "$PACKAGE_ID" <<<"$snapshot"
@@ -406,6 +425,7 @@ fi
 
 log "Waiting for Android device"
 "$ADB" wait-for-device
+wait_for_window_service
 log "Configuring emulator display ${WIDTH}x${HEIGHT}"
 "$ADB" shell settings put global window_animation_scale 0 >/dev/null 2>&1 || true
 "$ADB" shell settings put global transition_animation_scale 0 >/dev/null 2>&1 || true
