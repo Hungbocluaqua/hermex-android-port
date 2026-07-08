@@ -75,7 +75,7 @@ jobs:
             ~/Library/Android/sdk/platforms
             ~/Library/Android/sdk/system-images
             ~/.android/cache
-          key: ${{ runner.os }}-${{ runner.arch }}-android-sdk-35-visual-v1
+          key: ${{ runner.os }}-${{ runner.arch }}-android-sdk-35-visual-v2
 
       - name: Install Skip
         run: |
@@ -122,14 +122,35 @@ jobs:
           yes | sdkmanager --licenses >/dev/null || true
           set -o pipefail
           if [[ "$(uname -m)" == "arm64" ]]; then
-            system_image="system-images;android-35;google_apis;arm64-v8a"
+            arch="arm64-v8a"
           else
-            system_image="system-images;android-35;google_apis;x86_64"
+            arch="x86_64"
           fi
-          set +o pipefail
-          yes | sdkmanager --install "$system_image"
-          set -o pipefail
+          install_system_image() {
+            local image="$1"
+            set +o pipefail
+            yes | sdkmanager --install "$image"
+            local status=$?
+            set -o pipefail
+            return "$status"
+          }
+          system_image=""
+          for candidate in \
+            "system-images;android-35;aosp_atd;$arch" \
+            "system-images;android-35;default;$arch" \
+            "system-images;android-35;google_apis;$arch"; do
+            if install_system_image "$candidate"; then
+              system_image="$candidate"
+              break
+            fi
+            echo "Android system image unavailable, trying next candidate: $candidate"
+          done
+          if [[ -z "$system_image" ]]; then
+            echo "No Android system image candidate could be installed." >&2
+            exit 1
+          fi
           sdkmanager --install "$system_image"
+          echo "Using Android system image: $system_image"
           echo "no" | avdmanager create avd \
             --force \
             --name hermex-visual \
@@ -196,6 +217,31 @@ jobs:
           cat "$RUNNER_TEMP/hermex-visual-emulator.log" || true
           echo "Android emulator did not finish booting." >&2
           exit 1
+
+      - name: Prepare Android emulator for visual capture
+        run: |
+          set -euo pipefail
+          adb wait-for-device
+          adb shell settings put global device_provisioned 1 >/dev/null 2>&1 || true
+          adb shell settings put global setup_wizard_has_run 1 >/dev/null 2>&1 || true
+          adb shell settings put secure user_setup_complete 1 >/dev/null 2>&1 || true
+          adb shell settings put secure lockscreen.disabled 1 >/dev/null 2>&1 || true
+          adb shell settings put secure lock_screen_locking_enabled 0 >/dev/null 2>&1 || true
+          adb shell settings put secure screensaver_enabled 0 >/dev/null 2>&1 || true
+          adb shell settings put secure screensaver_activate_on_sleep 0 >/dev/null 2>&1 || true
+          adb shell settings put secure screensaver_activate_on_dock 0 >/dev/null 2>&1 || true
+          adb shell settings put secure doze_enabled 0 >/dev/null 2>&1 || true
+          adb shell settings put system screen_off_timeout 2147483647 >/dev/null 2>&1 || true
+          adb shell svc power stayon true >/dev/null 2>&1 || true
+          adb shell pm disable-user --user 0 com.google.android.setupwizard >/dev/null 2>&1 || true
+          adb shell am force-stop com.google.android.setupwizard >/dev/null 2>&1 || true
+          adb shell pm disable-user --user 0 com.google.android.googlesdksetup >/dev/null 2>&1 || true
+          adb shell am force-stop com.google.android.googlesdksetup >/dev/null 2>&1 || true
+          adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
+          adb shell input keyevent 224 >/dev/null 2>&1 || true
+          adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
+          adb shell input keyevent KEYCODE_MENU >/dev/null 2>&1 || true
+          adb shell input keyevent 82 >/dev/null 2>&1 || true
 
       - name: Capture Android screenshot
         timeout-minutes: 15

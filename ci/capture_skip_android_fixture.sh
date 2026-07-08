@@ -184,10 +184,10 @@ dismiss_system_dialogs() {
 }
 
 quiet_background_system_apps() {
+  adb_shell_bounded 5 pm disable-user --user 0 com.google.android.setupwizard >/dev/null 2>&1 || true
+  adb_shell_bounded 5 am force-stop com.google.android.setupwizard >/dev/null 2>&1 || true
   adb_shell_bounded 5 pm disable-user --user 0 com.google.android.googlesdksetup >/dev/null 2>&1 || true
   adb_shell_bounded 5 am force-stop com.google.android.googlesdksetup >/dev/null 2>&1 || true
-  "$ADB" shell am force-stop com.google.android.apps.nexuslauncher >/dev/null 2>&1 || true
-  "$ADB" shell am force-stop com.android.launcher3 >/dev/null 2>&1 || true
   "$ADB" shell cmd statusbar collapse >/dev/null 2>&1 || true
 }
 
@@ -260,6 +260,22 @@ wait_for_window_service() {
   return 1
 }
 
+prepare_android_emulator_for_capture() {
+  log "Provisioning Android emulator for unattended visual capture"
+  adb_shell_bounded 5 settings put global device_provisioned 1 >/dev/null 2>&1 || true
+  adb_shell_bounded 5 settings put global setup_wizard_has_run 1 >/dev/null 2>&1 || true
+  adb_shell_bounded 5 settings put secure user_setup_complete 1 >/dev/null 2>&1 || true
+  adb_shell_bounded 5 settings put secure lockscreen.disabled 1 >/dev/null 2>&1 || true
+  adb_shell_bounded 5 settings put secure lock_screen_locking_enabled 0 >/dev/null 2>&1 || true
+  adb_shell_bounded 5 settings put secure screensaver_enabled 0 >/dev/null 2>&1 || true
+  adb_shell_bounded 5 settings put secure screensaver_activate_on_sleep 0 >/dev/null 2>&1 || true
+  adb_shell_bounded 5 settings put secure screensaver_activate_on_dock 0 >/dev/null 2>&1 || true
+  adb_shell_bounded 5 settings put secure doze_enabled 0 >/dev/null 2>&1 || true
+  adb_shell_bounded 5 settings put system screen_off_timeout 2147483647 >/dev/null 2>&1 || true
+  adb_shell_bounded 5 svc power stayon true >/dev/null 2>&1 || true
+  quiet_background_system_apps
+}
+
 has_hermex_focus() {
   local snapshot="$1"
   grep -E "mCurrentFocus=.*$PACKAGE_ID|mFocusedWindow=.*$PACKAGE_ID" <<<"$snapshot" >/dev/null
@@ -280,11 +296,12 @@ is_blocking_system_window() {
 
 unlock_device_for_capture() {
   log "Waking and unlocking Android emulator"
-  adb_shell_bounded 5 svc power stayon true >/dev/null 2>&1 || true
-  adb_shell_bounded 5 settings put system screen_off_timeout 2147483647 >/dev/null 2>&1 || true
+  prepare_android_emulator_for_capture
   adb_shell_bounded 5 input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
+  adb_shell_bounded 5 input keyevent 224 >/dev/null 2>&1 || true
   adb_shell_bounded 5 wm dismiss-keyguard >/dev/null 2>&1 || true
   adb_shell_bounded 5 input keyevent KEYCODE_MENU >/dev/null 2>&1 || true
+  adb_shell_bounded 5 input keyevent 82 >/dev/null 2>&1 || true
   adb_shell_bounded 5 input swipe "$((WIDTH / 2))" "$((HEIGHT * 3 / 4))" "$((WIDTH / 2))" "$((HEIGHT / 4))" 300 >/dev/null 2>&1 || true
   adb_shell_bounded 5 cmd statusbar collapse >/dev/null 2>&1 || true
 
@@ -298,8 +315,12 @@ unlock_device_for_capture() {
       log "Waiting for keyguard to clear before capture (attempt $attempt)"
       echo "$focus" >&2
     fi
+    prepare_android_emulator_for_capture
+    adb_shell_bounded 5 input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
+    adb_shell_bounded 5 input keyevent 224 >/dev/null 2>&1 || true
     adb_shell_bounded 5 wm dismiss-keyguard >/dev/null 2>&1 || true
     adb_shell_bounded 5 input keyevent KEYCODE_MENU >/dev/null 2>&1 || true
+    adb_shell_bounded 5 input keyevent 82 >/dev/null 2>&1 || true
     sleep 1
   done
 
@@ -464,6 +485,7 @@ fi
 log "Waiting for Android device"
 "$ADB" wait-for-device
 wait_for_window_service
+prepare_android_emulator_for_capture
 log "Configuring emulator display ${WIDTH}x${HEIGHT}"
 "$ADB" shell settings put global window_animation_scale 0 >/dev/null 2>&1 || true
 "$ADB" shell settings put global transition_animation_scale 0 >/dev/null 2>&1 || true
