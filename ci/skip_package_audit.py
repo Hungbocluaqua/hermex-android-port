@@ -102,6 +102,7 @@ def main() -> int:
     ok &= require("--reuse-apk" in capture_script and "REUSE_APK" in capture_script, "Android visual capture must support reusing a prebuilt fixture APK.")
     ok &= require("wait_for_app_focus" in capture_script and "pidof \"$PACKAGE_ID\"" in capture_script, "Android visual capture must wait for the Hermex process before screenshots.")
     ok &= require("adb_shell_bounded" in capture_script and "dumpsys window" in capture_script, "Android visual capture diagnostics must use bounded adb shell probes.")
+    ok &= require("logcat -d -t 2000" in capture_script and "/data/anr" in capture_script, "Android visual capture diagnostics must include logcat and ANR traces.")
     ok &= require("Hermex process was not running at screenshot time" in capture_script, "Android visual capture must reject screenshots when Hermex is not running.")
     ok &= require("Screenshot was blocked by a system/ANR dialog" in capture_script, "Android visual capture must reject screenshots of system dialogs.")
     ok &= require("assert_android_capture_not_system_dialog.py" in capture_script, "Android visual capture must inspect the actual PNG before upload.")

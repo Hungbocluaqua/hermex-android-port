@@ -230,6 +230,8 @@ dump_debug_state() {
 
   adb_shell_bounded 10 dumpsys activity activities > "$prefix-activity.txt" 2>&1 || true
   adb_shell_bounded 10 dumpsys window > "$prefix-window.txt" 2>&1 || true
+  "$ADB" logcat -d -t 2000 > "$prefix-logcat.txt" 2>&1 || true
+  adb_shell_bounded 10 sh -c 'ls -la /data/anr 2>/dev/null; for trace in /data/anr/*; do [ -f "$trace" ] || continue; echo "===== $trace ====="; cat "$trace"; done' > "$prefix-anr-traces.txt" 2>&1 || true
   "$ADB" exec-out screencap -p > "$prefix-screencap.png" 2>/dev/null || true
   adb_shell_bounded 10 uiautomator dump /sdcard/hermex-window.xml >/dev/null 2>&1 || true
   "$ADB" exec-out cat /sdcard/hermex-window.xml > "$prefix-uiautomator.xml" 2>/dev/null || true
