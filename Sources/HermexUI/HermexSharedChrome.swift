@@ -27,6 +27,20 @@ func HermexSystemImageName(_ name: String) -> String {
     switch name {
     case "square.and.pencil":
         return "edit"
+    case "folder":
+        return "magnifyingglass"
+    case "arrow.triangle.branch":
+        return "gearshape"
+    case "waveform":
+        return "magnifyingglass"
+    case "arrow.up":
+        return "chevron.up"
+    case "stop.fill":
+        return "xmark"
+    case "person.crop.circle":
+        return "gearshape"
+    case "exclamationmark.triangle":
+        return "gearshape"
     case "hammer":
         return "gearshape"
     case "brain.head.profile":

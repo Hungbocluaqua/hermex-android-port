@@ -279,7 +279,7 @@ prepare_android_emulator_for_capture() {
 
 has_hermex_focus() {
   local snapshot="$1"
-  grep -E "mCurrentFocus=.*$PACKAGE_ID|mFocusedWindow=.*$PACKAGE_ID" <<<"$snapshot" >/dev/null
+  grep -E "mCurrentFocus=.*$PACKAGE_ID|mFocusedWindow=.*$PACKAGE_ID|mFocusedApp=.*$PACKAGE_ID|topResumedActivity=.*$PACKAGE_ID|ResumedActivity:.*$PACKAGE_ID" <<<"$snapshot" >/dev/null
 }
 
 is_keyguard_blocking_capture() {
@@ -531,7 +531,7 @@ sleep "$SETTLE_SECONDS"
 quiet_background_system_apps
 
 if [[ "$SCREEN" == "chat-keyboard-open" ]]; then
-  "$ADB" shell input tap "$((WIDTH / 2))" "$((HEIGHT - 128))" >/dev/null 2>&1 || true
+  "$ADB" shell input tap "$((WIDTH / 2))" "$((HEIGHT - 245))" >/dev/null 2>&1 || true
   sleep 2
   if ! wait_for_app_focus; then
     dump_debug_state "keyboard-focus"
