@@ -291,7 +291,7 @@ is_blocking_system_window() {
   if grep -Eqi 'Application Error|AppErrorDialog|ErrorDialog' <<<"$snapshot"; then
     return 0
   fi
-  grep -Eqi "Application Not Responding: $PACKAGE_ID|ANR in $PACKAGE_ID|$PACKAGE_ID.*isn.t responding" <<<"$snapshot"
+  grep -Eqi "Application Not Responding|ANR in|isn.t responding" <<<"$snapshot"
 }
 
 unlock_device_for_capture() {

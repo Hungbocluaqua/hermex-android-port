@@ -307,8 +307,8 @@ public struct HermexSessionListScreen: View {
                 .padding(18)
             }
         } else {
-            LazyVStack(spacing: 0) {
-                ForEach(state.sessions) { session in
+            VStack(spacing: 0) {
+                ForEach(state.sessions, id: \.id) { session in
                     sessionRow(session)
                         .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
                         .hermexContentShapeRectangle()
@@ -334,7 +334,7 @@ public struct HermexSessionListScreen: View {
             onEvent(event)
         } label: {
             HStack(spacing: 18) {
-                Image(systemName: systemImage)
+                Image(systemName: HermexSystemImageName(systemImage))
                     .font(.system(size: HermexLayoutContract.sessionListUtilityIconSize, weight: .semibold))
                     .frame(width: HermexLayoutContract.sessionListUtilityIconSlotWidth)
                     .foregroundStyle(HermexUIColors.primaryText)
@@ -359,7 +359,7 @@ public struct HermexSessionListScreen: View {
             onEvent(event)
         } label: {
             HStack(alignment: .center, spacing: 18) {
-                Image(systemName: icon)
+                Image(systemName: HermexSystemImageName(icon))
                     .font(.system(size: HermexLayoutContract.sessionListUtilityIconSize, weight: .semibold))
                     .frame(width: HermexLayoutContract.sessionListUtilityIconSlotWidth)
                     .accessibilityHidden(true)

@@ -87,6 +87,15 @@ public struct HermexLogoMark: View {
     public init() {}
 
     public var body: some View {
+#if SKIP
+        Text("HERMEX")
+            .font(.system(size: 42, weight: .black))
+            .foregroundStyle(HermexUIColors.gold)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .frame(width: HermexLayoutContract.sessionListLogoWidth, alignment: .leading)
+            .accessibilityLabel("HERMEX")
+#else
         ZStack {
             hermexLogoImage("hermes-fill-mask")
                 .renderingMode(.template)
@@ -106,6 +115,7 @@ public struct HermexLogoMark: View {
         .aspectRatio(HermexLayoutContract.hermexLogoAspectRatio, contentMode: .fit)
         .frame(width: HermexLayoutContract.sessionListLogoWidth)
             .accessibilityLabel("HERMEX")
+#endif
     }
 
     private func hermexLogoImage(_ name: String) -> Image {

@@ -107,7 +107,11 @@ def main() -> int:
     ok &= require("assert_android_capture_not_system_dialog.py" in capture_script, "Android visual capture must inspect the actual PNG before upload.")
     ok &= require("focused_window_snapshot" in capture_script and "is_blocking_system_window" in capture_script, "Android visual capture must reject blocking system/ANR dialogs from focus snapshots.")
     ok &= require("CLOSE_SYSTEM_DIALOGS" in capture_script, "Android visual capture must ask Android to close transient system dialogs before launch retries.")
-    ok &= require("com.google.android.apps.nexuslauncher" in capture_script, "Android visual capture must dismiss hosted-runner launcher ANRs before retrying Hermex launch.")
+    ok &= require(
+        "Application Not Responding|ANR in|isn.t responding" in capture_script
+        and "quiet_background_system_apps" in capture_script,
+        "Android visual capture must dismiss and reject hosted-runner system/launcher ANRs before retrying Hermex launch.",
+    )
     ok &= require("write_visual_fixture_selection" in capture_script and "hermex_visual_fixture.txt" in capture_script, "Android visual capture must select fixture screens at runtime.")
     ok &= require("--skip-install" in capture_script and "SKIP_INSTALL" in capture_script, "Android visual capture must support reusing one installed APK across multiple screens.")
 
@@ -154,7 +158,11 @@ def main() -> int:
     ok &= require("macos-26-intel" in android_visual_workflow, "Android visual workflow must use an Intel macOS runner for emulator acceleration.")
     ok &= require("emulator" in android_visual_workflow and "adb devices" in android_visual_workflow, "Android visual workflow must boot an emulator and wait for adb registration.")
     ok &= require("yes | sdkmanager --licenses" in android_visual_workflow, "Android visual workflow must accept SDK licenses before installing system images.")
-    ok &= require("yes | sdkmanager --install \"$system_image\"" in android_visual_workflow, "Android visual workflow must install emulator images non-interactively.")
+    ok &= require(
+        "install_system_image()" in android_visual_workflow
+        and "yes | sdkmanager --install \"$image\"" in android_visual_workflow,
+        "Android visual workflow must install emulator image candidates non-interactively.",
+    )
     ok &= require("for attempt in 1 2 3" in android_visual_workflow and "install_skip()" in android_visual_workflow, "Android visual workflow must retry flaky Skip installs.")
     ok &= require("actions/cache@v4" in android_visual_workflow, "Android visual workflow must cache SwiftPM and Android SDK dependencies.")
     ok &= require("gradle/actions/setup-gradle" in android_visual_workflow, "Android visual workflow must enable the Gradle cache.")
