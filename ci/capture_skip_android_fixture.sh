@@ -181,8 +181,6 @@ dismiss_system_dialogs() {
   quiet_background_system_apps
   "$ADB" shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
   "$ADB" shell input keyevent KEYCODE_ESCAPE >/dev/null 2>&1 || true
-  "$ADB" shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
-  "$ADB" shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
 }
 
 quiet_background_system_apps() {
@@ -198,7 +196,7 @@ focused_window_snapshot() {
     adb_shell_bounded 5 dumpsys activity activities
     adb_shell_bounded 5 dumpsys window
   } |
-  grep -E 'mCurrentFocus|mFocusedApp|mFocusedWindow|topResumedActivity|ResumedActivity|Application Error|AppErrorDialog|ErrorDialog|Application Not Responding|ANR in|isn.t responding' |
+  grep -E 'mCurrentFocus|mFocusedApp|mFocusedWindow|topResumedActivity|ResumedActivity|mKeyguardShowing|isKeyguardShowing|isSleeping|mDreamingLockscreen|mVisible=|mVisibleRequested=|mClientVisible=|state=|mHasSurface|isReadyForDisplay|Application Error|AppErrorDialog|ErrorDialog|Application Not Responding|ANR in|isn.t responding' |
     head -n 60 |
     tr -d '\r' || true
 }
@@ -264,7 +262,12 @@ wait_for_window_service() {
 
 has_hermex_focus() {
   local snapshot="$1"
-  grep -Fq "$PACKAGE_ID" <<<"$snapshot"
+  grep -E "mCurrentFocus=.*$PACKAGE_ID|mFocusedWindow=.*$PACKAGE_ID" <<<"$snapshot" >/dev/null
+}
+
+is_keyguard_blocking_capture() {
+  local snapshot="$1"
+  grep -Eqi 'mKeyguardShowing=true|isKeyguardShowing=true|isSleeping=true|mDreamingLockscreen=true' <<<"$snapshot"
 }
 
 is_blocking_system_window() {
@@ -273,6 +276,36 @@ is_blocking_system_window() {
     return 0
   fi
   grep -Eqi "Application Not Responding: $PACKAGE_ID|ANR in $PACKAGE_ID|$PACKAGE_ID.*isn.t responding" <<<"$snapshot"
+}
+
+unlock_device_for_capture() {
+  log "Waking and unlocking Android emulator"
+  adb_shell_bounded 5 svc power stayon true >/dev/null 2>&1 || true
+  adb_shell_bounded 5 settings put system screen_off_timeout 2147483647 >/dev/null 2>&1 || true
+  adb_shell_bounded 5 input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
+  adb_shell_bounded 5 wm dismiss-keyguard >/dev/null 2>&1 || true
+  adb_shell_bounded 5 input keyevent KEYCODE_MENU >/dev/null 2>&1 || true
+  adb_shell_bounded 5 input swipe "$((WIDTH / 2))" "$((HEIGHT * 3 / 4))" "$((WIDTH / 2))" "$((HEIGHT / 4))" 300 >/dev/null 2>&1 || true
+  adb_shell_bounded 5 cmd statusbar collapse >/dev/null 2>&1 || true
+
+  local focus
+  for attempt in {1..20}; do
+    focus="$(focused_window_snapshot)"
+    if ! is_keyguard_blocking_capture "$focus"; then
+      return 0
+    fi
+    if (( attempt == 1 || attempt % 5 == 0 )); then
+      log "Waiting for keyguard to clear before capture (attempt $attempt)"
+      echo "$focus" >&2
+    fi
+    adb_shell_bounded 5 wm dismiss-keyguard >/dev/null 2>&1 || true
+    adb_shell_bounded 5 input keyevent KEYCODE_MENU >/dev/null 2>&1 || true
+    sleep 1
+  done
+
+  echo "Android keyguard did not clear before capture." >&2
+  focused_window_snapshot >&2
+  return 1
 }
 
 resolve_launch_activity() {
@@ -322,11 +355,11 @@ wait_for_app_focus() {
     pid="$(adb_shell_bounded 5 pidof "$PACKAGE_ID" | tr -d '\r[:space:]')"
     if [[ -n "$pid" ]]; then
       focus="$(focused_window_snapshot)"
-      if has_hermex_focus "$focus"; then
+      if has_hermex_focus "$focus" && ! is_keyguard_blocking_capture "$focus"; then
         return 0
       fi
       if (( attempt == 1 || attempt % 5 == 0 )); then
-        echo "Hermex process is running but not focused yet:" >&2
+        echo "Hermex process is running but not ready for screenshot yet:" >&2
         echo "$focus" >&2
       fi
     fi
@@ -355,6 +388,11 @@ assert_hermex_focus_for_screenshot() {
   focus="$(focused_window_snapshot)"
   if is_blocking_system_window "$focus"; then
     echo "Screenshot was blocked by a system/ANR dialog; refusing to upload it as a Hermex screen." >&2
+    echo "$focus" >&2
+    return 1
+  fi
+  if is_keyguard_blocking_capture "$focus"; then
+    echo "Screenshot was blocked by Android keyguard/sleep state; refusing to upload it as a Hermex screen." >&2
     echo "$focus" >&2
     return 1
   fi
@@ -438,6 +476,7 @@ if [[ "$STATE" == "dark" ]]; then
 else
   "$ADB" shell cmd uimode night no >/dev/null 2>&1 || true
 fi
+unlock_device_for_capture
 
 if [[ "$SKIP_INSTALL" != "1" ]]; then
   log "Installing Hermex APK"
