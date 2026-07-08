@@ -295,6 +295,21 @@ is_blocking_system_window() {
   grep -Eqi "Application Not Responding|ANR in|isn.t responding" <<<"$snapshot"
 }
 
+assert_no_android_error_dialog_text() {
+  local debug_dir="$DEBUG_ROOT/$DEVICE_NAME/$STATE"
+  local xml_path="$debug_dir/$SCREEN-window-check.xml"
+
+  mkdir -p "$debug_dir"
+  adb_shell_bounded 10 uiautomator dump /sdcard/hermex-window-check.xml >/dev/null 2>&1 || return 0
+  "$ADB" exec-out cat /sdcard/hermex-window-check.xml > "$xml_path" 2>/dev/null || return 0
+
+  if grep -Eqi "isn.?t responding|is not responding|Application Not Responding|Close app" "$xml_path"; then
+    echo "Screenshot was blocked by an Android app error/ANR dialog; refusing to upload it as a Hermex screen." >&2
+    grep -Eio "isn.?t responding|is not responding|Application Not Responding|Close app" "$xml_path" >&2 || true
+    return 1
+  fi
+}
+
 unlock_device_for_capture() {
   log "Waking and unlocking Android emulator"
   prepare_android_emulator_for_capture
@@ -408,9 +423,6 @@ assert_hermex_focus_for_screenshot() {
   fi
   focus="$(focused_window_snapshot)"
   if is_blocking_system_window "$focus"; then
-    if [[ "$SCREEN" == "chat-keyboard-open" ]] && has_hermex_focus "$focus"; then
-      return 0
-    fi
     echo "Screenshot was blocked by a system/ANR dialog; refusing to upload it as a Hermex screen." >&2
     echo "$focus" >&2
     return 1
@@ -459,6 +471,12 @@ capture_verified_screenshot() {
 
     if ! assert_hermex_focus_for_screenshot; then
       dump_debug_state "attempt-$attempt-focus"
+      relaunch_before_retry=1
+      continue
+    fi
+
+    if ! assert_no_android_error_dialog_text; then
+      dump_debug_state "attempt-$attempt-error-dialog"
       relaunch_before_retry=1
       continue
     fi
