@@ -383,6 +383,9 @@ wait_for_app_focus() {
         echo "Hermex process is running but not ready for screenshot yet:" >&2
         echo "$focus" >&2
       fi
+      if is_keyguard_blocking_capture "$focus"; then
+        unlock_device_for_capture >/dev/null 2>&1 || true
+      fi
     fi
     if (( attempt == 5 || attempt == 10 || attempt == 20 )); then
       dismiss_system_dialogs
@@ -513,6 +516,7 @@ log "Clearing Hermex app data"
 "$ADB" shell pm clear "$PACKAGE_ID" >/dev/null 2>&1 || true
 write_visual_fixture_selection
 dismiss_system_dialogs
+unlock_device_for_capture
 log "Launching Hermex"
 launch_app
 log "Waiting for Hermex focus"
