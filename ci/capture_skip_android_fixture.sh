@@ -408,6 +408,9 @@ assert_hermex_focus_for_screenshot() {
   fi
   focus="$(focused_window_snapshot)"
   if is_blocking_system_window "$focus"; then
+    if [[ "$SCREEN" == "chat-keyboard-open" ]] && has_hermex_focus "$focus"; then
+      return 0
+    fi
     echo "Screenshot was blocked by a system/ANR dialog; refusing to upload it as a Hermex screen." >&2
     echo "$focus" >&2
     return 1

@@ -31,6 +31,8 @@ func HermexSystemImageName(_ name: String) -> String {
         return "magnifyingglass"
     case "arrow.triangle.branch":
         return "gearshape"
+    case "arrow.clockwise":
+        return "gearshape"
     case "waveform":
         return "magnifyingglass"
     case "arrow.up":

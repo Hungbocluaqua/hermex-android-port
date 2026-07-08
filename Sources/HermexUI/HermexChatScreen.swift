@@ -142,7 +142,7 @@ public struct HermexChatScreen: View {
                     .lineLimit(2)
             }
         } icon: {
-            Image(systemName: systemImage)
+            Image(systemName: HermexSystemImageName(systemImage))
         }
         .foregroundStyle(HermexUIColors.secondaryText)
         .padding(.horizontal, 10)
@@ -418,14 +418,14 @@ public struct HermexComposerSurface: View {
     }
 
     private func composerControlGlyph(_ systemImage: String, size: CGFloat) -> some View {
-        Image(systemName: systemImage)
+        Image(systemName: HermexSystemImageName(systemImage))
             .font(.system(size: size == HermexLayoutContract.composerPlusButtonSize ? 24.0 : 17.0, weight: .semibold))
             .frame(width: size, height: size)
             .frame(width: HermexLayoutContract.chatToolbarActionSlotSize, height: HermexLayoutContract.chatToolbarActionSlotSize)
     }
 
     private var composerActionGlyph: some View {
-        Image(systemName: stream.isStreaming ? "stop.fill" : "arrow.up")
+        Image(systemName: HermexSystemImageName(stream.isStreaming ? "stop.fill" : "arrow.up"))
             .font(.system(size: 15, weight: .semibold))
             .frame(
                 width: HermexLayoutContract.composerActionButtonSize,
@@ -490,7 +490,7 @@ public struct HermexComposerSurface: View {
 
     private var reasoningLabel: some View {
         HStack(spacing: 5) {
-            Image(systemName: "brain")
+            Image(systemName: HermexSystemImageName("brain"))
             Text(state.selectedReasoningEffort ?? "Reasoning")
                 .lineLimit(1)
             Image(systemName: "chevron.down")
