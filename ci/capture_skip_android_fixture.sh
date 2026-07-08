@@ -7,6 +7,7 @@ SCREEN="${HERMEX_VISUAL_FIXTURE_NAME:-session-list}"
 STATE="${HERMEX_VISUAL_STATE:-dark}"
 DEVICE_NAME="${HERMEX_VISUAL_DEVICE:-compact-phone}"
 OUTPUT_ROOT="${HERMEX_VISUAL_OUTPUT_ROOT:-"$ROOT/dist/android-visual-screens"}"
+DEBUG_ROOT="${HERMEX_VISUAL_DEBUG_ROOT:-"${RUNNER_TEMP:-"$ROOT/.build"}/android-visual-debug"}"
 APK_DIR="${HERMEX_VISUAL_APK_DIR:-"${RUNNER_TEMP:-"$ROOT/.build"}/hermex-skip-visual-apk"}"
 PACKAGE_ID="${HERMEX_SKIP_APP_ID:-com.uzairansar.hermex}"
 ADB="${ADB:-adb}"
@@ -197,15 +198,54 @@ focused_window_snapshot() {
     adb_shell_bounded 5 dumpsys activity activities
     adb_shell_bounded 5 dumpsys window
   } |
-  grep -E 'mCurrentFocus|mFocusedApp|Application Error|AppErrorDialog|ErrorDialog|Application Not Responding|ANR in|isn.t responding' |
-    head -n 30 |
+  grep -E 'mCurrentFocus|mFocusedApp|mFocusedWindow|topResumedActivity|ResumedActivity|Application Error|AppErrorDialog|ErrorDialog|Application Not Responding|ANR in|isn.t responding' |
+    head -n 60 |
     tr -d '\r' || true
+}
+
+dump_debug_state() {
+  local label="$1"
+  local debug_dir="$DEBUG_ROOT/$DEVICE_NAME/$STATE"
+  local prefix="$debug_dir/$SCREEN-$label"
+
+  mkdir -p "$debug_dir"
+  log "Writing Android visual debug state: $prefix"
+  {
+    echo "screen=$SCREEN"
+    echo "state=$STATE"
+    echo "device=$DEVICE_NAME"
+    echo "package=$PACKAGE_ID"
+    echo
+    echo "== focused window snapshot =="
+    focused_window_snapshot
+    echo
+    echo "== pid =="
+    adb_shell_bounded 5 pidof "$PACKAGE_ID"
+    echo
+    echo "== display =="
+    adb_shell_bounded 5 wm size
+    adb_shell_bounded 5 wm density
+    echo
+    echo "== resolved launch activity =="
+    resolve_launch_activity
+  } > "$prefix-summary.txt" 2>&1 || true
+
+  adb_shell_bounded 10 dumpsys activity activities > "$prefix-activity.txt" 2>&1 || true
+  adb_shell_bounded 10 dumpsys window > "$prefix-window.txt" 2>&1 || true
+  "$ADB" exec-out screencap -p > "$prefix-screencap.png" 2>/dev/null || true
+  adb_shell_bounded 10 uiautomator dump /sdcard/hermex-window.xml >/dev/null 2>&1 || true
+  "$ADB" exec-out cat /sdcard/hermex-window.xml > "$prefix-uiautomator.xml" 2>/dev/null || true
 }
 
 adb_shell_bounded() {
   local seconds="$1"
   shift
   perl -e 'alarm shift; exec @ARGV' "$seconds" "$ADB" shell "$@" 2>/dev/null || true
+}
+
+has_hermex_focus() {
+  local snapshot="$1"
+  grep -Fq "$PACKAGE_ID" <<<"$snapshot"
 }
 
 is_blocking_system_window() {
@@ -255,15 +295,23 @@ write_visual_fixture_selection() {
 
 wait_for_app_focus() {
   local pid
+  local focus
   for attempt in {1..30}; do
     if (( attempt == 1 || attempt % 5 == 0 )); then
-      log "Hermex process check attempt $attempt"
+      log "Hermex focus check attempt $attempt"
     fi
     pid="$(adb_shell_bounded 5 pidof "$PACKAGE_ID" | tr -d '\r[:space:]')"
     if [[ -n "$pid" ]]; then
-      return 0
+      focus="$(focused_window_snapshot)"
+      if has_hermex_focus "$focus"; then
+        return 0
+      fi
+      if (( attempt == 1 || attempt % 5 == 0 )); then
+        echo "Hermex process is running but not focused yet:" >&2
+        echo "$focus" >&2
+      fi
     fi
-    if (( attempt == 10 || attempt == 20 )); then
+    if (( attempt == 5 || attempt == 10 || attempt == 20 )); then
       dismiss_system_dialogs
       launch_app
     fi
@@ -272,6 +320,7 @@ wait_for_app_focus() {
 
   echo "Hermex process did not start after launch." >&2
   focused_window_snapshot >&2
+  dump_debug_state "focus-timeout"
   return 1
 }
 
@@ -287,6 +336,11 @@ assert_hermex_focus_for_screenshot() {
   focus="$(focused_window_snapshot)"
   if is_blocking_system_window "$focus"; then
     echo "Screenshot was blocked by a system/ANR dialog; refusing to upload it as a Hermex screen." >&2
+    echo "$focus" >&2
+    return 1
+  fi
+  if ! has_hermex_focus "$focus"; then
+    echo "Hermex process is running but the focused Android window is not Hermex; refusing to upload this capture." >&2
     echo "$focus" >&2
     return 1
   fi
@@ -312,6 +366,7 @@ capture_verified_screenshot() {
     fi
 
     if ! assert_hermex_focus_for_screenshot; then
+      dump_debug_state "attempt-$attempt-focus"
       continue
     fi
 
@@ -319,6 +374,7 @@ capture_verified_screenshot() {
     if "$PYTHON_BIN" "$ROOT/ci/assert_android_capture_not_system_dialog.py" "$screenshot_path"; then
       return 0
     fi
+    dump_debug_state "attempt-$attempt-pixels"
   done
 
   echo "Recent Android logcat lines after failed Hermex screenshot inspection:" >&2

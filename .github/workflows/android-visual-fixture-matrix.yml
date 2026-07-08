@@ -218,10 +218,13 @@ jobs:
           if-no-files-found: error
           path: ${{ runner.temp }}/android-visual-screens/**
 
-      - name: Upload emulator log on failure
+      - name: Upload Android visual diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v5
         with:
-          name: hermex-android-visual-emulator-log
+          name: hermex-android-visual-failure-diagnostics
           if-no-files-found: ignore
-          path: ${{ runner.temp }}/hermex-visual-emulator.log
+          path: |
+            ${{ runner.temp }}/hermex-visual-emulator.log
+            ${{ runner.temp }}/android-visual-debug/**
+            ${{ runner.temp }}/android-visual-screens/**

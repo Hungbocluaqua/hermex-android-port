@@ -311,8 +311,7 @@ sign_release_apks_if_requested() {
   fi
 
   while IFS= read -r -d '' apk; do
-    if "$apksigner" verify "$apk" >/dev/null 2>&1; then
-      echo "Release APK already signed: $apk"
+    if [[ "$apk" == *-aligned.apk || "$apk" == *-signed-release.apk ]]; then
       continue
     fi
 
@@ -325,6 +324,9 @@ sign_release_apks_if_requested() {
     fi
 
     "$zipalign" -p -f 4 "$apk" "$aligned"
+    if "$apksigner" verify "$apk" >/dev/null 2>&1; then
+      echo "Replacing existing release APK signature with Hermex CI signing key: $apk"
+    fi
     "$apksigner" sign \
       --ks "$HERMEX_ANDROID_KEYSTORE_FILE" \
       --ks-pass "pass:$HERMEX_ANDROID_KEYSTORE_PASSWORD" \
