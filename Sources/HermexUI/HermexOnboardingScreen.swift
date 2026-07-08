@@ -461,6 +461,38 @@ public struct HermexOnboardingScreen: View {
     }
 
     private var connectActionButtons: some View {
+#if SKIP
+        GeometryReader { proxy in
+            let buttonWidth = max(CGFloat(0), (proxy.size.width - 10) / 2)
+            HStack(spacing: 10) {
+                connectionButton(
+                    title: onboarding.isTestingConnection ? "Checking..." : "Test Connection",
+                    systemImage: "network",
+                    isPrimary: false,
+                    isDisabled: onboarding.isTestingConnection || onboarding.isSigningIn || !canSubmitConnection
+                ) {
+                    onEvent(.testOnboardingConnectionDraft(
+                        serverURLString: serverURLString,
+                        displayName: displayName,
+                        password: password,
+                        customHeaderText: customHeaderText
+                    ))
+                }
+                .frame(width: buttonWidth)
+
+                connectionButton(
+                    title: onboarding.isSigningIn ? "Connecting..." : "Connect",
+                    systemImage: "checkmark.circle.fill",
+                    isPrimary: true,
+                    isDisabled: onboarding.isTestingConnection || onboarding.isSigningIn || !canSubmitConnection
+                ) {
+                    submitConnection()
+                }
+                .frame(width: buttonWidth)
+            }
+        }
+        .frame(height: 52)
+#else
         HStack(spacing: 10) {
             connectionButton(
                 title: onboarding.isTestingConnection ? "Checking..." : "Test Connection",
@@ -485,6 +517,7 @@ public struct HermexOnboardingScreen: View {
                 submitConnection()
             }
         }
+#endif
     }
 
     private func connectionButton(
