@@ -180,7 +180,6 @@ trap cleanup_display EXIT
 dismiss_system_dialogs() {
   quiet_background_system_apps
   "$ADB" shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
-  "$ADB" shell input keyevent KEYCODE_ESCAPE >/dev/null 2>&1 || true
 }
 
 quiet_background_system_apps() {
@@ -302,8 +301,6 @@ unlock_device_for_capture() {
   adb_shell_bounded 5 input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
   adb_shell_bounded 5 input keyevent 224 >/dev/null 2>&1 || true
   adb_shell_bounded 5 wm dismiss-keyguard >/dev/null 2>&1 || true
-  adb_shell_bounded 5 input keyevent KEYCODE_MENU >/dev/null 2>&1 || true
-  adb_shell_bounded 5 input keyevent 82 >/dev/null 2>&1 || true
   adb_shell_bounded 5 input swipe "$((WIDTH / 2))" "$((HEIGHT * 3 / 4))" "$((WIDTH / 2))" "$((HEIGHT / 4))" 300 >/dev/null 2>&1 || true
   adb_shell_bounded 5 cmd statusbar collapse >/dev/null 2>&1 || true
 
@@ -321,8 +318,6 @@ unlock_device_for_capture() {
     adb_shell_bounded 5 input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
     adb_shell_bounded 5 input keyevent 224 >/dev/null 2>&1 || true
     adb_shell_bounded 5 wm dismiss-keyguard >/dev/null 2>&1 || true
-    adb_shell_bounded 5 input keyevent KEYCODE_MENU >/dev/null 2>&1 || true
-    adb_shell_bounded 5 input keyevent 82 >/dev/null 2>&1 || true
     sleep 1
   done
 

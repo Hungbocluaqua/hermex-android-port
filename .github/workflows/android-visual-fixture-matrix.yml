@@ -242,8 +242,6 @@ jobs:
           adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
           adb shell input keyevent 224 >/dev/null 2>&1 || true
           adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
-          adb shell input keyevent KEYCODE_MENU >/dev/null 2>&1 || true
-          adb shell input keyevent 82 >/dev/null 2>&1 || true
 
       - name: Capture Android screenshots
         timeout-minutes: 25
