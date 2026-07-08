@@ -19,61 +19,7 @@ public struct HermexSessionListScreen: View {
 
     public var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    header
-                        .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-                        .padding(.top, HermexLayoutContract.sessionListTopPadding)
-                        .padding(.bottom, HermexLayoutContract.sessionListTopChromeBottomPadding)
-
-                    if state.isViewingCachedData {
-                        statusRow(
-                            title: "Cached data",
-                            description: "Showing locally cached sessions.",
-                            systemImage: "wifi.slash"
-                        )
-                        .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-                        .padding(.bottom, HermexLayoutContract.sessionListUtilityRowSpacing)
-                    }
-
-                    if !searchChromeIsExpanded {
-                        utilityRows
-                            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-                            .padding(.top, HermexLayoutContract.sessionListUtilityTopPadding)
-                            .padding(.bottom, HermexLayoutContract.sessionListUtilityRowSpacing)
-
-                        selectorRow(
-                            icon: "person.crop.circle.badge.gearshape",
-                            title: state.activeProfileName ?? "default",
-                            subtitle: "Profile",
-                            event: .selectProfile
-                        )
-                        .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-                        .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
-
-                        selectorRow(
-                            icon: "folder",
-                            title: primaryWorkspace,
-                            subtitle: "Workspace",
-                            event: .selectWorkspace
-                        )
-                        .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-                        .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
-                    }
-
-                    if !state.searchQuery.isEmpty || state.isShowingArchived {
-                        statusRows
-                            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-                            .padding(.top, 8)
-                    }
-
-                    sessionContent
-
-                    Color.clear
-                        .frame(height: HermexLayoutContract.sessionListBottomSpacerHeight)
-                        .accessibilityHidden(true)
-                }
-            }
+            scrollContent
 
             newSessionButton
             .padding(.trailing, HermexLayoutContract.sessionListFloatingButtonTrailing)
@@ -82,6 +28,75 @@ public struct HermexSessionListScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(HermexUIColors.systemBackground.ignoresSafeArea())
         .foregroundStyle(HermexUIColors.primaryText)
+    }
+
+    private var scrollContent: some View {
+        ScrollView {
+#if SKIP
+            VStack(alignment: .leading, spacing: 0) {
+                scrollStackContent
+            }
+#else
+            LazyVStack(alignment: .leading, spacing: 0) {
+                scrollStackContent
+            }
+#endif
+        }
+    }
+
+    @ViewBuilder
+    private var scrollStackContent: some View {
+        header
+            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+            .padding(.top, HermexLayoutContract.sessionListTopPadding)
+            .padding(.bottom, HermexLayoutContract.sessionListTopChromeBottomPadding)
+
+        if state.isViewingCachedData {
+            statusRow(
+                title: "Cached data",
+                description: "Showing locally cached sessions.",
+                systemImage: "wifi.slash"
+            )
+            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+            .padding(.bottom, HermexLayoutContract.sessionListUtilityRowSpacing)
+        }
+
+        if !searchChromeIsExpanded {
+            utilityRows
+                .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+                .padding(.top, HermexLayoutContract.sessionListUtilityTopPadding)
+                .padding(.bottom, HermexLayoutContract.sessionListUtilityRowSpacing)
+
+            selectorRow(
+                icon: "person.crop.circle.badge.gearshape",
+                title: state.activeProfileName ?? "default",
+                subtitle: "Profile",
+                event: .selectProfile
+            )
+            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+            .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
+
+            selectorRow(
+                icon: "folder",
+                title: primaryWorkspace,
+                subtitle: "Workspace",
+                event: .selectWorkspace
+            )
+            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+            .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
+        }
+
+        if !state.searchQuery.isEmpty || state.isShowingArchived {
+            statusRows
+                .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+                .padding(.top, 8)
+        }
+
+        sessionContent
+
+        Color.clear
+            .frame(height: HermexLayoutContract.sessionListBottomSpacerHeight)
+            .accessibilityHidden(true)
     }
 
     private var header: some View {
@@ -145,14 +160,17 @@ public struct HermexSessionListScreen: View {
             .buttonStyle(.plain)
             .accessibilityLabel(searchChromeIsExpanded ? "Search sessions" : "Open session search")
 
-            TextField("Search sessions", text: $searchText)
-                .textFieldStyle(.plain)
-                .font(.subheadline)
-                .foregroundStyle(HermexUIColors.primaryText)
-                .lineLimit(1)
+#if SKIP
+            if searchChromeIsExpanded {
+                searchTextField
+                    .frame(maxWidth: .infinity)
+            }
+#else
+            searchTextField
                 .frame(maxWidth: searchChromeIsExpanded ? .infinity : 0.0)
                 .opacity(searchChromeIsExpanded ? 1.0 : 0.0)
                 .clipped()
+#endif
 
             if searchChromeIsExpanded && !searchText.isEmpty {
                 Button {
@@ -219,6 +237,14 @@ public struct HermexSessionListScreen: View {
             Capsule().stroke(HermexUIColors.hairline, lineWidth: 0.6)
         }
         .clipShape(Capsule())
+    }
+
+    private var searchTextField: some View {
+        TextField("Search sessions", text: $searchText)
+            .textFieldStyle(.plain)
+            .font(.subheadline)
+            .foregroundStyle(HermexUIColors.primaryText)
+            .lineLimit(1)
     }
 
     private func submitSearch() {

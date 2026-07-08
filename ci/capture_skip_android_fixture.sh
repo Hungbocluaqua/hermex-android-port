@@ -433,11 +433,12 @@ capture_verified_screenshot() {
       log "Retrying screenshot capture after emulator frame/focus guard failure (attempt $attempt/$CAPTURE_ATTEMPTS)"
       dismiss_system_dialogs
       launch_app
-      if ! wait_for_app_focus; then
-        dump_debug_state "attempt-$attempt-refocus"
-        continue
-      fi
       sleep "$CAPTURE_RETRY_SECONDS"
+    fi
+
+    if ! wait_for_app_focus; then
+      dump_debug_state "attempt-$attempt-refocus"
+      continue
     fi
 
     log "Capturing screenshot to $screenshot_path"
@@ -525,6 +526,11 @@ quiet_background_system_apps
 if [[ "$SCREEN" == "chat-keyboard-open" ]]; then
   "$ADB" shell input tap "$((WIDTH / 2))" "$((HEIGHT - 128))" >/dev/null 2>&1 || true
   sleep 2
+  if ! wait_for_app_focus; then
+    dump_debug_state "keyboard-focus"
+    echo "Hermex lost focus after opening the keyboard fixture." >&2
+    exit 1
+  fi
 fi
 
 SCREENSHOT_PATH="$OUTPUT_ROOT/$DEVICE_NAME/$STATE/$SCREEN.png"
