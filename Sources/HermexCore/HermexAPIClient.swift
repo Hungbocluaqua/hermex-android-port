@@ -241,26 +241,24 @@ public struct HermexAPIClient: @unchecked Sendable {
         explicitModelPick: Bool = false,
         attachments: [HermexJSONValue]? = nil
     ) async throws -> HermexJSONValue {
-        let attachmentValue: HermexJSONValue?
+        var fields: [String: HermexJSONValue?] = [
+            "session_id": .stringOrNil(sessionID),
+            "message": .string(message),
+            "workspace": .stringOrNil(workspace),
+            "model": .stringOrNil(model),
+            "model_provider": .stringOrNil(modelProvider),
+            "profile": .stringOrNil(profile),
+            "explicit_model_pick": .bool(explicitModelPick)
+        ]
         if let attachments {
-            attachmentValue = .array(attachments)
-        } else {
-            attachmentValue = nil
+            fields["attachments"] = .array(attachments)
         }
+        let body = HermexJSONObjectBody(fields)
 
         try await send(
             endpoint: HermexEndpoints.chatStart,
             method: "POST",
-            body: HermexJSONObjectBody([
-                "session_id": .stringOrNil(sessionID),
-                "message": .string(message),
-                "workspace": .stringOrNil(workspace),
-                "model": .stringOrNil(model),
-                "model_provider": .stringOrNil(modelProvider),
-                "profile": .stringOrNil(profile),
-                "explicit_model_pick": .bool(explicitModelPick),
-                "attachments": attachmentValue
-            ])
+            body: body
         )
     }
 
