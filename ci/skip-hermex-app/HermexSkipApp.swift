@@ -4,6 +4,7 @@ import HermexCore
 import HermexUI
 
 private let hermexVisualFixtureName: String? = nil
+private let hermexRuntimeVisualFixturesEnabled = false
 private let hermexRuntimeVisualFixtureFileName = "hermex_visual_fixture.txt"
 private let hermexAndroidRuntimeVisualFixturePath = "/data/data/com.uzairansar.hermex/files/hermex_visual_fixture.txt"
 
@@ -18,24 +19,26 @@ private func resolvedHermexVisualFixtureName() -> String? {
         return fixtureName
     }
 
-    #if SKIP
-    let selectorURL = URL(fileURLWithPath: hermexAndroidRuntimeVisualFixturePath)
-    if let selectorData = try? Data(contentsOf: selectorURL),
-       let fixtureName = String(data: selectorData, encoding: String.Encoding.utf8)?
-        .trimmingCharacters(in: .whitespacesAndNewlines),
-       !fixtureName.isEmpty {
-        return fixtureName
-    }
-    #else
-    if let documentDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-        let selectorURL = documentDirectory.appendingPathComponent(hermexRuntimeVisualFixtureFileName)
-        if let fixtureName = try? String(contentsOf: selectorURL, encoding: String.Encoding.utf8)
+    if hermexRuntimeVisualFixturesEnabled {
+        #if SKIP
+        let selectorURL = URL(fileURLWithPath: hermexAndroidRuntimeVisualFixturePath)
+        if let selectorData = try? Data(contentsOf: selectorURL),
+           let fixtureName = String(data: selectorData, encoding: String.Encoding.utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !fixtureName.isEmpty {
             return fixtureName
         }
+        #else
+        if let documentDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let selectorURL = documentDirectory.appendingPathComponent(hermexRuntimeVisualFixtureFileName)
+            if let fixtureName = try? String(contentsOf: selectorURL, encoding: String.Encoding.utf8)
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+               !fixtureName.isEmpty {
+                return fixtureName
+            }
+        }
+        #endif
     }
-    #endif
 
     return nil
 }

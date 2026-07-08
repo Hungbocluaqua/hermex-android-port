@@ -475,6 +475,7 @@ if [[ "$REUSE_APK" != "1" ]]; then
   log "Building Skip Android visual fixture APK for screen=$SCREEN"
   export HERMEX_ALLOW_INCOMPLETE_SKIP_APK=1
   export HERMEX_VISUAL_FIXTURE_NAME="$SCREEN"
+  export HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES=1
   bash "$ROOT/ci/build_skip_android_app.sh" "$APK_DIR"
 else
   log "Reusing existing APK from $APK_DIR"

@@ -63,7 +63,13 @@ def validate_visual_fixture_name(repo_root: Path, fixture_name: str) -> None:
         fail(f"Unknown visual fixture '{fixture_name}'. Expected one of: {', '.join(screen_names)}")
 
 
-def replace_app_source(app_dir: Path, repo_root: Path, module_name: str, fixture_name: str | None) -> None:
+def replace_app_source(
+    app_dir: Path,
+    repo_root: Path,
+    module_name: str,
+    fixture_name: str | None,
+    enable_runtime_visual_fixtures: bool,
+) -> None:
     source_dir = app_dir / "Sources" / module_name
     if not source_dir.is_dir():
         fail(f"Generated Skip source directory is missing: {source_dir}")
@@ -79,9 +85,14 @@ def replace_app_source(app_dir: Path, repo_root: Path, module_name: str, fixture
     marker = "private let hermexVisualFixtureName: String? = nil"
     if marker not in text:
         fail("Hermex Skip app template is missing the visual fixture injection marker.")
+    runtime_marker = "private let hermexRuntimeVisualFixturesEnabled = false"
+    if runtime_marker not in text:
+        fail("Hermex Skip app template is missing the runtime fixture enable marker.")
 
     if fixture_name:
         text = text.replace(marker, f"private let hermexVisualFixtureName: String? = {json.dumps(fixture_name)}", 1)
+    if enable_runtime_visual_fixtures:
+        text = text.replace(runtime_marker, "private let hermexRuntimeVisualFixturesEnabled = true", 1)
 
     (source_dir / f"{module_name}.swift").write_text(text, encoding="utf-8")
 
@@ -92,6 +103,7 @@ def main() -> int:
     parser.add_argument("--repo-root", required=True, type=Path)
     parser.add_argument("--module-name", default="HermexSkipApp")
     parser.add_argument("--visual-fixture-name", default=None)
+    parser.add_argument("--enable-runtime-visual-fixtures", action="store_true")
     args = parser.parse_args()
 
     app_dir = args.app_dir.resolve()
@@ -105,7 +117,14 @@ def main() -> int:
         validate_visual_fixture_name(repo_root, fixture_name)
 
     patch_package(package_path, repo_root, args.module_name)
-    replace_app_source(app_dir, repo_root, args.module_name, fixture_name)
+    env_enables_runtime_fixtures = os.environ.get("HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES", "").strip() == "1"
+    replace_app_source(
+        app_dir,
+        repo_root,
+        args.module_name,
+        fixture_name,
+        args.enable_runtime_visual_fixtures or env_enables_runtime_fixtures,
+    )
     print(f"Prepared generated Skip app at {app_dir}")
     return 0
 

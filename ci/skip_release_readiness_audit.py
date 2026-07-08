@@ -27,6 +27,9 @@ def fail(message: str) -> bool:
 
 def main() -> int:
     api_client = read("Sources/HermexCore/HermexAPIClient.swift")
+    launcher = read("ci/skip-hermex-app/HermexSkipApp.swift")
+    prepare_script = read("ci/prepare_skip_hermex_app.py")
+    export_script = read("ci/build_skip_android_app.sh")
     workflow = read(".github/workflows/skip-android-named-release.yml")
     visual_workflow = read(".github/workflows/visual-golden-compare.yml")
     android_visual_workflow = read(".github/workflows/android-visual-screens.yml")
@@ -65,6 +68,15 @@ def main() -> int:
     )
     ok &= "live-networking-passed" in workflow or fail(
         "Skip Android release workflow must name the live networking passphrase."
+    )
+    ok &= "hermexRuntimeVisualFixturesEnabled = false" in launcher and "if hermexRuntimeVisualFixturesEnabled" in launcher or fail(
+        "Skip Android release launcher must ignore persisted runtime visual fixture selector files by default."
+    )
+    ok &= "--enable-runtime-visual-fixtures" in prepare_script and "HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES" in prepare_script or fail(
+        "Skip Android app preparation must require explicit opt-in for runtime fixture selector files."
+    )
+    ok &= "--enable-runtime-visual-fixtures" in export_script and "HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES" in export_script or fail(
+        "Skip Android app export must not enable runtime fixture selector files unless visual CI requests it."
     )
     ok &= "chat-keyboard-open" in manifest and "panels-insights" in manifest or fail(
         "Visual-golden manifest must cover keyboard/chat and panel parity screens."

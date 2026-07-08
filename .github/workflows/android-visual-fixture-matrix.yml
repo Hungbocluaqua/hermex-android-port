@@ -198,6 +198,7 @@ jobs:
         run: |
           set -euo pipefail
           export HERMEX_ALLOW_INCOMPLETE_SKIP_APK=1
+          export HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES=1
           unset HERMEX_VISUAL_FIXTURE_NAME
           bash ci/build_skip_android_app.sh "$RUNNER_TEMP/hermex-skip-visual-apk"
 

@@ -43,6 +43,9 @@ prepare_args=(
 if [[ -n "${HERMEX_VISUAL_FIXTURE_NAME:-}" ]]; then
   prepare_args+=(--visual-fixture-name "$HERMEX_VISUAL_FIXTURE_NAME")
 fi
+if [[ "${HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES:-0}" == "1" ]]; then
+  prepare_args+=(--enable-runtime-visual-fixtures)
+fi
 python3 "$ROOT/ci/prepare_skip_hermex_app.py" "${prepare_args[@]}"
 
 (

@@ -66,6 +66,11 @@ def main() -> int:
     launcher = (ROOT / "ci" / "skip-hermex-app" / "HermexSkipApp.swift").read_text(encoding="utf-8")
     ok &= require("HermexStoreRootScreen" in launcher, "Skip launcher must render HermexStoreRootScreen.")
     ok &= require("hermexVisualFixtureName" in launcher, "Skip launcher must expose a visual fixture injection point.")
+    ok &= require(
+        "hermexRuntimeVisualFixturesEnabled = false" in launcher
+        and "if hermexRuntimeVisualFixturesEnabled" in launcher,
+        "Skip launcher must ignore persisted runtime visual fixture files unless visual CI explicitly enables them.",
+    )
     ok &= require("resolvedHermexVisualFixtureName" in launcher, "Skip launcher must resolve visual fixture selection at runtime.")
     ok &= require("hermex_visual_fixture.txt" in launcher, "Skip launcher must read the runtime visual fixture selector file.")
     ok &= require("HermexVisualFixtureCatalog.fixture(named:" in launcher, "Skip launcher must resolve visual fixtures by golden screen name.")
@@ -78,12 +83,22 @@ def main() -> int:
     ok &= require("HERMEX_VISUAL_FIXTURE_NAME" in prepare_script, "Skip app preparation must read the visual fixture env var.")
     ok &= require("hermex-screens.json" in prepare_script, "Skip app preparation must validate fixture names against the golden inventory.")
     ok &= require("hermexVisualFixtureName" in prepare_script, "Skip app preparation must inject the selected visual fixture into the launcher.")
+    ok &= require(
+        "--enable-runtime-visual-fixtures" in prepare_script
+        and "HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES" in prepare_script,
+        "Skip app preparation must require an explicit opt-in before runtime fixture selector files are honored.",
+    )
 
     export_script = (ROOT / "ci" / "build_skip_android_app.sh").read_text(encoding="utf-8")
     ok &= require("skip init --transpiled-app" in export_script, "Skip app export must generate a transpiled app shell.")
     ok &= require("swift build --target" in export_script, "Skip app export must run the Skip-enabled Swift build.")
     ok &= require("assembleDebug" in export_script, "Skip app export must build the generated Android Gradle project.")
     ok &= require("HERMEX_VISUAL_FIXTURE_NAME" in export_script and "--visual-fixture-name" in export_script, "Skip app export must forward named fixture builds for visual diff capture.")
+    ok &= require(
+        "HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES" in export_script
+        and "--enable-runtime-visual-fixtures" in export_script,
+        "Skip app export must forward runtime fixture opt-in only when visual CI requests it.",
+    )
     ok &= require("skip_release_readiness_audit.py" in export_script, "Skip app export must run release readiness checks by default.")
     ok &= require("HERMEX_ALLOW_INCOMPLETE_SKIP_APK" in export_script, "Skip app export must require an explicit debug override for incomplete APKs.")
     ok &= require("hermes_mobile_dark_icon.png" in export_script, "Skip app export must use the real Hermex launcher icon asset.")
@@ -114,6 +129,7 @@ def main() -> int:
         "Android visual capture must dismiss and reject hosted-runner system/launcher ANRs before retrying Hermex launch.",
     )
     ok &= require("write_visual_fixture_selection" in capture_script and "hermex_visual_fixture.txt" in capture_script, "Android visual capture must select fixture screens at runtime.")
+    ok &= require("HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES=1" in capture_script, "Android visual capture must opt visual APKs into runtime fixture selection.")
     ok &= require("--skip-install" in capture_script and "SKIP_INSTALL" in capture_script, "Android visual capture must support reusing one installed APK across multiple screens.")
 
     capture_matrix_script = (ROOT / "ci" / "capture_skip_android_fixture_matrix.sh").read_text(encoding="utf-8")
@@ -172,6 +188,7 @@ def main() -> int:
     ok &= require("-no-snapshot" in android_visual_workflow and "-wipe-data" in android_visual_workflow, "Android visual workflow must start a deterministic fresh emulator.")
     ok &= require("Start Android emulator in background" in android_visual_workflow and "Wait for Android emulator boot" in android_visual_workflow, "Android visual workflow must overlap emulator startup with the Skip APK build.")
     ok &= require("Build reusable Skip APK" in android_visual_workflow and "timeout-minutes: 35" in android_visual_workflow, "Android visual workflow must build the reusable APK in a bounded pre-capture step.")
+    ok &= require("HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES=1" in android_visual_workflow, "Android visual workflow must opt reusable visual APKs into runtime fixture selection.")
     ok &= require("--reuse-apk" in android_visual_workflow and "timeout-minutes: 15" in android_visual_workflow, "Android visual screenshot capture must reuse the prebuilt APK and be tightly bounded.")
     ok &= require("actions/upload-artifact" in android_visual_workflow, "Android visual workflow must upload screenshot artifacts.")
 
@@ -179,6 +196,7 @@ def main() -> int:
     ok &= require("capture_skip_android_fixture_matrix.sh" in android_matrix_workflow, "Android visual matrix workflow must use the one-build multi-screen capture script.")
     ok &= require("Start Android emulator in background" in android_matrix_workflow, "Android visual matrix workflow must overlap emulator startup with reusable APK work.")
     ok &= require("actions/cache@v4" in android_matrix_workflow and "gradle/actions/setup-gradle" in android_matrix_workflow, "Android visual matrix workflow must cache dependencies.")
+    ok &= require("HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES=1" in android_matrix_workflow, "Android visual matrix workflow must opt reusable visual APKs into runtime fixture selection.")
 
     parity_workflow = (ROOT / ".github" / "workflows" / "skip-android-parity.yml").read_text(encoding="utf-8")
     ok &= require("Skip Generated APK Smoke" in parity_workflow, "Skip parity workflow must expose a generated APK smoke job.")
