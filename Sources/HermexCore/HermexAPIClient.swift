@@ -20,19 +20,17 @@ public final class HermexURLSessionTransport: HermexHTTPTransport, @unchecked Se
     }
 
     public func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        let data: Data
-        let response: URLResponse
         do {
-            (data, response) = try await session.data(for: request)
+            let (data, response) = try await session.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw HermexAPIError.invalidResponse
+            }
+            return (data, httpResponse)
+        } catch let error as HermexAPIError {
+            throw error
         } catch {
             throw HermexAPIError.network(String(describing: error))
         }
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw HermexAPIError.invalidResponse
-        }
-
-        return (data, httpResponse)
     }
 }
 
@@ -44,7 +42,8 @@ public struct HermexJSONObjectBody: Encodable, Equatable, Sendable {
     }
 
     public func encode(to encoder: Encoder) throws {
-        try fields.encode(to: encoder)
+        var container = encoder.singleValueContainer()
+        try container.encode(fields)
     }
 }
 
@@ -242,6 +241,13 @@ public struct HermexAPIClient: @unchecked Sendable {
         explicitModelPick: Bool = false,
         attachments: [HermexJSONValue]? = nil
     ) async throws -> HermexJSONValue {
+        let attachmentValue: HermexJSONValue?
+        if let attachments {
+            attachmentValue = .array(attachments)
+        } else {
+            attachmentValue = nil
+        }
+
         try await send(
             endpoint: HermexEndpoints.chatStart,
             method: "POST",
@@ -253,7 +259,7 @@ public struct HermexAPIClient: @unchecked Sendable {
                 "model_provider": .stringOrNil(modelProvider),
                 "profile": .stringOrNil(profile),
                 "explicit_model_pick": .bool(explicitModelPick),
-                "attachments": attachments.map(HermexJSONValue.array)
+                "attachments": attachmentValue
             ])
         )
     }
@@ -578,11 +584,7 @@ public struct HermexAPIClient: @unchecked Sendable {
         accept: String = "application/json"
     ) async throws -> Response {
         let data = try await sendData(endpoint: endpoint, method: method, body: body, timeout: timeout, accept: accept)
-        do {
-            return try decoder.decode(Response.self, from: data)
-        } catch {
-            throw HermexAPIError.decoding(String(describing: error))
-        }
+        return try decode(Response.self, from: data)
     }
 
     public func sendData(
@@ -662,7 +664,7 @@ public struct HermexAPIClient: @unchecked Sendable {
 
     private func decode<Response: Decodable>(_ type: Response.Type, from data: Data) throws -> Response {
         do {
-            return try decoder.decode(Response.self, from: data)
+            return try decoder.decode(type, from: data)
         } catch {
             throw HermexAPIError.decoding(String(describing: error))
         }
