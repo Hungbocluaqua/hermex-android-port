@@ -12,8 +12,6 @@ public struct HermexWorkspaceScreen: View {
 
     public var body: some View {
         ZStack {
-            HermexUIColors.systemBackground.ignoresSafeArea()
-
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     topBar
@@ -29,6 +27,8 @@ public struct HermexWorkspaceScreen: View {
                 .padding(.bottom, 32)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(HermexUIColors.systemBackground.ignoresSafeArea())
         .foregroundStyle(HermexUIColors.primaryText)
     }
 

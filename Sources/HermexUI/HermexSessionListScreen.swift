@@ -19,8 +19,6 @@ public struct HermexSessionListScreen: View {
 
     public var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            HermexUIColors.systemBackground.ignoresSafeArea()
-
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     header
@@ -81,6 +79,8 @@ public struct HermexSessionListScreen: View {
             .padding(.trailing, HermexLayoutContract.sessionListFloatingButtonTrailing)
             .padding(.bottom, HermexLayoutContract.sessionListFloatingButtonBottom)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(HermexUIColors.systemBackground.ignoresSafeArea())
         .foregroundStyle(HermexUIColors.primaryText)
     }
 

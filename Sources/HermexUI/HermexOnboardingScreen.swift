@@ -57,8 +57,6 @@ public struct HermexOnboardingScreen: View {
 
     public var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
-
             VStack(spacing: 0) {
                 pageContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -66,6 +64,8 @@ public struct HermexOnboardingScreen: View {
                 bottomBar
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.ignoresSafeArea())
         .foregroundStyle(Color.white)
         .hermexOnboardingKeyboardInset(isVisible: isEditingConnectionField) {
             keyboardActionBar

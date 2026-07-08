@@ -13,8 +13,6 @@ public struct HermexChatScreen: View {
 
     public var body: some View {
         ZStack(alignment: .bottom) {
-            HermexUIColors.systemBackground.ignoresSafeArea()
-
             VStack(spacing: 0) {
                 chatHeader
 
@@ -54,6 +52,8 @@ public struct HermexChatScreen: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(HermexUIColors.systemBackground.ignoresSafeArea())
         .foregroundStyle(HermexUIColors.primaryText)
     }
 

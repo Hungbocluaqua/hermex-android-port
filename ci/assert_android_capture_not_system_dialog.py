@@ -152,6 +152,26 @@ def visible_pixel_ratio(width: int, height: int, rgba: bytes) -> float:
     return visible / total if total else 0.0
 
 
+def app_content_foreground_pixel_ratio(width: int, height: int, rgba: bytes) -> float:
+    left = width // 12
+    right = width - left
+    top = max(72, height // 10)
+    bottom = min(height - 80, height * 9 // 10)
+    foreground = 0
+    total = 0
+
+    for y in range(top, bottom):
+        row_offset = y * width * 4
+        for x in range(left, right):
+            index = row_offset + x * 4
+            r, g, b, a = rgba[index : index + 4]
+            if a > 200 and max(r, g, b) >= 54:
+                foreground += 1
+            total += 1
+
+    return foreground / total if total else 0.0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("screenshot", type=Path)
@@ -166,6 +186,12 @@ def main() -> int:
         type=float,
         default=0.003,
         help="Reject blank captures with too few non-black visible pixels.",
+    )
+    parser.add_argument(
+        "--min-app-content-foreground-ratio",
+        type=float,
+        default=0.003,
+        help="Reject captures whose app content area has no visible Hermex foreground.",
     )
     args = parser.parse_args()
 
@@ -193,9 +219,20 @@ def main() -> int:
         )
         return 1
 
+    foreground_ratio = app_content_foreground_pixel_ratio(width, height, rgba)
+    if foreground_ratio < args.min_app_content_foreground_ratio:
+        print(
+            "Android screenshot has no visible Hermex app content "
+            f"(content foreground ratio {foreground_ratio:.4f} < "
+            f"{args.min_app_content_foreground_ratio:.4f}): {args.screenshot}",
+            file=sys.stderr,
+        )
+        return 1
+
     print(
         "Android screenshot pixel guard OK: "
-        f"center_light_ratio={ratio:.3f} visible_ratio={visible_ratio:.4f}"
+        f"center_light_ratio={ratio:.3f} visible_ratio={visible_ratio:.4f} "
+        f"content_foreground_ratio={foreground_ratio:.4f}"
     )
     return 0
 
