@@ -172,6 +172,13 @@ def app_content_foreground_pixel_ratio(width: int, height: int, rgba: bytes) -> 
     return foreground / total if total else 0.0
 
 
+def looks_like_android_splash_screen(visible_ratio: float, foreground_ratio: float) -> bool:
+    # Android 12+ splash screens paint a nearly full-viewport non-black background
+    # plus the centered launcher icon. Hermex content screens are black/glass and
+    # do not cover almost every pixel with a visible system background.
+    return visible_ratio > 0.92 and foreground_ratio < 0.10
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("screenshot", type=Path)
@@ -225,6 +232,15 @@ def main() -> int:
             "Android screenshot has no visible Hermex app content "
             f"(content foreground ratio {foreground_ratio:.4f} < "
             f"{args.min_app_content_foreground_ratio:.4f}): {args.screenshot}",
+            file=sys.stderr,
+        )
+        return 1
+
+    if looks_like_android_splash_screen(visible_ratio, foreground_ratio):
+        print(
+            "Android screenshot looks like the Android launch splash instead of Hermex content "
+            f"(visible pixel ratio {visible_ratio:.4f}, content foreground ratio {foreground_ratio:.4f}): "
+            f"{args.screenshot}",
             file=sys.stderr,
         )
         return 1
