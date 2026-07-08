@@ -11,9 +11,9 @@ DEBUG_ROOT="${HERMEX_VISUAL_DEBUG_ROOT:-"${RUNNER_TEMP:-"$ROOT/.build"}/android-
 APK_DIR="${HERMEX_VISUAL_APK_DIR:-"${RUNNER_TEMP:-"$ROOT/.build"}/hermex-skip-visual-apk"}"
 PACKAGE_ID="${HERMEX_SKIP_APP_ID:-com.uzairansar.hermex}"
 ADB="${ADB:-adb}"
-SETTLE_SECONDS="${HERMEX_VISUAL_SETTLE_SECONDS:-5}"
+SETTLE_SECONDS="${HERMEX_VISUAL_SETTLE_SECONDS:-15}"
 CAPTURE_ATTEMPTS="${HERMEX_VISUAL_CAPTURE_ATTEMPTS:-6}"
-CAPTURE_RETRY_SECONDS="${HERMEX_VISUAL_CAPTURE_RETRY_SECONDS:-3}"
+CAPTURE_RETRY_SECONDS="${HERMEX_VISUAL_CAPTURE_RETRY_SECONDS:-5}"
 REUSE_APK=0
 SKIP_INSTALL=0
 WIDTH=""
@@ -427,17 +427,22 @@ assert_hermex_focus_for_screenshot() {
 capture_verified_screenshot() {
   local screenshot_path="$1"
   local attempt
+  local relaunch_before_retry=0
 
   for attempt in $(seq 1 "$CAPTURE_ATTEMPTS"); do
     if (( attempt > 1 )); then
       log "Retrying screenshot capture after emulator frame/focus guard failure (attempt $attempt/$CAPTURE_ATTEMPTS)"
-      dismiss_system_dialogs
-      launch_app
+      if [[ "$relaunch_before_retry" == "1" ]]; then
+        dismiss_system_dialogs
+        launch_app
+        relaunch_before_retry=0
+      fi
       sleep "$CAPTURE_RETRY_SECONDS"
     fi
 
     if ! wait_for_app_focus; then
       dump_debug_state "attempt-$attempt-refocus"
+      relaunch_before_retry=1
       continue
     fi
 
@@ -451,6 +456,7 @@ capture_verified_screenshot() {
 
     if ! assert_hermex_focus_for_screenshot; then
       dump_debug_state "attempt-$attempt-focus"
+      relaunch_before_retry=1
       continue
     fi
 
@@ -459,6 +465,7 @@ capture_verified_screenshot() {
       return 0
     fi
     dump_debug_state "attempt-$attempt-pixels"
+    relaunch_before_retry=0
   done
 
   echo "Recent Android logcat lines after failed Hermex screenshot inspection:" >&2
