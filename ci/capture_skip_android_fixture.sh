@@ -432,6 +432,11 @@ capture_verified_screenshot() {
     if (( attempt > 1 )); then
       log "Retrying screenshot capture after emulator frame/focus guard failure (attempt $attempt/$CAPTURE_ATTEMPTS)"
       dismiss_system_dialogs
+      launch_app
+      if ! wait_for_app_focus; then
+        dump_debug_state "attempt-$attempt-refocus"
+        continue
+      fi
       sleep "$CAPTURE_RETRY_SECONDS"
     fi
 

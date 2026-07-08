@@ -75,7 +75,7 @@ jobs:
             ~/Library/Android/sdk/platforms
             ~/Library/Android/sdk/system-images
             ~/.android/cache
-          key: ${{ runner.os }}-${{ runner.arch }}-android-sdk-35-visual-v2
+          key: ${{ runner.os }}-${{ runner.arch }}-android-sdk-35-visual-v3
 
       - name: Install Skip
         run: |
@@ -136,7 +136,6 @@ jobs:
           }
           system_image=""
           for candidate in \
-            "system-images;android-35;aosp_atd;$arch" \
             "system-images;android-35;default;$arch" \
             "system-images;android-35;google_apis;$arch"; do
             if install_system_image "$candidate"; then
