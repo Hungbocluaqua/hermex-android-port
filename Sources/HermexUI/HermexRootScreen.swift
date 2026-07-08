@@ -10,6 +10,7 @@ public struct HermexRootScreen: View {
     private let workspace: HermexWorkspaceState
     private let git: HermexGitState
     private let panels: HermexPanelsState
+    private let prefersKeyboardVisible: Bool
     private let onEvent: (HermexUIEvent) -> Void
 
     public init(
@@ -21,6 +22,7 @@ public struct HermexRootScreen: View {
         workspace: HermexWorkspaceState = HermexWorkspaceState(),
         git: HermexGitState = HermexGitState(),
         panels: HermexPanelsState = HermexPanelsState(),
+        prefersKeyboardVisible: Bool = false,
         onEvent: @escaping (HermexUIEvent) -> Void = { _ in }
     ) {
         self.appState = appState
@@ -31,6 +33,7 @@ public struct HermexRootScreen: View {
         self.workspace = workspace
         self.git = git
         self.panels = panels
+        self.prefersKeyboardVisible = prefersKeyboardVisible
         self.onEvent = onEvent
     }
 
@@ -42,7 +45,7 @@ public struct HermexRootScreen: View {
             case .sessions:
                 HermexSessionListScreen(state: sessions, onEvent: onEvent)
             case .chat:
-                HermexChatScreen(state: chat, onEvent: onEvent)
+                HermexChatScreen(state: chat, prefersComposerFocused: prefersKeyboardVisible, onEvent: onEvent)
             case .settings:
                 HermexSettingsScreen(state: settings, onEvent: onEvent)
             case .workspace:

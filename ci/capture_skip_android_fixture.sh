@@ -271,6 +271,7 @@ prepare_android_emulator_for_capture() {
   adb_shell_bounded 5 settings put secure screensaver_enabled 0 >/dev/null 2>&1 || true
   adb_shell_bounded 5 settings put secure screensaver_activate_on_sleep 0 >/dev/null 2>&1 || true
   adb_shell_bounded 5 settings put secure screensaver_activate_on_dock 0 >/dev/null 2>&1 || true
+  adb_shell_bounded 5 settings put secure show_ime_with_hard_keyboard 1 >/dev/null 2>&1 || true
   adb_shell_bounded 5 settings put secure doze_enabled 0 >/dev/null 2>&1 || true
   adb_shell_bounded 5 settings put system screen_off_timeout 2147483647 >/dev/null 2>&1 || true
   adb_shell_bounded 5 svc power stayon true >/dev/null 2>&1 || true

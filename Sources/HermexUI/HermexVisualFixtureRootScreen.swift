@@ -25,6 +25,7 @@ public struct HermexVisualFixtureRootScreen: View {
             workspace: fixture.workspace,
             git: fixture.git,
             panels: fixture.panels,
+            prefersKeyboardVisible: fixture.prefersKeyboardVisible,
             onEvent: { _ in }
         )
         .accessibilityIdentifier("hermex-visual-fixture-\(fixture.screenName)")

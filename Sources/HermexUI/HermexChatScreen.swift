@@ -3,11 +3,17 @@ import HermexCore
 
 public struct HermexChatScreen: View {
     private let state: HermexChatState
+    private let prefersComposerFocused: Bool
     private let onEvent: (HermexUIEvent) -> Void
     @State private var composerInset: CGFloat = 132
 
-    public init(state: HermexChatState, onEvent: @escaping (HermexUIEvent) -> Void = { _ in }) {
+    public init(
+        state: HermexChatState,
+        prefersComposerFocused: Bool = false,
+        onEvent: @escaping (HermexUIEvent) -> Void = { _ in }
+    ) {
         self.state = state
+        self.prefersComposerFocused = prefersComposerFocused
         self.onEvent = onEvent
     }
 
@@ -47,6 +53,7 @@ public struct HermexChatScreen: View {
                         state: state.composer,
                         stream: state.stream,
                         showsTurnActions: state.messages.last?.role == "assistant" && !state.stream.isStreaming,
+                        prefersFocused: prefersComposerFocused,
                         onEvent: onEvent
                     )
                 }
@@ -246,17 +253,21 @@ public struct HermexComposerSurface: View {
     private let state: HermexComposerState
     private let stream: HermexStreamState
     private let showsTurnActions: Bool
+    private let prefersFocused: Bool
     private let onEvent: (HermexUIEvent) -> Void
+    @FocusState private var isDraftFocused: Bool
 
     public init(
         state: HermexComposerState,
         stream: HermexStreamState,
         showsTurnActions: Bool = false,
+        prefersFocused: Bool = false,
         onEvent: @escaping (HermexUIEvent) -> Void = { _ in }
     ) {
         self.state = state
         self.stream = stream
         self.showsTurnActions = showsTurnActions
+        self.prefersFocused = prefersFocused
         self.onEvent = onEvent
     }
 
@@ -391,6 +402,17 @@ public struct HermexComposerSurface: View {
                 .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)
                 .padding(.vertical, textVerticalPadding)
                 .background(Color.clear)
+                .focused($isDraftFocused)
+                .onAppear {
+                    if prefersFocused {
+                        isDraftFocused = true
+                    }
+                }
+                .onChange(of: prefersFocused) { _, newValue in
+                    if newValue {
+                        isDraftFocused = true
+                    }
+                }
 
             if state.draft.isEmpty {
                 Text("Ask anything... /commands")
