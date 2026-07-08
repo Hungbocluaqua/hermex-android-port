@@ -65,6 +65,10 @@ func HermexSystemImageName(_ name: String) -> String {
         return "wifi"
     case "checkmark.circle.fill":
         return "checkmark.circle"
+    case "exclamationmark.triangle.fill":
+        return "gearshape"
+    case "arrow.triangle.2.circlepath":
+        return "gearshape"
     case "server.rack":
         return "server"
     case "externaldrive.badge.checkmark":

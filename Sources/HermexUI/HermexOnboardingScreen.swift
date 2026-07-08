@@ -96,24 +96,16 @@ public struct HermexOnboardingScreen: View {
             }
         }
         .onChange(of: serverURLString) { _, newValue in
-#if !SKIP
             onEvent(.updateOnboardingServerURL(newValue))
-#endif
         }
         .onChange(of: displayName) { _, newValue in
-#if !SKIP
             onEvent(.updateOnboardingDisplayName(newValue))
-#endif
         }
         .onChange(of: password) { _, newValue in
-#if !SKIP
             onEvent(.updateOnboardingPassword(newValue))
-#endif
         }
         .onChange(of: customHeaderText) { _, newValue in
-#if !SKIP
             onEvent(.updateOnboardingCustomHeaders(newValue))
-#endif
         }
     }
 
@@ -590,16 +582,58 @@ public struct HermexOnboardingScreen: View {
 
     @ViewBuilder
     private var statusBlock: some View {
-        if let error = onboarding.errorMessage {
-            Text(error)
-                .font(.footnote)
-                .foregroundStyle(.red)
-                .padding(.horizontal, 4)
+        if onboarding.isTestingConnection || onboarding.isSigningIn {
+            onboardingStatusBanner(
+                text: onboarding.isSigningIn ? "Connecting..." : "Checking server...",
+                systemImage: "arrow.triangle.2.circlepath",
+                tint: Color.white.opacity(0.7),
+                showsProgress: true
+            )
+        } else if let error = onboarding.errorMessage {
+            onboardingStatusBanner(
+                text: error,
+                systemImage: "exclamationmark.triangle.fill",
+                tint: Color(red: 1.0, green: 0.47, blue: 0.34)
+            )
         } else if let status = onboarding.statusMessage {
-            Text(status)
-                .font(.footnote)
-                .foregroundStyle(Color.white.opacity(0.6))
-                .padding(.horizontal, 4)
+            onboardingStatusBanner(
+                text: status,
+                systemImage: "checkmark.circle.fill",
+                tint: Color(red: 0.45, green: 0.92, blue: 0.56)
+            )
+        }
+    }
+
+    private func onboardingStatusBanner(
+        text: String,
+        systemImage: String,
+        tint: Color,
+        showsProgress: Bool = false
+    ) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            if showsProgress {
+                ProgressView()
+                    .tint(tint)
+            } else {
+                Image(systemName: HermexSystemImageName(systemImage))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 20)
+            }
+
+            Text(text)
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(Color.white.opacity(0.72))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(tint.opacity(0.28), lineWidth: 1)
         }
     }
 
