@@ -255,11 +255,12 @@ public struct HermexAPIClient: @unchecked Sendable {
         }
         let body = HermexJSONObjectBody(fields)
 
-        try await send(
+        let response: HermexJSONValue = try await send(
             endpoint: HermexEndpoints.chatStart,
             method: "POST",
             body: body
         )
+        return response
     }
 
     public func chatCancel(streamID: String) async throws -> HermexJSONValue {
