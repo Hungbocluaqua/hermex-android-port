@@ -395,6 +395,6 @@ private actor HermexSkipConnection {
 
 private extension HermexJSONValue {
     func stringValue(forKey key: String) -> String? {
-        stringValue(key)
+        objectValue?[key]?.stringValue
     }
 }

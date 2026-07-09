@@ -853,8 +853,8 @@ private extension View {
         @ViewBuilder inset: () -> Inset
     ) -> some View {
 #if SKIP
-        // Skip keyboard insets are unreliable; keep connect actions pinned when editing.
-        self.safeAreaInset(edge: .bottom, spacing: 0) {
+        // Skip does not support safeAreaInset yet; pin connect actions as an overlay.
+        self.overlay(alignment: .bottom) {
             if isVisible {
                 inset()
                     .background(Color.black.opacity(0.92))

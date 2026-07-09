@@ -244,10 +244,8 @@ public extension View {
     func hermexComposerBottomReserve(_ height: CGFloat) -> some View {
         let reserved = max(height, HermexLayoutContract.composerFallbackInset)
 #if SKIP
-        // Prefer safe-area reservation so transcript content never sits under the composer.
-        self.safeAreaInset(edge: .bottom, spacing: 0) {
-            Color.clear.frame(height: reserved)
-        }
+        // Skip does not support safeAreaInset yet; reserve space with bottom padding.
+        self.padding(.bottom, reserved)
 #else
         self.safeAreaInset(edge: .bottom, spacing: 0) {
             Color.clear.frame(height: reserved)

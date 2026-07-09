@@ -45,24 +45,3 @@ public enum HermexJSONValue: Codable, Equatable, Sendable {
         }
     }
 }
-
-public extension HermexJSONValue {
-    var objectValue: [String: HermexJSONValue]? {
-        if case .dictionary(let fields) = self {
-            return fields
-        }
-        return nil
-    }
-
-    var stringValue: String? {
-        if case .string(let value) = self {
-            return value
-        }
-        return nil
-    }
-
-    func stringValue(_ key: String) -> String? {
-        objectValue?[key]?.stringValue
-    }
-}
-
