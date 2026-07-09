@@ -31,7 +31,7 @@ concurrency:
 jobs:
   skip-visual-apk:
     name: Build Skip Visual APK
-    runs-on: ${{ fromJSON(vars.HERMEX_MACOS_SKIP_RUNNER || '"macos-26"') }}
+    runs-on: ${{ fromJSON(vars.HERMEX_MACOS_SKIP_RUNNER || '"macos-26-intel"') }}
     timeout-minutes: 90
     env:
       HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
