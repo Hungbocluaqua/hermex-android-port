@@ -19,4 +19,24 @@ final class HermexSSEDecoderTests: XCTestCase {
 
         XCTAssertEqual(decoder.decode(block: "event: custom\ndata: payload"), .named(event: "custom", data: "payload"))
     }
+
+    func testStreamTextSplitsMultipleEvents() {
+        let decoder = HermexSSEDecoder()
+        let events = decoder.decode(streamText: """
+        event: token
+        data: Hel
+
+        event: token
+        data: lo
+
+        event: done
+        data:
+        """)
+
+        XCTAssertEqual(events, [
+            .token("Hel"),
+            .token("lo"),
+            .done(nil)
+        ])
+    }
 }
