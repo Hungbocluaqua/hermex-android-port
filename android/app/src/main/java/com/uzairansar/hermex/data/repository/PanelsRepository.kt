@@ -16,6 +16,9 @@ class PanelsRepository(private val client: HermesApiClient) {
     suspend fun deleteCron(jobId: String): CronMutationResponse = client.deleteCron(jobId)
     suspend fun cronStatus(): CronStatusResponse = client.cronStatus()
     suspend fun cronOutput(jobId: String): CronOutputResponse = client.cronOutput(jobId)
+    suspend fun cronHistory(jobId: String, offset: Int? = null, limit: Int? = 50): CronHistoryResponse =
+        client.cronHistory(jobId, offset, limit)
+    suspend fun cronDeliveryOptions(): CronDeliveryOptionsResponse = client.cronDeliveryOptions()
     suspend fun insights(days: Int = 30): InsightsResponse = client.insights(days)
     suspend fun sessions(): List<SessionSummary> = client.sessions().sessions.orEmpty()
     suspend fun skills(): List<SkillSummary> = client.skills().skills.orEmpty()

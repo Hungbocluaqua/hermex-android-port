@@ -71,6 +71,16 @@ final class HermexEndpointTests: XCTestCase {
             URLQueryItem(name: "job_id", value: "job-1"),
             URLQueryItem(name: "limit", value: "7")
         ])
+        XCTAssertEqual(HermexEndpoints.cronHistory(jobID: "job-1", offset: 10, limit: 50).path, "/api/crons/history")
+        XCTAssertEqual(HermexEndpoints.cronHistory(jobID: "job-1", offset: 10, limit: 50).queryItems, [
+            URLQueryItem(name: "job_id", value: "job-1"),
+            URLQueryItem(name: "offset", value: "10"),
+            URLQueryItem(name: "limit", value: "50")
+        ])
+        XCTAssertEqual(HermexEndpoints.cronHistory(jobID: "job-1").queryItems, [
+            URLQueryItem(name: "job_id", value: "job-1")
+        ])
+        XCTAssertEqual(HermexEndpoints.cronDeliveryOptions.path, "/api/crons/delivery-options")
         XCTAssertEqual(HermexEndpoints.skillContent(name: "swift", file: "SKILL.md").queryItems, [
             URLQueryItem(name: "name", value: "swift"),
             URLQueryItem(name: "file", value: "SKILL.md")

@@ -139,6 +139,11 @@ sealed class Endpoint(
         "/api/crons/output",
         listOf("job_id" to jobId, "limit" to limit?.toString()),
     )
+    data class CronHistory(val jobId: String, val offset: Int? = null, val limit: Int? = null) : Endpoint(
+        "/api/crons/history",
+        listOf("job_id" to jobId, "offset" to offset?.toString(), "limit" to limit?.toString()),
+    )
+    data object CronDeliveryOptions : Endpoint("/api/crons/delivery-options")
     data object Memory : Endpoint("/api/memory")
     data object MemoryWrite : Endpoint("/api/memory/write")
     data object Skills : Endpoint("/api/skills")

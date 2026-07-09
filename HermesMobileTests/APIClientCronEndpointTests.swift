@@ -150,6 +150,108 @@ final class APIClientCronEndpointTests: APIClientTestCase {
         XCTAssertEqual(response.outputs?.last?.content, "")
     }
 
+    func testCronHistoryBuildsExpectedQueryAndDecodesResponse() async throws {
+        let client = makeClient { request in
+            XCTAssertEqual(request.url?.path, "/api/crons/history")
+            XCTAssertEqual(request.httpMethod, "GET")
+
+            let components = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)
+            let query = Dictionary(uniqueKeysWithValues: (components?.queryItems ?? []).map { ($0.name, $0.value) })
+            XCTAssertEqual(query["job_id"], "job123")
+            XCTAssertEqual(query["offset"], "10")
+            XCTAssertEqual(query["limit"], "50")
+
+            return apiTestJSONResponse("""
+            {
+              "job_id": "job123",
+              "runs": [
+                {
+                  "filename": "2026-05-04_10-00-00.md",
+                  "size": "2048",
+                  "modified": "1777892400.5",
+                  "usage": {
+                    "model": "@openai:gpt-5.5",
+                    "provider": "openai",
+                    "estimated_cost_usd": "0.041",
+                    "duration_seconds": 12.5,
+                    "input_tokens": "1200",
+                    "output_tokens": 300,
+                    "total_tokens": 1500
+                  },
+                  "future": true
+                }
+              ],
+              "total": "12",
+              "offset": 10
+            }
+            """, for: request)
+        }
+
+        let response = try await client.cronHistory(jobID: "job123", offset: 10, limit: 50)
+        let run = try XCTUnwrap(response.runs?.first)
+
+        XCTAssertEqual(response.jobId, "job123")
+        XCTAssertEqual(response.total, 12)
+        XCTAssertEqual(response.offset, 10)
+        XCTAssertEqual(run.filename, "2026-05-04_10-00-00.md")
+        XCTAssertEqual(run.size, 2048)
+        XCTAssertEqual(run.modified, 1_777_892_400.5)
+        XCTAssertEqual(run.usage?.model, "@openai:gpt-5.5")
+        XCTAssertEqual(run.usage?.provider, "openai")
+        XCTAssertEqual(run.usage?.estimatedCostUsd, 0.041)
+        XCTAssertEqual(run.usage?.durationSeconds, 12.5)
+        XCTAssertEqual(run.usage?.inputTokens, 1200)
+        XCTAssertEqual(run.usage?.outputTokens, 300)
+        XCTAssertEqual(run.usage?.totalTokens, 1500)
+    }
+
+    func testCronHistoryOmitsOffsetAndLimitWhenNil() async throws {
+        let client = makeClient { request in
+            XCTAssertEqual(request.url?.path, "/api/crons/history")
+            let components = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)
+            let query = Dictionary(uniqueKeysWithValues: (components?.queryItems ?? []).map { ($0.name, $0.value) })
+            XCTAssertEqual(query["job_id"], "job456")
+            XCTAssertNil(query["offset"])
+            XCTAssertNil(query["limit"])
+
+            return apiTestJSONResponse("""
+            {
+              "job_id": "job456",
+              "runs": [],
+              "total": 0,
+              "offset": 0
+            }
+            """, for: request)
+        }
+
+        let response = try await client.cronHistory(jobID: "job456", offset: nil, limit: nil)
+        XCTAssertEqual(response.runs?.count, 0)
+    }
+
+    func testCronDeliveryOptionsBuildsExpectedPathAndDecodesPlatforms() async throws {
+        let client = makeClient { request in
+            XCTAssertEqual(request.url?.path, "/api/crons/delivery-options")
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertNil(request.url?.query)
+
+            return apiTestJSONResponse("""
+            {
+              "platforms": [
+                {"value": "local", "label": "Local (save output only)", "future": true},
+                {"value": "origin", "label": "Origin (reply to creator)"}
+              ]
+            }
+            """, for: request)
+        }
+
+        let response = try await client.cronDeliveryOptions()
+
+        XCTAssertEqual(response.platforms?.count, 2)
+        XCTAssertEqual(response.platforms?.first?.value, "local")
+        XCTAssertEqual(response.platforms?.first?.label, "Local (save output only)")
+        XCTAssertEqual(response.platforms?.last?.value, "origin")
+    }
+
     func testCronCreateBuildsExpectedBodyAndDecodesMutationResponse() async throws {
         let client = makeClient { request in
             XCTAssertEqual(request.url?.path, "/api/crons/create")

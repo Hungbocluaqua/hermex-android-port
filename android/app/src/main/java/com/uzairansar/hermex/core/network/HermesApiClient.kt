@@ -186,6 +186,9 @@ class HermesApiClient(
     suspend fun resumeCron(jobId: String): CronMutationResponse = post(Endpoint.CronResume, CronJobIdRequest(jobId))
     suspend fun cronStatus(jobId: String? = null): CronStatusResponse = get(Endpoint.CronStatus(jobId))
     suspend fun cronOutput(jobId: String, limit: Int? = 5): CronOutputResponse = get(Endpoint.CronOutput(jobId, limit))
+    suspend fun cronHistory(jobId: String, offset: Int? = null, limit: Int? = 50): CronHistoryResponse =
+        get(Endpoint.CronHistory(jobId, offset, limit))
+    suspend fun cronDeliveryOptions(): CronDeliveryOptionsResponse = get(Endpoint.CronDeliveryOptions)
     suspend fun skills(): SkillsResponse = get(Endpoint.Skills)
     suspend fun skillContent(name: String, file: String? = null): SkillContentResponse = get(Endpoint.SkillContent(name, file))
     suspend fun toggleSkill(name: String, enabled: Boolean): ToggleSkillResponse = post(Endpoint.ToggleSkill, ToggleSkillRequest(name, enabled))

@@ -504,6 +504,8 @@ public struct HermexAPIClient: @unchecked Sendable {
     public func crons() async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.crons, method: "GET") }
     public func cronStatus(jobID: String? = nil) async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.cronStatus(jobID: jobID), method: "GET") }
     public func cronOutput(jobID: String, limit: Int? = 5) async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.cronOutput(jobID: jobID, limit: limit), method: "GET") }
+    public func cronHistory(jobID: String, offset: Int? = nil, limit: Int? = 50) async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.cronHistory(jobID: jobID, offset: offset, limit: limit), method: "GET") }
+    public func cronDeliveryOptions() async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.cronDeliveryOptions, method: "GET") }
     public func skills() async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.skills, method: "GET") }
     public func skillContent(name: String, file: String? = nil) async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.skillContent(name: name, file: file), method: "GET") }
     public func memory() async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.memory, method: "GET") }

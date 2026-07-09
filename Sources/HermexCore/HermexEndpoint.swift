@@ -248,6 +248,16 @@ public enum HermexEndpoints {
         ].filter { $0.value != nil })
     }
 
+    public static func cronHistory(jobID: String, offset: Int? = nil, limit: Int? = nil) -> HermexEndpoint {
+        HermexEndpoint(path: "/api/crons/history", queryItems: [
+            URLQueryItem(name: "job_id", value: jobID),
+            URLQueryItem(name: "offset", value: offset.map { String($0) }),
+            URLQueryItem(name: "limit", value: limit.map { String($0) })
+        ].filter { $0.value != nil })
+    }
+
+    public static let cronDeliveryOptions = HermexEndpoint(path: "/api/crons/delivery-options")
+
     public static let memory = HermexEndpoint(path: "/api/memory")
     public static let memoryWrite = HermexEndpoint(path: "/api/memory/write")
     public static let skills = HermexEndpoint(path: "/api/skills")

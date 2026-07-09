@@ -105,4 +105,32 @@ class EndpointTest {
         assertEquals("src/Main.kt", url.queryParameter("path"))
         assertEquals("staged", url.queryParameter("kind"))
     }
+
+    @Test
+    fun cronHistoryEndpointMatchesIosContract() {
+        val url = Endpoint.CronHistory("job-1", offset = 10, limit = 50).url(base)
+
+        assertEquals("/api/crons/history", url.encodedPath)
+        assertEquals("job-1", url.queryParameter("job_id"))
+        assertEquals("10", url.queryParameter("offset"))
+        assertEquals("50", url.queryParameter("limit"))
+    }
+
+    @Test
+    fun cronHistoryEndpointOmitsOptionalPaging() {
+        val url = Endpoint.CronHistory("job-1").url(base)
+
+        assertEquals("/api/crons/history", url.encodedPath)
+        assertEquals("job-1", url.queryParameter("job_id"))
+        assertEquals(null, url.queryParameter("offset"))
+        assertEquals(null, url.queryParameter("limit"))
+    }
+
+    @Test
+    fun cronDeliveryOptionsEndpointMatchesIosContract() {
+        val url = Endpoint.CronDeliveryOptions.url(base)
+
+        assertEquals("/api/crons/delivery-options", url.encodedPath)
+        assertEquals(null, url.query)
+    }
 }

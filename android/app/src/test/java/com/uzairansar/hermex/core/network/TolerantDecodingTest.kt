@@ -4,6 +4,8 @@ import com.uzairansar.hermex.core.model.ChatMessage
 import com.uzairansar.hermex.core.model.SessionsResponse
 import com.uzairansar.hermex.core.model.GitBranchesResponse
 import com.uzairansar.hermex.core.model.CronsResponse
+import com.uzairansar.hermex.core.model.CronDeliveryOptionsResponse
+import com.uzairansar.hermex.core.model.CronHistoryResponse
 import com.uzairansar.hermex.core.model.CronStatusResponse
 import com.uzairansar.hermex.core.model.GoalSubmissionResponse
 import com.uzairansar.hermex.core.model.MemoryResponse
@@ -129,6 +131,71 @@ class TolerantDecodingTest {
         assertEquals(12.5, runningMapDecoded.runningJobDurations["job-1"] ?: 0.0, 0.0)
         assertEquals(60.0, runningMapDecoded.runningJobDurations["job-2"] ?: 0.0, 0.0)
         assertEquals(3.25, runningJobsDecoded.runningJobDurations["job-3"] ?: 0.0, 0.0)
+    }
+
+    @Test
+    fun cronHistoryDecodesRunsAndUsage() {
+        val decoded = HermesJson.decodeFromString<CronHistoryResponse>(
+            """
+            {
+              "job_id": "job-1",
+              "runs": [
+                {
+                  "filename": "2026-05-04_10-00-00.md",
+                  "size": 2048,
+                  "modified": 1777892400.5,
+                  "usage": {
+                    "model": "@openai:gpt-5.5",
+                    "provider": "openai",
+                    "estimated_cost_usd": 0.041,
+                    "duration_seconds": 12.5,
+                    "input_tokens": 1200,
+                    "output_tokens": 300,
+                    "total_tokens": 1500
+                  },
+                  "future": true
+                }
+              ],
+              "total": 12,
+              "offset": 10,
+              "another_future_field": {"nested": true}
+            }
+            """.trimIndent(),
+        )
+
+        val run = decoded.runs?.single()
+        assertEquals("job-1", decoded.jobId)
+        assertEquals(12, decoded.total)
+        assertEquals(10, decoded.offset)
+        assertEquals("2026-05-04_10-00-00.md", run?.filename)
+        assertEquals(2048, run?.size)
+        assertEquals(1777892400.5, run?.modified ?: 0.0, 0.0)
+        assertEquals("@openai:gpt-5.5", run?.usage?.model)
+        assertEquals("openai", run?.usage?.provider)
+        assertEquals(0.041, run?.usage?.estimatedCostUsd ?: 0.0, 0.0)
+        assertEquals(12.5, run?.usage?.durationSeconds ?: 0.0, 0.0)
+        assertEquals(1200, run?.usage?.inputTokens)
+        assertEquals(300, run?.usage?.outputTokens)
+        assertEquals(1500, run?.usage?.totalTokens)
+    }
+
+    @Test
+    fun cronDeliveryOptionsDecodePlatforms() {
+        val decoded = HermesJson.decodeFromString<CronDeliveryOptionsResponse>(
+            """
+            {
+              "platforms": [
+                {"value": "local", "label": "Local (save output only)", "future": true},
+                {"value": "origin", "label": "Origin (reply to creator)"}
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(2, decoded.platforms?.size)
+        assertEquals("local", decoded.platforms?.first()?.value)
+        assertEquals("Local (save output only)", decoded.platforms?.first()?.label)
+        assertEquals("origin", decoded.platforms?.last()?.value)
     }
 
     @Test

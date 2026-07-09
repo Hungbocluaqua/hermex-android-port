@@ -98,6 +98,14 @@ extension APIClient {
     func cronOutput(jobID: String, limit: Int? = 5) async throws -> CronOutputResponse {
         try await send(endpoint: .cronOutput(jobID: jobID, limit: limit), method: "GET")
     }
+
+    func cronHistory(jobID: String, offset: Int? = nil, limit: Int? = 50) async throws -> CronHistoryResponse {
+        try await send(endpoint: .cronHistory(jobID: jobID, offset: offset, limit: limit), method: "GET")
+    }
+
+    func cronDeliveryOptions() async throws -> CronDeliveryOptionsResponse {
+        try await send(endpoint: .cronDeliveryOptions, method: "GET")
+    }
 }
 
 private struct CronCreateRequest: Encodable {

@@ -1546,6 +1546,46 @@ data class CronOutputItem(
 )
 
 @Serializable
+data class CronHistoryResponse(
+    @SerialName("job_id") val jobId: String? = null,
+    val runs: List<CronRunSummary>? = null,
+    val total: Int? = null,
+    val offset: Int? = null,
+    val error: String? = null,
+)
+
+@Serializable
+data class CronRunSummary(
+    val filename: String? = null,
+    val size: Int? = null,
+    val modified: Double? = null,
+    val usage: CronRunUsage? = null,
+)
+
+@Serializable
+data class CronRunUsage(
+    val model: String? = null,
+    val provider: String? = null,
+    @SerialName("estimated_cost_usd") val estimatedCostUsd: Double? = null,
+    @SerialName("duration_seconds") val durationSeconds: Double? = null,
+    @SerialName("input_tokens") val inputTokens: Int? = null,
+    @SerialName("output_tokens") val outputTokens: Int? = null,
+    @SerialName("total_tokens") val totalTokens: Int? = null,
+)
+
+@Serializable
+data class CronDeliveryOptionsResponse(
+    val platforms: List<CronDeliveryPlatform>? = null,
+    val error: String? = null,
+)
+
+@Serializable
+data class CronDeliveryPlatform(
+    val value: String? = null,
+    val label: String? = null,
+)
+
+@Serializable
 data class SkillsResponse(
     val skills: List<SkillSummary>? = null,
 )

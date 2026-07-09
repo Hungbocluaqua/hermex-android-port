@@ -237,6 +237,98 @@ struct CronOutputItem: Decodable, Equatable, Identifiable {
     }
 }
 
+struct CronHistoryResponse: Decodable, Equatable {
+    let jobId: String?
+    let runs: [CronRunSummary]?
+    let total: Int?
+    let offset: Int?
+    let error: String?
+
+    enum CodingKeys: String, CodingKey {
+        case jobId
+        case runs
+        case total
+        case offset
+        case error
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        jobId = container.decodeLossyStringIfPresent(forKey: .jobId)
+        runs = (try? container.decodeIfPresent([CronRunSummary].self, forKey: .runs)) ?? nil
+        total = container.decodeFlexibleIntIfPresent(forKey: .total)
+        offset = container.decodeFlexibleIntIfPresent(forKey: .offset)
+        error = container.decodeLossyStringIfPresent(forKey: .error)
+    }
+}
+
+struct CronRunSummary: Decodable, Equatable, Identifiable {
+    var id: String { filename ?? UUID().uuidString }
+
+    let filename: String?
+    let size: Int?
+    let modified: Double?
+    let usage: CronRunUsage?
+
+    enum CodingKeys: String, CodingKey {
+        case filename
+        case size
+        case modified
+        case usage
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        filename = container.decodeLossyStringIfPresent(forKey: .filename)
+        size = container.decodeFlexibleIntIfPresent(forKey: .size)
+        modified = try container.decodeFlexibleDoubleIfPresent(forKey: .modified)
+        usage = (try? container.decodeIfPresent(CronRunUsage.self, forKey: .usage)) ?? nil
+    }
+}
+
+struct CronRunUsage: Decodable, Equatable {
+    let model: String?
+    let provider: String?
+    let estimatedCostUsd: Double?
+    let durationSeconds: Double?
+    let inputTokens: Int?
+    let outputTokens: Int?
+    let totalTokens: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case model
+        case provider
+        case estimatedCostUsd
+        case durationSeconds
+        case inputTokens
+        case outputTokens
+        case totalTokens
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        model = container.decodeLossyStringIfPresent(forKey: .model)
+        provider = container.decodeLossyStringIfPresent(forKey: .provider)
+        estimatedCostUsd = try container.decodeFlexibleDoubleIfPresent(forKey: .estimatedCostUsd)
+        durationSeconds = try container.decodeFlexibleDoubleIfPresent(forKey: .durationSeconds)
+        inputTokens = container.decodeFlexibleIntIfPresent(forKey: .inputTokens)
+        outputTokens = container.decodeFlexibleIntIfPresent(forKey: .outputTokens)
+        totalTokens = container.decodeFlexibleIntIfPresent(forKey: .totalTokens)
+    }
+}
+
+struct CronDeliveryOptionsResponse: Decodable, Equatable {
+    let platforms: [CronDeliveryPlatform]?
+    let error: String?
+}
+
+struct CronDeliveryPlatform: Decodable, Equatable, Identifiable {
+    var id: String { value ?? label ?? UUID().uuidString }
+
+    let value: String?
+    let label: String?
+}
+
 enum CronJobStatus: Equatable {
     case active
     case paused
@@ -419,6 +511,22 @@ extension KeyedDecodingContainer {
 
         if let stringValue = try? decodeIfPresent(String.self, forKey: key) {
             return Double(stringValue.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+
+        return nil
+    }
+
+    func decodeFlexibleIntIfPresent(forKey key: Key) -> Int? {
+        if let value = try? decodeIfPresent(Int.self, forKey: key) {
+            return value
+        }
+
+        if let value = try? decodeIfPresent(Double.self, forKey: key) {
+            return Int(value)
+        }
+
+        if let stringValue = try? decodeIfPresent(String.self, forKey: key) {
+            return Int(stringValue.trimmingCharacters(in: .whitespacesAndNewlines))
         }
 
         return nil
