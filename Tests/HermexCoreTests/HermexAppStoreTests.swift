@@ -232,6 +232,30 @@ final class HermexAppStoreTests: XCTestCase {
         XCTAssertNil(store.panels.errorMessage)
     }
 
+    func testTaskCommandsRouteThroughEnvironmentAndRefreshPanelState() async throws {
+        let probe = StoreProbe()
+        let store = HermexAppStore(
+            panels: HermexPanelsState(
+                tasks: [HermexTaskDTO(id: "job-1", title: "Morning", status: "active")],
+                selectedPanel: .tasks
+            ),
+            environment: environment(probe: probe)
+        )
+
+        await store.send(.taskCommand(.run(jobID: "job-1")))
+        XCTAssertEqual(store.panels.tasks.first?.status, "running")
+
+        await store.send(.taskCommand(.pause(jobID: "job-1")))
+        XCTAssertEqual(store.panels.tasks.first?.status, "paused")
+
+        await store.send(.taskCommand(.resume(jobID: "job-1")))
+        XCTAssertEqual(store.panels.tasks.first?.status, "active")
+
+        let commands = await probe.taskCommands
+        XCTAssertEqual(commands, [.run(jobID: "job-1"), .pause(jobID: "job-1"), .resume(jobID: "job-1")])
+        XCTAssertNil(store.panels.errorMessage)
+    }
+
     private func environment(probe: StoreProbe) -> HermexAppEnvironment {
         HermexAppEnvironment(
             testServerConnection: { server in
@@ -308,6 +332,9 @@ final class HermexAppStoreTests: XCTestCase {
             loadTasks: {
                 try await probe.loadTasks()
             },
+            performTaskCommand: { command in
+                try await probe.performTaskCommand(command)
+            },
             loadSkills: {
                 try await probe.loadSkills()
             },
@@ -349,10 +376,12 @@ private actor StoreProbe {
     private(set) var savedReasoningEffort: String?
     private(set) var gitActions: [String] = []
     private(set) var gitCommands: [String] = []
+    private(set) var taskCommands: [HermexTaskCommand] = []
     private(set) var skillToggles: [SkillToggle] = []
     private(set) var testedServer: HermexServerIdentity?
     private(set) var loginServer: HermexServerIdentity?
     private(set) var loginPassword: String?
+    private var taskStatus = "active"
     private var swiftSkillEnabled = true
 
     func testServerConnection(server: HermexServerIdentity) async throws -> HermexJSONValue {
@@ -524,7 +553,22 @@ private actor StoreProbe {
     }
 
     func loadTasks() async throws -> HermexJSONValue {
-        .dictionary(["jobs": .array([.dictionary(["id": .string("job-1"), "title": .string("Morning"), "status": .string("active")])])])
+        .dictionary(["jobs": .array([.dictionary(["id": .string("job-1"), "title": .string("Morning"), "status": .string(taskStatus)])])])
+    }
+
+    func performTaskCommand(_ command: HermexTaskCommand) async throws -> HermexJSONValue {
+        taskCommands.append(command)
+        switch command {
+        case .run(let jobID):
+            taskStatus = "running"
+            return .dictionary(["ok": .bool(true), "job_id": .string(jobID), "status": .string(taskStatus)])
+        case .pause(let jobID):
+            taskStatus = "paused"
+            return .dictionary(["ok": .bool(true), "job": .dictionary(["id": .string(jobID), "status": .string(taskStatus)])])
+        case .resume(let jobID):
+            taskStatus = "active"
+            return .dictionary(["ok": .bool(true), "job": .dictionary(["id": .string(jobID), "status": .string(taskStatus)])])
+        }
     }
 
     func loadSkills() async throws -> HermexJSONValue {

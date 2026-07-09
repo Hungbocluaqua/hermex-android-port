@@ -107,8 +107,12 @@ public struct HermexPanelsScreen: View {
                         HStack(spacing: 8) {
                             panelActionButton("Details", isProminent: true)
                             panelActionButton("Edit")
-                            panelActionButton("Run")
-                            panelActionButton((task.status ?? "").lowercased().contains("pause") ? "Resume" : "Pause")
+                            panelActionButton("Run") {
+                                onEvent(.taskCommand(.run(jobID: task.id)))
+                            }
+                            panelActionButton(taskPauseResumeTitle(task)) {
+                                onEvent(.taskCommand(taskPauseResumeCommand(task)))
+                            }
                         }
                         .padding(.trailing, 8)
                     }
@@ -251,6 +255,18 @@ public struct HermexPanelsScreen: View {
             skill.name.lowercased().contains(normalizedQuery) ||
                 (skill.summary ?? "").lowercased().contains(normalizedQuery)
         }
+    }
+
+    private func taskPauseResumeTitle(_ task: HermexTaskDTO) -> String {
+        isPaused(task) ? "Resume" : "Pause"
+    }
+
+    private func taskPauseResumeCommand(_ task: HermexTaskDTO) -> HermexTaskCommand {
+        isPaused(task) ? .resume(jobID: task.id) : .pause(jobID: task.id)
+    }
+
+    private func isPaused(_ task: HermexTaskDTO) -> Bool {
+        (task.status ?? "").lowercased().contains("pause")
     }
 
     private var insightsFields: [String: HermexJSONValue] {

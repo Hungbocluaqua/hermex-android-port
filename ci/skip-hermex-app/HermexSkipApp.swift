@@ -307,6 +307,17 @@ private final class HermexSkipRuntime {
                 let repository = try await connection.currentPanelsRepository()
                 return try await repository.crons()
             },
+            performTaskCommand: { command in
+                let repository = try await connection.currentPanelsRepository()
+                switch command {
+                case .run(let jobID):
+                    return try await repository.runCron(jobID: jobID)
+                case .pause(let jobID):
+                    return try await repository.pauseCron(jobID: jobID)
+                case .resume(let jobID):
+                    return try await repository.resumeCron(jobID: jobID)
+                }
+            },
             loadSkills: {
                 let repository = try await connection.currentPanelsRepository()
                 return try await repository.skills()

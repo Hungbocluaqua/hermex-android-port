@@ -43,6 +43,7 @@ public enum HermexUIEvent: Equatable, Sendable {
     case gitCommand(HermexGitCommand)
     case updateGitCommitMessage(String)
     case selectPanel(HermexPanel)
+    case taskCommand(HermexTaskCommand)
     case toggleSkill(name: String, enabled: Bool)
     case signOut
 }
@@ -126,6 +127,8 @@ public extension HermexUIEvent {
             return .updateGitCommitMessage(message)
         case .selectPanel(let panel):
             return .selectPanel(panel)
+        case .taskCommand(let command):
+            return .taskCommand(command)
         case .toggleSkill(let name, let enabled):
             return .toggleSkill(name: name, enabled: enabled)
         case .signOut:

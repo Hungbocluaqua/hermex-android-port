@@ -162,6 +162,7 @@ private extension HermexAppEnvironment {
             performGitAction: { _, _ in .dictionary(["ok": .bool(true)]) },
             performGitCommand: { _, _ in .dictionary(["ok": .bool(true)]) },
             loadTasks: { .dictionary([:]) },
+            performTaskCommand: { _ in .dictionary(["ok": .bool(true)]) },
             loadSkills: { .dictionary([:]) },
             toggleSkill: { _, _ in .dictionary(["ok": .bool(true)]) },
             loadMemory: { .dictionary([:]) },

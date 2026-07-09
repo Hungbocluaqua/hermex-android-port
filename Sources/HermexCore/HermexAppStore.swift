@@ -44,8 +44,15 @@ public enum HermexAppAction: Equatable, Sendable {
     case gitCommand(HermexGitCommand)
     case updateGitCommitMessage(String)
     case selectPanel(HermexPanel)
+    case taskCommand(HermexTaskCommand)
     case toggleSkill(name: String, enabled: Bool)
     case signOut
+}
+
+public enum HermexTaskCommand: Equatable, Sendable {
+    case run(jobID: String)
+    case pause(jobID: String)
+    case resume(jobID: String)
 }
 
 public struct HermexAppEnvironment: Sendable {
@@ -79,6 +86,7 @@ public struct HermexAppEnvironment: Sendable {
     public var performGitAction: @Sendable (_ sessionID: String, _ action: String) async throws -> HermexJSONValue
     public var performGitCommand: @Sendable (_ sessionID: String, _ command: HermexGitCommand) async throws -> HermexJSONValue
     public var loadTasks: @Sendable () async throws -> HermexJSONValue
+    public var performTaskCommand: @Sendable (_ command: HermexTaskCommand) async throws -> HermexJSONValue
     public var loadSkills: @Sendable () async throws -> HermexJSONValue
     public var toggleSkill: @Sendable (_ name: String, _ enabled: Bool) async throws -> HermexJSONValue
     public var loadMemory: @Sendable () async throws -> HermexJSONValue
@@ -116,6 +124,7 @@ public struct HermexAppEnvironment: Sendable {
         performGitAction: @escaping @Sendable (_ sessionID: String, _ action: String) async throws -> HermexJSONValue,
         performGitCommand: @escaping @Sendable (_ sessionID: String, _ command: HermexGitCommand) async throws -> HermexJSONValue,
         loadTasks: @escaping @Sendable () async throws -> HermexJSONValue,
+        performTaskCommand: @escaping @Sendable (_ command: HermexTaskCommand) async throws -> HermexJSONValue,
         loadSkills: @escaping @Sendable () async throws -> HermexJSONValue,
         toggleSkill: @escaping @Sendable (_ name: String, _ enabled: Bool) async throws -> HermexJSONValue,
         loadMemory: @escaping @Sendable () async throws -> HermexJSONValue,
@@ -144,6 +153,7 @@ public struct HermexAppEnvironment: Sendable {
         self.performGitAction = performGitAction
         self.performGitCommand = performGitCommand
         self.loadTasks = loadTasks
+        self.performTaskCommand = performTaskCommand
         self.loadSkills = loadSkills
         self.toggleSkill = toggleSkill
         self.loadMemory = loadMemory
@@ -255,6 +265,16 @@ public struct HermexAppEnvironment: Sendable {
             },
             loadTasks: {
                 try await panels.crons()
+            },
+            performTaskCommand: { command in
+                switch command {
+                case .run(let jobID):
+                    return try await panels.runCron(jobID: jobID)
+                case .pause(let jobID):
+                    return try await panels.pauseCron(jobID: jobID)
+                case .resume(let jobID):
+                    return try await panels.resumeCron(jobID: jobID)
+                }
             },
             loadSkills: {
                 try await panels.skills()
@@ -446,6 +466,8 @@ public final class HermexAppStore {
         case .selectPanel(let panel):
             panels.selectedPanel = panel
             appState.route = .panels
+        case .taskCommand(let command):
+            applyPreviewTaskCommand(command)
         case .toggleSkill(let name, let enabled):
             updateSkill(named: name, enabled: enabled)
         case .signOut:
@@ -511,6 +533,32 @@ public final class HermexAppStore {
         let comparableName = normalizedName.lowercased()
         if let index = panels.skills.firstIndex(where: { $0.name.lowercased() == comparableName }) {
             panels.skills[index].enabled = enabled
+            panels.errorMessage = nil
+        }
+    }
+
+    private func applyPreviewTaskCommand(_ command: HermexTaskCommand) {
+        let jobID: String
+        let status: String
+        switch command {
+        case .run(let id):
+            jobID = id
+            status = "Running"
+        case .pause(let id):
+            jobID = id
+            status = "Paused"
+        case .resume(let id):
+            jobID = id
+            status = "Active"
+        }
+        updateTask(jobID: jobID, status: status)
+    }
+
+    private func updateTask(jobID: String, status: String) {
+        let normalizedJobID = jobID.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !normalizedJobID.isEmpty else { return }
+        if let index = panels.tasks.firstIndex(where: { $0.id == normalizedJobID }) {
+            panels.tasks[index].status = status
             panels.errorMessage = nil
         }
     }
@@ -811,6 +859,8 @@ public final class HermexAppStore {
             panels.selectedPanel = panel
             appState.route = .panels
             await loadPanel(panel)
+        case .taskCommand(let command):
+            await runTaskCommand(command)
         case .toggleSkill(let name, let enabled):
             await toggleSkill(name: name, enabled: enabled)
         case .signOut:
@@ -1297,6 +1347,41 @@ public final class HermexAppStore {
             panels.errorMessage = String(describing: error)
         }
         panels.isLoading = false
+    }
+
+    private func runTaskCommand(_ command: HermexTaskCommand) async {
+        let previousTasks = panels.tasks
+        panels.errorMessage = nil
+        applyTaskCommandOptimistically(command)
+        do {
+            _ = try await environment.performTaskCommand(command)
+            if panels.selectedPanel == .tasks {
+                await loadPanel(.tasks)
+            }
+        } catch {
+            panels.tasks = previousTasks
+            panels.errorMessage = String(describing: error)
+        }
+    }
+
+    private func updateTask(jobID: String, status: String) {
+        let normalizedJobID = jobID.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !normalizedJobID.isEmpty else { return }
+        if let index = panels.tasks.firstIndex(where: { $0.id == normalizedJobID }) {
+            panels.tasks[index].status = status
+            panels.errorMessage = nil
+        }
+    }
+
+    private func applyTaskCommandOptimistically(_ command: HermexTaskCommand) {
+        switch command {
+        case .run(let jobID):
+            updateTask(jobID: jobID, status: "Running")
+        case .pause(let jobID):
+            updateTask(jobID: jobID, status: "Paused")
+        case .resume(let jobID):
+            updateTask(jobID: jobID, status: "Active")
+        }
     }
 
     private func toggleSkill(name: String, enabled: Bool) async {
