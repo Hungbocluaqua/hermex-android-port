@@ -100,6 +100,16 @@ public struct HermexSessionListScreen: View {
     }
 
     private var header: some View {
+#if SKIP
+        HStack(alignment: .center, spacing: 16.0) {
+            if !searchChromeIsExpanded {
+                HermexLogoMark()
+            }
+            Spacer(minLength: 12)
+            searchChrome
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+#else
         HStack(alignment: .center, spacing: searchChromeIsExpanded ? 0.0 : 16.0) {
             HermexLogoMark()
                 .frame(width: searchChromeIsExpanded ? 0.0 : HermexLayoutContract.sessionListLogoWidth, alignment: .leading)
@@ -109,6 +119,7 @@ public struct HermexSessionListScreen: View {
             searchChrome
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
+#endif
     }
 
     private var newSessionButton: some View {
@@ -417,12 +428,36 @@ public struct HermexSessionListScreen: View {
     private func sessionRow(_ session: HermexSessionDTO) -> some View {
         let metadata = sessionMetadata(session)
         let hasSupplemental = !metadata.isEmpty
+        let title = session.title ?? "Untitled Session"
+        let relative = relativeDate(session)
 
         return HStack(alignment: .center, spacing: HermexLayoutContract.sessionRowHorizontalSpacing) {
             VStack(alignment: .leading, spacing: HermexLayoutContract.sessionRowContentSpacing) {
+#if SKIP
+                Text(title)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(HermexUIColors.primaryText)
+                    .lineLimit(2)
+
+                HStack(alignment: .center, spacing: HermexLayoutContract.sessionRowMetadataSpacing) {
+                    if hasSupplemental {
+                        Text(metadata)
+                            .font(.caption)
+                            .foregroundStyle(HermexUIColors.secondaryText)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    if let relative {
+                        Text(relative)
+                            .font(.caption)
+                            .foregroundStyle(HermexUIColors.secondaryText)
+                            .lineLimit(1)
+                    }
+                }
+#else
                 HStack(alignment: .firstTextBaseline, spacing: HermexLayoutContract.sessionRowTitleDateSpacing) {
                     HStack(alignment: .firstTextBaseline, spacing: HermexLayoutContract.sessionRowTitlePinSpacing) {
-                        Text(session.title ?? "Untitled Session")
+                        Text(title)
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(HermexUIColors.primaryText)
                             .lineLimit(2)
@@ -438,8 +473,8 @@ public struct HermexSessionListScreen: View {
 
                     Spacer(minLength: HermexLayoutContract.sessionRowTitleDateSpacing)
 
-                    if let relativeDate = relativeDate(session) {
-                        Text(relativeDate)
+                    if let relative {
+                        Text(relative)
                             .font(.caption)
                             .foregroundStyle(HermexUIColors.secondaryText)
                             .lineLimit(1)
@@ -455,6 +490,7 @@ public struct HermexSessionListScreen: View {
                             .truncationMode(.middle)
                     }
                 }
+#endif
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
