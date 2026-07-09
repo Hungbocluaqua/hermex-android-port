@@ -8,6 +8,16 @@ on:
         required: true
         default: "hermex-skip-visual-apk"
         type: string
+      runner_label:
+        description: "macOS runner label to use for this manual build"
+        required: true
+        default: "repo-default"
+        type: choice
+        options:
+          - repo-default
+          - macos-26
+          - macos-26-intel
+          - macos-latest
   push:
     branches:
       - master
@@ -31,7 +41,7 @@ concurrency:
 jobs:
   skip-visual-apk:
     name: Build Skip Visual APK
-    runs-on: ${{ fromJSON(vars.HERMEX_MACOS_SKIP_RUNNER || '"macos-26-intel"') }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner_label != 'repo-default' && inputs.runner_label || vars.HERMEX_MACOS_SKIP_RUNNER || 'macos-26' }}
     timeout-minutes: 90
     env:
       HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
