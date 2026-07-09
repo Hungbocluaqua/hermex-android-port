@@ -1063,6 +1063,69 @@ class ChatViewModel(
         }
     }
 
+    fun clearConversation() {
+        val snapshot = _state.value
+        if (snapshot.isViewingCachedData) {
+            _state.update { it.copy(error = "Reconnect to the server to clear this conversation.") }
+            return
+        }
+        if (snapshot.isRunningSessionAction) return
+
+        viewModelScope.launch {
+            _state.update { it.copy(isRunningSessionAction = true, error = null, notice = null) }
+            runCatching { repository.clearSessionSnapshot(sessionId) }
+                .onSuccess { result ->
+                    val clearedSnapshot = result.snapshot
+                    if (result.error != null || clearedSnapshot == null) {
+                        _state.update {
+                            it.copy(
+                                isRunningSessionAction = false,
+                                error = result.error ?: "The server did not return the cleared session.",
+                            )
+                        }
+                        return@onSuccess
+                    }
+
+                    discardActiveStreamAfterSessionClear()
+                    backgroundPollJob?.cancel()
+                    backgroundPollJob = null
+                    backgroundPromptsByTaskId.clear()
+                    queuedSlashMessages.clear()
+                    isDrainingQueuedSlashMessage = false
+                    applySessionSnapshot(clearedSnapshot, fromCache = false) {
+                        it.copy(
+                            isRunningSessionAction = false,
+                            draft = "",
+                            pendingAttachments = emptyList(),
+                            pendingApproval = null,
+                            pendingApprovalCount = 0,
+                            pendingClarification = null,
+                            pendingClarificationCount = 0,
+                            clarificationDraft = "",
+                            isRespondingToPendingPrompt = false,
+                            isStreaming = false,
+                            activeStreamRecoveryState = ActiveStreamRecoveryState.Idle,
+                            activeStreamId = null,
+                            responseCompletionNeedsTranscriptRefresh = false,
+                            liveReasoning = "",
+                            liveToolActivity = null,
+                            sessionTitle = clearedSnapshot.title.nonBlank() ?: "Untitled",
+                            error = null,
+                            notice = "Conversation cleared.",
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isRunningSessionAction = false,
+                            error = error.message ?: "Could not clear conversation.",
+                        )
+                    }
+                }
+        }
+    }
+
     private suspend fun cancelActiveStream() {
         val streamId = _state.value.activeStreamId
         if (streamId != null) runCatching { repository.cancel(streamId) }
@@ -1082,6 +1145,17 @@ class ChatViewModel(
             )
         }
         drainQueuedSlashMessageIfIdle()
+    }
+
+    private fun discardActiveStreamAfterSessionClear() {
+        _state.value.activeStreamId?.let(repository::clearStreamCursor)
+        streamRecoveryJob?.cancel()
+        streamRecoveryJob = null
+        streamJob?.cancel()
+        streamJob = null
+        btwJob?.cancel()
+        btwJob = null
+        stopPendingPromptPolling(clearPrompts = true)
     }
 
     private fun handleSlashCommand(text: String, snapshot: ChatUiState): Boolean {

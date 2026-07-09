@@ -328,6 +328,7 @@ fun ChatRoute(
     var editDiscardContext by remember { mutableStateOf<MessageActionContext?>(null) }
     var regenerateDiscardContext by remember { mutableStateOf<MessageActionContext?>(null) }
     var editMessageDraft by remember { mutableStateOf("") }
+    var showsClearConversationConfirmation by remember { mutableStateOf(false) }
     var turnDiffPresentation by remember { mutableStateOf<TurnDiffPresentation?>(null) }
     var autoVoiceConsumed by remember(sessionId, autoStartVoice) { mutableStateOf(false) }
     var composerHeight by remember { mutableStateOf(0.dp) }
@@ -496,6 +497,8 @@ fun ChatRoute(
                 onOpenWorkspace = onOpenWorkspace,
                 onOpenGit = onOpenGit,
                 onRefresh = viewModel::load,
+                onClearConversation = { showsClearConversationConfirmation = true },
+                canClearConversation = !state.isLoading && !state.isViewingCachedData && !state.isRunningSessionAction,
             )
             ChatGitActionStrip(
                 state = gitState,
@@ -796,6 +799,16 @@ fun ChatRoute(
             onConfirm = {
                 regenerateDiscardContext = null
                 viewModel.regenerateAssistantResponse(context)
+            },
+        )
+    }
+
+    if (showsClearConversationConfirmation) {
+        ClearConversationDialog(
+            onDismiss = { showsClearConversationConfirmation = false },
+            onConfirm = {
+                showsClearConversationConfirmation = false
+                viewModel.clearConversation()
             },
         )
     }
@@ -1158,6 +1171,8 @@ private fun ChatTopBar(
     onOpenWorkspace: () -> Unit,
     onOpenGit: () -> Unit,
     onRefresh: () -> Unit,
+    onClearConversation: () -> Unit,
+    canClearConversation: Boolean,
 ) {
     Row(
         modifier = Modifier
@@ -1196,6 +1211,7 @@ private fun ChatTopBar(
             HermexIconButton("Files", "\u2302", onOpenWorkspace)
             HermexIconButton("Git", "\u2387", onOpenGit)
             HermexIconButton("Refresh", "\u21bb", onRefresh, enabled = !isLoading)
+            HermexIconButton("Clear conversation", "\u232B", onClearConversation, enabled = canClearConversation)
         }
     }
 }
@@ -3073,6 +3089,28 @@ private fun DiscardLaterMessagesDialog(
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text(confirmLabel, color = MaterialTheme.colorScheme.error)
+            }
+        },
+    )
+}
+
+@Composable
+private fun ClearConversationDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Clear conversation") },
+        text = { Text("Clear all messages? This cannot be undone.") },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Clear", color = MaterialTheme.colorScheme.error)
             }
         },
     )

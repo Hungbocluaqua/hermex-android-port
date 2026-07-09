@@ -83,6 +83,7 @@ struct ChatView: View {
     @State private var showEditDiscardConfirmation = false
     @State private var regenerateContext: MessageActionContext?
     @State private var showRegenerateDiscardConfirmation = false
+    @State private var showClearConversationConfirmation = false
     @State private var selectableResponseText: SelectableResponseText?
     @State private var attachmentPreviewItem: ChatAttachmentPreviewItem?
     @State private var transcriptMediaPreviewItem: TranscriptMediaPreviewItem?
@@ -420,6 +421,16 @@ struct ChatView: View {
                                 gitActionsMenu
                             }
                         }
+
+                        ChatToolbarActionSlot {
+                            Button(role: .destructive) {
+                                showClearConversationConfirmation = true
+                            } label: {
+                                Label("Clear conversation", systemImage: "trash")
+                            }
+                            .disabled(viewModel.isViewingCachedData || viewModel.isClearingConversation)
+                            .accessibilityLabel("Clear conversation")
+                        }
                     }
                 }
             }
@@ -517,6 +528,18 @@ struct ChatView: View {
                 }
             } message: {
                 Text(profileSwitchWarningMessage)
+            }
+            .alert(
+                "Clear conversation",
+                isPresented: $showClearConversationConfirmation
+            ) {
+                Button("Cancel", role: .cancel) {}
+                Button("Clear", role: .destructive) {
+                    ChatHaptics.destructiveConfirmationAccepted(isEnabled: isHapticsEnabled)
+                    Task { await viewModel.clearConversation(modelContext: modelContext) }
+                }
+            } message: {
+                Text("Clear all messages? This cannot be undone.")
             }
             .alert(
                 "Message Action Failed",

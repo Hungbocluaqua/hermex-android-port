@@ -67,6 +67,11 @@ data class ChatSessionConfiguration(
     val modelProvider: String? = null,
 )
 
+data class ChatSessionClearResult(
+    val snapshot: ChatSessionSnapshot? = null,
+    val error: String? = null,
+)
+
 class ChatRepository(
     private val client: HermesApiClient,
     private val cacheDao: CacheDao,
@@ -180,6 +185,29 @@ class ChatRepository(
     suspend fun truncateSessionSnapshot(sessionId: String, keepCount: Int): ChatSessionSnapshot {
         val session = client.truncateSession(sessionId, keepCount).session
         return snapshotFromSession(session)
+    }
+
+    suspend fun clearSessionSnapshot(sessionId: String): ChatSessionClearResult {
+        val response = client.clearSession(sessionId)
+        val error = response.error?.trim()?.takeIf { it.isNotBlank() }
+        if (response.ok == false || error != null) {
+            return ChatSessionClearResult(error = error ?: "The server could not clear this conversation.")
+        }
+
+        val session = response.session
+            ?: return ChatSessionClearResult(error = "The server did not return the cleared session.")
+        val clearedMessages = session.messages.orEmpty()
+        val resolvedSessionId = session.sessionId?.takeIf { it.isNotBlank() } ?: sessionId
+        val now = System.currentTimeMillis()
+        cacheDao.replaceMessages(
+            serverUrl,
+            resolvedSessionId,
+            clearedMessages.mapIndexed { index, message ->
+                CachedMessageEntity.from(serverUrl, resolvedSessionId, message, index, now)
+            },
+            now,
+        )
+        return ChatSessionClearResult(snapshot = snapshotFromSession(session, messagesOverride = clearedMessages))
     }
 
     suspend fun updateSessionConfiguration(

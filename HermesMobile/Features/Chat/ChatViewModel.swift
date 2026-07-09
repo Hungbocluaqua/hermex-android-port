@@ -79,6 +79,7 @@ final class ChatViewModel {
     private(set) var isEditingMessage = false
     private(set) var isRegeneratingMessage = false
     private(set) var isCompressingSession = false
+    private(set) var isClearingConversation = false
     private(set) var isCancellingStream = false
     private(set) var isViewingCachedData = false
     var activeStreamID: String? { streamCoordinator.activeStreamID }
@@ -1295,6 +1296,47 @@ final class ChatViewModel {
         )
     }
 
+    @discardableResult
+    func clearConversation(modelContext: ModelContext? = nil) async -> Bool {
+        guard !isClearingConversation else { return false }
+
+        guard !isViewingCachedData else {
+            messageActionErrorMessage = String(localized: "Reconnect to the server to clear this conversation.")
+            return false
+        }
+
+        guard let sessionID else {
+            messageActionErrorMessage = String(localized: "The server did not provide a session ID.")
+            return false
+        }
+
+        isClearingConversation = true
+        messageActionErrorMessage = nil
+        sendErrorMessage = nil
+        lastError = nil
+        defer { isClearingConversation = false }
+
+        do {
+            let response = try await client.clearSession(id: sessionID)
+            guard response.ok != false else {
+                messageActionErrorMessage = response.error ?? String(localized: "The server could not clear this conversation.")
+                return false
+            }
+
+            guard let clearedSession = response.session else {
+                messageActionErrorMessage = response.error ?? String(localized: "The server did not return the cleared session.")
+                return false
+            }
+
+            applyClearedSession(clearedSession, modelContext: modelContext)
+            return true
+        } catch {
+            lastError = error
+            messageActionErrorMessage = error.localizedDescription
+            return false
+        }
+    }
+
     nonisolated static func precedingUserMessageText(
         in messages: [ChatMessage],
         beforeVisibleIndex visibleIndex: Int
@@ -1404,6 +1446,67 @@ final class ChatViewModel {
         )
         messagesOffset = resolvedOffset
         hasOlderMessages = resolvedOffset > 0 || session?.messagesTruncated == true
+    }
+
+    private func applyClearedSession(_ session: SessionDetail, modelContext: ModelContext?) {
+        streamCoordinator.discardActiveStreamAfterSessionClear()
+        btwStreamClient.stop()
+        activeBtwStreamID = nil
+        activeBtwMessageID = nil
+        activeBtwQuestion = nil
+        activeBtwAnswer = ""
+        backgroundPollTask?.cancel()
+        backgroundPollTask = nil
+        backgroundPromptsByTaskID.removeAll()
+        queuedSlashMessages.removeAll()
+        isDrainingQueuedSlashMessage = false
+        attachmentCoordinator.clearPendingAttachments()
+        attachmentCoordinator.removeAllLocalPreviews()
+
+        let clearedMessages = session.messages ?? []
+        clearCompressionAnchorMetadata()
+        messages = clearedMessages
+        updateOlderMessagePagination(from: session, loadedMessageCount: clearedMessages.count)
+        latestServerLoadHadAssistantResponseAfterLatestUser = false
+        responseCompletionNeedsTranscriptRefresh = false
+        isViewingCachedData = false
+        errorMessage = nil
+        sendErrorMessage = nil
+        contextWindowSnapshot = ContextWindowSnapshot(
+            contextLength: session.contextLength,
+            thresholdTokens: session.thresholdTokens,
+            lastPromptTokens: session.lastPromptTokens,
+            inputTokens: session.inputTokens,
+            outputTokens: session.outputTokens,
+            estimatedCost: session.estimatedCost
+        )
+        if let title = session.title {
+            displayTitle = Self.displayTitle(from: title)
+        }
+        currentWorkspace = session.workspace ?? currentWorkspace
+        currentModel = session.model ?? currentModel
+        currentModelProvider = session.modelProvider ?? currentModelProvider
+        currentProfile = session.profile ?? currentProfile
+        setCompletedToolCallGroups(ToolCallGroup.groups(
+            persistedToolCalls: session.toolCalls ?? [],
+            messages: messages,
+            messageOffset: messagesOffset
+        ))
+        completedReasoningGroups = []
+        liveToolCalls = []
+        liveReasoningText = ""
+        pinnedLocalNotices = []
+        streamingAssistantMessageID = nil
+        toolCallAnchorMessageID = nil
+        reasoningAnchorMessageID = nil
+
+        if let sessionID, let modelContext {
+            do {
+                try CacheStore.cacheMessages(messages, serverURL: server, sessionID: sessionID, in: modelContext)
+            } catch {
+                cacheErrorMessage = error.localizedDescription
+            }
+        }
     }
 
     nonisolated private static func resolvedMessagesOffset(

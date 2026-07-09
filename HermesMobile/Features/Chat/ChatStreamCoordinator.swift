@@ -170,6 +170,24 @@ final class ChatStreamCoordinator {
         return response
     }
 
+    func discardActiveStreamAfterSessionClear() {
+        guard activeStreamID != nil || isConnectionSuspended else { return }
+
+        runGeneration &+= 1
+        let finishedStreamID = activeStreamID
+        streamClient.stop()
+        delegate?.streamCoordinatorStopAuxiliaryMonitoring(clearPrompt: true)
+        delegate?.streamCoordinatorRemoveSnapshot(streamID: finishedStreamID)
+        activeStreamID = nil
+        lastEventID = nil
+        delegate?.streamCoordinatorStreamingAssistantMessageID = nil
+        hasCompletedCurrentResponse = false
+        delegate?.streamCoordinatorDidFinishStream()
+        isConnectionSuspended = false
+        resetRecoveryState()
+        liveActivityManager.end(status: .cancelled, activity: String(localized: "Conversation cleared"), errorSummary: nil)
+    }
+
     func suspendActiveStreamConnection() {
         guard activeStreamID != nil, !hasCompletedCurrentResponse, !isConnectionSuspended else { return }
 
