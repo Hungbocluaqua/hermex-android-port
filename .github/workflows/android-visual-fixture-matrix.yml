@@ -63,6 +63,7 @@ jobs:
           java-version: "17"
 
       - name: SwiftPM cache
+        if: ${{ inputs.apk_run_id == '' }}
         uses: actions/cache@v4
         with:
           path: |
@@ -74,6 +75,7 @@ jobs:
             ${{ runner.os }}-${{ runner.arch }}-swiftpm-
 
       - name: Gradle cache
+        if: ${{ inputs.apk_run_id == '' }}
         uses: gradle/actions/setup-gradle@v5
 
       - name: Android SDK cache
@@ -88,7 +90,18 @@ jobs:
             ~/.android/cache
           key: ${{ runner.os }}-${{ runner.arch }}-android-sdk-35-visual-v3
 
+      - name: Configure Android SDK paths
+        run: |
+          set -euo pipefail
+          sdk="$HOME/Library/Android/sdk"
+          echo "ANDROID_HOME=$sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$sdk" >> "$GITHUB_ENV"
+          echo "$sdk/platform-tools" >> "$GITHUB_PATH"
+          echo "$sdk/emulator" >> "$GITHUB_PATH"
+          echo "$sdk/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+
       - name: Install Skip
+        if: ${{ inputs.apk_run_id == '' }}
         run: |
           set -euo pipefail
           brew tap skiptools/skip || true
@@ -106,6 +119,7 @@ jobs:
           install_skip
 
       - name: Install Android SDK for Skip
+        if: ${{ inputs.apk_run_id == '' }}
         run: |
           set -euo pipefail
           skip android sdk install
@@ -115,6 +129,19 @@ jobs:
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+
+      - name: Ensure Android SDK for visual capture
+        if: ${{ inputs.apk_run_id != '' }}
+        run: |
+          set -euo pipefail
+          if command -v sdkmanager >/dev/null 2>&1; then
+            exit 0
+          fi
+          echo "Android SDK command-line tools were not restored from cache; installing Skip fallback."
+          brew tap skiptools/skip || true
+          brew trust skiptools/skip
+          brew install skiptools/skip/skip || brew upgrade skiptools/skip/skip
+          skip android sdk install
 
       - name: Validate visual fixture wiring
         run: |
