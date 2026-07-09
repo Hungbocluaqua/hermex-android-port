@@ -516,7 +516,7 @@ public struct HermexAPIClient: @unchecked Sendable {
     public func pauseCron(jobID: String, reason: String? = nil) async throws -> HermexJSONValue {
         var fields: [String: HermexJSONValue] = ["job_id": .string(jobID)]
         if let reason { fields["reason"] = .string(reason) }
-        try await sendJSON(endpoint: HermexEndpoints.cronPause, method: "POST", body: HermexJSONObjectBody(fields))
+        return try await sendJSON(endpoint: HermexEndpoints.cronPause, method: "POST", body: HermexJSONObjectBody(fields))
     }
     public func resumeCron(jobID: String) async throws -> HermexJSONValue {
         try await sendJSON(endpoint: HermexEndpoints.cronResume, method: "POST", body: HermexJSONObjectBody(["job_id": .string(jobID)]))
