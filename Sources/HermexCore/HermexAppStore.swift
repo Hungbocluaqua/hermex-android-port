@@ -44,6 +44,7 @@ public enum HermexAppAction: Equatable, Sendable {
     case gitCommand(HermexGitCommand)
     case updateGitCommitMessage(String)
     case selectPanel(HermexPanel)
+    case toggleSkill(name: String, enabled: Bool)
     case signOut
 }
 
@@ -79,6 +80,7 @@ public struct HermexAppEnvironment: Sendable {
     public var performGitCommand: @Sendable (_ sessionID: String, _ command: HermexGitCommand) async throws -> HermexJSONValue
     public var loadTasks: @Sendable () async throws -> HermexJSONValue
     public var loadSkills: @Sendable () async throws -> HermexJSONValue
+    public var toggleSkill: @Sendable (_ name: String, _ enabled: Bool) async throws -> HermexJSONValue
     public var loadMemory: @Sendable () async throws -> HermexJSONValue
     public var loadInsights: @Sendable (_ days: Int) async throws -> HermexJSONValue
     public var logout: @Sendable () async throws -> HermexJSONValue
@@ -115,6 +117,7 @@ public struct HermexAppEnvironment: Sendable {
         performGitCommand: @escaping @Sendable (_ sessionID: String, _ command: HermexGitCommand) async throws -> HermexJSONValue,
         loadTasks: @escaping @Sendable () async throws -> HermexJSONValue,
         loadSkills: @escaping @Sendable () async throws -> HermexJSONValue,
+        toggleSkill: @escaping @Sendable (_ name: String, _ enabled: Bool) async throws -> HermexJSONValue,
         loadMemory: @escaping @Sendable () async throws -> HermexJSONValue,
         loadInsights: @escaping @Sendable (_ days: Int) async throws -> HermexJSONValue,
         logout: @escaping @Sendable () async throws -> HermexJSONValue
@@ -142,6 +145,7 @@ public struct HermexAppEnvironment: Sendable {
         self.performGitCommand = performGitCommand
         self.loadTasks = loadTasks
         self.loadSkills = loadSkills
+        self.toggleSkill = toggleSkill
         self.loadMemory = loadMemory
         self.loadInsights = loadInsights
         self.logout = logout
@@ -254,6 +258,9 @@ public struct HermexAppEnvironment: Sendable {
             },
             loadSkills: {
                 try await panels.skills()
+            },
+            toggleSkill: { name, enabled in
+                try await panels.toggleSkill(name: name, enabled: enabled)
             },
             loadMemory: {
                 try await panels.memory()
@@ -439,6 +446,8 @@ public final class HermexAppStore {
         case .selectPanel(let panel):
             panels.selectedPanel = panel
             appState.route = .panels
+        case .toggleSkill(let name, let enabled):
+            updateSkill(named: name, enabled: enabled)
         case .signOut:
             if let server = settings.activeServer {
                 appState.auth = .loggedOut(server: server)
@@ -493,6 +502,15 @@ public final class HermexAppStore {
             settings.servers[existingIndex] = server
         } else {
             settings.servers.append(server)
+        }
+    }
+
+    private func updateSkill(named name: String, enabled: Bool) {
+        let normalizedName = name.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !normalizedName.isEmpty else { return }
+        if let index = panels.skills.firstIndex(where: { $0.name.caseInsensitiveCompare(normalizedName) == ComparisonResult.orderedSame }) {
+            panels.skills[index].enabled = enabled
+            panels.errorMessage = nil
         }
     }
 
@@ -792,6 +810,8 @@ public final class HermexAppStore {
             panels.selectedPanel = panel
             appState.route = .panels
             await loadPanel(panel)
+        case .toggleSkill(let name, let enabled):
+            await toggleSkill(name: name, enabled: enabled)
         case .signOut:
             await signOut()
         }
@@ -1276,6 +1296,25 @@ public final class HermexAppStore {
             panels.errorMessage = String(describing: error)
         }
         panels.isLoading = false
+    }
+
+    private func toggleSkill(name: String, enabled: Bool) async {
+        let normalizedName = name.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !normalizedName.isEmpty else { return }
+        let previousSkills = panels.skills
+        panels.errorMessage = nil
+        if let index = panels.skills.firstIndex(where: { $0.name.caseInsensitiveCompare(normalizedName) == ComparisonResult.orderedSame }) {
+            panels.skills[index].enabled = enabled
+        }
+        do {
+            _ = try await environment.toggleSkill(normalizedName, enabled)
+            if panels.selectedPanel == .skills {
+                await loadPanel(.skills)
+            }
+        } catch {
+            panels.skills = previousSkills
+            panels.errorMessage = String(describing: error)
+        }
     }
 
     private func signOut() async {

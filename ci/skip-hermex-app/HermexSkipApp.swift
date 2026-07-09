@@ -311,6 +311,10 @@ private final class HermexSkipRuntime {
                 let repository = try await connection.currentPanelsRepository()
                 return try await repository.skills()
             },
+            toggleSkill: { name, enabled in
+                let repository = try await connection.currentPanelsRepository()
+                return try await repository.toggleSkill(name: name, enabled: enabled)
+            },
             loadMemory: {
                 let repository = try await connection.currentPanelsRepository()
                 return try await repository.memory()

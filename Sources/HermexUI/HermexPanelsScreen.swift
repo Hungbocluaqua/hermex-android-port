@@ -157,7 +157,9 @@ public struct HermexPanelsScreen: View {
 
                             HStack(spacing: 8) {
                                 panelActionButton("Open")
-                                panelActionButton(skill.enabled == true ? "Disable" : "Enable")
+                                panelActionButton(skill.enabled == true ? "Disable" : "Enable") {
+                                    onEvent(.toggleSkill(name: skill.name, enabled: skill.enabled != true))
+                                }
                             }
                         }
                     }
@@ -293,8 +295,8 @@ public struct HermexPanelsScreen: View {
             .background(HermexUIColors.glassFillStrong, in: Circle())
     }
 
-    private func panelActionButton(_ title: String, isProminent: Bool = false) -> some View {
-        Button { } label: {
+    private func panelActionButton(_ title: String, isProminent: Bool = false, action: @escaping () -> Void = {}) -> some View {
+        Button(action: action) {
             Text(title)
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(isProminent ? .white : HermexUIColors.primaryText)

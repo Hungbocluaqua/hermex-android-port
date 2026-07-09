@@ -213,6 +213,25 @@ final class HermexAppStoreTests: XCTestCase {
         XCTAssertEqual(store.panels.insights, .dictionary(["ok": .bool(true)]))
     }
 
+    func testToggleSkillRoutesThroughEnvironmentAndRefreshesPanelState() async throws {
+        let probe = StoreProbe()
+        let store = HermexAppStore(
+            panels: HermexPanelsState(
+                skills: [HermexSkillDTO(name: "swift", enabled: true, summary: "Swift helper")],
+                selectedPanel: .skills
+            ),
+            environment: environment(probe: probe)
+        )
+
+        await store.send(.toggleSkill(name: "swift", enabled: false))
+
+        let toggles = await probe.skillToggles
+        XCTAssertEqual(toggles.map(\.name), ["swift"])
+        XCTAssertEqual(toggles.map(\.enabled), [false])
+        XCTAssertEqual(store.panels.skills.first?.enabled, false)
+        XCTAssertNil(store.panels.errorMessage)
+    }
+
     private func environment(probe: StoreProbe) -> HermexAppEnvironment {
         HermexAppEnvironment(
             testServerConnection: { server in
@@ -292,6 +311,9 @@ final class HermexAppStoreTests: XCTestCase {
             loadSkills: {
                 try await probe.loadSkills()
             },
+            toggleSkill: { name, enabled in
+                try await probe.toggleSkill(name: name, enabled: enabled)
+            },
             loadMemory: {
                 try await probe.loadMemory()
             },
@@ -315,6 +337,11 @@ private actor StoreProbe {
         var profile: String?
     }
 
+    struct SkillToggle: Equatable {
+        var name: String
+        var enabled: Bool
+    }
+
     private(set) var startedChat: StartedChat?
     private(set) var cancelledStreamID: String?
     private(set) var loadedSessionIDs: [String] = []
@@ -322,9 +349,11 @@ private actor StoreProbe {
     private(set) var savedReasoningEffort: String?
     private(set) var gitActions: [String] = []
     private(set) var gitCommands: [String] = []
+    private(set) var skillToggles: [SkillToggle] = []
     private(set) var testedServer: HermexServerIdentity?
     private(set) var loginServer: HermexServerIdentity?
     private(set) var loginPassword: String?
+    private var swiftSkillEnabled = true
 
     func testServerConnection(server: HermexServerIdentity) async throws -> HermexJSONValue {
         testedServer = server
@@ -499,7 +528,13 @@ private actor StoreProbe {
     }
 
     func loadSkills() async throws -> HermexJSONValue {
-        .dictionary(["skills": .array([.dictionary(["name": .string("swift"), "enabled": .bool(true), "summary": .string("Swift helper")])])])
+        .dictionary(["skills": .array([.dictionary(["name": .string("swift"), "enabled": .bool(swiftSkillEnabled), "summary": .string("Swift helper")])])])
+    }
+
+    func toggleSkill(name: String, enabled: Bool) async throws -> HermexJSONValue {
+        skillToggles.append(SkillToggle(name: name, enabled: enabled))
+        swiftSkillEnabled = enabled
+        return .dictionary(["ok": .bool(true), "name": .string(name), "enabled": .bool(enabled)])
     }
 
     func loadMemory() async throws -> HermexJSONValue {

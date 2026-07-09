@@ -220,6 +220,7 @@ public struct HermexPanelsRepository: Sendable {
     public func cronDeliveryOptions() async throws -> HermexJSONValue { try await client.cronDeliveryOptions() }
     public func skills() async throws -> HermexJSONValue { try await client.skills() }
     public func skillContent(name: String, file: String? = nil) async throws -> HermexJSONValue { try await client.skillContent(name: name, file: file) }
+    public func toggleSkill(name: String, enabled: Bool) async throws -> HermexJSONValue { try await client.toggleSkill(name: name, enabled: enabled) }
     public func memory() async throws -> HermexJSONValue { try await client.memory() }
     public func writeMemory(section: String, content: String) async throws -> HermexJSONValue { try await client.writeMemory(section: section, content: content) }
     public func insights(days: Int) async throws -> HermexJSONValue { try await client.insights(days: days) }

@@ -167,12 +167,14 @@ def main() -> int:
     ok &= require("panelPicker" not in panels, "Panels screen must not regress to the placeholder segmented picker.")
     ok &= require("taskRows" in panels and "skillRows" in panels and "memoryRows" in panels and "insightsPanel" in panels, "Panels screen must expose tasks/skills/memory/insights sections.")
     ok &= require("Search skills..." in panels and "filteredSkills" in panels, "Skills panel must expose the iOS-style search field.")
+    ok &= require(".toggleSkill(name: skill.name" in panels and "case .toggleSkill" in events, "Skills panel toggle button must route through shared Core.")
     ok &= require("New Task" in panels and "Details" in panels and "Run" in panels, "Tasks panel must expose iOS-style task actions.")
     ok &= require("Edit \\(section.section)" in panels, "Memory panel must expose iOS-style edit action chrome.")
     ok &= require("Last 30 Days" in panels and "Estimated Cost" in panels and "Cache Hit Rate" in panels, "Insights panel must expose iOS-style analytics rows.")
     ok &= require(".foregroundStyle(HermexUIColors.primaryText)" in panels, "Panels screen must explicitly style dark-surface primary text.")
     for closure in ["loadTasks", "loadSkills", "loadMemory", "loadInsights"]:
         ok &= require(closure in store, f"Shared store is missing panel loader {closure}.")
+    ok &= require("toggleSkill" in store and "environment.toggleSkill" in store, "Shared store is missing skill toggle handling.")
     for asset in [
         "hermes-fill-mask",
         "hermes-shading-overlay",

@@ -59,6 +59,7 @@ final class HermexUICompileTests: XCTestCase {
             performGitCommand: { _, _ in .dictionary(["ok": .bool(true)]) },
             loadTasks: { .dictionary([:]) },
             loadSkills: { .dictionary([:]) },
+            toggleSkill: { _, _ in .dictionary(["ok": .bool(true)]) },
             loadMemory: { .dictionary([:]) },
             loadInsights: { _ in .dictionary([:]) },
             logout: { .dictionary(["ok": .bool(true)]) }
