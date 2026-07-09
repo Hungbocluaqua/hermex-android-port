@@ -187,10 +187,10 @@ def keyboard_surface_pixel_ratio(width: int, height: int, rgba: bytes) -> float:
             r, g, b, a = rgba[index : index + 4]
             max_channel = max(r, g, b)
             min_channel = min(r, g, b)
-            # Dark keyboard keys on emulator builds are usually neutral gray
-            # surfaces. Hermex's black background/composer alone should not
-            # produce a dense lower-viewport field in this range.
-            if a > 200 and 36 <= max_channel <= 220 and max_channel - min_channel <= 38:
+            # Android emulator keyboards can be dark gray or light gray. Hermex's
+            # black background/composer alone should not produce a dense
+            # lower-viewport field of neutral surfaces in this range.
+            if a > 200 and 36 <= max_channel <= 248 and max_channel - min_channel <= 38:
                 surface += 1
             total += 1
 
@@ -244,8 +244,13 @@ def main() -> int:
         print(f"Could not inspect Android screenshot {args.screenshot}: {error}", file=sys.stderr)
         return 1
 
+    keyboard_ratio = keyboard_surface_pixel_ratio(width, height, rgba)
+    keyboard_required_and_visible = (
+        args.require_keyboard_visible and keyboard_ratio >= args.min_keyboard_surface_ratio
+    )
+
     ratio = center_light_pixel_ratio(width, height, rgba)
-    if ratio > args.max_center_light_ratio:
+    if ratio > args.max_center_light_ratio and not keyboard_required_and_visible:
         print(
             "Android screenshot looks like a system dialog instead of Hermex "
             f"(center light pixel ratio {ratio:.3f} > {args.max_center_light_ratio:.3f}): {args.screenshot}",
@@ -281,7 +286,6 @@ def main() -> int:
         )
         return 1
 
-    keyboard_ratio = keyboard_surface_pixel_ratio(width, height, rgba)
     if args.require_keyboard_visible and keyboard_ratio < args.min_keyboard_surface_ratio:
         print(
             "Android screenshot does not show a visible soft keyboard "

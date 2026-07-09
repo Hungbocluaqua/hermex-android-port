@@ -32,7 +32,8 @@ def main() -> int:
     ok &= require((ROOT / "ci" / "build_skip_android_app.sh").is_file(), "Skip Android app export script is missing.")
     ok &= require((ROOT / "ci" / "capture_skip_android_fixture.sh").is_file(), "Android visual fixture capture script is missing.")
     ok &= require((ROOT / "ci" / "capture_skip_android_fixture_matrix.sh").is_file(), "Android visual fixture matrix capture script is missing.")
-    ok &= require((ROOT / "ci" / "assert_android_capture_not_system_dialog.py").is_file(), "Android system-dialog screenshot guard is missing.")
+    pixel_guard = ROOT / "ci" / "assert_android_capture_not_system_dialog.py"
+    ok &= require(pixel_guard.is_file(), "Android system-dialog screenshot guard is missing.")
     ok &= require((ROOT / "ci" / "prepare_skip_hermex_app.py").is_file(), "Skip Android app preparation script is missing.")
     ok &= require((ROOT / "ci" / "skip_release_readiness_audit.py").is_file(), "Skip Android release readiness audit is missing.")
     ok &= require((ROOT / "ci" / "visual-goldens" / "validate_screenshot_inventory.py").is_file(), "Screenshot inventory validator is missing.")
@@ -141,6 +142,13 @@ def main() -> int:
     ok &= require("Hermex process was not running at screenshot time" in capture_script, "Android visual capture must reject screenshots when Hermex is not running.")
     ok &= require("Screenshot was blocked by a system/ANR dialog" in capture_script, "Android visual capture must reject screenshots of system dialogs.")
     ok &= require("assert_android_capture_not_system_dialog.py" in capture_script, "Android visual capture must inspect the actual PNG before upload.")
+    pixel_guard_script = pixel_guard.read_text(encoding="utf-8")
+    ok &= require(
+        "keyboard_required_and_visible" in pixel_guard_script
+        and "not keyboard_required_and_visible" in pixel_guard_script
+        and "36 <= max_channel <= 248" in pixel_guard_script,
+        "Android screenshot guard must allow light soft-keyboard captures without treating them as system dialogs.",
+    )
     ok &= require("focused_window_snapshot" in capture_script and "is_blocking_system_window" in capture_script, "Android visual capture must reject blocking system/ANR dialogs from focus snapshots.")
     ok &= require("CLOSE_SYSTEM_DIALOGS" in capture_script, "Android visual capture must ask Android to close transient system dialogs before launch retries.")
     ok &= require(
