@@ -176,7 +176,7 @@ public struct HermexPanelsScreen: View {
             ForEach(state.memory) { section in
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 10) {
-                        Image(systemName: "brain.head.profile")
+                        Image(systemName: HermexSystemImageName("brain.head.profile"))
                             .foregroundStyle(HermexUIColors.primaryText)
                         Text(section.section)
                             .font(.title3.weight(.semibold))
@@ -285,7 +285,7 @@ public struct HermexPanelsScreen: View {
     }
 
     private func panelIcon(_ systemImage: String) -> some View {
-        Image(systemName: systemImage)
+        Image(systemName: HermexSystemImageName(systemImage))
             .font(.title3.weight(.semibold))
             .foregroundStyle(HermexUIColors.primaryText)
             .frame(width: 54, height: 54)
@@ -350,7 +350,7 @@ public struct HermexPanelsScreen: View {
     }
 
     private func panelNotice(_ text: String, systemImage: String) -> some View {
-        Label(text, systemImage: systemImage)
+        HermexMappedLabel(text, systemImage: systemImage)
             .font(.subheadline.weight(.medium))
             .foregroundStyle(HermexUIColors.secondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)

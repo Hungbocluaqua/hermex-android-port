@@ -99,6 +99,24 @@ func HermexSystemImageName(_ name: String) -> String {
 #endif
 }
 
+public struct HermexMappedLabel: View {
+    private let title: String
+    private let systemImage: String
+
+    public init(_ title: String, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+
+    public var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: HermexSystemImageName(systemImage))
+        }
+    }
+}
+
 public struct HermexScreenTitle: View {
     private let title: String
     private let subtitle: String?

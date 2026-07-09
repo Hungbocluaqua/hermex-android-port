@@ -47,7 +47,7 @@ public struct HermexGitScreen: View {
         HermexGlassPanel(cornerRadius: 18) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: state.isRepository ? "point.3.connected.trianglepath.dotted" : "exclamationmark.triangle")
+                    Image(systemName: HermexSystemImageName(state.isRepository ? "point.3.connected.trianglepath.dotted" : "exclamationmark.triangle"))
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(HermexUIColors.primaryText)
                         .frame(width: 42, height: 42)
@@ -98,7 +98,7 @@ public struct HermexGitScreen: View {
         HermexGlassPanel(cornerRadius: 18) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
-                    Image(systemName: "checkmark.seal")
+                    Image(systemName: HermexSystemImageName("checkmark.seal"))
                         .foregroundStyle(HermexUIColors.primaryText)
                     Text("Commit")
                         .font(.headline.weight(.semibold))
@@ -128,7 +128,7 @@ public struct HermexGitScreen: View {
                 Button {
                     onEvent(.gitCommand(.commit(message: state.commitMessage)))
                 } label: {
-                    Label("Commit", systemImage: "checkmark")
+                    HermexMappedLabel("Commit", systemImage: "checkmark")
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -266,7 +266,7 @@ public struct HermexGitScreen: View {
         Button {
             onEvent(.gitCommand(command))
         } label: {
-            Label(title, systemImage: systemImage)
+            HermexMappedLabel(title, systemImage: systemImage)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(HermexUIColors.primaryText)
                 .padding(.horizontal, 14)
@@ -318,7 +318,7 @@ public struct HermexGitScreen: View {
     }
 
     private func notice(_ text: String, systemImage: String, tint: Color) -> some View {
-        Label(text, systemImage: systemImage)
+        HermexMappedLabel(text, systemImage: systemImage)
             .font(.subheadline.weight(.medium))
             .foregroundStyle(tint)
             .frame(maxWidth: .infinity, alignment: .leading)

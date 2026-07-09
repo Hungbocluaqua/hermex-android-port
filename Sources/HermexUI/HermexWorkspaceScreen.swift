@@ -64,7 +64,7 @@ public struct HermexWorkspaceScreen: View {
                                     isDirectory: true
                                 )))
                             } label: {
-                                HermexPillLabel(root.name ?? root.path, systemImage: "folder")
+                                HermexPillHermexMappedLabel(root.name ?? root.path, systemImage: "folder")
                             }
                             .buttonStyle(.plain)
                         }
@@ -128,7 +128,7 @@ public struct HermexWorkspaceScreen: View {
 
     private func workspaceRow(_ entry: HermexWorkspaceEntryDTO) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: entry.isDirectory ? "folder" : fileIcon(for: entry))
+            Image(systemName: HermexSystemImageName(entry.isDirectory ? "folder" : fileIcon(for: entry)))
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(HermexUIColors.primaryText)
                 .frame(width: 38, height: 38)
@@ -149,7 +149,7 @@ public struct HermexWorkspaceScreen: View {
             Spacer(minLength: 8)
 
             if entry.isDirectory {
-                Image(systemName: "chevron.right")
+                Image(systemName: HermexSystemImageName("chevron.right"))
                     .font(.caption.weight(.bold))
                     .foregroundStyle(HermexUIColors.secondaryText)
             } else if let size = entry.size {
@@ -166,7 +166,7 @@ public struct HermexWorkspaceScreen: View {
         HermexGlassPanel(cornerRadius: 18) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Image(systemName: preview.isBinary ? "doc.badge.gearshape" : "doc.text")
+                    Image(systemName: HermexSystemImageName(preview.isBinary ? "doc.badge.gearshape" : "doc.text"))
                         .foregroundStyle(HermexUIColors.primaryText)
                     Text(preview.path)
                         .font(.headline.weight(.semibold))
@@ -214,7 +214,7 @@ public struct HermexWorkspaceScreen: View {
     }
 
     private func emptyState(_ text: String, systemImage: String) -> some View {
-        Label(text, systemImage: systemImage)
+        HermexMappedLabel(text, systemImage: systemImage)
             .font(.subheadline.weight(.medium))
             .foregroundStyle(HermexUIColors.secondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)

@@ -66,7 +66,7 @@ public struct HermexSettingsScreen: View {
                             .lineLimit(2)
 
                         if !server.customHeaders.isEmpty {
-                            Label("\(server.customHeaders.count) custom headers", systemImage: "key.horizontal")
+                            HermexMappedLabel("\(server.customHeaders.count) custom headers", systemImage: "key.horizontal")
                                 .font(.caption.weight(.medium))
                                 .foregroundStyle(HermexUIColors.secondaryText)
                         }
@@ -91,7 +91,7 @@ public struct HermexSettingsScreen: View {
             Button {
                 onEvent(.openRoute(.onboarding))
             } label: {
-                Label("Add Server", systemImage: "plus")
+                HermexMappedLabel("Add Server", systemImage: "plus")
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(HermexUIColors.primaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -138,7 +138,7 @@ public struct HermexSettingsScreen: View {
             onEvent(.signOut)
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: "rectangle.portrait.and.arrow.right")
+                Image(systemName: HermexSystemImageName("rectangle.portrait.and.arrow.right"))
                     .font(.headline.weight(.semibold))
                 Text("Sign Out")
                     .font(.headline.weight(.semibold))
@@ -185,7 +185,7 @@ public struct HermexSettingsScreen: View {
                 if isActive(server) {
                     statusPill("Active", tint: .blue)
                 } else {
-                    Image(systemName: "chevron.right")
+                    Image(systemName: HermexSystemImageName("chevron.right"))
                         .font(.caption.weight(.bold))
                         .foregroundStyle(HermexUIColors.secondaryText)
                 }
@@ -219,7 +219,7 @@ public struct HermexSettingsScreen: View {
 
     private func settingValueRow(systemImage: String, title: String, value: String) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: systemImage)
+            Image(systemName: HermexSystemImageName(systemImage))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(HermexUIColors.primaryText)
                 .frame(width: 24)
@@ -246,7 +246,7 @@ public struct HermexSettingsScreen: View {
     }
 
     private func serverIcon(systemImage: String) -> some View {
-        Image(systemName: systemImage)
+        Image(systemName: HermexSystemImageName(systemImage))
             .font(.headline.weight(.semibold))
             .foregroundStyle(HermexUIColors.primaryText)
             .frame(width: 38, height: 38)
@@ -254,7 +254,7 @@ public struct HermexSettingsScreen: View {
     }
 
     private func emptyState(_ text: String, systemImage: String) -> some View {
-        Label(text, systemImage: systemImage)
+        HermexMappedLabel(text, systemImage: systemImage)
             .font(.subheadline.weight(.medium))
             .foregroundStyle(HermexUIColors.secondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)
