@@ -61,30 +61,7 @@ public struct HermexSessionListScreen: View {
             .padding(.bottom, HermexLayoutContract.sessionListUtilityRowSpacing)
         }
 
-        if !searchChromeIsExpanded {
-            Group {
-                utilityRows
-                    .padding(.bottom, HermexLayoutContract.sessionListUtilityRowSpacing)
-
-                selectorRow(
-                    icon: "person.crop.circle.badge.gearshape",
-                    title: state.activeProfileName ?? "default",
-                    subtitle: "Profile",
-                    event: .selectProfile
-                )
-                .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
-
-                selectorRow(
-                    icon: "folder",
-                    title: primaryWorkspace,
-                    subtitle: "Workspace",
-                    event: .selectWorkspace
-                )
-                .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
-            }
-            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-            .padding(.top, HermexLayoutContract.sessionListUtilityTopPadding)
-        }
+        sidebarUtilitySection
 
         if !state.searchQuery.isEmpty || state.isShowingArchived {
             statusRows
