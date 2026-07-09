@@ -104,6 +104,24 @@ public struct HermexWorkspaceScreen: View {
                 } else if state.entries.isEmpty && !state.isLoading {
                     emptyState("No files to show.", systemImage: "folder")
                 } else {
+#if SKIP
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(state.entries) { entry in
+                            Button {
+                                onEvent(.openWorkspaceEntry(entry))
+                            } label: {
+                                workspaceRow(entry)
+                            }
+                            .buttonStyle(.plain)
+
+                            if entry.id != state.entries.last?.id {
+                                Divider()
+                                    .background(HermexUIColors.hairline)
+                                    .padding(.leading, 50)
+                            }
+                        }
+                    }
+#else
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(state.entries) { entry in
                             Button {
@@ -120,6 +138,7 @@ public struct HermexWorkspaceScreen: View {
                             }
                         }
                     }
+#endif
                 }
             }
             .padding(16)

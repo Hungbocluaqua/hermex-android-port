@@ -157,6 +157,19 @@ public struct HermexGitScreen: View {
                 if state.files.isEmpty {
                     notice("Working tree is clean.", systemImage: "checkmark.circle", tint: .green)
                 } else {
+#if SKIP
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(state.files) { file in
+                            gitFileRow(file)
+
+                            if file.id != state.files.last?.id {
+                                Divider()
+                                    .background(HermexUIColors.hairline)
+                                    .padding(.leading, 54)
+                            }
+                        }
+                    }
+#else
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(state.files) { file in
                             gitFileRow(file)
@@ -168,6 +181,7 @@ public struct HermexGitScreen: View {
                             }
                         }
                     }
+#endif
                 }
             }
             .padding(16)

@@ -23,6 +23,17 @@ public struct HermexChatScreen: View {
                 chatHeader
 
                 ScrollView {
+#if SKIP
+                    VStack(alignment: .leading, spacing: HermexLayoutContract.chatTranscriptMessageSpacing) {
+                        ForEach(state.messages, id: \.stableId) { message in
+                            messageBlock(message)
+                        }
+
+                        if state.stream.isStreaming {
+                            streamingIndicator
+                        }
+                    }
+#else
                     LazyVStack(alignment: .leading, spacing: HermexLayoutContract.chatTranscriptMessageSpacing) {
                         ForEach(state.messages, id: \.stableId) { message in
                             messageBlock(message)
@@ -32,6 +43,7 @@ public struct HermexChatScreen: View {
                             streamingIndicator
                         }
                     }
+#endif
                     .padding(.horizontal, HermexLayoutContract.chatTranscriptHorizontalPadding)
                     .padding(.top, HermexLayoutContract.chatTranscriptTopPadding)
                 }
