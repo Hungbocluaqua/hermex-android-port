@@ -508,7 +508,8 @@ public final class HermexAppStore {
     private func updateSkill(named name: String, enabled: Bool) {
         let normalizedName = name.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         guard !normalizedName.isEmpty else { return }
-        if let index = panels.skills.firstIndex(where: { $0.name.caseInsensitiveCompare(normalizedName) == ComparisonResult.orderedSame }) {
+        let comparableName = normalizedName.lowercased()
+        if let index = panels.skills.firstIndex(where: { $0.name.lowercased() == comparableName }) {
             panels.skills[index].enabled = enabled
             panels.errorMessage = nil
         }
@@ -1303,7 +1304,8 @@ public final class HermexAppStore {
         guard !normalizedName.isEmpty else { return }
         let previousSkills = panels.skills
         panels.errorMessage = nil
-        if let index = panels.skills.firstIndex(where: { $0.name.caseInsensitiveCompare(normalizedName) == ComparisonResult.orderedSame }) {
+        let comparableName = normalizedName.lowercased()
+        if let index = panels.skills.firstIndex(where: { $0.name.lowercased() == comparableName }) {
             panels.skills[index].enabled = enabled
         }
         do {
