@@ -249,7 +249,7 @@ public struct HermexSessionListScreen: View {
     }
 
     private var sessionsSectionHeaderTopPadding: CGFloat {
-        searchChromeIsExpanded ? 16 : 28
+        searchChromeIsExpanded ? 16.0 : 28.0
     }
 
     private var sessionsSectionHeader: some View {
