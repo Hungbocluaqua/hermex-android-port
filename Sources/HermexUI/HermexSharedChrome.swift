@@ -91,6 +91,26 @@ func HermexSystemImageName(_ name: String) -> String {
         return "paperclip"
     case "sparkles", "sparkle":
         return "sparkles"
+    case "photo", "photo.fill":
+        return "photo"
+    case "doc", "doc.text", "doc.badge.gearshape":
+        return "doc"
+    case "checkmark.shield", "checkmark.seal":
+        return "checkmark.circle"
+    case "questionmark.bubble", "questionmark.circle":
+        return "questionmark.circle"
+    case "circle.lefthalf.filled":
+        return "circle.lefthalf.filled"
+    case "hand.tap":
+        return "hand.tap"
+    case "cpu":
+        return "cpu"
+    case "bell", "bell.fill":
+        return "bell"
+    case "lock", "lock.fill", "lock.shield.fill":
+        return "lock"
+    case "pin", "pin.fill":
+        return "pin"
     default:
         return name
     }

@@ -192,7 +192,7 @@ public struct HermexChatScreen: View {
     private func approvalPrompt(_ approval: HermexApprovalPrompt) -> some View {
         HermexGlassPanel(cornerRadius: HermexLayoutContract.pendingPromptCornerRadius) {
             VStack(alignment: .leading, spacing: 10) {
-                Label(approval.title ?? "Approval required", systemImage: "checkmark.shield")
+                HermexMappedLabel(approval.title ?? "Approval required", systemImage: "checkmark.shield")
                     .font(.headline.weight(.semibold))
                 if let command = approval.command, !command.isEmpty {
                     Text(command)
@@ -219,7 +219,7 @@ public struct HermexChatScreen: View {
     private func clarificationPrompt(_ clarification: HermexClarificationPrompt) -> some View {
         HermexGlassPanel(cornerRadius: HermexLayoutContract.pendingPromptCornerRadius) {
             VStack(alignment: .leading, spacing: 10) {
-                Label("Clarification", systemImage: "questionmark.bubble")
+                HermexMappedLabel("Clarification", systemImage: "questionmark.bubble")
                     .font(.headline.weight(.semibold))
                 Text(clarification.question)
                     .font(.callout)
@@ -562,7 +562,7 @@ public struct HermexComposerSurface: View {
     private var workspaceControl: some View {
         if state.availableWorkspaces.isEmpty {
             Button { onEvent(.selectWorkspace) } label: {
-                HermexPillLabel(state.selectedWorkspace ?? "Home", systemImage: "folder")
+                HermexPillHermexMappedLabel(state.selectedWorkspace ?? "Home", systemImage: "folder")
             }
         } else {
             Menu {
@@ -572,7 +572,7 @@ public struct HermexComposerSurface: View {
                     }
                 }
             } label: {
-                HermexPillLabel(state.selectedWorkspace ?? "Home", systemImage: "folder")
+                HermexPillHermexMappedLabel(state.selectedWorkspace ?? "Home", systemImage: "folder")
             }
         }
     }
@@ -581,7 +581,7 @@ public struct HermexComposerSurface: View {
     private var profileControl: some View {
         if state.availableProfiles.isEmpty {
             Button { onEvent(.selectProfile) } label: {
-                HermexPillLabel(state.selectedProfile ?? "default", systemImage: "person.crop.circle")
+                HermexPillHermexMappedLabel(state.selectedProfile ?? "default", systemImage: "person.crop.circle")
             }
         } else {
             Menu {
@@ -591,7 +591,7 @@ public struct HermexComposerSurface: View {
                     }
                 }
             } label: {
-                HermexPillLabel(state.selectedProfile ?? "default", systemImage: "person.crop.circle")
+                HermexPillHermexMappedLabel(state.selectedProfile ?? "default", systemImage: "person.crop.circle")
             }
         }
     }
@@ -622,7 +622,7 @@ public struct HermexComposerSurface: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 7) {
                 ForEach(state.attachments) { attachment in
-                    Label(attachment.name ?? attachment.path ?? "Attachment", systemImage: attachment.isImage == true ? "photo" : "doc")
+                    HermexMappedLabel(attachment.name ?? attachment.path ?? "Attachment", systemImage: attachment.isImage == true ? "photo" : "doc")
                         .font(.caption.weight(.medium))
                         .lineLimit(1)
                         .padding(.horizontal, 9)
