@@ -12,6 +12,7 @@ APK_DIR="${HERMEX_VISUAL_APK_DIR:-"${RUNNER_TEMP:-"$ROOT/.build"}/hermex-skip-vi
 PACKAGE_ID="${HERMEX_SKIP_APP_ID:-com.uzairansar.hermex}"
 ADB="${ADB:-adb}"
 SETTLE_SECONDS="${HERMEX_VISUAL_SETTLE_SECONDS:-15}"
+KEYBOARD_SETTLE_SECONDS="${HERMEX_VISUAL_KEYBOARD_SETTLE_SECONDS:-8}"
 CAPTURE_ATTEMPTS="${HERMEX_VISUAL_CAPTURE_ATTEMPTS:-8}"
 CAPTURE_RETRY_SECONDS="${HERMEX_VISUAL_CAPTURE_RETRY_SECONDS:-5}"
 REUSE_APK=0
@@ -46,6 +47,8 @@ Options:
   --width PX           Override emulator screenshot width
   --height PX          Override emulator screenshot height
   --settle-seconds N   Seconds to wait after launch before screenshot
+  --keyboard-settle-seconds N
+                       Extra seconds to wait before opening the keyboard fixture
   --self-test          Validate manifest/script wiring without using adb
 USAGE
 }
@@ -95,6 +98,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --settle-seconds)
       SETTLE_SECONDS="$2"
+      shift 2
+      ;;
+    --keyboard-settle-seconds)
+      KEYBOARD_SETTLE_SECONDS="$2"
       shift 2
       ;;
     --self-test)
@@ -336,16 +343,80 @@ assert_keyboard_visible_for_fixture() {
   return 1
 }
 
+composer_draft_input_center() {
+  local xml_file
+  xml_file="$(mktemp)"
+
+  adb_shell_bounded 10 uiautomator dump /sdcard/hermex-keyboard-window.xml >/dev/null 2>&1 || true
+  if ! "$ADB" exec-out cat /sdcard/hermex-keyboard-window.xml > "$xml_file" 2>/dev/null; then
+    rm -f "$xml_file"
+    return 1
+  fi
+
+  if ! "$PYTHON_BIN" - "$xml_file" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+xml_path = sys.argv[1]
+try:
+    root = ET.parse(xml_path).getroot()
+except Exception:
+    raise SystemExit(1)
+
+identifier = "hermex-composer-draft-input"
+bound_re = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
+matches = []
+fallbacks = []
+
+for node in root.iter("node"):
+    attrs = node.attrib
+    bounds = attrs.get("bounds", "")
+    match = bound_re.fullmatch(bounds)
+    if not match:
+        continue
+    left, top, right, bottom = map(int, match.groups())
+    width = right - left
+    height = bottom - top
+    if width <= 20 or height <= 4:
+        continue
+    candidate = (width * height, left, top, right, bottom)
+    if attrs.get("resource-id") == identifier:
+        matches.append(candidate)
+    elif attrs.get("class") == "android.widget.EditText":
+        fallbacks.append(candidate)
+
+candidates = matches or fallbacks
+if not candidates:
+    raise SystemExit(1)
+
+_, left, top, right, bottom = max(candidates)
+print(f"{(left + right) // 2} {(top + bottom) // 2}")
+PY
+  then
+    rm -f "$xml_file"
+    return 1
+  fi
+
+  rm -f "$xml_file"
+}
+
 request_android_keyboard_for_fixture() {
   if [[ "$SCREEN" != "chat-keyboard-open" ]]; then
     return 0
   fi
 
-  local tap_x=$((WIDTH / 2))
-  local tap_y=$((HEIGHT - 245))
+  local tap_x
+  local tap_y
+  tap_x=$((WIDTH / 2))
+  tap_y=$((HEIGHT - 245))
   local attempt
 
   for attempt in {1..5}; do
+    local composer_center
+    if composer_center="$(composer_draft_input_center | tr -d '\r')" && [[ -n "$composer_center" ]]; then
+      read -r tap_x tap_y <<<"$composer_center"
+    fi
     log "Requesting Android soft keyboard for chat fixture (attempt $attempt)"
     adb_shell_bounded 5 input tap "$tap_x" "$tap_y" >/dev/null 2>&1 || true
     adb_shell_bounded 5 cmd input_method show >/dev/null 2>&1 || true
@@ -620,6 +691,13 @@ sleep "$SETTLE_SECONDS"
 quiet_background_system_apps
 
 if [[ "$SCREEN" == "chat-keyboard-open" ]]; then
+  log "Waiting for chat keyboard fixture to settle"
+  sleep "$KEYBOARD_SETTLE_SECONDS"
+  if ! wait_for_app_focus; then
+    dump_debug_state "keyboard-pre-focus"
+    echo "Hermex was not focused before opening the keyboard fixture." >&2
+    exit 1
+  fi
   request_android_keyboard_for_fixture || true
   sleep 2
   if ! wait_for_app_focus; then

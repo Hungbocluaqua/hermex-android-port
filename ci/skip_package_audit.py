@@ -113,6 +113,16 @@ def main() -> int:
     ok &= require("wm size" in capture_script and "wm density" in capture_script, "Android visual capture must pin emulator display dimensions.")
     ok &= require("screencap -p" in capture_script, "Android visual capture must collect a real emulator screenshot.")
     ok &= require("chat-keyboard-open" in capture_script and "input tap" in capture_script, "Android visual capture must attempt keyboard-open fixture focus.")
+    ok &= require(
+        "HERMEX_VISUAL_KEYBOARD_SETTLE_SECONDS" in capture_script
+        and "KEYBOARD_SETTLE_SECONDS" in capture_script,
+        "Android visual capture must give the chat keyboard fixture an extra Skip cold-start settle window.",
+    )
+    ok &= require(
+        "composer_draft_input_center" in capture_script
+        and "hermex-composer-draft-input" in capture_script,
+        "Android visual capture must tap the actual composer input instead of a fixed keyboard coordinate.",
+    )
     ok &= require("resolve_launch_activity" in capture_script and "am start -W" in capture_script, "Android visual capture must launch Hermex directly, not through a flaky launcher surface.")
     ok &= require("--reuse-apk" in capture_script and "REUSE_APK" in capture_script, "Android visual capture must support reusing a prebuilt fixture APK.")
     ok &= require("wait_for_app_focus" in capture_script and "pidof \"$PACKAGE_ID\"" in capture_script, "Android visual capture must wait for the Hermex process before screenshots.")
@@ -143,9 +153,15 @@ def main() -> int:
     ok &= require("shouldSeedPreviewData" in store, "HermexAppStore demo data must be gated behind non-fresh-run state.")
 
     fixtures = (ROOT / "Sources" / "HermexCore" / "HermexVisualFixtures.swift").read_text(encoding="utf-8")
+    chat_screen = (ROOT / "Sources" / "HermexUI" / "HermexChatScreen.swift").read_text(encoding="utf-8")
     fixture_root = (ROOT / "Sources" / "HermexUI" / "HermexVisualFixtureRootScreen.swift").read_text(encoding="utf-8")
     ok &= require("HermexVisualFixtureCatalog" in fixtures, "HermexCore must expose a typed visual fixture catalog.")
     ok &= require("chat-keyboard-open" in fixtures and "prefersKeyboardVisible = true" in fixtures, "Visual fixtures must include keyboard-open chat state.")
+    ok &= require(
+        "hermex-composer-draft-input" in chat_screen
+        and "requestDraftFocusIfPreferred" in chat_screen,
+        "Chat keyboard fixture must focus a stable shared composer input.",
+    )
     ok &= require("chat-slash-menu" in fixtures and "overlay = .slashMenu" in fixtures, "Visual fixtures must include slash menu chat state.")
     ok &= require("chat-attachments" in fixtures and "overlay = .attachmentPicker" in fixtures, "Visual fixtures must include attachment composer state.")
     ok &= require("chat-approval" in fixtures and "pendingApproval" in fixtures, "Visual fixtures must include approval prompt state.")

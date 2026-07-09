@@ -441,6 +441,16 @@ public struct HermexComposerSurface: View {
                 .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)
                 .padding(.vertical, textVerticalPadding)
                 .background(Color.clear)
+                .accessibilityIdentifier("hermex-composer-draft-input")
+                .focused($isDraftFocused)
+                .onAppear {
+                    requestDraftFocusIfPreferred()
+                }
+                .onChange(of: prefersFocused) { _, newValue in
+                    if newValue {
+                        requestDraftFocusIfPreferred()
+                    }
+                }
 #else
             TextEditor(text: draftBinding)
                 .font(.title3)
@@ -449,15 +459,14 @@ public struct HermexComposerSurface: View {
                 .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)
                 .padding(.vertical, textVerticalPadding)
                 .background(Color.clear)
+                .accessibilityIdentifier("hermex-composer-draft-input")
                 .focused($isDraftFocused)
                 .onAppear {
-                    if prefersFocused {
-                        isDraftFocused = true
-                    }
+                    requestDraftFocusIfPreferred()
                 }
                 .onChange(of: prefersFocused) { _, newValue in
                     if newValue {
-                        isDraftFocused = true
+                        requestDraftFocusIfPreferred()
                     }
                 }
 #endif
@@ -472,6 +481,20 @@ public struct HermexComposerSurface: View {
             }
         }
         .frame(minHeight: HermexLayoutContract.composerTextInputMinimumHeight, alignment: .topLeading)
+    }
+
+    private func requestDraftFocusIfPreferred() {
+        guard prefersFocused else { return }
+#if SKIP
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 750_000_000)
+            if prefersFocused {
+                isDraftFocused = true
+            }
+        }
+#else
+        isDraftFocused = true
+#endif
     }
 
     private var composerTextInputHeight: CGFloat {
