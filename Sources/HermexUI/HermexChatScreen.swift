@@ -403,17 +403,6 @@ public struct HermexComposerSurface: View {
                 .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)
                 .padding(.vertical, textVerticalPadding)
                 .background(Color.clear)
-                .focused($isDraftFocused)
-                .onAppear {
-                    if prefersFocused {
-                        isDraftFocused = true
-                    }
-                }
-                .onChange(of: prefersFocused) { _, newValue in
-                    if newValue {
-                        isDraftFocused = true
-                    }
-                }
 #else
             TextEditor(text: draftBinding)
                 .font(.title3)

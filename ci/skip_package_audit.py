@@ -183,7 +183,14 @@ def main() -> int:
     ok &= require("for attempt in 1 2 3" in android_visual_workflow and "install_skip()" in android_visual_workflow, "Android visual workflow must retry flaky Skip installs.")
     ok &= require("actions/cache@v4" in android_visual_workflow, "Android visual workflow must cache SwiftPM and Android SDK dependencies.")
     ok &= require("gradle/actions/setup-gradle" in android_visual_workflow, "Android visual workflow must enable the Gradle cache.")
-    ok &= require("adb start-server" in android_visual_workflow and "pgrep -f \"emulator.*hermex-visual\"" in android_visual_workflow, "Android visual workflow must bound emulator boot waits and dump logs on failure.")
+    ok &= require(
+        "adb start-server" in android_visual_workflow
+        and (
+            'pgrep -f "emulator.*hermex-visual"' in android_visual_workflow
+            or 'pgrep -f "emulator.*$HERMEX_VISUAL_EMULATOR_AVD"' in android_visual_workflow
+        ),
+        "Android visual workflow must bound emulator boot waits and dump logs on failure.",
+    )
     ok &= require("for _ in {1..180}" in android_visual_workflow, "Android visual workflow must allow enough time for cold emulator boots on hosted runners.")
     ok &= require("-no-snapshot" in android_visual_workflow and "-wipe-data" in android_visual_workflow, "Android visual workflow must start a deterministic fresh emulator.")
     ok &= require("Start Android emulator in background" in android_visual_workflow and "Wait for Android emulator boot" in android_visual_workflow, "Android visual workflow must overlap emulator startup with the Skip APK build.")

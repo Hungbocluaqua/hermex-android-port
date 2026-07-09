@@ -348,7 +348,7 @@ public struct HermexOnboardingScreen: View {
                             .hermexURLInputTraits()
                             .submitLabel(.go)
                             .tint(Color(red: 1.0, green: 0.74, blue: 0.10))
-                            .focused($focusedField, equals: .serverURL)
+                            .hermexOnboardingFocused($focusedField, equals: .serverURL)
                             .onSubmit {
                                 submitConnection()
                             }
@@ -366,7 +366,7 @@ public struct HermexOnboardingScreen: View {
                         .foregroundStyle(Color.white)
                         .textContentType(.password)
                         .submitLabel(.go)
-                        .focused($focusedField, equals: .password)
+                        .hermexOnboardingFocused($focusedField, equals: .password)
                         .onSubmit {
                             submitConnection()
                         }
@@ -820,6 +820,18 @@ private extension View {
 #else
         self
             .autocorrectionDisabled()
+#endif
+    }
+
+    @ViewBuilder
+    func hermexOnboardingFocused(
+        _ focus: FocusState<HermexOnboardingConnectField?>.Binding,
+        equals field: HermexOnboardingConnectField
+    ) -> some View {
+#if SKIP
+        self
+#else
+        self.focused(focus, equals: field)
 #endif
     }
 

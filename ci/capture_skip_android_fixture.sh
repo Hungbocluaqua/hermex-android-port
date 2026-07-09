@@ -336,6 +336,28 @@ assert_keyboard_visible_for_fixture() {
   return 1
 }
 
+request_android_keyboard_for_fixture() {
+  if [[ "$SCREEN" != "chat-keyboard-open" ]]; then
+    return 0
+  fi
+
+  local tap_x=$((WIDTH / 2))
+  local tap_y=$((HEIGHT - 245))
+  local attempt
+
+  for attempt in {1..5}; do
+    log "Requesting Android soft keyboard for chat fixture (attempt $attempt)"
+    adb_shell_bounded 5 input tap "$tap_x" "$tap_y" >/dev/null 2>&1 || true
+    adb_shell_bounded 5 cmd input_method show >/dev/null 2>&1 || true
+    sleep 1
+    if is_android_ime_visible; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 assert_no_android_error_dialog_text() {
   local debug_dir="$DEBUG_ROOT/$DEVICE_NAME/$STATE"
   local xml_path="$debug_dir/$SCREEN-window-check.xml"
@@ -598,8 +620,8 @@ sleep "$SETTLE_SECONDS"
 quiet_background_system_apps
 
 if [[ "$SCREEN" == "chat-keyboard-open" ]]; then
-  "$ADB" shell input tap "$((WIDTH / 2))" "$((HEIGHT - 245))" >/dev/null 2>&1 || true
-  sleep 5
+  request_android_keyboard_for_fixture || true
+  sleep 2
   if ! wait_for_app_focus; then
     dump_debug_state "keyboard-focus"
     echo "Hermex lost focus after opening the keyboard fixture." >&2
