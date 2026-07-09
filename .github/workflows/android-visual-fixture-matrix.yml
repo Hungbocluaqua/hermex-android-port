@@ -47,7 +47,7 @@ permissions:
 jobs:
   capture:
     name: Capture Android Fixture Matrix
-    runs-on: macos-26-intel
+    runs-on: ${{ fromJSON(vars.HERMEX_MACOS_VISUAL_RUNNER || '"macos-26-intel"') }}
     timeout-minutes: 180
     env:
       HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"

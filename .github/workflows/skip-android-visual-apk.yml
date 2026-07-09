@@ -8,6 +8,18 @@ on:
         required: true
         default: "hermex-skip-visual-apk"
         type: string
+  push:
+    branches:
+      - master
+    paths:
+      - Package.swift
+      - Package.resolved
+      - Sources/**
+      - Tests/**
+      - ci/**
+      - .github/workflows/skip-android-visual-apk.yml
+      - .github/workflows/android-visual-screens.yml
+      - .github/workflows/android-visual-fixture-matrix.yml
 
 permissions:
   contents: read
@@ -19,7 +31,7 @@ concurrency:
 jobs:
   skip-visual-apk:
     name: Build Skip Visual APK
-    runs-on: macos-26
+    runs-on: ${{ fromJSON(vars.HERMEX_MACOS_SKIP_RUNNER || '"macos-26"') }}
     timeout-minutes: 90
     env:
       HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
@@ -108,6 +120,14 @@ jobs:
           ls -la dist
 
       - name: Upload Skip visual APK
+        uses: actions/upload-artifact@v5
+        with:
+          name: hermex-skip-visual-apk
+          if-no-files-found: error
+          path: dist/*
+
+      - name: Upload custom-named Skip visual APK
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.artifact_name != 'hermex-skip-visual-apk' }}
         uses: actions/upload-artifact@v5
         with:
           name: ${{ inputs.artifact_name }}
