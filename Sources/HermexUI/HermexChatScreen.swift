@@ -520,7 +520,7 @@ public struct HermexComposerSurface: View {
         HStack(spacing: 4) {
             Text(state.selectedModel ?? "model")
                 .lineLimit(1)
-            Image(systemName: "chevron.down")
+            Image(systemName: HermexSystemImageName("chevron.down"))
                 .font(.caption2.weight(.semibold))
         }
         .foregroundStyle(HermexUIColors.primaryText.opacity(0.84))
@@ -551,7 +551,7 @@ public struct HermexComposerSurface: View {
             Image(systemName: HermexSystemImageName("brain"))
             Text(state.selectedReasoningEffort ?? "Reasoning")
                 .lineLimit(1)
-            Image(systemName: "chevron.down")
+            Image(systemName: HermexSystemImageName("chevron.down"))
                 .font(.caption2.weight(.semibold))
         }
         .foregroundStyle(HermexUIColors.primaryText.opacity(0.88))
@@ -597,7 +597,11 @@ public struct HermexComposerSurface: View {
     }
 
     private func composerStatusBar(text: String, systemImage: String, isError: Bool) -> some View {
-        Label(text, systemImage: systemImage)
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: HermexSystemImageName(systemImage))
+        }
             .font(.caption.weight(.medium))
             .foregroundStyle(isError ? Color.red.opacity(0.95) : HermexUIColors.secondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)
