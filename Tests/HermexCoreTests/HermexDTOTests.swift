@@ -109,7 +109,11 @@ final class HermexDTOTests: XCTestCase {
         let skills = HermexPanelsState.skills(from: .dictionary([
             "skills": .array([.dictionary(["name": .string("swift"), "enabled": .bool(true)])])
         ]))
-        let memory = HermexPanelsState.memory(from: .dictionary(["profile": .string("Concise")]))
+        let memory = HermexPanelsState.memory(from: .dictionary([
+            "memory": .string("Notes"),
+            "user": .string("Concise"),
+            "memory_path": .string("/repo/MEMORY.md")
+        ]))
 
         XCTAssertEqual(directory.currentPath, "/repo")
         XCTAssertEqual(directory.entries.first?.isDirectory, true)
@@ -118,6 +122,7 @@ final class HermexDTOTests: XCTestCase {
         XCTAssertEqual(git.files.first?.additions, 2)
         XCTAssertEqual(tasks.tasks.first?.id, "job-1")
         XCTAssertEqual(skills.skills.first?.enabled, true)
-        XCTAssertEqual(memory.memory.first?.section, "profile")
+        XCTAssertEqual(memory.memory.map(\.section), ["memory", "user"])
+        XCTAssertEqual(memory.memory.first?.content, "Notes")
     }
 }
