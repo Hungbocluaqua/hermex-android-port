@@ -42,6 +42,7 @@ public enum HermexLayoutContract {
     public static let composerReasoningControlWidthAccessibility: CGFloat = 126
     public static let composerBottomAccessorySpacing: CGFloat = 7
     public static let composerGradientTopPadding: CGFloat = 30
+    public static let composerFallbackInset: CGFloat = 188
     public static let composerSecondaryBarSpacing: CGFloat = 8
     public static let composerSecondaryBarVerticalPadding: CGFloat = 8
     public static let composerSecondaryBarHorizontalPadding: CGFloat = 14
@@ -89,15 +90,18 @@ public enum HermexLayoutContract {
 public struct HermexMeasuredBottomInset<Content: View>: View {
     @Binding private var measuredHeight: CGFloat
     private let extraInset: CGFloat
+    private let minimumHeight: CGFloat
     private let content: Content
 
     public init(
         measuredHeight: Binding<CGFloat>,
         extraInset: CGFloat = 28,
+        minimumHeight: CGFloat = HermexLayoutContract.composerFallbackInset,
         @ViewBuilder content: () -> Content
     ) {
         self._measuredHeight = measuredHeight
         self.extraInset = extraInset
+        self.minimumHeight = minimumHeight
         self.content = content()
     }
 
@@ -107,10 +111,10 @@ public struct HermexMeasuredBottomInset<Content: View>: View {
                 GeometryReader { proxy in
                     Color.clear
                         .onAppear {
-                            measuredHeight = proxy.size.height + extraInset
+                            measuredHeight = max(minimumHeight, proxy.size.height + extraInset)
                         }
                         .onChange(of: proxy.size.height) { _, newValue in
-                            measuredHeight = newValue + extraInset
+                            measuredHeight = max(minimumHeight, newValue + extraInset)
                         }
                 }
             )

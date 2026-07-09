@@ -156,7 +156,7 @@ public struct HermexSessionListScreen: View {
                     searchChromeIsExpanded = true
                 }
             } label: {
-                Image(systemName: "magnifyingglass")
+                Image(systemName: HermexSystemImageName("magnifyingglass"))
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(searchChromeIsExpanded ? HermexUIColors.secondaryText : HermexUIColors.primaryText)
                     .frame(
@@ -188,7 +188,7 @@ public struct HermexSessionListScreen: View {
                     searchText = ""
                     onEvent(.searchSessions(""))
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
+                    Image(systemName: HermexSystemImageName("xmark.circle.fill"))
                         .font(.subheadline)
                         .foregroundStyle(HermexUIColors.secondaryText)
                         .frame(
@@ -214,7 +214,7 @@ public struct HermexSessionListScreen: View {
                 }
             } label: {
                 ZStack {
-                    Image(systemName: "gearshape.fill")
+                    Image(systemName: HermexSystemImageName("gearshape.fill"))
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(Color.black)
                         .frame(
@@ -224,7 +224,7 @@ public struct HermexSessionListScreen: View {
                         .background(HermexUIColors.gold, in: Circle())
                         .opacity(searchChromeIsExpanded ? 0.0 : 1.0)
 
-                    Image(systemName: "xmark")
+                    Image(systemName: HermexSystemImageName("xmark"))
                         .font(.system(size: 22, weight: .medium))
                         .foregroundStyle(HermexUIColors.primaryText)
                         .frame(
@@ -284,7 +284,7 @@ public struct HermexSessionListScreen: View {
 
     private func statusRow(title: String, description: String?, systemImage: String) -> some View {
         HStack(alignment: .top, spacing: 14) {
-            Image(systemName: systemImage)
+            Image(systemName: HermexSystemImageName(systemImage))
                 .font(.body)
                 .foregroundStyle(HermexUIColors.secondaryText)
                 .frame(width: 24)
@@ -413,7 +413,7 @@ public struct HermexSessionListScreen: View {
 
                 Spacer(minLength: 0)
 
-                Image(systemName: "chevron.forward")
+                Image(systemName: HermexSystemImageName("chevron.forward"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(HermexUIColors.secondaryText)
                     .frame(width: 24, height: 40)
@@ -464,7 +464,7 @@ public struct HermexSessionListScreen: View {
                             .truncationMode(.tail)
 
                         if session.pinned == true {
-                            Image(systemName: "pin.fill")
+                            Image(systemName: HermexSystemImageName("pin.fill"))
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(Color.accentColor)
                         }
@@ -497,7 +497,7 @@ public struct HermexSessionListScreen: View {
             Button {
                 onEvent(.selectProject(session.projectId))
             } label: {
-                Image(systemName: "ellipsis")
+                Image(systemName: HermexSystemImageName("ellipsis"))
                     .font(.headline.weight(.semibold))
                     .frame(
                         width: HermexLayoutContract.sessionListRowActionSize,

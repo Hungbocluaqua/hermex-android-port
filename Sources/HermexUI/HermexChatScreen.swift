@@ -5,7 +5,7 @@ public struct HermexChatScreen: View {
     private let state: HermexChatState
     private let prefersComposerFocused: Bool
     private let onEvent: (HermexUIEvent) -> Void
-    @State private var composerInset: CGFloat = 132
+    @State private var composerInset: CGFloat = HermexLayoutContract.composerFallbackInset
 
     public init(
         state: HermexChatState,
@@ -46,7 +46,10 @@ public struct HermexChatScreen: View {
             .frame(height: composerInset + HermexLayoutContract.composerGradientTopPadding)
             .allowsHitTesting(false)
 
-            HermexMeasuredBottomInset(measuredHeight: $composerInset) {
+            HermexMeasuredBottomInset(
+                measuredHeight: $composerInset,
+                minimumHeight: HermexLayoutContract.composerFallbackInset
+            ) {
                 VStack(spacing: HermexLayoutContract.pendingPromptBottomSpacing) {
                     pendingPromptStack
                     HermexComposerSurface(
@@ -120,20 +123,26 @@ public struct HermexChatScreen: View {
             }
 
             HStack {
-                if message.role == "user" { Spacer(minLength: 42) }
+                if message.role == "user" { Spacer(minLength: 52) }
                 Text(message.content ?? message.text ?? "")
                     .font(.body)
                     .foregroundStyle(HermexUIColors.primaryText)
                     .hermexTextSelectionEnabled()
                     .padding(.horizontal, message.role == "user" ? 14.0 : 0.0)
-                    .padding(.vertical, message.role == "user" ? 10.0 : 0.0)
+                    .padding(.vertical, message.role == "user" ? 8.0 : 0.0)
                     .background(
                         message.role == "user"
                             ? HermexUIColors.glassFillStrong
                             : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        in: RoundedRectangle(cornerRadius: 20, style: .continuous)
                     )
-                if message.role != "user" { Spacer(minLength: 42) }
+                    .overlay {
+                        if message.role == "user" {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(HermexUIColors.hairline, lineWidth: 0.5)
+                        }
+                    }
+                if message.role != "user" { Spacer(minLength: 52) }
             }
         }
         .frame(maxWidth: .infinity, alignment: message.role == "user" ? .trailing : .leading)
@@ -230,11 +239,15 @@ public struct HermexChatScreen: View {
 public extension View {
     @ViewBuilder
     func hermexComposerBottomReserve(_ height: CGFloat) -> some View {
+        let reserved = max(height, HermexLayoutContract.composerFallbackInset)
 #if SKIP
-        self.padding(.bottom, height)
+        // Prefer safe-area reservation so transcript content never sits under the composer.
+        self.safeAreaInset(edge: .bottom, spacing: 0) {
+            Color.clear.frame(height: reserved)
+        }
 #else
         self.safeAreaInset(edge: .bottom, spacing: 0) {
-            Color.clear.frame(height: height)
+            Color.clear.frame(height: reserved)
         }
 #endif
     }

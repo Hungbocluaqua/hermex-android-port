@@ -24,59 +24,73 @@ enum HermexUIColors {
 
 func HermexSystemImageName(_ name: String) -> String {
 #if SKIP
+    // Map iOS SF Symbols to Material-ish Skip names. Prefer icons that remain
+    // visually distinct so utility rails and chat chrome do not collapse to one glyph.
     switch name {
-    case "square.and.pencil":
+    case "square.and.pencil", "pencil", "edit":
         return "edit"
-    case "folder":
-        return "magnifyingglass"
-    case "arrow.triangle.branch":
-        return "gearshape"
-    case "arrow.clockwise":
-        return "gearshape"
-    case "waveform":
-        return "magnifyingglass"
-    case "arrow.up":
-        return "chevron.up"
-    case "stop.fill":
+    case "plus", "plus.circle", "plus.circle.fill":
+        return "plus"
+    case "folder", "folder.fill":
+        return "folder"
+    case "arrow.triangle.branch", "arrow.triangle.merge":
+        return "arrow.triangle.branch"
+    case "arrow.clockwise", "arrow.counterclockwise", "arrow.triangle.2.circlepath":
+        return "arrow.clockwise"
+    case "waveform", "mic", "mic.fill":
+        return "mic"
+    case "arrow.up", "paperplane", "paperplane.fill":
+        return "arrow.up"
+    case "stop.fill", "stop", "xmark", "xmark.circle", "xmark.circle.fill":
         return "xmark"
-    case "person.crop.circle":
-        return "gearshape"
-    case "exclamationmark.triangle":
-        return "gearshape"
-    case "hammer":
-        return "gearshape"
-    case "brain.head.profile":
-        return "gearshape"
-    case "brain":
-        return "gearshape"
-    case "chart.bar":
-        return "magnifyingglass"
-    case "calendar.badge.clock":
+    case "person.crop.circle", "person.crop.circle.badge.gearshape", "person":
+        return "person.crop.circle"
+    case "exclamationmark.triangle", "exclamationmark.triangle.fill":
+        return "exclamationmark.triangle"
+    case "hammer", "hammer.fill", "wrench", "wrench.and.screwdriver":
+        return "hammer"
+    case "brain.head.profile", "brain", "brain.fill":
+        return "brain"
+    case "chart.bar", "chart.bar.fill", "chart.xyaxis.line":
+        return "chart.bar"
+    case "calendar.badge.clock", "calendar", "clock":
         return "calendar"
-    case "link":
-        return "globe"
-    case "key.horizontal":
-        return "key"
-    case "key.fill":
+    case "link", "globe":
+        return "link"
+    case "key.horizontal", "key.fill", "key":
         return "key"
     case "slider.horizontal.3":
         return "slider.horizontal.3"
-    case "network":
+    case "network", "wifi":
         return "wifi"
-    case "checkmark.circle.fill":
+    case "checkmark.circle.fill", "checkmark.circle", "checkmark":
         return "checkmark.circle"
-    case "exclamationmark.triangle.fill":
-        return "gearshape"
-    case "arrow.triangle.2.circlepath":
-        return "gearshape"
-    case "server.rack":
-        return "server"
-    case "externaldrive.badge.checkmark":
+    case "server.rack", "server":
+        return "server.rack"
+    case "externaldrive.badge.checkmark", "externaldrive":
         return "externaldrive"
     case "rectangle.portrait.and.arrow.right":
-        return "rectangle.portrait"
-    case "point.3.connected.trianglepath.dotted":
+        return "rectangle.portrait.and.arrow.right"
+    case "point.3.connected.trianglepath.dotted", "point.3.connected.trianglepath":
         return "point.3.connected.trianglepath"
+    case "chevron.left", "chevron.backward":
+        return "chevron.left"
+    case "chevron.right", "chevron.forward":
+        return "chevron.right"
+    case "chevron.down":
+        return "chevron.down"
+    case "chevron.up":
+        return "chevron.up"
+    case "ellipsis":
+        return "ellipsis"
+    case "magnifyingglass":
+        return "magnifyingglass"
+    case "gearshape", "gearshape.fill":
+        return "gearshape"
+    case "paperclip":
+        return "paperclip"
+    case "sparkles", "sparkle":
+        return "sparkles"
     default:
         return name
     }
@@ -113,8 +127,6 @@ public struct HermexLogoMark: View {
     public init() {}
 
     public var body: some View {
-#if SKIP
-        // Prefer the layered logo assets when Skip packages them; otherwise keep the gold wordmark.
         ZStack {
             hermexLogoImage("hermes-fill-mask")
                 .renderingMode(.template)
@@ -134,37 +146,6 @@ public struct HermexLogoMark: View {
         .aspectRatio(HermexLayoutContract.hermexLogoAspectRatio, contentMode: .fit)
         .frame(width: HermexLayoutContract.sessionListLogoWidth)
         .accessibilityLabel("HERMEX")
-        .overlay {
-            // Fallback wordmark remains readable if image assets fail to package.
-            Text("HERMEX")
-                .font(.system(size: 34, weight: .black))
-                .foregroundStyle(HermexUIColors.gold)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .opacity(0.001)
-                .accessibilityHidden(true)
-        }
-#else
-        ZStack {
-            hermexLogoImage("hermes-fill-mask")
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(HermexUIColors.gold)
-            hermexLogoImage("hermes-shading-overlay")
-                .resizable()
-                .scaledToFit()
-            hermexLogoImage("hermes-highlight")
-                .resizable()
-                .scaledToFit()
-            hermexLogoImage("hermes-outline-shadow")
-                .resizable()
-                .scaledToFit()
-        }
-        .aspectRatio(HermexLayoutContract.hermexLogoAspectRatio, contentMode: .fit)
-        .frame(width: HermexLayoutContract.sessionListLogoWidth)
-            .accessibilityLabel("HERMEX")
-#endif
     }
 
     private func hermexLogoImage(_ name: String) -> Image {
