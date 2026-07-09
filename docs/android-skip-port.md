@@ -15,6 +15,8 @@ Hermex is moving the Android app to a Skip-first architecture. The iOS SwiftUI a
 ## Current Shared Coverage
 
 - Onboarding is now driven by shared state/actions for server URL, display name, password auth, sanitized custom headers, saved-server selection, connection test, login, and password clearing.
+- Skip Android uses the live store (not the demo/preview store), mirrors store snapshots into `@State` for redraws, keeps local draft/password typing state, and reserves a measured composer bottom inset so transcript content does not sit under the composer.
+- Android branding patches re-apply after Gradle assemble so the Hermex launcher icon/label are not clobbered by Skip-generated defaults.
 - Chat has a shared SSE reducer for token, reasoning, tool-status, done, and error events so platform stream clients can feed one canonical transcript state.
 - Composer configuration is shared for models, profiles, workspaces, and reasoning effort selection.
 - Workspace and Git are shared through typed store actions: directory/file preview, status refresh, diff, stage, unstage, discard, fetch, pull, push, and commit message submission.

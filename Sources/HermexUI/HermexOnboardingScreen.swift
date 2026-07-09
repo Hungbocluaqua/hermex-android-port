@@ -160,7 +160,11 @@ public struct HermexOnboardingScreen: View {
             Spacer(minLength: 32)
 
             VStack(alignment: .leading, spacing: 12) {
+#if SKIP
+                Text("Control your Hermes agent from Android.")
+#else
                 Text("Control your Hermes agent from iPhone.")
+#endif
                     .font(.system(size: 31, weight: .bold))
                     .foregroundStyle(Color.white)
                     .lineLimit(3)
@@ -188,11 +192,19 @@ public struct HermexOnboardingScreen: View {
             VStack(alignment: .leading, spacing: 28) {
                 centeredHeader(
                     title: "What you get",
+#if SKIP
+                    subtitle: "Your Hermes agent, reachable from Android over Tailscale."
+#else
                     subtitle: "Your Hermes agent, reachable from iPhone over Tailscale."
+#endif
                 )
 
                 featureRow(
+#if SKIP
+                    title: "Chat with your Hermes agent from Android",
+#else
                     title: "Chat with your Hermes agent from iPhone",
+#endif
                     subtitle: "Drive conversations from anywhere on your tailnet."
                 )
                 featureRow(
@@ -796,7 +808,7 @@ public struct HermexOnboardingScreen: View {
     }
 
     private static let agentSetupPrompt = """
-Set up Hermes Web UI on this machine for access from my iPhone via Tailscale.
+Set up Hermes Web UI on this machine for access from my Android phone via Tailscale.
 
 Clone and install https://github.com/nesquena/hermes-webui. It is a Node.js web app. Install dependencies and start it on port 8787.
 Enable password authentication by setting the HERMES_WEBUI_PASSWORD environment variable. Generate a secure random password and save it.
@@ -804,8 +816,8 @@ Install Tailscale on this machine. Authenticate to my Tailscale account, then ma
 Try tailscale serve --bg 8787 first. If Tailscale Serve is disabled, bind the server to 0.0.0.0 only after confirming password auth is active.
 Set up auto-start so the WebUI survives reboots.
 Verify it works: curl http://$(tailscale ip -4):8787/health should return a success response.
-Reply with the exact server URL, the password, and any setup steps still needed on my iPhone.
-Do not use Cloudflare. Optimize for Tailscale + iPhone.
+Reply with the exact server URL, the password, and any setup steps still needed on my Android phone.
+Do not use Cloudflare. Optimize for Tailscale + Android.
 """
 }
 
