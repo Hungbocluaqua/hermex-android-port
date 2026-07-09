@@ -89,7 +89,7 @@ public struct HermexPanelsScreen: View {
             }
 
             ForEach(state.tasks) { task in
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         Text(task.title ?? task.id)
                             .font(.headline.weight(.semibold))
@@ -102,7 +102,6 @@ public struct HermexPanelsScreen: View {
                     if let schedule = task.schedule, !schedule.isEmpty {
                         metricRow("Schedule", schedule)
                     }
-                    metricRow("Status", task.status ?? "Unknown")
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
@@ -111,9 +110,10 @@ public struct HermexPanelsScreen: View {
                             panelActionButton("Run")
                             panelActionButton((task.status ?? "").lowercased().contains("pause") ? "Resume" : "Pause")
                         }
+                        .padding(.trailing, 8)
                     }
                 }
-                .padding(.vertical, 10)
+                .padding(.vertical, 8)
             }
         }
     }
@@ -186,8 +186,9 @@ public struct HermexPanelsScreen: View {
                     }
 
                     Text(section.content.isEmpty ? "No notes saved." : section.content)
-                        .font(.title3)
+                        .font(.body)
                         .foregroundStyle(HermexUIColors.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
