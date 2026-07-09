@@ -69,10 +69,7 @@ public struct HermexSessionListScreen: View {
                 .padding(.top, 8)
         }
 
-        sessionsSectionHeader
-            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-            .padding(.top, searchChromeIsExpanded ? 16 : 28)
-            .padding(.bottom, 12)
+        sessionsSectionHeaderBlock
 
         sessionContent
 
@@ -242,6 +239,32 @@ public struct HermexSessionListScreen: View {
 
     private func submitSearch() {
         onEvent(.searchSessions(searchText.trimmingCharacters(in: .whitespacesAndNewlines)))
+    }
+
+    private var sessionsSectionHeaderBlock: some View {
+        sessionsSectionHeader
+            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+            .padding(.top, sessionsSectionHeaderTopPadding)
+            .padding(.bottom, 12)
+    }
+
+    private var sessionsSectionHeaderTopPadding: CGFloat {
+        searchChromeIsExpanded ? 16 : 28
+    }
+
+    private var sessionsSectionHeader: some View {
+        HStack(spacing: 10) {
+            if state.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text("Sessions")
+                    .font(.title3.bold())
+                    .foregroundStyle(HermexUIColors.primaryText)
+            }
+            Spacer(minLength: 0)
+            if state.isLoading {
+                ProgressView()
+                    .tint(HermexUIColors.secondaryText)
+            }
+        }
     }
 
     @ViewBuilder
