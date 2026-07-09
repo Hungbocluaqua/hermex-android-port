@@ -7,7 +7,6 @@ public struct HermexPanelsScreen: View {
     private let onEvent: (HermexUIEvent) -> Void
 
     @State private var skillSearchText = ""
-    @State private var selectedInsightsRange = 30
     @State private var editingMemorySection: String?
     @State private var memoryDraft = ""
 
@@ -223,6 +222,7 @@ public struct HermexPanelsScreen: View {
                     insightsRangeButton("Today", days: 1)
                     insightsRangeButton("Last 7 Days", days: 7)
                     insightsRangeButton("Last 30 Days", days: 30)
+                    insightsRangeButton("All Time", days: 365)
                 }
             }
 
@@ -231,14 +231,14 @@ public struct HermexPanelsScreen: View {
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(HermexUIColors.secondaryText)
 
-                metricRow("Sessions", insightText("totalSessions"))
-                metricRow("Messages", insightText("totalMessages"))
-                metricRow("Input Tokens", insightText("totalInputTokens"))
-                metricRow("Output Tokens", insightText("totalOutputTokens"))
-                metricRow("Total Tokens", insightText("totalTokens"))
-                metricRow("Estimated Cost", insightCurrencyText("totalCost"))
-                metricRow("Cache Hit Rate", insightPercentText("totalCacheHitPercent"))
-                metricRow("Cache Read Tokens", insightText("totalCacheReadTokens"))
+                metricRow("Sessions", insightText("totalSessions", "total_sessions"))
+                metricRow("Messages", insightText("totalMessages", "total_messages"))
+                metricRow("Input Tokens", insightText("totalInputTokens", "total_input_tokens"))
+                metricRow("Output Tokens", insightText("totalOutputTokens", "total_output_tokens"))
+                metricRow("Total Tokens", insightText("totalTokens", "total_tokens"))
+                metricRow("Estimated Cost", insightCurrencyText("totalCost", "total_cost"))
+                metricRow("Cache Hit Rate", insightPercentText("totalCacheHitPercent", "total_cache_hit_percent"))
+                metricRow("Cache Read Tokens", insightText("totalCacheReadTokens", "total_cache_read_tokens"))
             }
 
             if !insightModels.isEmpty {
@@ -340,10 +340,13 @@ public struct HermexPanelsScreen: View {
     }
 
     private var insightsPeriodTitle: String {
-        if let period = insightNumber("periodDays") {
-            return Int(period) == 1 ? "Today" : "Last \(Int(period)) Days"
+        if let period = insightNumber("periodDays", "period_days") {
+            if selectedInsightsDays == 365 {
+                return "Last \(Int(period)) Days"
+            }
+            return insightsRangeTitle(days: Int(period))
         }
-        return selectedInsightsRange == 1 ? "Today" : "Last \(selectedInsightsRange) Days"
+        return insightsRangeTitle(days: selectedInsightsDays)
     }
 
     private var insightModels: [HermexJSONValue] {
@@ -353,16 +356,16 @@ public struct HermexPanelsScreen: View {
 
     private func insightsRangeButton(_ title: String, days: Int) -> some View {
         Button {
-            selectedInsightsRange = days
+            onEvent(.selectInsightsRange(days: days))
         } label: {
             Text(title)
                 .font(.headline.weight(.semibold))
-                .foregroundStyle(selectedInsightsRange == days ? .white : HermexUIColors.primaryText)
+                .foregroundStyle(selectedInsightsDays == days ? .white : HermexUIColors.primaryText)
                 .padding(.horizontal, 18)
                 .frame(height: 48)
-                .background(selectedInsightsRange == days ? Color.blue : HermexUIColors.glassFillStrong, in: Capsule())
+                .background(selectedInsightsDays == days ? Color.blue : HermexUIColors.glassFillStrong, in: Capsule())
                 .overlay {
-                    Capsule().stroke(HermexUIColors.hairline, lineWidth: selectedInsightsRange == days ? 0.0 : 0.7)
+                    Capsule().stroke(HermexUIColors.hairline, lineWidth: selectedInsightsDays == days ? 0.0 : 0.7)
                 }
         }
         .buttonStyle(.plain)
@@ -415,12 +418,20 @@ public struct HermexPanelsScreen: View {
 
     private func insightModelRow(_ value: HermexJSONValue) -> some View {
         let fields = jsonFields(value)
-        let modelName = jsonText(fields["model"]) ?? "unknown"
-        let tokens = jsonText(fields["totalTokens"]) ?? jsonText(fields["inputTokens"]) ?? "0"
+        let modelName = jsonText(fields["model"]) ?? jsonText(fields["name"]) ?? "unknown"
+        let tokens = jsonText(fields["totalTokens"])
+            ?? jsonText(fields["total_tokens"])
+            ?? jsonText(fields["inputTokens"])
+            ?? jsonText(fields["input_tokens"])
+            ?? "0"
         let sessions = jsonText(fields["sessions"]) ?? "0"
         let cost = jsonCurrencyText(fields["cost"]) ?? "$0"
-        let share = jsonPercentText(fields["tokenShare"]) ?? jsonPercentText(fields["sessionShare"]) ?? "0%"
-        let cache = jsonPercentText(fields["cacheHitPercent"]) ?? "0%"
+        let share = jsonPercentText(fields["tokenShare"])
+            ?? jsonPercentText(fields["token_share"])
+            ?? jsonPercentText(fields["sessionShare"])
+            ?? jsonPercentText(fields["session_share"])
+            ?? "0%"
+        let cache = jsonPercentText(fields["cacheHitPercent"]) ?? jsonPercentText(fields["cache_hit_percent"]) ?? "0%"
 
         return VStack(alignment: .leading, spacing: 4) {
             Text(modelName)
@@ -442,20 +453,58 @@ public struct HermexPanelsScreen: View {
             .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
-    private func insightText(_ key: String) -> String {
-        jsonText(insightsFields[key]) ?? "-"
+    private var selectedInsightsDays: Int {
+        normalizedInsightsDays(state.insightsDays)
     }
 
-    private func insightCurrencyText(_ key: String) -> String {
-        jsonCurrencyText(insightsFields[key]) ?? "$0"
+    private func insightText(_ primaryKey: String, _ fallbackKey: String? = nil) -> String {
+        jsonText(insightValue(primaryKey, fallbackKey)) ?? "-"
     }
 
-    private func insightPercentText(_ key: String) -> String {
-        jsonPercentText(insightsFields[key]) ?? "0%"
+    private func insightCurrencyText(_ primaryKey: String, _ fallbackKey: String? = nil) -> String {
+        jsonCurrencyText(insightValue(primaryKey, fallbackKey)) ?? "$0"
     }
 
-    private func insightNumber(_ key: String) -> Double? {
-        jsonNumber(insightsFields[key])
+    private func insightPercentText(_ primaryKey: String, _ fallbackKey: String? = nil) -> String {
+        jsonPercentText(insightValue(primaryKey, fallbackKey)) ?? "0%"
+    }
+
+    private func insightNumber(_ primaryKey: String, _ fallbackKey: String? = nil) -> Double? {
+        jsonNumber(insightValue(primaryKey, fallbackKey))
+    }
+
+    private func insightValue(_ primaryKey: String, _ fallbackKey: String? = nil) -> HermexJSONValue? {
+        if let value = insightsFields[primaryKey] {
+            return value
+        }
+        if let fallbackKey {
+            return insightsFields[fallbackKey]
+        }
+        return nil
+    }
+
+    private func normalizedInsightsDays(_ days: Int) -> Int {
+        switch days {
+        case 1, 7, 30, 365:
+            return days
+        default:
+            return 30
+        }
+    }
+
+    private func insightsRangeTitle(days: Int) -> String {
+        switch normalizedInsightsDays(days) {
+        case 1:
+            return "Today"
+        case 7:
+            return "Last 7 Days"
+        case 30:
+            return "Last 30 Days"
+        case 365:
+            return "All Time"
+        default:
+            return "Last 30 Days"
+        }
     }
 
     private func jsonFields(_ value: HermexJSONValue) -> [String: HermexJSONValue] {

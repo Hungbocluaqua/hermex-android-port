@@ -171,13 +171,15 @@ def main() -> int:
     ok &= require("New Task" in panels and "Details" in panels and "Run" in panels, "Tasks panel must expose iOS-style task actions.")
     ok &= require(".taskCommand(.run(jobID: task.id))" in panels and "taskPauseResumeCommand" in panels, "Tasks panel run/pause/resume buttons must route through shared Core.")
     ok &= require("TextEditor(text: $memoryDraft)" in panels and ".writeMemory(section: section" in panels, "Memory panel edit/save must route through shared Core.")
-    ok &= require("Last 30 Days" in panels and "Estimated Cost" in panels and "Cache Hit Rate" in panels, "Insights panel must expose iOS-style analytics rows.")
+    ok &= require("Last 30 Days" in panels and "All Time" in panels and "Estimated Cost" in panels and "Cache Hit Rate" in panels, "Insights panel must expose iOS-style analytics rows.")
+    ok &= require(".selectInsightsRange(days: days)" in panels and "selectedInsightsDays" in panels, "Insights range chips must route through shared Core state.")
     ok &= require(".foregroundStyle(HermexUIColors.primaryText)" in panels, "Panels screen must explicitly style dark-surface primary text.")
     for closure in ["loadTasks", "loadSkills", "loadMemory", "loadInsights"]:
         ok &= require(closure in store, f"Shared store is missing panel loader {closure}.")
     ok &= require("performTaskCommand" in store and "runTaskCommand" in store, "Shared store is missing task mutation handling.")
     ok &= require("toggleSkill" in store and "environment.toggleSkill" in store, "Shared store is missing skill toggle handling.")
     ok &= require("writeMemory" in store and "environment.writeMemory" in store, "Shared store is missing memory write handling.")
+    ok &= require("selectInsightsRange" in store and "panels.insightsDays" in store and "environment.loadInsights(panels.insightsDays)" in store, "Shared store is missing insights timeframe handling.")
     for asset in [
         "hermes-fill-mask",
         "hermes-shading-overlay",

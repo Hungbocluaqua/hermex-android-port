@@ -210,7 +210,12 @@ final class HermexAppStoreTests: XCTestCase {
         await store.send(.selectPanel(.memory))
         XCTAssertEqual(store.panels.memory.map(\.section), ["memory", "user", "soul", "project_context"])
         await store.send(.selectPanel(.insights))
-        XCTAssertEqual(store.panels.insights, .dictionary(["ok": .bool(true)]))
+        XCTAssertEqual(store.panels.insightsDays, 30)
+        if case .dictionary(let fields) = store.panels.insights {
+            XCTAssertEqual(fields["period_days"], .number(30))
+        } else {
+            XCTFail("Expected insights dictionary")
+        }
     }
 
     func testToggleSkillRoutesThroughEnvironmentAndRefreshesPanelState() async throws {
@@ -272,6 +277,33 @@ final class HermexAppStoreTests: XCTestCase {
         XCTAssertEqual(writes.map(\.section), ["memory"])
         XCTAssertEqual(writes.map(\.content), ["Updated notes"])
         XCTAssertEqual(store.panels.memory.first(where: { $0.section == "memory" })?.content, "Updated notes")
+        XCTAssertNil(store.panels.errorMessage)
+    }
+
+    func testSelectInsightsRangeRoutesThroughEnvironmentAndRefreshesPanelState() async throws {
+        let probe = StoreProbe()
+        let store = HermexAppStore(
+            panels: HermexPanelsState(
+                insightsDays: 30,
+                selectedPanel: .insights
+            ),
+            environment: environment(probe: probe)
+        )
+
+        await store.send(.selectInsightsRange(days: 365))
+
+        XCTAssertEqual(store.panels.selectedPanel, .insights)
+        XCTAssertEqual(store.panels.insightsDays, 365)
+        if case .dictionary(let fields) = store.panels.insights {
+            XCTAssertEqual(fields["period_days"], .number(365))
+            XCTAssertEqual(fields["total_sessions"], .number(3650))
+        } else {
+            XCTFail("Expected insights dictionary")
+        }
+
+        await store.send(.refresh)
+        let loadedDays = await probe.loadedInsightsDays
+        XCTAssertEqual(loadedDays, [365, 365])
         XCTAssertNil(store.panels.errorMessage)
     }
 
@@ -406,6 +438,7 @@ private actor StoreProbe {
     private(set) var taskCommands: [HermexTaskCommand] = []
     private(set) var skillToggles: [SkillToggle] = []
     private(set) var memoryWrites: [MemoryWrite] = []
+    private(set) var loadedInsightsDays: [Int] = []
     private(set) var testedServer: HermexServerIdentity?
     private(set) var loginServer: HermexServerIdentity?
     private(set) var loginPassword: String?
@@ -632,7 +665,28 @@ private actor StoreProbe {
     }
 
     func loadInsights(days: Int) async throws -> HermexJSONValue {
-        .dictionary(["ok": .bool(true)])
+        loadedInsightsDays.append(days)
+        return .dictionary([
+            "period_days": .number(Double(days)),
+            "total_sessions": .number(Double(days * 10)),
+            "total_messages": .number(Double(days * 20)),
+            "total_input_tokens": .number(Double(days * 100)),
+            "total_output_tokens": .number(Double(days * 50)),
+            "total_tokens": .number(Double(days * 150)),
+            "total_cost": .number(Double(days) / 10.0),
+            "total_cache_hit_percent": .number(75),
+            "total_cache_read_tokens": .number(Double(days * 25)),
+            "models": .array([
+                .dictionary([
+                    "model": .string("gpt-5.5"),
+                    "sessions": .number(Double(days)),
+                    "total_tokens": .number(Double(days * 150)),
+                    "token_share": .number(100),
+                    "cache_hit_percent": .number(75),
+                    "cost": .number(Double(days) / 10.0)
+                ])
+            ])
+        ])
     }
 
     func logout() async throws -> HermexJSONValue {

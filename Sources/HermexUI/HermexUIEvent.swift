@@ -46,6 +46,7 @@ public enum HermexUIEvent: Equatable, Sendable {
     case taskCommand(HermexTaskCommand)
     case toggleSkill(name: String, enabled: Bool)
     case writeMemory(section: String, content: String)
+    case selectInsightsRange(days: Int)
     case signOut
 }
 
@@ -134,6 +135,8 @@ public extension HermexUIEvent {
             return .toggleSkill(name: name, enabled: enabled)
         case .writeMemory(let section, let content):
             return .writeMemory(section: section, content: content)
+        case .selectInsightsRange(let days):
+            return .selectInsightsRange(days: days)
         case .signOut:
             return .signOut
         case .selectProject,

@@ -35,6 +35,23 @@ final class HermexAppStateTests: XCTestCase {
         )
     }
 
+    func testPanelsStateDecodesLegacyMissingInsightsDays() throws {
+        let data = Data("""
+        {
+          "tasks": [],
+          "skills": [],
+          "memory": [],
+          "selectedPanel": "insights",
+          "isLoading": false
+        }
+        """.utf8)
+
+        let decoded = try JSONDecoder().decode(HermexPanelsState.self, from: data)
+
+        XCTAssertEqual(decoded.selectedPanel, .insights)
+        XCTAssertEqual(decoded.insightsDays, 30)
+    }
+
     func testOnboardingStateNeverPersistsPassword() throws {
         let state = HermexOnboardingState(
             serverURLString: "https://example.test",

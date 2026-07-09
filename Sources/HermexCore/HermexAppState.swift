@@ -440,6 +440,7 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
     public var skills: [HermexSkillDTO]
     public var memory: [HermexMemorySectionDTO]
     public var insights: HermexJSONValue?
+    public var insightsDays: Int
     public var selectedPanel: HermexPanel
     public var isLoading: Bool
     public var errorMessage: String?
@@ -449,6 +450,7 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
         skills: [HermexSkillDTO] = [],
         memory: [HermexMemorySectionDTO] = [],
         insights: HermexJSONValue? = nil,
+        insightsDays: Int = 30,
         selectedPanel: HermexPanel = .tasks,
         isLoading: Bool = false,
         errorMessage: String? = nil
@@ -457,10 +459,48 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
         self.skills = skills
         self.memory = memory
         self.insights = insights
+        self.insightsDays = insightsDays
         self.selectedPanel = selectedPanel
         self.isLoading = isLoading
         self.errorMessage = errorMessage
     }
+
+#if !SKIP
+    private enum CodingKeys: String, CodingKey {
+        case tasks
+        case skills
+        case memory
+        case insights
+        case insightsDays
+        case selectedPanel
+        case isLoading
+        case errorMessage
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.tasks = try container.decodeIfPresent([HermexTaskDTO].self, forKey: .tasks) ?? []
+        self.skills = try container.decodeIfPresent([HermexSkillDTO].self, forKey: .skills) ?? []
+        self.memory = try container.decodeIfPresent([HermexMemorySectionDTO].self, forKey: .memory) ?? []
+        self.insights = try container.decodeIfPresent(HermexJSONValue.self, forKey: .insights)
+        self.insightsDays = try container.decodeIfPresent(Int.self, forKey: .insightsDays) ?? 30
+        self.selectedPanel = try container.decodeIfPresent(HermexPanel.self, forKey: .selectedPanel) ?? .tasks
+        self.isLoading = try container.decodeIfPresent(Bool.self, forKey: .isLoading) ?? false
+        self.errorMessage = try container.decodeIfPresent(String.self, forKey: .errorMessage)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(tasks, forKey: .tasks)
+        try container.encode(skills, forKey: .skills)
+        try container.encode(memory, forKey: .memory)
+        try container.encodeIfPresent(insights, forKey: .insights)
+        try container.encode(insightsDays, forKey: .insightsDays)
+        try container.encode(selectedPanel, forKey: .selectedPanel)
+        try container.encode(isLoading, forKey: .isLoading)
+        try container.encodeIfPresent(errorMessage, forKey: .errorMessage)
+    }
+#endif
 }
 
 public enum HermexPanel: String, HermexStateCodable, Equatable, Sendable {

@@ -337,18 +337,35 @@ public enum HermexVisualFixtureCatalog {
                 HermexMemorySectionDTO(section: "My Notes", content: "User is validating Android parity against the native iOS SwiftUI app. Preserve the HERMEX logo, glass composer, safe-area spacing, panels, workspace, git, and onboarding behavior."),
             ],
             insights: HermexJSONValue.dictionary([
-                "sessions": .number(30),
-                "messages": .number(1_312),
-                "input_tokens": .number(5_957_098),
-                "output_tokens": .number(246_393),
+                "period_days": .number(30),
+                "total_sessions": .number(30),
+                "total_messages": .number(1_312),
+                "total_input_tokens": .number(5_957_098),
+                "total_output_tokens": .number(246_393),
                 "total_tokens": .number(6_203_491),
-                "estimated_cost": .number(2.1145),
-                "cache_hit_rate": .number(76),
+                "total_cost": .number(2.1145),
+                "total_cache_hit_percent": .number(76),
+                "total_cache_read_tokens": .number(224_128),
                 "models": .array([
-                    .dictionary(["name": .string("deepseek-v4-pro"), "tokens": .number(1_531_842), "share": .number(25)]),
-                    .dictionary(["name": .string("gpt-5.5"), "tokens": .number(4_477_168), "share": .number(72)]),
+                    .dictionary([
+                        "model": .string("deepseek-v4-pro"),
+                        "sessions": .number(12),
+                        "total_tokens": .number(1_531_842),
+                        "cost": .number(0.482),
+                        "token_share": .number(25),
+                        "cache_hit_percent": .number(63)
+                    ]),
+                    .dictionary([
+                        "model": .string("gpt-5.5"),
+                        "sessions": .number(18),
+                        "total_tokens": .number(4_477_168),
+                        "cost": .number(1.6325),
+                        "token_share": .number(72),
+                        "cache_hit_percent": .number(81)
+                    ]),
                 ]),
             ]),
+            insightsDays: 30,
             selectedPanel: .tasks
         )
     }

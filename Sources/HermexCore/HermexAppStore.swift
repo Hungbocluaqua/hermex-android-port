@@ -47,6 +47,7 @@ public enum HermexAppAction: Equatable, Sendable {
     case taskCommand(HermexTaskCommand)
     case toggleSkill(name: String, enabled: Bool)
     case writeMemory(section: String, content: String)
+    case selectInsightsRange(days: Int)
     case signOut
 }
 
@@ -479,6 +480,12 @@ public final class HermexAppStore {
             updateSkill(named: name, enabled: enabled)
         case .writeMemory(let section, let content):
             updateMemorySection(section: section, content: content)
+        case .selectInsightsRange(let days):
+            panels.insightsDays = Self.normalizedInsightsDays(days)
+            panels.selectedPanel = .insights
+            panels.insights = Self.previewInsights(days: panels.insightsDays)
+            panels.errorMessage = nil
+            appState.route = .panels
         case .signOut:
             if let server = settings.activeServer {
                 appState.auth = .loggedOut(server: server)
@@ -581,6 +588,15 @@ public final class HermexAppStore {
             panels.memory.append(HermexMemorySectionDTO(section: normalizedSection, content: content))
         }
         panels.errorMessage = nil
+    }
+
+    private static func normalizedInsightsDays(_ days: Int) -> Int {
+        switch days {
+        case 1, 7, 30, 365:
+            return days
+        default:
+            return 30
+        }
     }
 
     private static func server(from auth: HermexAuthState) -> HermexServerIdentity? {
@@ -722,12 +738,42 @@ public final class HermexAppStore {
             memory: [
                 HermexMemorySectionDTO(section: "My Notes", content: "Shared SwiftUI memory panel preview for Android visual parity.")
             ],
-            insights: HermexJSONValue.dictionary([
-                "sessions": HermexJSONValue.number(30),
-                "messages": HermexJSONValue.number(1312)
-            ]),
+            insights: Self.previewInsights(days: 30),
+            insightsDays: 30,
             selectedPanel: .tasks
         )
+    }
+
+    private static func previewInsights(days: Int) -> HermexJSONValue {
+        HermexJSONValue.dictionary([
+            "period_days": HermexJSONValue.number(Double(days)),
+            "total_sessions": HermexJSONValue.number(30),
+            "total_messages": HermexJSONValue.number(1_312),
+            "total_input_tokens": HermexJSONValue.number(5_957_098),
+            "total_output_tokens": HermexJSONValue.number(246_393),
+            "total_tokens": HermexJSONValue.number(6_203_491),
+            "total_cost": HermexJSONValue.number(2.1145),
+            "total_cache_hit_percent": HermexJSONValue.number(76),
+            "total_cache_read_tokens": HermexJSONValue.number(224_128),
+            "models": HermexJSONValue.array([
+                HermexJSONValue.dictionary([
+                    "model": HermexJSONValue.string("deepseek-v4-pro"),
+                    "sessions": HermexJSONValue.number(12),
+                    "total_tokens": HermexJSONValue.number(1_531_842),
+                    "cost": HermexJSONValue.number(0.482),
+                    "token_share": HermexJSONValue.number(25),
+                    "cache_hit_percent": HermexJSONValue.number(63)
+                ]),
+                HermexJSONValue.dictionary([
+                    "model": HermexJSONValue.string("gpt-5.5"),
+                    "sessions": HermexJSONValue.number(18),
+                    "total_tokens": HermexJSONValue.number(4_477_168),
+                    "cost": HermexJSONValue.number(1.6325),
+                    "token_share": HermexJSONValue.number(72),
+                    "cache_hit_percent": HermexJSONValue.number(81)
+                ])
+            ])
+        ])
     }
 }
 #else
@@ -885,6 +931,8 @@ public final class HermexAppStore {
             await toggleSkill(name: name, enabled: enabled)
         case .writeMemory(let section, let content):
             await writeMemory(section: section, content: content)
+        case .selectInsightsRange(let days):
+            await selectInsightsRange(days: days)
         case .signOut:
             await signOut()
         }
@@ -1363,12 +1411,18 @@ public final class HermexAppStore {
                 panels.memory = mapped.memory
                 panels.errorMessage = mapped.errorMessage
             case .insights:
-                panels.insights = try await environment.loadInsights(7)
+                panels.insightsDays = Self.normalizedInsightsDays(panels.insightsDays)
+                panels.insights = try await environment.loadInsights(panels.insightsDays)
             }
         } catch {
             panels.errorMessage = String(describing: error)
         }
         panels.isLoading = false
+    }
+
+    private func selectInsightsRange(days: Int) async {
+        panels.insightsDays = Self.normalizedInsightsDays(days)
+        await loadPanel(.insights)
     }
 
     private func runTaskCommand(_ command: HermexTaskCommand) async {
@@ -1432,6 +1486,15 @@ public final class HermexAppStore {
             panels.memory.append(HermexMemorySectionDTO(section: normalizedSection, content: content))
         }
         panels.errorMessage = nil
+    }
+
+    private static func normalizedInsightsDays(_ days: Int) -> Int {
+        switch days {
+        case 1, 7, 30, 365:
+            return days
+        default:
+            return 30
+        }
     }
 
     private func toggleSkill(name: String, enabled: Bool) async {
