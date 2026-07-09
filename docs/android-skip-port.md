@@ -36,7 +36,25 @@ The `Skip Android Named Release` workflow is the runnable Skip APK lane. It crea
 
 Plain Swift package checks run with `SKIP_ZERO=1` so normal Swift compilation is independent from Skip installation. The manual Skip lane installs Skip, runs `skip checkup`, resolves package dependencies, and builds/tests the Skip-enabled package.
 
-Visual coverage is declared in `ci/visual-goldens/hermex-screens.json`. The manual `Android Visual Screens` workflow builds a Skip APK for one named shared SwiftUI fixture, installs it in an emulator, pins the Android display size/state from the manifest, and uploads the captured screenshot in the same `<device>/<state>/<screen>.png` layout consumed by the comparer. The local capture command expects an already-running emulator:
+Visual coverage is declared in `ci/visual-goldens/hermex-screens.json`. The fast CI tier is split into two workflows:
+
+- `Skip Android Visual APK Build` builds one reusable runtime-fixture Skip APK. It runs on relevant `master` pushes and can also be dispatched manually.
+- `Android Visual Screens` captures one smoke screenshot. When the visual APK build succeeds on `master`, this workflow automatically downloads that exact run's `hermex-skip-visual-apk` artifact and captures `session-list` in dark mode on `compact-phone`.
+
+The full visual tier is `Android Visual Fixture Matrix`. It boots one emulator, installs one APK, and captures every selected fixture in one emulator session. For release-candidate work, run `Skip Android Visual APK Build` once, then pass that run id into `Android Visual Fixture Matrix` with `apk_run_id` so the matrix downloads the APK instead of rebuilding it.
+
+GitHub-hosted macOS remains the default. A self-hosted Mac can be enabled without changing workflow files by setting repository variables to JSON strings:
+
+- `HERMEX_MACOS_SKIP_RUNNER`: defaults to `"macos-26"` for Skip APK builds.
+- `HERMEX_MACOS_VISUAL_RUNNER`: defaults to `"macos-26-intel"` for emulator screenshot jobs.
+
+For example, a self-hosted runner with labels `self-hosted`, `macOS`, and `hermex-visual` should use:
+
+```text
+["self-hosted","macOS","hermex-visual"]
+```
+
+The manual `Android Visual Screens` workflow can still build a Skip APK for one named shared SwiftUI fixture when no `apk_run_id` is supplied. It installs the app in an emulator, pins the Android display size/state from the manifest, and uploads the captured screenshot in the same `<device>/<state>/<screen>.png` layout consumed by the comparer. The local capture command expects an already-running emulator:
 
 ```bash
 bash ci/capture_skip_android_fixture.sh \
