@@ -156,6 +156,11 @@ jobs:
             --name hermex-visual \
             --package "$system_image" \
             --device pixel_7
+          avd_config="$HOME/.android/avd/hermex-visual.avd/config.ini"
+          {
+            echo "hw.keyboard=no"
+            echo "hw.keyboard.lid=no"
+          } >> "$avd_config"
 
       - name: Start Android emulator in background
         run: |
