@@ -43,6 +43,7 @@ class HermesApiClient(
     suspend fun session(id: String, includeMessages: Boolean = true, limit: Int? = 50, before: Int? = null): SessionResponse =
         get(Endpoint.Session(id, includeMessages, limit, before, expandRenderable = true))
     suspend fun sessionStatus(id: String): SessionStatusResponse = get(Endpoint.SessionStatus(id))
+    suspend fun sessionUsage(sessionId: String): SessionUsageResponse = get(Endpoint.SessionUsage(sessionId))
     suspend fun newSession(request: NewSessionRequest = NewSessionRequest()): SessionMutationResponse = post(Endpoint.NewSession, request)
     suspend fun renameSession(sessionId: String, title: String): SessionMutationResponse = post(Endpoint.RenameSession, RenameSessionRequest(sessionId, title))
     suspend fun deleteSession(sessionId: String): SessionMutationResponse = post(Endpoint.DeleteSession, SessionIdRequest(sessionId))

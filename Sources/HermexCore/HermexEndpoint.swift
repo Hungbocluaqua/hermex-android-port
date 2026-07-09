@@ -68,6 +68,10 @@ public enum HermexEndpoints {
         HermexEndpoint(path: "/api/session/status", queryItems: [URLQueryItem(name: "session_id", value: id)])
     }
 
+    public static func sessionUsage(id: String) -> HermexEndpoint {
+        HermexEndpoint(path: "/api/session/usage", queryItems: [URLQueryItem(name: "session_id", value: id)])
+    }
+
     public static let newSession = HermexEndpoint(path: "/api/session/new")
     public static let renameSession = HermexEndpoint(path: "/api/session/rename")
     public static let deleteSession = HermexEndpoint(path: "/api/session/delete")

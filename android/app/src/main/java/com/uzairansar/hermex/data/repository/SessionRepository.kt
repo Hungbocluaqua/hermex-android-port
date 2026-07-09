@@ -6,6 +6,7 @@ import com.uzairansar.hermex.core.model.SessionDetail
 import com.uzairansar.hermex.core.model.SessionExportFile
 import com.uzairansar.hermex.core.model.SessionExportFormat
 import com.uzairansar.hermex.core.model.SessionSummary
+import com.uzairansar.hermex.core.model.SessionUsageResponse
 import com.uzairansar.hermex.core.network.HermesApiClient
 import com.uzairansar.hermex.data.db.CacheDao
 import com.uzairansar.hermex.data.db.CachedSessionEntity
@@ -52,6 +53,8 @@ class SessionRepository(
 
     suspend fun createSession(profile: String? = null): SessionSummary? =
         client.newSession(NewSessionRequest(profile = profile?.trim()?.takeIf { it.isNotBlank() })).session
+
+    suspend fun usage(sessionId: String): SessionUsageResponse = client.sessionUsage(sessionId)
 
     suspend fun rename(sessionId: String, title: String): SessionSummary? = client.renameSession(sessionId, title).session
     suspend fun delete(sessionId: String) = client.deleteSession(sessionId)

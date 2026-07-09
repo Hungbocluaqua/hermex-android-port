@@ -21,6 +21,15 @@ final class HermexEndpointTests: XCTestCase {
         ])
     }
 
+    func testSessionUsageUsesSessionIDQuery() {
+        let endpoint = HermexEndpoints.sessionUsage(id: "abc")
+
+        XCTAssertEqual(endpoint.path, "/api/session/usage")
+        XCTAssertEqual(endpoint.queryItems, [
+            URLQueryItem(name: "session_id", value: "abc")
+        ])
+    }
+
     func testChatStreamReplayQuery() {
         let endpoint = HermexEndpoints.chatStream(id: "stream-1", replayAfterSeq: 42)
 

@@ -125,6 +125,16 @@ data class SessionStatusResponse(
 )
 
 @Serializable
+data class SessionUsageResponse(
+    @SerialName("input_tokens") val inputTokens: Int? = null,
+    @SerialName("output_tokens") val outputTokens: Int? = null,
+    @SerialName("total_tokens") val totalTokens: Int? = null,
+    @SerialName("estimated_cost") val estimatedCost: Double? = null,
+    val model: String? = null,
+    val error: String? = null,
+)
+
+@Serializable
 data class SessionSummary(
     @SerialName("session_id") val sessionId: String? = null,
     val title: String? = null,

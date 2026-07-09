@@ -144,6 +144,38 @@ class HermesApiClientSessionTest {
     }
 
     @Test
+    fun sessionUsageGetsTokenUsageForSession() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            server.enqueue(
+                MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body("""{"input_tokens":1200,"output_tokens":345,"total_tokens":1545,"estimated_cost":0.042,"model":"@openai:gpt-5.5"}""")
+                    .build(),
+            )
+
+            val client = HermesApiClient(server.url("/"), OkHttpClient())
+            val response = client.sessionUsage("s1")
+
+            val request = server.takeRequest()
+            assertEquals("/api/session/usage", request.url.encodedPath)
+            assertEquals("s1", request.url.queryParameter("session_id"))
+            assertEquals("GET", request.method)
+            assertEquals(1200, response.inputTokens)
+            assertEquals(345, response.outputTokens)
+            assertEquals(1545, response.totalTokens)
+            assertEquals(0.042, response.estimatedCost ?: 0.0, 0.0)
+            assertEquals("@openai:gpt-5.5", response.model)
+            assertNull(request.headers["Origin"])
+            assertNull(request.headers["Referer"])
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
     fun setSessionYoloPostsEnabledBodyLikeIos() = runBlocking {
         val server = MockWebServer()
         try {

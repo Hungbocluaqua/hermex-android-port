@@ -39,6 +39,10 @@ public struct HermexSessionRepository: Sendable {
         try await client.session(id: id, includeMessages: includeMessages, messageLimit: messageLimit, messageBefore: messageBefore, expandRenderable: true)
     }
 
+    public func usage(id: String) async throws -> HermexJSONValue {
+        try await client.sessionUsage(id: id)
+    }
+
     public func create(workspace: String? = nil, model: String? = nil, modelProvider: String? = nil, profile: String? = nil) async throws -> HermexSessionResponse {
         try await client.createSession(workspace: workspace, model: model, modelProvider: modelProvider, profile: profile)
     }

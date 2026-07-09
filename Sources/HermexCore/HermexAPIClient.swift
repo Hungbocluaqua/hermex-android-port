@@ -121,6 +121,10 @@ public struct HermexAPIClient: @unchecked Sendable {
         try await sendJSON(endpoint: HermexEndpoints.sessionStatus(id: id), method: "GET")
     }
 
+    public func sessionUsage(id: String) async throws -> HermexJSONValue {
+        try await sendJSON(endpoint: HermexEndpoints.sessionUsage(id: id), method: "GET")
+    }
+
     public func createSession(workspace: String? = nil, model: String? = nil, modelProvider: String? = nil, profile: String? = nil) async throws -> HermexSessionResponse {
         try await sendSessionResponse(
             endpoint: HermexEndpoints.newSession,

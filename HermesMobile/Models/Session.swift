@@ -141,6 +141,34 @@ struct SessionStatusResponse: Decodable, Equatable {
     let error: String?
 }
 
+struct SessionUsageResponse: Decodable, Equatable {
+    let inputTokens: Int?
+    let outputTokens: Int?
+    let totalTokens: Int?
+    let estimatedCost: Double?
+    let model: String?
+    let error: String?
+
+    enum CodingKeys: String, CodingKey {
+        case inputTokens
+        case outputTokens
+        case totalTokens
+        case estimatedCost
+        case model
+        case error
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        inputTokens = container.decodeLossyIntIfPresent(forKey: .inputTokens)
+        outputTokens = container.decodeLossyIntIfPresent(forKey: .outputTokens)
+        totalTokens = container.decodeLossyIntIfPresent(forKey: .totalTokens)
+        estimatedCost = container.decodeLossyDoubleIfPresent(forKey: .estimatedCost)
+        model = container.decodeLossyStringIfPresent(forKey: .model)
+        error = container.decodeLossyStringIfPresent(forKey: .error)
+    }
+}
+
 struct SessionSummary: Decodable, Equatable, Hashable, Identifiable {
     var id: String {
         if let sessionId, !sessionId.isEmpty {

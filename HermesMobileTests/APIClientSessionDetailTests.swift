@@ -69,6 +69,36 @@ final class APIClientSessionDetailTests: APIClientTestCase {
         )
     }
 
+    func testSessionUsageBuildsExpectedQueryAndDecodesResponse() async throws {
+        let client = makeClient { request in
+            XCTAssertEqual(request.url?.path, "/api/session/usage")
+            XCTAssertEqual(request.httpMethod, "GET")
+
+            let components = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)
+            let query = Dictionary(uniqueKeysWithValues: (components?.queryItems ?? []).map { ($0.name, $0.value) })
+            XCTAssertEqual(query["session_id"], "abc123")
+
+            return apiTestJSONResponse("""
+            {
+              "input_tokens": "1200",
+              "output_tokens": 345,
+              "total_tokens": "1545",
+              "estimated_cost": "0.042",
+              "model": "@openai:gpt-5.5",
+              "future": true
+            }
+            """, for: request)
+        }
+
+        let response = try await client.sessionUsage(id: "abc123")
+
+        XCTAssertEqual(response.inputTokens, 1200)
+        XCTAssertEqual(response.outputTokens, 345)
+        XCTAssertEqual(response.totalTokens, 1545)
+        XCTAssertEqual(response.estimatedCost, 0.042)
+        XCTAssertEqual(response.model, "@openai:gpt-5.5")
+    }
+
     func testSessionLoadEarlierOmitsExpandRenderableFlag() async throws {
         let client = makeClient { request in
             let components = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)

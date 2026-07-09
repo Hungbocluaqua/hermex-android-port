@@ -11,6 +11,7 @@ import com.uzairansar.hermex.core.model.GoalSubmissionResponse
 import com.uzairansar.hermex.core.model.MemoryResponse
 import com.uzairansar.hermex.core.model.SessionResponse
 import com.uzairansar.hermex.core.model.SessionStatusResponse
+import com.uzairansar.hermex.core.model.SessionUsageResponse
 import com.uzairansar.hermex.core.model.SettingsResponse
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -325,6 +326,28 @@ class TolerantDecodingTest {
         assertEquals(true, decoded.isStreaming)
         assertEquals(true, decoded.replayAvailable)
         assertEquals("Continue", decoded.pendingUserMessage)
+    }
+
+    @Test
+    fun sessionUsageDecodesTokenAndCostFields() {
+        val decoded = HermesJson.decodeFromString<SessionUsageResponse>(
+            """
+            {
+              "input_tokens": 1200,
+              "output_tokens": 345,
+              "total_tokens": 1545,
+              "estimated_cost": 0.042,
+              "model": "@openai:gpt-5.5",
+              "future": true
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1200, decoded.inputTokens)
+        assertEquals(345, decoded.outputTokens)
+        assertEquals(1545, decoded.totalTokens)
+        assertEquals(0.042, decoded.estimatedCost ?: 0.0, 0.0)
+        assertEquals("@openai:gpt-5.5", decoded.model)
     }
 
     @Test

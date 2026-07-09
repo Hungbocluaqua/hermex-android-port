@@ -38,6 +38,7 @@ sealed class Endpoint(
         ),
     )
     data class SessionStatus(val id: String) : Endpoint("/api/session/status", listOf("session_id" to id))
+    data class SessionUsage(val id: String) : Endpoint("/api/session/usage", listOf("session_id" to id))
     data object NewSession : Endpoint("/api/session/new")
     data object RenameSession : Endpoint("/api/session/rename")
     data object DeleteSession : Endpoint("/api/session/delete")
