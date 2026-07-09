@@ -1,0 +1,115 @@
+name: Skip Android Visual APK Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_name:
+        description: "Artifact name for the generated Skip visual APK"
+        required: true
+        default: "hermex-skip-visual-apk"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: skip-android-visual-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  skip-visual-apk:
+    name: Build Skip Visual APK
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
+      HERMEX_ALLOW_INCOMPLETE_SKIP_APK: "1"
+      HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES: "1"
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: SwiftPM cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-${{ runner.arch }}-swiftpm-visual-apk-${{ hashFiles('Package.swift', 'Package.resolved', 'Sources/**/*.swift') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-swiftpm-visual-apk-
+            ${{ runner.os }}-${{ runner.arch }}-swiftpm-
+
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Android SDK cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Android/sdk/cmdline-tools
+            ~/Library/Android/sdk/platform-tools
+            ~/Library/Android/sdk/platforms
+            ~/.android/cache
+          key: ${{ runner.os }}-${{ runner.arch }}-android-sdk-skip-visual-apk-v1
+
+      - name: Install Skip
+        run: |
+          set -euo pipefail
+          brew tap skiptools/skip || true
+          brew trust skiptools/skip
+          install_skip() {
+            brew install skiptools/skip/skip || brew upgrade skiptools/skip/skip
+          }
+          for attempt in 1 2 3; do
+            if install_skip; then
+              exit 0
+            fi
+            echo "Skip install attempt $attempt failed; retrying after a short delay."
+            sleep $((attempt * 20))
+          done
+          install_skip
+
+      - name: Install Android SDK for Skip
+        run: |
+          set -euo pipefail
+          if ! skip android sdk install; then
+            cat /tmp/skip-install-*.txt 2>/dev/null || true
+            exit 1
+          fi
+          echo "ANDROID_HOME=$HOME/Library/Android/sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$HOME/Library/Android/sdk" >> "$GITHUB_ENV"
+          echo "$HOME/Library/Android/sdk/platform-tools" >> "$GITHUB_PATH"
+          echo "$HOME/Library/Android/sdk/build-tools/$(ls -1 "$HOME/Library/Android/sdk/build-tools" | sort | tail -n 1)" >> "$GITHUB_PATH"
+
+      - name: Build Skip visual APK
+        run: |
+          set -euo pipefail
+          unset HERMEX_VISUAL_FIXTURE_NAME
+          bash ci/build_skip_android_app.sh "$RUNNER_TEMP/hermex-skip-visual-apk"
+
+      - name: Collect visual APK
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          apk="$(find "$RUNNER_TEMP/hermex-skip-visual-apk" -type f -name '*.apk' | sort | head -n 1)"
+          if [ -z "$apk" ]; then
+            echo "No Skip visual APK was produced."
+            exit 1
+          fi
+          cp "$apk" dist/Hermex-skip-swiftui-visual.apk
+          shasum -a 256 dist/Hermex-skip-swiftui-visual.apk > dist/Hermex-skip-swiftui-visual.apk.sha256
+          ls -la dist
+
+      - name: Upload Skip visual APK
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ inputs.artifact_name }}
+          if-no-files-found: error
+          path: dist/*

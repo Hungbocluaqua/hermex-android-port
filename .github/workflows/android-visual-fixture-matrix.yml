@@ -29,9 +29,20 @@ on:
         required: true
         default: "hermex-android-visual-fixture-matrix"
         type: string
+      apk_run_id:
+        description: "Optional GitHub Actions run id containing a prebuilt Skip visual APK artifact"
+        required: false
+        default: ""
+        type: string
+      apk_artifact_name:
+        description: "Artifact name for the prebuilt Skip visual APK"
+        required: false
+        default: "hermex-skip-visual-apk"
+        type: string
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   capture:
@@ -198,7 +209,27 @@ jobs:
           fi
           echo "Android emulator is registered with adb; boot continues during the reusable APK build."
 
+      - name: Download reusable Skip APK
+        if: ${{ inputs.apk_run_id != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/hermex-skip-visual-apk"
+          gh run download "${{ inputs.apk_run_id }}" \
+            --repo "${{ github.repository }}" \
+            --name "${{ inputs.apk_artifact_name }}" \
+            --dir "$RUNNER_TEMP/hermex-skip-visual-apk"
+          apk_count="$(find "$RUNNER_TEMP/hermex-skip-visual-apk" -type f -name '*.apk' | wc -l | tr -d ' ')"
+          if [[ "$apk_count" -lt 1 ]]; then
+            echo "Downloaded artifact did not contain an APK." >&2
+            find "$RUNNER_TEMP/hermex-skip-visual-apk" -maxdepth 3 -type f -print >&2
+            exit 1
+          fi
+          echo "Downloaded $apk_count reusable Skip APK artifact file(s)."
+
       - name: Build reusable Skip APK
+        if: ${{ inputs.apk_run_id == '' }}
         timeout-minutes: 35
         run: |
           set -euo pipefail
