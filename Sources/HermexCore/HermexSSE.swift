@@ -6,6 +6,56 @@ public enum HermexSSEEvent: Equatable, Sendable {
     case done(String?)
     case error(String)
     case named(event: String, data: String)
+
+    public var kind: String {
+        switch self {
+        case .token:
+            return "token"
+        case .usage:
+            return "usage"
+        case .done:
+            return "done"
+        case .error:
+            return "error"
+        case .named:
+            return "named"
+        }
+    }
+
+    public var tokenText: String? {
+        if case .token(let value) = self {
+            return value
+        }
+        return nil
+    }
+
+    public var usageText: String? {
+        if case .usage(let value) = self {
+            return value
+        }
+        return nil
+    }
+
+    public var errorText: String? {
+        if case .error(let value) = self {
+            return value
+        }
+        return nil
+    }
+
+    public var namedEvent: String? {
+        if case .named(let event, _) = self {
+            return event
+        }
+        return nil
+    }
+
+    public var namedData: String? {
+        if case .named(_, let data) = self {
+            return data
+        }
+        return nil
+    }
 }
 
 public struct HermexSSEDecoder: Sendable {

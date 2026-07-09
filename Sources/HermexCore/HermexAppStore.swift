@@ -1094,53 +1094,74 @@ public final class HermexAppStore {
     }
 
     private func applyStreamEvent(_ event: HermexSSEEvent) {
-        switch event {
-        case .token(let token):
-            appendAssistantToken(token)
+        let kind = event.kind
+        if kind == "token" {
+            if let token = event.tokenText {
+                appendAssistantToken(token)
+            }
             chat.stream.liveToolActivity = nil
-        case .usage(let usage):
-            chat.stream.liveToolActivity = usage
-        case .done:
+            return
+        }
+        if kind == "usage" {
+            chat.stream.liveToolActivity = event.usageText
+            return
+        }
+        if kind == "done" {
             chat.stream.isStreaming = false
             chat.stream.isRecovering = false
             chat.stream.liveToolActivity = nil
-        case .error(let message):
+            return
+        }
+        if kind == "error" {
             chat.stream.isStreaming = false
             chat.stream.isRecovering = false
-            chat.errorMessage = message
-        case .named(let event, let data):
-            applyNamedStreamEvent(event: event, data: data)
+            chat.errorMessage = event.errorText
+            return
+        }
+        if kind == "named" {
+            applyNamedStreamEvent(event: event.namedEvent ?? "", data: event.namedData ?? "")
         }
     }
 
     private func applyNamedStreamEvent(event: String, data: String) {
-        switch event {
-        case "reasoning", "thinking":
+        if event == "reasoning" || event == "thinking" {
             if chat.stream.liveReasoning.isEmpty {
                 chat.stream.liveReasoning = data
             } else {
                 chat.stream.liveReasoning += data
             }
-        case "tool", "tool_call", "tool_status":
+            return
+        }
+        if event == "tool" || event == "tool_call" || event == "tool_status" {
             chat.stream.liveToolActivity = data
-        case "done":
+            return
+        }
+        if event == "done" {
             chat.stream.isStreaming = false
             chat.stream.isRecovering = false
             chat.stream.liveToolActivity = nil
-        case "error":
+            return
+        }
+        if event == "error" {
             chat.stream.isStreaming = false
             chat.errorMessage = data
-        default:
-            chat.stream.liveToolActivity = data
+            return
         }
+        chat.stream.liveToolActivity = data
     }
 
     private func appendAssistantToken(_ token: String) {
         guard !token.isEmpty else { return }
-        if let lastIndex = chat.messages.indices.last,
-           chat.messages[lastIndex].role == "assistant" {
-            let existing = chat.messages[lastIndex].content ?? ""
-            chat.messages[lastIndex].content = existing + token
+        if chat.messages.isEmpty {
+            chat.messages.append(HermexChatMessageDTO(role: "assistant", content: token, timestamp: Date().timeIntervalSince1970))
+            return
+        }
+        let lastIndex = chat.messages.count - 1
+        let lastMessage = chat.messages[lastIndex]
+        if lastMessage.role == "assistant" {
+            var updated = lastMessage
+            updated.content = (lastMessage.content ?? "") + token
+            chat.messages[lastIndex] = updated
         } else {
             chat.messages.append(HermexChatMessageDTO(role: "assistant", content: token, timestamp: Date().timeIntervalSince1970))
         }
