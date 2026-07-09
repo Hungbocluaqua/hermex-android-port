@@ -397,9 +397,6 @@ public struct HermexComposerSurface: View {
         ZStack(alignment: .topLeading) {
 #if SKIP
             TextField("", text: draftBinding)
-#else
-            TextEditor(text: draftBinding)
-#endif
                 .font(.title3)
                 .foregroundStyle(HermexUIColors.primaryText)
                 .frame(height: composerTextInputHeight)
@@ -417,6 +414,26 @@ public struct HermexComposerSurface: View {
                         isDraftFocused = true
                     }
                 }
+#else
+            TextEditor(text: draftBinding)
+                .font(.title3)
+                .foregroundStyle(HermexUIColors.primaryText)
+                .frame(height: composerTextInputHeight)
+                .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)
+                .padding(.vertical, textVerticalPadding)
+                .background(Color.clear)
+                .focused($isDraftFocused)
+                .onAppear {
+                    if prefersFocused {
+                        isDraftFocused = true
+                    }
+                }
+                .onChange(of: prefersFocused) { _, newValue in
+                    if newValue {
+                        isDraftFocused = true
+                    }
+                }
+#endif
 
             if state.draft.isEmpty {
                 Text("Ask anything... /commands")
