@@ -62,28 +62,28 @@ public struct HermexSessionListScreen: View {
         }
 
         if !searchChromeIsExpanded {
-            utilityRows
-                .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-                .padding(.top, HermexLayoutContract.sessionListUtilityTopPadding)
-                .padding(.bottom, HermexLayoutContract.sessionListUtilityRowSpacing)
+            Group {
+                utilityRows
+                    .padding(.bottom, HermexLayoutContract.sessionListUtilityRowSpacing)
 
-            selectorRow(
-                icon: "person.crop.circle.badge.gearshape",
-                title: state.activeProfileName ?? "default",
-                subtitle: "Profile",
-                event: .selectProfile
-            )
-            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-            .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
+                selectorRow(
+                    icon: "person.crop.circle.badge.gearshape",
+                    title: state.activeProfileName ?? "default",
+                    subtitle: "Profile",
+                    event: .selectProfile
+                )
+                .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
 
-            selectorRow(
-                icon: "folder",
-                title: primaryWorkspace,
-                subtitle: "Workspace",
-                event: .selectWorkspace
-            )
+                selectorRow(
+                    icon: "folder",
+                    title: primaryWorkspace,
+                    subtitle: "Workspace",
+                    event: .selectWorkspace
+                )
+                .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
+            }
             .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-            .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
+            .padding(.top, HermexLayoutContract.sessionListUtilityTopPadding)
         }
 
         if !state.searchQuery.isEmpty || state.isShowingArchived {
