@@ -190,6 +190,21 @@ quiet_background_system_apps() {
   "$ADB" shell cmd statusbar collapse >/dev/null 2>&1 || true
 }
 
+configure_soft_keyboard() {
+  local ime
+  ime="$(
+    adb_shell_bounded 5 ime list -s |
+      tr -d '\r' |
+      grep -E 'latin|keyboard|inputmethod|ime' |
+      head -n 1 || true
+  )"
+  if [[ -n "$ime" ]]; then
+    adb_shell_bounded 5 ime enable "$ime" >/dev/null 2>&1 || true
+    adb_shell_bounded 5 ime set "$ime" >/dev/null 2>&1 || true
+  fi
+  adb_shell_bounded 5 settings put secure show_ime_with_hard_keyboard 1 >/dev/null 2>&1 || true
+}
+
 focused_window_snapshot() {
   {
     adb_shell_bounded 5 dumpsys activity activities
@@ -271,7 +286,7 @@ prepare_android_emulator_for_capture() {
   adb_shell_bounded 5 settings put secure screensaver_enabled 0 >/dev/null 2>&1 || true
   adb_shell_bounded 5 settings put secure screensaver_activate_on_sleep 0 >/dev/null 2>&1 || true
   adb_shell_bounded 5 settings put secure screensaver_activate_on_dock 0 >/dev/null 2>&1 || true
-  adb_shell_bounded 5 settings put secure show_ime_with_hard_keyboard 1 >/dev/null 2>&1 || true
+  configure_soft_keyboard
   adb_shell_bounded 5 settings put secure doze_enabled 0 >/dev/null 2>&1 || true
   adb_shell_bounded 5 settings put system screen_off_timeout 2147483647 >/dev/null 2>&1 || true
   adb_shell_bounded 5 svc power stayon true >/dev/null 2>&1 || true
@@ -294,6 +309,31 @@ is_blocking_system_window() {
     return 0
   fi
   grep -Eqi "Application Not Responding|ANR in|isn.t responding" <<<"$snapshot"
+}
+
+is_android_ime_visible() {
+  local snapshot
+  snapshot="$(
+    {
+      adb_shell_bounded 5 dumpsys input_method
+      adb_shell_bounded 5 dumpsys window
+    } | tr -d '\r'
+  )"
+  grep -Eqi 'mInputShown=true|mIsInputViewShown=true|inputShown=true|InputMethod.*mHasSurface=true|Window\{.*InputMethod' <<<"$snapshot"
+}
+
+assert_keyboard_visible_for_fixture() {
+  if [[ "$SCREEN" != "chat-keyboard-open" ]]; then
+    return 0
+  fi
+  if is_android_ime_visible; then
+    return 0
+  fi
+
+  echo "chat-keyboard-open capture did not show an Android input-method window." >&2
+  focused_window_snapshot >&2
+  adb_shell_bounded 5 dumpsys input_method >&2 || true
+  return 1
 }
 
 assert_no_android_error_dialog_text() {
@@ -554,10 +594,14 @@ quiet_background_system_apps
 
 if [[ "$SCREEN" == "chat-keyboard-open" ]]; then
   "$ADB" shell input tap "$((WIDTH / 2))" "$((HEIGHT - 245))" >/dev/null 2>&1 || true
-  sleep 2
+  sleep 5
   if ! wait_for_app_focus; then
     dump_debug_state "keyboard-focus"
     echo "Hermex lost focus after opening the keyboard fixture." >&2
+    exit 1
+  fi
+  if ! assert_keyboard_visible_for_fixture; then
+    dump_debug_state "keyboard-not-visible"
     exit 1
   fi
 fi
