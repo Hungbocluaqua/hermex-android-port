@@ -92,6 +92,18 @@ public struct HermexSessionListScreen: View {
                 .padding(.top, 8)
         }
 
+        if !searchChromeIsExpanded {
+            sessionsSectionHeader
+                .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+                .padding(.top, 28)
+                .padding(.bottom, 12)
+        } else {
+            sessionsSectionHeader
+                .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+                .padding(.top, 16)
+                .padding(.bottom, 12)
+        }
+
         sessionContent
 
         Color.clear
@@ -336,7 +348,7 @@ public struct HermexSessionListScreen: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("No sessions yet")
                         .font(.headline.weight(.semibold))
-                    Text("Start a new chat from this server.")
+                    Text("Tap Chat to start.")
                         .font(.caption)
                         .foregroundStyle(HermexUIColors.secondaryText)
                 }

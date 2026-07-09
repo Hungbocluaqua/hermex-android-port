@@ -68,16 +68,16 @@ public struct HermexChatScreen: View {
     }
 
     private var chatHeader: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
             HermexCircleIconButton(
                 systemImage: "chevron.left",
                 accessibilityLabel: "Back",
                 action: { onEvent(.openRoute(.sessions)) }
             )
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(state.composer.selectedWorkspace ?? state.session?.workspace ?? "workspace")
-                    .font(.title3.weight(.medium))
+                    .font(.body.weight(.medium))
                     .foregroundStyle(HermexUIColors.secondaryText)
                     .lineLimit(1)
                 if state.isViewingCachedData {
@@ -167,7 +167,10 @@ public struct HermexChatScreen: View {
     }
 
     private var streamingIndicator: some View {
-        Label(state.stream.liveToolActivity ?? "Responding", systemImage: "sparkles")
+        HStack(spacing: 8) {
+            Image(systemName: HermexSystemImageName("sparkles"))
+            Text(state.stream.liveToolActivity ?? "Responding")
+        }
             .font(.caption)
             .foregroundStyle(HermexUIColors.secondaryText)
             .padding(.vertical, 8)
