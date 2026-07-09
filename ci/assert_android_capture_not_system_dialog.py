@@ -172,6 +172,31 @@ def app_content_foreground_pixel_ratio(width: int, height: int, rgba: bytes) -> 
     return foreground / total if total else 0.0
 
 
+def keyboard_surface_pixel_ratio(width: int, height: int, rgba: bytes) -> float:
+    left = width // 16
+    right = width - left
+    top = height * 62 // 100
+    bottom = height - max(36, height // 22)
+    surface = 0
+    total = 0
+
+    for y in range(top, bottom):
+        row_offset = y * width * 4
+        for x in range(left, right):
+            index = row_offset + x * 4
+            r, g, b, a = rgba[index : index + 4]
+            max_channel = max(r, g, b)
+            min_channel = min(r, g, b)
+            # Dark keyboard keys on emulator builds are usually neutral gray
+            # surfaces. Hermex's black background/composer alone should not
+            # produce a dense lower-viewport field in this range.
+            if a > 200 and 36 <= max_channel <= 220 and max_channel - min_channel <= 38:
+                surface += 1
+            total += 1
+
+    return surface / total if total else 0.0
+
+
 def looks_like_android_splash_screen(visible_ratio: float, foreground_ratio: float) -> bool:
     # Android 12+ splash screens paint a nearly full-viewport non-black background
     # plus the centered launcher icon. Hermex content screens are black/glass and
@@ -199,6 +224,17 @@ def main() -> int:
         type=float,
         default=0.003,
         help="Reject captures whose app content area has no visible Hermex foreground.",
+    )
+    parser.add_argument(
+        "--require-keyboard-visible",
+        action="store_true",
+        help="Reject captures that do not contain a visible lower-screen soft keyboard surface.",
+    )
+    parser.add_argument(
+        "--min-keyboard-surface-ratio",
+        type=float,
+        default=0.12,
+        help="Minimum lower-viewport neutral surface ratio required when --require-keyboard-visible is set.",
     )
     args = parser.parse_args()
 
@@ -245,10 +281,20 @@ def main() -> int:
         )
         return 1
 
+    keyboard_ratio = keyboard_surface_pixel_ratio(width, height, rgba)
+    if args.require_keyboard_visible and keyboard_ratio < args.min_keyboard_surface_ratio:
+        print(
+            "Android screenshot does not show a visible soft keyboard "
+            f"(keyboard surface ratio {keyboard_ratio:.4f} < {args.min_keyboard_surface_ratio:.4f}): "
+            f"{args.screenshot}",
+            file=sys.stderr,
+        )
+        return 1
+
     print(
         "Android screenshot pixel guard OK: "
         f"center_light_ratio={ratio:.3f} visible_ratio={visible_ratio:.4f} "
-        f"content_foreground_ratio={foreground_ratio:.4f}"
+        f"content_foreground_ratio={foreground_ratio:.4f} keyboard_surface_ratio={keyboard_ratio:.4f}"
     )
     return 0
 

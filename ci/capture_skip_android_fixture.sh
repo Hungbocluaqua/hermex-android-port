@@ -523,7 +523,12 @@ capture_verified_screenshot() {
     fi
 
     log "Inspecting screenshot pixels"
-    if "$PYTHON_BIN" "$ROOT/ci/assert_android_capture_not_system_dialog.py" "$screenshot_path"; then
+    local pixel_guard_args=("$ROOT/ci/assert_android_capture_not_system_dialog.py")
+    if [[ "$SCREEN" == "chat-keyboard-open" ]]; then
+      pixel_guard_args+=(--require-keyboard-visible)
+    fi
+    pixel_guard_args+=("$screenshot_path")
+    if "$PYTHON_BIN" "${pixel_guard_args[@]}"; then
       return 0
     fi
     dump_debug_state "attempt-$attempt-pixels"
