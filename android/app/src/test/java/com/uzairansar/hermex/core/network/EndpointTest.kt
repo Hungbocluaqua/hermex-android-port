@@ -34,6 +34,14 @@ class EndpointTest {
     }
 
     @Test
+    fun sessionClearEndpointMatchesIosContract() {
+        val url = Endpoint.ClearSession.url(base)
+
+        assertEquals("/api/session/clear", url.encodedPath)
+        assertEquals(null, url.query)
+    }
+
+    @Test
     fun chatStreamEndpointMatchesIosContract() {
         val url = Endpoint.ChatStream("stream-1").url(base)
 

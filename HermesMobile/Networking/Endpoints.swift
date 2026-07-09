@@ -13,6 +13,7 @@ enum Endpoint {
     case newSession
     case renameSession
     case deleteSession
+    case clearSession
     case pinSession
     case archiveSession
     case branchSession
@@ -126,6 +127,8 @@ enum Endpoint {
             return "/api/session/rename"
         case .deleteSession:
             return "/api/session/delete"
+        case .clearSession:
+            return "/api/session/clear"
         case .pinSession:
             return "/api/session/pin"
         case .archiveSession:

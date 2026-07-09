@@ -176,6 +176,39 @@ class HermesApiClientSessionTest {
     }
 
     @Test
+    fun clearSessionPostsSessionIdAndDecodesClearedSession() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            server.enqueue(
+                MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body("""{"ok":true,"session":{"session_id":"s1","title":"Untitled","message_count":0,"messages":[],"tool_calls":[]},"future":{"ignored":true}}""")
+                    .build(),
+            )
+
+            val client = HermesApiClient(server.url("/"), OkHttpClient())
+            val response = client.clearSession("s1")
+
+            val request = server.takeRequest()
+            assertEquals("/api/session/clear", request.url.encodedPath)
+            assertEquals("POST", request.method)
+            assertEquals("""{"session_id":"s1"}""", request.body?.utf8())
+            assertEquals(true, response.ok)
+            assertEquals("s1", response.session?.sessionId)
+            assertEquals("Untitled", response.session?.title)
+            assertEquals(0, response.session?.messageCount)
+            assertEquals(0, response.session?.messages?.size)
+            assertEquals(0, response.session?.toolCalls?.size)
+            assertNull(request.headers["Origin"])
+            assertNull(request.headers["Referer"])
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
     fun setSessionYoloPostsEnabledBodyLikeIos() = runBlocking {
         val server = MockWebServer()
         try {

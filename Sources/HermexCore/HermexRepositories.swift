@@ -55,6 +55,10 @@ public struct HermexSessionRepository: Sendable {
         try await client.deleteSession(id: id)
     }
 
+    public func clear(id: String) async throws -> HermexJSONValue {
+        try await client.clearSession(id: id)
+    }
+
     public func pin(id: String, pinned: Bool) async throws -> HermexJSONValue {
         try await client.pinSession(id: id, pinned: pinned)
     }

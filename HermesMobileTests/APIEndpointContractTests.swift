@@ -59,6 +59,7 @@ final class ContractReadinessTests: XCTestCase {
             .init(name: "new session", method: "POST", endpoint: .newSession, path: "/api/session/new"),
             .init(name: "rename session", method: "POST", endpoint: .renameSession, path: "/api/session/rename"),
             .init(name: "delete session", method: "POST", endpoint: .deleteSession, path: "/api/session/delete"),
+            .init(name: "clear session", method: "POST", endpoint: .clearSession, path: "/api/session/clear"),
             .init(name: "pin session", method: "POST", endpoint: .pinSession, path: "/api/session/pin"),
             .init(name: "archive session", method: "POST", endpoint: .archiveSession, path: "/api/session/archive"),
             .init(name: "branch session", method: "POST", endpoint: .branchSession, path: "/api/session/branch"),

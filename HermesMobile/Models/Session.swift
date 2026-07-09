@@ -27,6 +27,25 @@ struct SessionMutationResponse: Decodable {
     let error: String?
 }
 
+struct SessionClearResponse: Decodable, Equatable {
+    let ok: Bool?
+    let session: SessionDetail?
+    let error: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ok
+        case session
+        case error
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        ok = container.decodeLossyBoolIfPresent(forKey: .ok)
+        session = try? container.decodeIfPresent(SessionDetail.self, forKey: .session)
+        error = container.decodeLossyStringIfPresent(forKey: .error)
+    }
+}
+
 struct ProjectsResponse: Decodable, Equatable {
     let projects: [ProjectSummary]?
 

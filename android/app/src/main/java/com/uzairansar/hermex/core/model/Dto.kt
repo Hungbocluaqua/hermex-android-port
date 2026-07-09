@@ -72,6 +72,13 @@ data class SessionMutationResponse(
 )
 
 @Serializable
+data class SessionClearResponse(
+    val ok: Boolean? = null,
+    val session: SessionDetail? = null,
+    val error: String? = null,
+)
+
+@Serializable
 data class SessionBranchResponse(
     @SerialName("session_id") val sessionId: String? = null,
     val title: String? = null,

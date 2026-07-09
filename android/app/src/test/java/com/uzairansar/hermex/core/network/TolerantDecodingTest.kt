@@ -9,6 +9,7 @@ import com.uzairansar.hermex.core.model.CronHistoryResponse
 import com.uzairansar.hermex.core.model.CronStatusResponse
 import com.uzairansar.hermex.core.model.GoalSubmissionResponse
 import com.uzairansar.hermex.core.model.MemoryResponse
+import com.uzairansar.hermex.core.model.SessionClearResponse
 import com.uzairansar.hermex.core.model.SessionResponse
 import com.uzairansar.hermex.core.model.SessionStatusResponse
 import com.uzairansar.hermex.core.model.SessionUsageResponse
@@ -348,6 +349,33 @@ class TolerantDecodingTest {
         assertEquals(1545, decoded.totalTokens)
         assertEquals(0.042, decoded.estimatedCost ?: 0.0, 0.0)
         assertEquals("@openai:gpt-5.5", decoded.model)
+    }
+
+    @Test
+    fun sessionClearDecodesClearedSessionWithUnknownFields() {
+        val decoded = HermesJson.decodeFromString<SessionClearResponse>(
+            """
+            {
+              "ok": true,
+              "session": {
+                "session_id": "s1",
+                "title": "Untitled",
+                "message_count": 0,
+                "messages": [],
+                "tool_calls": [],
+                "future_session_field": "ignored"
+              },
+              "future": true
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(true, decoded.ok)
+        assertEquals("s1", decoded.session?.sessionId)
+        assertEquals("Untitled", decoded.session?.title)
+        assertEquals(0, decoded.session?.messageCount)
+        assertEquals(0, decoded.session?.messages?.size)
+        assertEquals(0, decoded.session?.toolCalls?.size)
     }
 
     @Test

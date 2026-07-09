@@ -75,6 +75,7 @@ public enum HermexEndpoints {
     public static let newSession = HermexEndpoint(path: "/api/session/new")
     public static let renameSession = HermexEndpoint(path: "/api/session/rename")
     public static let deleteSession = HermexEndpoint(path: "/api/session/delete")
+    public static let clearSession = HermexEndpoint(path: "/api/session/clear")
     public static let pinSession = HermexEndpoint(path: "/api/session/pin")
     public static let archiveSession = HermexEndpoint(path: "/api/session/archive")
     public static let branchSession = HermexEndpoint(path: "/api/session/branch")

@@ -146,6 +146,10 @@ public struct HermexAPIClient: @unchecked Sendable {
         try await postSessionID(HermexEndpoints.deleteSession, id: id)
     }
 
+    public func clearSession(id: String) async throws -> HermexJSONValue {
+        try await postSessionID(HermexEndpoints.clearSession, id: id)
+    }
+
     public func pinSession(id: String, pinned: Bool) async throws -> HermexJSONValue {
         try await postSessionMutation(HermexEndpoints.pinSession, fields: ["session_id": .string(id), "pinned": .bool(pinned)])
     }

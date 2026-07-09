@@ -2,6 +2,7 @@ package com.uzairansar.hermex.data.repository
 
 import com.uzairansar.hermex.core.model.NewSessionRequest
 import com.uzairansar.hermex.core.model.ProjectSummary
+import com.uzairansar.hermex.core.model.SessionClearResponse
 import com.uzairansar.hermex.core.model.SessionDetail
 import com.uzairansar.hermex.core.model.SessionExportFile
 import com.uzairansar.hermex.core.model.SessionExportFormat
@@ -57,6 +58,7 @@ class SessionRepository(
     suspend fun usage(sessionId: String): SessionUsageResponse = client.sessionUsage(sessionId)
 
     suspend fun rename(sessionId: String, title: String): SessionSummary? = client.renameSession(sessionId, title).session
+    suspend fun clear(sessionId: String): SessionClearResponse = client.clearSession(sessionId)
     suspend fun delete(sessionId: String) = client.deleteSession(sessionId)
     suspend fun pin(sessionId: String, pinned: Boolean): SessionSummary? = client.pinSession(sessionId, pinned).session
     suspend fun archive(sessionId: String, archived: Boolean): SessionSummary? = client.archiveSession(sessionId, archived).session

@@ -47,6 +47,7 @@ class HermesApiClient(
     suspend fun newSession(request: NewSessionRequest = NewSessionRequest()): SessionMutationResponse = post(Endpoint.NewSession, request)
     suspend fun renameSession(sessionId: String, title: String): SessionMutationResponse = post(Endpoint.RenameSession, RenameSessionRequest(sessionId, title))
     suspend fun deleteSession(sessionId: String): SessionMutationResponse = post(Endpoint.DeleteSession, SessionIdRequest(sessionId))
+    suspend fun clearSession(sessionId: String): SessionClearResponse = post(Endpoint.ClearSession, SessionIdRequest(sessionId))
     suspend fun pinSession(sessionId: String, pinned: Boolean): SessionMutationResponse = post(Endpoint.PinSession, PinSessionRequest(sessionId, pinned))
     suspend fun archiveSession(sessionId: String, archived: Boolean): SessionMutationResponse = post(Endpoint.ArchiveSession, ArchiveSessionRequest(sessionId, archived))
     suspend fun moveSession(sessionId: String, projectId: String?): SessionMutationResponse = post(Endpoint.MoveSession, MoveSessionRequest(sessionId, projectId))

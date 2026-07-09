@@ -82,6 +82,14 @@ extension APIClient {
         )
     }
 
+    func clearSession(id: String) async throws -> SessionClearResponse {
+        try await send(
+            endpoint: .clearSession,
+            method: "POST",
+            body: SessionIDRequest(sessionId: id)
+        )
+    }
+
     func pinSession(id: String, pinned: Bool) async throws -> SessionMutationResponse {
         try await send(
             endpoint: .pinSession,

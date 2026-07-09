@@ -42,6 +42,7 @@ sealed class Endpoint(
     data object NewSession : Endpoint("/api/session/new")
     data object RenameSession : Endpoint("/api/session/rename")
     data object DeleteSession : Endpoint("/api/session/delete")
+    data object ClearSession : Endpoint("/api/session/clear")
     data object PinSession : Endpoint("/api/session/pin")
     data object ArchiveSession : Endpoint("/api/session/archive")
     data object BranchSession : Endpoint("/api/session/branch")

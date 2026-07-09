@@ -30,6 +30,11 @@ final class HermexEndpointTests: XCTestCase {
         ])
     }
 
+    func testClearSessionUsesServerMutationPath() {
+        XCTAssertEqual(HermexEndpoints.clearSession.path, "/api/session/clear")
+        XCTAssertEqual(HermexEndpoints.clearSession.queryItems, [])
+    }
+
     func testChatStreamReplayQuery() {
         let endpoint = HermexEndpoints.chatStream(id: "stream-1", replayAfterSeq: 42)
 
