@@ -46,6 +46,7 @@ public enum HermexAppAction: Equatable, Sendable {
     case selectPanel(HermexPanel)
     case taskCommand(HermexTaskCommand)
     case toggleSkill(name: String, enabled: Bool)
+    case writeMemory(section: String, content: String)
     case signOut
 }
 
@@ -90,6 +91,7 @@ public struct HermexAppEnvironment: Sendable {
     public var loadSkills: @Sendable () async throws -> HermexJSONValue
     public var toggleSkill: @Sendable (_ name: String, _ enabled: Bool) async throws -> HermexJSONValue
     public var loadMemory: @Sendable () async throws -> HermexJSONValue
+    public var writeMemory: @Sendable (_ section: String, _ content: String) async throws -> HermexJSONValue
     public var loadInsights: @Sendable (_ days: Int) async throws -> HermexJSONValue
     public var logout: @Sendable () async throws -> HermexJSONValue
 
@@ -128,6 +130,7 @@ public struct HermexAppEnvironment: Sendable {
         loadSkills: @escaping @Sendable () async throws -> HermexJSONValue,
         toggleSkill: @escaping @Sendable (_ name: String, _ enabled: Bool) async throws -> HermexJSONValue,
         loadMemory: @escaping @Sendable () async throws -> HermexJSONValue,
+        writeMemory: @escaping @Sendable (_ section: String, _ content: String) async throws -> HermexJSONValue,
         loadInsights: @escaping @Sendable (_ days: Int) async throws -> HermexJSONValue,
         logout: @escaping @Sendable () async throws -> HermexJSONValue
     ) {
@@ -157,6 +160,7 @@ public struct HermexAppEnvironment: Sendable {
         self.loadSkills = loadSkills
         self.toggleSkill = toggleSkill
         self.loadMemory = loadMemory
+        self.writeMemory = writeMemory
         self.loadInsights = loadInsights
         self.logout = logout
     }
@@ -284,6 +288,9 @@ public struct HermexAppEnvironment: Sendable {
             },
             loadMemory: {
                 try await panels.memory()
+            },
+            writeMemory: { section, content in
+                try await panels.writeMemory(section: section, content: content)
             },
             loadInsights: { days in
                 try await panels.insights(days: days)
@@ -470,6 +477,8 @@ public final class HermexAppStore {
             applyPreviewTaskCommand(command)
         case .toggleSkill(let name, let enabled):
             updateSkill(named: name, enabled: enabled)
+        case .writeMemory(let section, let content):
+            updateMemorySection(section: section, content: content)
         case .signOut:
             if let server = settings.activeServer {
                 appState.auth = .loggedOut(server: server)
@@ -561,6 +570,17 @@ public final class HermexAppStore {
             panels.tasks[index].status = status
             panels.errorMessage = nil
         }
+    }
+
+    private func updateMemorySection(section: String, content: String) {
+        let normalizedSection = section.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !normalizedSection.isEmpty else { return }
+        if let index = panels.memory.firstIndex(where: { $0.section == normalizedSection }) {
+            panels.memory[index].content = content
+        } else {
+            panels.memory.append(HermexMemorySectionDTO(section: normalizedSection, content: content))
+        }
+        panels.errorMessage = nil
     }
 
     private static func server(from auth: HermexAuthState) -> HermexServerIdentity? {
@@ -863,6 +883,8 @@ public final class HermexAppStore {
             await runTaskCommand(command)
         case .toggleSkill(let name, let enabled):
             await toggleSkill(name: name, enabled: enabled)
+        case .writeMemory(let section, let content):
+            await writeMemory(section: section, content: content)
         case .signOut:
             await signOut()
         }
@@ -1382,6 +1404,34 @@ public final class HermexAppStore {
         case .resume(let jobID):
             updateTask(jobID: jobID, status: "Active")
         }
+    }
+
+    private func writeMemory(section: String, content: String) async {
+        let normalizedSection = section.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !normalizedSection.isEmpty else { return }
+        let previousMemory = panels.memory
+        panels.errorMessage = nil
+        updateMemorySection(section: normalizedSection, content: content)
+        do {
+            _ = try await environment.writeMemory(normalizedSection, content)
+            if panels.selectedPanel == .memory {
+                await loadPanel(.memory)
+            }
+        } catch {
+            panels.memory = previousMemory
+            panels.errorMessage = String(describing: error)
+        }
+    }
+
+    private func updateMemorySection(section: String, content: String) {
+        let normalizedSection = section.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !normalizedSection.isEmpty else { return }
+        if let index = panels.memory.firstIndex(where: { $0.section == normalizedSection }) {
+            panels.memory[index].content = content
+        } else {
+            panels.memory.append(HermexMemorySectionDTO(section: normalizedSection, content: content))
+        }
+        panels.errorMessage = nil
     }
 
     private func toggleSkill(name: String, enabled: Bool) async {

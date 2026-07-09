@@ -208,7 +208,7 @@ final class HermexAppStoreTests: XCTestCase {
         await store.send(.selectPanel(.skills))
         XCTAssertEqual(store.panels.skills.map(\.name), ["swift"])
         await store.send(.selectPanel(.memory))
-        XCTAssertEqual(store.panels.memory.map(\.section), ["profile"])
+        XCTAssertEqual(store.panels.memory.map(\.section), ["memory", "user", "soul", "project_context"])
         await store.send(.selectPanel(.insights))
         XCTAssertEqual(store.panels.insights, .dictionary(["ok": .bool(true)]))
     }
@@ -253,6 +253,25 @@ final class HermexAppStoreTests: XCTestCase {
 
         let commands = await probe.taskCommands
         XCTAssertEqual(commands, [.run(jobID: "job-1"), .pause(jobID: "job-1"), .resume(jobID: "job-1")])
+        XCTAssertNil(store.panels.errorMessage)
+    }
+
+    func testWriteMemoryRoutesThroughEnvironmentAndRefreshesPanelState() async throws {
+        let probe = StoreProbe()
+        let store = HermexAppStore(
+            panels: HermexPanelsState(
+                memory: [HermexMemorySectionDTO(section: "memory", content: "Initial notes")],
+                selectedPanel: .memory
+            ),
+            environment: environment(probe: probe)
+        )
+
+        await store.send(.writeMemory(section: "memory", content: "Updated notes"))
+
+        let writes = await probe.memoryWrites
+        XCTAssertEqual(writes.map(\.section), ["memory"])
+        XCTAssertEqual(writes.map(\.content), ["Updated notes"])
+        XCTAssertEqual(store.panels.memory.first(where: { $0.section == "memory" })?.content, "Updated notes")
         XCTAssertNil(store.panels.errorMessage)
     }
 
@@ -344,6 +363,9 @@ final class HermexAppStoreTests: XCTestCase {
             loadMemory: {
                 try await probe.loadMemory()
             },
+            writeMemory: { section, content in
+                try await probe.writeMemory(section: section, content: content)
+            },
             loadInsights: { days in
                 try await probe.loadInsights(days: days)
             },
@@ -369,6 +391,11 @@ private actor StoreProbe {
         var enabled: Bool
     }
 
+    struct MemoryWrite: Equatable {
+        var section: String
+        var content: String
+    }
+
     private(set) var startedChat: StartedChat?
     private(set) var cancelledStreamID: String?
     private(set) var loadedSessionIDs: [String] = []
@@ -378,11 +405,18 @@ private actor StoreProbe {
     private(set) var gitCommands: [String] = []
     private(set) var taskCommands: [HermexTaskCommand] = []
     private(set) var skillToggles: [SkillToggle] = []
+    private(set) var memoryWrites: [MemoryWrite] = []
     private(set) var testedServer: HermexServerIdentity?
     private(set) var loginServer: HermexServerIdentity?
     private(set) var loginPassword: String?
     private var taskStatus = "active"
     private var swiftSkillEnabled = true
+    private var memoryValues = [
+        "memory": "Project notes",
+        "user": "Likes concise answers",
+        "soul": "Helpful",
+        "project_context": "Read-only project context"
+    ]
 
     func testServerConnection(server: HermexServerIdentity) async throws -> HermexJSONValue {
         testedServer = server
@@ -582,7 +616,19 @@ private actor StoreProbe {
     }
 
     func loadMemory() async throws -> HermexJSONValue {
-        .dictionary(["profile": .string("Likes concise answers")])
+        .dictionary([
+            "memory": .string(memoryValues["memory"] ?? ""),
+            "user": .string(memoryValues["user"] ?? ""),
+            "soul": .string(memoryValues["soul"] ?? ""),
+            "project_context": .string(memoryValues["project_context"] ?? ""),
+            "memory_path": .string("/tmp/MEMORY.md")
+        ])
+    }
+
+    func writeMemory(section: String, content: String) async throws -> HermexJSONValue {
+        memoryWrites.append(MemoryWrite(section: section, content: content))
+        memoryValues[section] = content
+        return .dictionary(["ok": .bool(true), "section": .string(section), "path": .string("/tmp/\(section).md")])
     }
 
     func loadInsights(days: Int) async throws -> HermexJSONValue {

@@ -166,6 +166,7 @@ private extension HermexAppEnvironment {
             loadSkills: { .dictionary([:]) },
             toggleSkill: { _, _ in .dictionary(["ok": .bool(true)]) },
             loadMemory: { .dictionary([:]) },
+            writeMemory: { _, _ in .dictionary(["ok": .bool(true)]) },
             loadInsights: { _ in .dictionary([:]) },
             logout: { .dictionary(["ok": .bool(true)]) }
         )

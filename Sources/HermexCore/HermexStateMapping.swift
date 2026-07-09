@@ -188,18 +188,29 @@ public extension HermexPanelsState {
     static func memory(from response: HermexJSONValue, selectedPanel: HermexPanel = .memory) -> HermexPanelsState {
         let fields = response.objectValue ?? [:]
         var sections: [HermexMemorySectionDTO] = []
-        for section in fields.arrayValue("sections", "memory") {
+        for section in fields.arrayValue("sections", "items") {
             if let mappedSection = HermexMemorySectionDTO.fromJSON(section) {
                 sections.append(mappedSection)
             }
         }
-        var objectSections: [HermexMemorySectionDTO] = []
-        for (key, value) in fields {
-            if !["sections", "memory", "error"].contains(key), let content = value.stringValue {
-                objectSections.append(HermexMemorySectionDTO(section: key, content: content))
+
+        func appendSection(_ section: String, keys: [String]) {
+            guard !sections.contains(where: { $0.section == section }) else { return }
+            for key in keys {
+                guard let value = fields[key] else { continue }
+                if case .string(let content) = value {
+                    sections.append(HermexMemorySectionDTO(section: section, content: content))
+                    return
+                }
             }
         }
-        return HermexPanelsState(memory: sections + objectSections, selectedPanel: selectedPanel, errorMessage: fields.stringValue("error"))
+
+        appendSection("memory", keys: ["memory"])
+        appendSection("user", keys: ["user"])
+        appendSection("soul", keys: ["soul"])
+        appendSection("project_context", keys: ["project_context", "projectContext"])
+
+        return HermexPanelsState(memory: sections, selectedPanel: selectedPanel, errorMessage: fields.stringValue("error"))
     }
 }
 

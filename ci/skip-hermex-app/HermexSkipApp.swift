@@ -330,6 +330,10 @@ private final class HermexSkipRuntime {
                 let repository = try await connection.currentPanelsRepository()
                 return try await repository.memory()
             },
+            writeMemory: { section, content in
+                let repository = try await connection.currentPanelsRepository()
+                return try await repository.writeMemory(section: section, content: content)
+            },
             loadInsights: { days in
                 let repository = try await connection.currentPanelsRepository()
                 return try await repository.insights(days: days)

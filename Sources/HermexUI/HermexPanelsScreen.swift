@@ -8,6 +8,8 @@ public struct HermexPanelsScreen: View {
 
     @State private var skillSearchText = ""
     @State private var selectedInsightsRange = 30
+    @State private var editingMemorySection: String?
+    @State private var memoryDraft = ""
 
     public init(state: HermexPanelsState, onEvent: @escaping (HermexUIEvent) -> Void = { _ in }) {
         self.state = state
@@ -180,23 +182,34 @@ public struct HermexPanelsScreen: View {
             }
 
             ForEach(state.memory) { section in
+                let sectionTitle = memorySectionTitle(section.section)
+                let writableSection = writableMemorySection(section.section)
+
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 10) {
                         Image(systemName: HermexSystemImageName("brain.head.profile"))
                             .foregroundStyle(HermexUIColors.primaryText)
-                        Text(section.section)
+                        Text(sectionTitle)
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(HermexUIColors.primaryText)
                         Spacer()
-                        panelActionButton("Edit \(section.section)")
+                        if let writableSection {
+                            panelActionButton("Edit \(sectionTitle)") {
+                                editingMemorySection = writableSection
+                                memoryDraft = section.content
+                            }
+                        }
                     }
 
                     Text(section.content.isEmpty ? "No notes saved." : section.content)
                         .font(.body)
                         .foregroundStyle(HermexUIColors.primaryText)
                         .fixedSize(horizontal: false, vertical: true)
-                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if let writableSection, editingMemorySection == writableSection {
+                        memoryEditor(section: writableSection, title: sectionTitle)
+                    }
                 }
                 .padding(.vertical, 8)
             }
@@ -267,6 +280,58 @@ public struct HermexPanelsScreen: View {
 
     private func isPaused(_ task: HermexTaskDTO) -> Bool {
         (task.status ?? "").lowercased().contains("pause")
+    }
+
+    private func writableMemorySection(_ section: String) -> String? {
+        let normalizedSection = section.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch normalizedSection {
+        case "memory", "user", "soul":
+            return normalizedSection
+        default:
+            return nil
+        }
+    }
+
+    private func memorySectionTitle(_ section: String) -> String {
+        switch section.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "memory":
+            return "My Notes"
+        case "user":
+            return "User Profile"
+        case "soul":
+            return "Agent Soul"
+        case "project_context":
+            return "Project Context"
+        default:
+            return section.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    private func memoryEditor(section: String, title: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            TextEditor(text: $memoryDraft)
+                .font(.system(.body, design: .monospaced))
+                .foregroundStyle(HermexUIColors.primaryText)
+                .frame(minHeight: 180)
+                .padding(10)
+                .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(HermexUIColors.hairline, lineWidth: 0.7)
+                }
+                .accessibilityLabel(title)
+
+            HStack(spacing: 8) {
+                panelActionButton("Cancel") {
+                    editingMemorySection = nil
+                    memoryDraft = ""
+                }
+                panelActionButton("Save", isProminent: true) {
+                    onEvent(.writeMemory(section: section, content: memoryDraft))
+                    editingMemorySection = nil
+                }
+            }
+        }
     }
 
     private var insightsFields: [String: HermexJSONValue] {
