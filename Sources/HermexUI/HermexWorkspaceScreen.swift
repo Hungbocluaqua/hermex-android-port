@@ -64,7 +64,7 @@ public struct HermexWorkspaceScreen: View {
                                     isDirectory: true
                                 )))
                             } label: {
-                                HermexPillHermexMappedLabel(root.name ?? root.path, systemImage: "folder")
+                                HermexPillLabel(root.name ?? root.path, systemImage: "folder")
                             }
                             .buttonStyle(.plain)
                         }
