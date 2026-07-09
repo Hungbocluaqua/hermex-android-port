@@ -64,6 +64,11 @@ jobs:
       VISUAL_ARTIFACT_NAME: ${{ github.event_name == 'workflow_run' && 'hermex-android-visual-smoke' || inputs.artifact_name }}
       VISUAL_APK_RUN_ID: ${{ github.event_name == 'workflow_run' && format('{0}', github.event.workflow_run.id) || inputs.apk_run_id }}
       VISUAL_APK_ARTIFACT_NAME: ${{ github.event_name == 'workflow_run' && 'hermex-skip-visual-apk' || inputs.apk_artifact_name }}
+      HERMEX_ANDROID_SDK_ROOT_OVERRIDE: ${{ vars.HERMEX_ANDROID_SDK_ROOT }}
+      HERMEX_VISUAL_EMULATOR_AVD: ${{ vars.HERMEX_VISUAL_EMULATOR_AVD || 'hermex-visual' }}
+      HERMEX_VISUAL_REUSE_CONNECTED_EMULATOR: ${{ vars.HERMEX_VISUAL_REUSE_CONNECTED_EMULATOR || '0' }}
+      HERMEX_VISUAL_EMULATOR_SNAPSHOT: ${{ vars.HERMEX_VISUAL_EMULATOR_SNAPSHOT || '0' }}
+      HERMEX_VISUAL_EMULATOR_WIPE_DATA: ${{ vars.HERMEX_VISUAL_EMULATOR_WIPE_DATA || '1' }}
     steps:
       - name: Check out
         uses: actions/checkout@v7
@@ -91,6 +96,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Android SDK cache
+        if: ${{ vars.HERMEX_VISUAL_PREINSTALLED_ANDROID != '1' }}
         uses: actions/cache@v4
         with:
           path: |
@@ -105,7 +111,7 @@ jobs:
       - name: Configure Android SDK paths
         run: |
           set -euo pipefail
-          sdk="$HOME/Library/Android/sdk"
+          sdk="${HERMEX_ANDROID_SDK_ROOT_OVERRIDE:-$HOME/Library/Android/sdk}"
           echo "ANDROID_HOME=$sdk" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$sdk" >> "$GITHUB_ENV"
           echo "$sdk/platform-tools" >> "$GITHUB_PATH"
@@ -165,8 +171,21 @@ jobs:
             --device-name "$VISUAL_DEVICE_NAME"
 
       - name: Create Android emulator
+        if: ${{ vars.HERMEX_VISUAL_REUSE_CONNECTED_EMULATOR != '1' }}
         run: |
           set -euo pipefail
+          avd_name="$HERMEX_VISUAL_EMULATOR_AVD"
+          if avdmanager list avd | grep -E "Name: +$avd_name$" >/dev/null; then
+            echo "Reusing existing Android AVD: $avd_name"
+            avd_config="$HOME/.android/avd/$avd_name.avd/config.ini"
+            if [[ -f "$avd_config" ]]; then
+              {
+                echo "hw.keyboard=no"
+                echo "hw.keyboard.lid=no"
+              } >> "$avd_config"
+            fi
+            exit 0
+          fi
           sdkmanager --install "platform-tools" "emulator" "platforms;android-35"
           set +o pipefail
           yes | sdkmanager --licenses >/dev/null || true
@@ -202,30 +221,37 @@ jobs:
           echo "Using Android system image: $system_image"
           echo "no" | avdmanager create avd \
             --force \
-            --name hermex-visual \
+            --name "$avd_name" \
             --package "$system_image" \
             --device pixel_7
-          avd_config="$HOME/.android/avd/hermex-visual.avd/config.ini"
+          avd_config="$HOME/.android/avd/$avd_name.avd/config.ini"
           {
             echo "hw.keyboard=no"
             echo "hw.keyboard.lid=no"
           } >> "$avd_config"
 
       - name: Start Android emulator in background
+        if: ${{ vars.HERMEX_VISUAL_REUSE_CONNECTED_EMULATOR != '1' }}
         run: |
           set -euo pipefail
           adb start-server
-          nohup emulator \
-            -avd hermex-visual \
+          emulator_args=(
+            -avd "$HERMEX_VISUAL_EMULATOR_AVD"
             -no-window \
             -gpu swiftshader_indirect \
             -noaudio \
             -no-boot-anim \
-            -no-snapshot \
             -no-metrics \
-            -wipe-data \
             -camera-back none \
-            -camera-front none \
+            -camera-front none
+          )
+          if [[ "${HERMEX_VISUAL_EMULATOR_SNAPSHOT:-0}" != "1" ]]; then
+            emulator_args+=(-no-snapshot)
+          fi
+          if [[ "${HERMEX_VISUAL_EMULATOR_WIPE_DATA:-1}" == "1" ]]; then
+            emulator_args+=(-wipe-data)
+          fi
+          nohup emulator "${emulator_args[@]}" \
             > "$RUNNER_TEMP/hermex-visual-emulator.log" 2>&1 &
           connected=""
           for _ in {1..120}; do
@@ -233,7 +259,7 @@ jobs:
               connected="1"
               break
             fi
-            if ! pgrep -f "emulator.*hermex-visual" >/dev/null; then
+            if ! pgrep -f "emulator.*$HERMEX_VISUAL_EMULATOR_AVD" >/dev/null; then
               cat "$RUNNER_TEMP/hermex-visual-emulator.log" || true
               echo "Android emulator process exited before adb could connect." >&2
               exit 1

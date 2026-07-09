@@ -54,6 +54,30 @@ For example, a self-hosted runner with labels `self-hosted`, `macOS`, and `herme
 ["self-hosted","macOS","hermex-visual"]
 ```
 
+The visual workflows also have an opt-in prewarmed Android path for self-hosted runners:
+
+- `HERMEX_ANDROID_SDK_ROOT`: optional Android SDK root override. Defaults to `~/Library/Android/sdk`.
+- `HERMEX_VISUAL_PREINSTALLED_ANDROID=1`: skip GitHub cache restore for Android SDK/system images.
+- `HERMEX_VISUAL_EMULATOR_AVD`: optional AVD name. Defaults to `hermex-visual`.
+- `HERMEX_VISUAL_EMULATOR_SNAPSHOT=1`: allow emulator snapshot boot instead of forcing `-no-snapshot`.
+- `HERMEX_VISUAL_EMULATOR_WIPE_DATA=0`: do not pass `-wipe-data` on emulator launch.
+- `HERMEX_VISUAL_REUSE_CONNECTED_EMULATOR=1`: skip AVD creation and emulator launch entirely, then use the already-connected `adb` device.
+
+For the fastest self-hosted loop, keep a known-good emulator running on the Mac runner and set:
+
+```text
+HERMEX_VISUAL_PREINSTALLED_ANDROID=1
+HERMEX_VISUAL_REUSE_CONNECTED_EMULATOR=1
+```
+
+If the emulator should be launched by the workflow but boot from a prepared snapshot, set:
+
+```text
+HERMEX_VISUAL_PREINSTALLED_ANDROID=1
+HERMEX_VISUAL_EMULATOR_SNAPSHOT=1
+HERMEX_VISUAL_EMULATOR_WIPE_DATA=0
+```
+
 The manual `Android Visual Screens` workflow can still build a Skip APK for one named shared SwiftUI fixture when no `apk_run_id` is supplied. It installs the app in an emulator, pins the Android display size/state from the manifest, and uploads the captured screenshot in the same `<device>/<state>/<screen>.png` layout consumed by the comparer. The local capture command expects an already-running emulator:
 
 ```bash
