@@ -92,17 +92,10 @@ public struct HermexSessionListScreen: View {
                 .padding(.top, 8)
         }
 
-        if !searchChromeIsExpanded {
-            sessionsSectionHeader
-                .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-                .padding(.top, 28)
-                .padding(.bottom, 12)
-        } else {
-            sessionsSectionHeader
-                .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
-        }
+        sessionsSectionHeader
+            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+            .padding(.top, searchChromeIsExpanded ? 16 : 28)
+            .padding(.bottom, 12)
 
         sessionContent
 
