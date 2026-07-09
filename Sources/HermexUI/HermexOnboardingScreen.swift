@@ -348,7 +348,7 @@ public struct HermexOnboardingScreen: View {
                             .hermexURLInputTraits()
                             .submitLabel(.go)
                             .tint(Color(red: 1.0, green: 0.74, blue: 0.10))
-                            .hermexOnboardingFocused($focusedField, equals: .serverURL)
+                            .hermexOnboardingFocused($focusedField, equals: HermexOnboardingConnectField.serverURL)
                             .onSubmit {
                                 submitConnection()
                             }
@@ -366,7 +366,7 @@ public struct HermexOnboardingScreen: View {
                         .foregroundStyle(Color.white)
                         .textContentType(.password)
                         .submitLabel(.go)
-                        .hermexOnboardingFocused($focusedField, equals: .password)
+                        .hermexOnboardingFocused($focusedField, equals: HermexOnboardingConnectField.password)
                         .onSubmit {
                             submitConnection()
                         }
