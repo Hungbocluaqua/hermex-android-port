@@ -139,6 +139,7 @@ def main() -> int:
 
     store = (ROOT / "Sources" / "HermexCore" / "HermexAppStore.swift").read_text(encoding="utf-8")
     ok &= require("isFreshInstallOnboarding" in store, "HermexAppStore must keep preview sessions out of fresh onboarding.")
+    ok &= require("#if HERMEX_ENABLE_DEMO_STORE && !SKIP" in store, "Skip Android must compile the live HermexAppStore, not the demo/preview store.")
     ok &= require("shouldSeedPreviewData" in store, "HermexAppStore demo data must be gated behind non-fresh-run state.")
 
     fixtures = (ROOT / "Sources" / "HermexCore" / "HermexVisualFixtures.swift").read_text(encoding="utf-8")

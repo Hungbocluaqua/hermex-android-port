@@ -113,13 +113,17 @@ patch_android_branding() {
     [[ -f "$icon_source" ]] || icon_source="$ROOT/Sources/HermexUI/Resources/Logo/HermesAppIcon.png"
     if [[ -f "$icon_source" ]]; then
       cp "$icon_source" "$res_dir/drawable-nodpi/hermex_app_icon.png"
+      cp "$icon_source" "$res_dir/drawable/hermex_app_icon.png"
       for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
         mkdir -p "$res_dir/mipmap-$density"
         cp "$icon_source" "$res_dir/mipmap-$density/ic_launcher.png"
         cp "$icon_source" "$res_dir/mipmap-$density/ic_launcher_round.png"
+        cp "$icon_source" "$res_dir/mipmap-$density/ic_launcher_foreground.png"
       done
-      icon_ref="@drawable/hermex_app_icon"
-      round_icon_ref="@drawable/hermex_app_icon"
+      # Remove default Skip vector/heart launchers if present.
+      rm -f "$res_dir/drawable/ic_launcher_foreground.xml"             "$res_dir/drawable/ic_launcher_background.xml"             "$res_dir/mipmap-anydpi-v26/ic_launcher.xml"             "$res_dir/mipmap-anydpi-v26/ic_launcher_round.xml" || true
+      icon_ref="@mipmap/ic_launcher"
+      round_icon_ref="@mipmap/ic_launcher_round"
       launcher_foreground_ref="@drawable/hermex_app_icon"
       has_real_icon=1
     fi
@@ -343,6 +347,26 @@ sign_release_apks_if_requested() {
     echo "Signed release APK: $final"
   done < <(find "$GRADLE_DIR" "$APP_DIR/.build/Android" "$APP_DIR/.build/plugins/outputs" -type f -name '*release*.apk' -print0)
 }
+
+# Re-apply branding after the Gradle assemble step so generated Skip resources
+# cannot clobber the Hermex launcher icon/label, then rebuild once if needed.
+branding_stamp_before="$(find "$APP_DIR" "$GRADLE_DIR" -path '*/src/main/AndroidManifest.xml' -o -path '*/src/main/res/*' 2>/dev/null | sort | cksum || true)"
+patch_android_branding
+branding_stamp_after="$(find "$APP_DIR" "$GRADLE_DIR" -path '*/src/main/AndroidManifest.xml' -o -path '*/src/main/res/*' 2>/dev/null | sort | cksum || true)"
+if [[ "$branding_stamp_before" != "$branding_stamp_after" ]]; then
+  echo "Android branding resources changed after assemble; rebuilding APK."
+  (
+    cd "$GRADLE_DIR"
+    if command -v skip >/dev/null 2>&1; then
+      skip gradle -p "$GRADLE_DIR" "$GRADLE_TASK"
+    elif [[ -f ./gradlew ]]; then
+      chmod +x ./gradlew
+      ./gradlew --no-daemon "$GRADLE_TASK"
+    elif command -v gradle >/dev/null 2>&1; then
+      gradle --no-daemon "$GRADLE_TASK"
+    fi
+  )
+fi
 
 sign_release_apks_if_requested
 

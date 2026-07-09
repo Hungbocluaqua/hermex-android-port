@@ -256,6 +256,7 @@ public struct HermexComposerSurface: View {
     private let prefersFocused: Bool
     private let onEvent: (HermexUIEvent) -> Void
     @FocusState private var isDraftFocused: Bool
+    @State private var localDraft: String
 
     public init(
         state: HermexComposerState,
@@ -269,6 +270,7 @@ public struct HermexComposerSurface: View {
         self.showsTurnActions = showsTurnActions
         self.prefersFocused = prefersFocused
         self.onEvent = onEvent
+        self._localDraft = State(initialValue: state.draft)
     }
 
     public var body: some View {
@@ -329,6 +331,11 @@ public struct HermexComposerSurface: View {
         .padding(.horizontal)
         .padding(.bottom, HermexLayoutContract.composerBottomAccessorySpacing)
         .foregroundStyle(HermexUIColors.primaryText)
+        .onChange(of: state.draft) { _, newValue in
+            if newValue != localDraft {
+                localDraft = newValue
+            }
+        }
     }
 
     @ViewBuilder
@@ -388,8 +395,11 @@ public struct HermexComposerSurface: View {
 
     private var draftBinding: Binding<String> {
         Binding(
-            get: { state.draft },
-            set: { onEvent(.updateDraft($0)) }
+            get: { localDraft },
+            set: { newValue in
+                localDraft = newValue
+                onEvent(.updateDraft(newValue))
+            }
         )
     }
 
@@ -424,7 +434,7 @@ public struct HermexComposerSurface: View {
                 }
 #endif
 
-            if state.draft.isEmpty {
+            if localDraft.isEmpty {
                 Text("Ask anything... /commands")
                     .font(.title3)
                     .foregroundStyle(HermexUIColors.tertiaryText)
@@ -437,10 +447,10 @@ public struct HermexComposerSurface: View {
     }
 
     private var composerTextInputHeight: CGFloat {
-        let explicitLineCount = state.draft
+        let explicitLineCount = localDraft
             .split(separator: "\n", omittingEmptySubsequences: false)
             .count
-        let wrappedLineCount = max(1, (state.draft.count / HermexLayoutContract.composerTextInputWrapColumn) + 1)
+        let wrappedLineCount = max(1, (localDraft.count / HermexLayoutContract.composerTextInputWrapColumn) + 1)
         let lineCount = max(explicitLineCount, wrappedLineCount)
         let measuredHeight = CGFloat(lineCount) * HermexLayoutContract.composerTextInputLineHeight
         return min(

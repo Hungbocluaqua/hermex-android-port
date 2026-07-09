@@ -39,6 +39,8 @@ def main() -> int:
     ok = True
     ok &= require("NavigationStack" not in root, "HermexRootScreen must not add platform navigation chrome.")
     ok &= require("HermexOnboardingScreen(appState: appState, onboarding: onboarding" in root, "Root screen must pass shared onboarding state.")
+    store_root = read("Sources/HermexUI/HermexStoreRootScreen.swift")
+    ok &= require("syncFromStore()" in store_root and "@State private var appState" in store_root, "Store root must mirror store snapshots into @State for Skip redraws.")
     ok &= require("HermexVisualFixtureRootScreen" in fixture_root, "HermexUI must expose a renderable visual fixture root.")
     ok &= require("HermexVisualFixtureCatalog.fixture(named:" in fixture_root, "Visual fixture root must resolve named golden screens.")
     ok &= require("HermexRootScreen(" in fixture_root, "Visual fixture root must render through the canonical HermexRootScreen.")
@@ -61,8 +63,8 @@ def main() -> int:
     ok &= require(
         'onboardingField(systemImage: "link"' in onboarding
         and 'onboardingField(systemImage: "key.fill"' in onboarding
-        and "#if !SKIP" in onboarding,
-        "Onboarding field icons must be hidden on Skip Android when SF Symbol mapping would render warning placeholders."
+        and "HermexSystemImageName(systemImage)" in onboarding,
+        "Onboarding field icons must use Skip-safe HermexSystemImageName mapping."
     )
     ok &= require(
         "connectionButtonLabel(title: title, systemImage: systemImage)" in onboarding
@@ -108,6 +110,7 @@ def main() -> int:
     ok &= require("chatHeader" in chat, "Chat screen must use custom iOS-style top chrome.")
     ok &= require("TextField(\"Message Hermex\"" not in chat, "Composer must not regress to the pre-parity single-line TextField.")
     ok &= require("TextEditor(text: draftBinding)" in chat, "Composer text input must use an iOS-style multi-line editor.")
+    ok &= require("@State private var localDraft" in chat and "onEvent(.updateDraft(newValue))" in chat, "Composer must keep a local draft binding so Skip text entry remains interactive.")
     ok &= require("Ask anything... /commands" in chat, "Composer placeholder must match the iOS composer.")
     ok &= require("composerTextInputHeight" in chat, "Composer must preserve the iOS measured/capped input height contract.")
     ok &= require("composerTextInputMaximumHeight" in chat, "Composer must cap text growth like the iOS composer.")

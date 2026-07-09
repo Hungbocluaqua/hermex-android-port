@@ -69,6 +69,12 @@ def main() -> int:
     ok &= "live-networking-passed" in workflow or fail(
         "Skip Android release workflow must name the live networking passphrase."
     )
+    ok &= "#if HERMEX_ENABLE_DEMO_STORE && !SKIP" in read("Sources/HermexCore/HermexAppStore.swift") or fail(
+        "Skip Android release must compile the live HermexAppStore path."
+    )
+    ok &= "syncFromStore()" in read("Sources/HermexUI/HermexStoreRootScreen.swift") and "@State private var appState" in read("Sources/HermexUI/HermexStoreRootScreen.swift") or fail(
+        "Skip Android release must mirror store snapshots into @State for UI redraws."
+    )
     ok &= "hermexRuntimeVisualFixturesEnabled = false" in launcher and "if hermexRuntimeVisualFixturesEnabled" in launcher or fail(
         "Skip Android release launcher must ignore persisted runtime visual fixture selector files by default."
     )

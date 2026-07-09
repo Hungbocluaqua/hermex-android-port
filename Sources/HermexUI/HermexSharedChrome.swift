@@ -114,13 +114,36 @@ public struct HermexLogoMark: View {
 
     public var body: some View {
 #if SKIP
-        Text("HERMEX")
-            .font(.system(size: 42, weight: .black))
-            .foregroundStyle(HermexUIColors.gold)
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
-            .frame(width: HermexLayoutContract.sessionListLogoWidth, alignment: .leading)
-            .accessibilityLabel("HERMEX")
+        // Prefer the layered logo assets when Skip packages them; otherwise keep the gold wordmark.
+        ZStack {
+            hermexLogoImage("hermes-fill-mask")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(HermexUIColors.gold)
+            hermexLogoImage("hermes-shading-overlay")
+                .resizable()
+                .scaledToFit()
+            hermexLogoImage("hermes-highlight")
+                .resizable()
+                .scaledToFit()
+            hermexLogoImage("hermes-outline-shadow")
+                .resizable()
+                .scaledToFit()
+        }
+        .aspectRatio(HermexLayoutContract.hermexLogoAspectRatio, contentMode: .fit)
+        .frame(width: HermexLayoutContract.sessionListLogoWidth)
+        .accessibilityLabel("HERMEX")
+        .overlay {
+            // Fallback wordmark remains readable if image assets fail to package.
+            Text("HERMEX")
+                .font(.system(size: 34, weight: .black))
+                .foregroundStyle(HermexUIColors.gold)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .opacity(0.001)
+                .accessibilityHidden(true)
+        }
 #else
         ZStack {
             hermexLogoImage("hermes-fill-mask")

@@ -348,9 +348,7 @@ public struct HermexOnboardingScreen: View {
                             .hermexURLInputTraits()
                             .submitLabel(.go)
                             .tint(Color(red: 1.0, green: 0.74, blue: 0.10))
-#if !SKIP
                             .focused($focusedField, equals: HermexOnboardingConnectField.serverURL)
-#endif
                             .onSubmit {
                                 submitConnection()
                             }
@@ -358,22 +356,22 @@ public struct HermexOnboardingScreen: View {
                 }
 
                 onboardingField(systemImage: "key.fill", title: "Password") {
-                    SecureField(
-                        "",
-                        text: $password,
-                        prompt: Text("Server password")
-                            .foregroundStyle(Color.white.opacity(0.38))
-                    )
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(Color.white)
-                        .textContentType(.password)
-                        .submitLabel(.go)
-#if !SKIP
-                        .focused($focusedField, equals: HermexOnboardingConnectField.password)
-#endif
-                        .onSubmit {
-                            submitConnection()
+                    ZStack(alignment: .leading) {
+                        if password.isEmpty {
+                            Text("Server password")
+                                .foregroundStyle(Color.white.opacity(0.38))
+                                .allowsHitTesting(false)
                         }
+                        SecureField("", text: $password)
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(Color.white)
+                            .textContentType(.password)
+                            .submitLabel(.go)
+                            .focused($focusedField, equals: HermexOnboardingConnectField.password)
+                            .onSubmit {
+                                submitConnection()
+                            }
+                    }
                 }
 
                 DisclosureGroup(
@@ -720,13 +718,11 @@ public struct HermexOnboardingScreen: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         HStack(spacing: 12) {
-#if !SKIP
             Image(systemName: HermexSystemImageName(systemImage))
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Color(red: 1.0, green: 0.74, blue: 0.10))
                 .frame(width: 24)
                 .accessibilityHidden(true)
-#endif
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -833,7 +829,8 @@ private extension View {
         @ViewBuilder inset: () -> Inset
     ) -> some View {
 #if SKIP
-        self.overlay(alignment: .bottom) {
+        // Skip keyboard insets are unreliable; keep connect actions pinned when editing.
+        self.safeAreaInset(edge: .bottom, spacing: 0) {
             if isVisible {
                 inset()
                     .background(Color.black.opacity(0.92))

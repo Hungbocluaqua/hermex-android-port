@@ -268,7 +268,7 @@ public struct HermexAppEnvironment: Sendable {
     }
 }
 
-#if HERMEX_ENABLE_DEMO_STORE
+#if HERMEX_ENABLE_DEMO_STORE && !SKIP
 @MainActor
 public final class HermexAppStore {
     public private(set) var appState: HermexAppState
