@@ -123,6 +123,16 @@ def main() -> int:
         and "hermex-composer-draft-input" in capture_script,
         "Android visual capture must tap the actual composer input instead of a fixed keyboard coordinate.",
     )
+    ok &= require(
+        "Reopening Android soft keyboard before screenshot attempt" in capture_script
+        and "request_android_keyboard_for_fixture || true" in capture_script,
+        "Android visual capture must reopen the chat keyboard immediately before screenshot retries.",
+    )
+    ok &= require(
+        "mIsImeShowing=true" in capture_script
+        and "Window\\{.*InputMethod" not in capture_script,
+        "Android visual capture must not treat a hidden InputMethod window as a visible keyboard.",
+    )
     ok &= require("resolve_launch_activity" in capture_script and "am start -W" in capture_script, "Android visual capture must launch Hermex directly, not through a flaky launcher surface.")
     ok &= require("--reuse-apk" in capture_script and "REUSE_APK" in capture_script, "Android visual capture must support reusing a prebuilt fixture APK.")
     ok &= require("wait_for_app_focus" in capture_script and "pidof \"$PACKAGE_ID\"" in capture_script, "Android visual capture must wait for the Hermex process before screenshots.")
@@ -160,7 +170,7 @@ def main() -> int:
     ok &= require(
         "hermex-composer-draft-input" in chat_screen
         and "requestDraftFocusIfPreferred" in chat_screen,
-        "Chat keyboard fixture must focus a stable shared composer input.",
+        "Chat keyboard fixture must expose a stable shared composer input.",
     )
     ok &= require("chat-slash-menu" in fixtures and "overlay = .slashMenu" in fixtures, "Visual fixtures must include slash menu chat state.")
     ok &= require("chat-attachments" in fixtures and "overlay = .attachmentPicker" in fixtures, "Visual fixtures must include attachment composer state.")

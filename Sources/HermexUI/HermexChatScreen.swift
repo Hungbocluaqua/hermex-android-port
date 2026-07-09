@@ -442,15 +442,6 @@ public struct HermexComposerSurface: View {
                 .padding(.vertical, textVerticalPadding)
                 .background(Color.clear)
                 .accessibilityIdentifier("hermex-composer-draft-input")
-                .focused($isDraftFocused)
-                .onAppear {
-                    requestDraftFocusIfPreferred()
-                }
-                .onChange(of: prefersFocused) { _, newValue in
-                    if newValue {
-                        requestDraftFocusIfPreferred()
-                    }
-                }
 #else
             TextEditor(text: draftBinding)
                 .font(.title3)
@@ -485,16 +476,7 @@ public struct HermexComposerSurface: View {
 
     private func requestDraftFocusIfPreferred() {
         guard prefersFocused else { return }
-#if SKIP
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 750_000_000)
-            if prefersFocused {
-                isDraftFocused = true
-            }
-        }
-#else
         isDraftFocused = true
-#endif
     }
 
     private var composerTextInputHeight: CGFloat {

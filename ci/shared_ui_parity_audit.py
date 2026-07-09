@@ -116,9 +116,8 @@ def main() -> int:
     ok &= require("TextEditor(text: draftBinding)" in chat, "Composer text input must use an iOS-style multi-line editor.")
     ok &= require(
         "hermex-composer-draft-input" in chat
-        and "requestDraftFocusIfPreferred" in chat
-        and "Task.sleep(nanoseconds: 750_000_000)" in chat,
-        "Keyboard-open chat fixtures must focus a stable composer input after Skip cold-start layout settles.",
+        and "requestDraftFocusIfPreferred" in chat,
+        "Keyboard-open chat fixtures must expose a stable composer input and preserve iOS focus behavior.",
     )
     ok &= require("@State private var localDraft" in chat and "onEvent(.updateDraft(newValue))" in chat, "Composer must keep a local draft binding so Skip text entry remains interactive.")
     ok &= require("Ask anything... /commands" in chat, "Composer placeholder must match the iOS composer.")

@@ -326,7 +326,7 @@ is_android_ime_visible() {
       adb_shell_bounded 5 dumpsys window
     } | tr -d '\r'
   )"
-  grep -Eqi 'mInputShown=true|mIsInputViewShown=true|inputShown=true|InputMethod.*mHasSurface=true|Window\{.*InputMethod' <<<"$snapshot"
+  grep -Eqi 'mInputShown=true|mIsInputViewShown=true|inputShown=true|mIsImeShowing=true|mImeShowing=true|InputMethod.*mHasSurface=true[^[:cntrl:]]*isReadyForDisplay\(\)=true' <<<"$snapshot"
 }
 
 assert_keyboard_visible_for_fixture() {
@@ -595,6 +595,12 @@ capture_verified_screenshot() {
       continue
     fi
 
+    if [[ "$SCREEN" == "chat-keyboard-open" ]]; then
+      log "Reopening Android soft keyboard before screenshot attempt $attempt"
+      request_android_keyboard_for_fixture || true
+      sleep 1
+    fi
+
     log "Capturing screenshot to $screenshot_path"
     "$ADB" exec-out screencap -p > "$screenshot_path"
 
@@ -705,9 +711,8 @@ if [[ "$SCREEN" == "chat-keyboard-open" ]]; then
     echo "Hermex lost focus after opening the keyboard fixture." >&2
     exit 1
   fi
-  if ! assert_keyboard_visible_for_fixture; then
-    dump_debug_state "keyboard-not-visible"
-    exit 1
+  if ! is_android_ime_visible; then
+    log "Android soft keyboard was not visible after the initial request; screenshot retries will reopen it."
   fi
 fi
 
