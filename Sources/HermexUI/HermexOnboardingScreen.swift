@@ -70,7 +70,7 @@ public struct HermexOnboardingScreen: View {
         .hermexOnboardingKeyboardInset(isVisible: isEditingConnectionField) {
             keyboardActionBar
         }
-        .animation(.easeInOut(duration: 0.18), value: isEditingConnectionField)
+        .animation(Animation.easeInOut(duration: 0.18), value: isEditingConnectionField)
         .alert("Copy the setup prompt first", isPresented: $isShowingCopyReminder) {
             Button("Stay Here", role: .cancel) {}
             Button("Continue Anyway") {
@@ -160,11 +160,7 @@ public struct HermexOnboardingScreen: View {
             Spacer(minLength: 32)
 
             VStack(alignment: .leading, spacing: 12) {
-#if SKIP
-                Text("Control your Hermes agent from Android.")
-#else
-                Text("Control your Hermes agent from iPhone.")
-#endif
+                Text(welcomeHeadline)
                     .font(.system(size: 31, weight: .bold))
                     .foregroundStyle(Color.white)
                     .lineLimit(3)
@@ -192,19 +188,11 @@ public struct HermexOnboardingScreen: View {
             VStack(alignment: .leading, spacing: 28) {
                 centeredHeader(
                     title: "What you get",
-#if SKIP
-                    subtitle: "Your Hermes agent, reachable from Android over Tailscale."
-#else
-                    subtitle: "Your Hermes agent, reachable from iPhone over Tailscale."
-#endif
+                    subtitle: featuresSubtitle
                 )
 
                 featureRow(
-#if SKIP
-                    title: "Chat with your Hermes agent from Android",
-#else
-                    title: "Chat with your Hermes agent from iPhone",
-#endif
+                    title: chatFeatureTitle,
                     subtitle: "Drive conversations from anywhere on your tailnet."
                 )
                 featureRow(
@@ -781,6 +769,30 @@ public struct HermexOnboardingScreen: View {
             password: password,
             customHeaderText: customHeaderText
         ))
+    }
+
+    private var welcomeHeadline: String {
+#if SKIP
+        "Control your Hermes agent from Android."
+#else
+        "Control your Hermes agent from iPhone."
+#endif
+    }
+
+    private var featuresSubtitle: String {
+#if SKIP
+        "Your Hermes agent, reachable from Android over Tailscale."
+#else
+        "Your Hermes agent, reachable from iPhone over Tailscale."
+#endif
+    }
+
+    private var chatFeatureTitle: String {
+#if SKIP
+        "Chat with your Hermes agent from Android"
+#else
+        "Chat with your Hermes agent from iPhone"
+#endif
     }
 
     private var primaryButtonTitle: String {

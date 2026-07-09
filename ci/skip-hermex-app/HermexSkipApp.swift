@@ -120,10 +120,13 @@ public final class HermexSkipAppDelegate: Sendable {
 
 private final class HermexSkipRuntime {
     private let connection = HermexSkipConnection()
+    private var streamTask: Task<Void, Never>?
 
     @MainActor
     lazy var store: HermexAppStore = HermexAppStore(
-        environment: Self.environment(connection: connection)
+        environment: Self.environment(connection: connection, onStreamStarted: { [weak self] streamID in
+            self?.beginStreaming(streamID: streamID)
+        })
     )
 
     @MainActor
@@ -136,7 +139,28 @@ private final class HermexSkipRuntime {
         }
     }
 
-    private static func environment(connection: HermexSkipConnection) -> HermexAppEnvironment {
+    @MainActor
+    private func beginStreaming(streamID: String) {
+        streamTask?.cancel()
+        streamTask = Task { @MainActor in
+            do {
+                let client = try await connection.currentClient()
+                let headers = try await connection.currentCustomHeaders()
+                let streamURL = client.streamURL(streamID: streamID)
+                let streamClient = HermexSSEStreamClient(url: streamURL, customHeaders: headers)
+                for try await event in streamClient.events() {
+                    if Task.isCancelled { break }
+                    await store.send(.applyStreamEvent(event))
+                    if case .done = event { break }
+                    if case .error = event { break }
+                }
+            } catch {
+                await store.send(.applyStreamEvent(.error(String(describing: error))))
+            }
+        }
+    }
+
+    private static func environment(connection: HermexSkipConnection, onStreamStarted: @escaping @MainActor (String) -> Void) -> HermexAppEnvironment {
         HermexAppEnvironment(
             testServerConnection: { server in
                 let client = await connection.client(for: server)
@@ -161,7 +185,7 @@ private final class HermexSkipRuntime {
             },
             startChat: { sessionID, message, workspace, model, modelProvider, profile, attachments in
                 let repository = try await connection.currentChatRepository()
-                return try await repository.start(
+                let response = try await repository.start(
                     sessionID: sessionID,
                     message: message,
                     workspace: workspace,
@@ -171,6 +195,12 @@ private final class HermexSkipRuntime {
                     explicitModelPick: model != nil,
                     attachments: attachments
                 )
+                if let streamID = response.stringValue(forKey: "stream_id") ?? response.stringValue(forKey: "streamId") {
+                    await MainActor.run {
+                        onStreamStarted(streamID)
+                    }
+                }
+                return response
             },
             cancelStream: { streamID in
                 let repository = try await connection.currentChatRepository()
@@ -310,6 +340,15 @@ private actor HermexSkipConnection {
         activeServer = nil
     }
 
+    func currentCustomHeaders() throws -> [HermexCustomHeader] {
+        guard let activeServer else {
+            throw HermexAPIError.network("No active Hermex server. Connect to a server first.")
+        }
+        return activeServer.customHeaders
+            .map { HermexCustomHeader(name: $0.key, value: $0.value) }
+            .sanitizedForClient()
+    }
+
     func client(for server: HermexServerIdentity) -> HermexAPIClient {
         let headers = server.customHeaders
             .map { HermexCustomHeader(name: $0.key, value: $0.value) }
@@ -350,5 +389,12 @@ private actor HermexSkipConnection {
 
     func currentPanelsRepository() throws -> HermexPanelsRepository {
         HermexPanelsRepository(client: try currentClient())
+    }
+}
+
+
+private extension HermexJSONValue {
+    func stringValue(forKey key: String) -> String? {
+        stringValue(key)
     }
 }

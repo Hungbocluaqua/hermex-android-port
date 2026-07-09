@@ -1094,9 +1094,6 @@ public final class HermexAppStore {
     }
 
     private func applyStreamEvent(_ event: HermexSSEEvent) {
-#if SKIP
-        chat.stream.liveToolActivity = nil
-#else
         switch event {
         case .token(let token):
             appendAssistantToken(token)
@@ -1114,7 +1111,6 @@ public final class HermexAppStore {
         case .named(let event, let data):
             applyNamedStreamEvent(event: event, data: data)
         }
-#endif
     }
 
     private func applyNamedStreamEvent(event: String, data: String) {
@@ -1141,9 +1137,6 @@ public final class HermexAppStore {
 
     private func appendAssistantToken(_ token: String) {
         guard !token.isEmpty else { return }
-#if SKIP
-        chat.messages.append(HermexChatMessageDTO(role: "assistant", content: token, timestamp: Date().timeIntervalSince1970))
-#else
         if let lastIndex = chat.messages.indices.last,
            chat.messages[lastIndex].role == "assistant" {
             let existing = chat.messages[lastIndex].content ?? ""
@@ -1151,7 +1144,6 @@ public final class HermexAppStore {
         } else {
             chat.messages.append(HermexChatMessageDTO(role: "assistant", content: token, timestamp: Date().timeIntervalSince1970))
         }
-#endif
     }
 
     private func loadWorkspace(path: String?) async {
@@ -1353,7 +1345,7 @@ private extension HermexAttachmentDTO {
 
 private extension HermexJSONValue {
     func stringValue(forKey key: String) -> String? {
-        objectValue?.stringValue(key)
+        stringValue(key)
     }
 }
 #endif
