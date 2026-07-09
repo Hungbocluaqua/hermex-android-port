@@ -395,7 +395,11 @@ public struct HermexComposerSurface: View {
 
     private var composerTextInput: some View {
         ZStack(alignment: .topLeading) {
+#if SKIP
+            TextField("", text: draftBinding)
+#else
             TextEditor(text: draftBinding)
+#endif
                 .font(.title3)
                 .foregroundStyle(HermexUIColors.primaryText)
                 .frame(height: composerTextInputHeight)
