@@ -33,6 +33,8 @@ public struct HermexChatScreen: View {
                             streamingIndicator
                         }
                     }
+                    .padding(.horizontal, HermexLayoutContract.chatTranscriptHorizontalPadding)
+                    .padding(.top, HermexLayoutContract.chatTranscriptTopPadding)
 #else
                     LazyVStack(alignment: .leading, spacing: HermexLayoutContract.chatTranscriptMessageSpacing) {
                         ForEach(state.messages, id: \.stableId) { message in
@@ -43,9 +45,9 @@ public struct HermexChatScreen: View {
                             streamingIndicator
                         }
                     }
-#endif
                     .padding(.horizontal, HermexLayoutContract.chatTranscriptHorizontalPadding)
                     .padding(.top, HermexLayoutContract.chatTranscriptTopPadding)
+#endif
                 }
                 .hermexComposerBottomReserve(composerInset)
             }
