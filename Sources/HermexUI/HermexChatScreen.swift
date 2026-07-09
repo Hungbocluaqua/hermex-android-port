@@ -574,7 +574,7 @@ public struct HermexComposerSurface: View {
     private var workspaceControl: some View {
         if state.availableWorkspaces.isEmpty {
             Button { onEvent(.selectWorkspace) } label: {
-                HermexPillHermexMappedLabel(state.selectedWorkspace ?? "Home", systemImage: "folder")
+                HermexPillLabel(state.selectedWorkspace ?? "Home", systemImage: "folder")
             }
         } else {
             Menu {
@@ -584,7 +584,7 @@ public struct HermexComposerSurface: View {
                     }
                 }
             } label: {
-                HermexPillHermexMappedLabel(state.selectedWorkspace ?? "Home", systemImage: "folder")
+                HermexPillLabel(state.selectedWorkspace ?? "Home", systemImage: "folder")
             }
         }
     }
@@ -593,7 +593,7 @@ public struct HermexComposerSurface: View {
     private var profileControl: some View {
         if state.availableProfiles.isEmpty {
             Button { onEvent(.selectProfile) } label: {
-                HermexPillHermexMappedLabel(state.selectedProfile ?? "default", systemImage: "person.crop.circle")
+                HermexPillLabel(state.selectedProfile ?? "default", systemImage: "person.crop.circle")
             }
         } else {
             Menu {
@@ -603,17 +603,13 @@ public struct HermexComposerSurface: View {
                     }
                 }
             } label: {
-                HermexPillHermexMappedLabel(state.selectedProfile ?? "default", systemImage: "person.crop.circle")
+                HermexPillLabel(state.selectedProfile ?? "default", systemImage: "person.crop.circle")
             }
         }
     }
 
     private func composerStatusBar(text: String, systemImage: String, isError: Bool) -> some View {
-        Label {
-            Text(text)
-        } icon: {
-            Image(systemName: HermexSystemImageName(systemImage))
-        }
+        HermexMappedLabel(text, systemImage: systemImage)
             .font(.caption.weight(.medium))
             .foregroundStyle(isError ? Color.red.opacity(0.95) : HermexUIColors.secondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)
