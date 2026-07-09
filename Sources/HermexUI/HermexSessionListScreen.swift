@@ -339,6 +339,34 @@ public struct HermexSessionListScreen: View {
         }
     }
 
+    @ViewBuilder
+    private var sidebarUtilitySection: some View {
+        if !searchChromeIsExpanded {
+            utilityRows
+                .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+                .padding(.top, HermexLayoutContract.sessionListUtilityTopPadding)
+                .padding(.bottom, HermexLayoutContract.sessionListUtilityRowSpacing)
+
+            selectorRow(
+                icon: "person.crop.circle.badge.gearshape",
+                title: state.activeProfileName ?? "default",
+                subtitle: "Profile",
+                event: .selectProfile
+            )
+            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+            .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
+
+            selectorRow(
+                icon: "folder",
+                title: primaryWorkspace,
+                subtitle: "Workspace",
+                event: .selectWorkspace
+            )
+            .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+            .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
+        }
+    }
+
     private var utilityRows: some View {
         VStack(alignment: .leading, spacing: HermexLayoutContract.sessionListUtilityRowSpacing) {
             sidebarNavigationRow("calendar.badge.clock", "Tasks", .selectPanel(.tasks))
