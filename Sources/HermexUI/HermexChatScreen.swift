@@ -432,7 +432,10 @@ public struct HermexChatScreen: View {
     }
 
     private func previewURL(in text: String) -> URL? {
-        for token in text.split(whereSeparator: { $0.isWhitespace }) {
+        let normalizedText = text
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\t", with: " ")
+        for token in normalizedText.split(separator: " ") {
             let candidate = token
                 .trimmingCharacters(in: CharacterSet(charactersIn: "()[]{}<>\"'.,;"))
             guard let url = URL(string: candidate),
@@ -651,12 +654,11 @@ private struct HermexRemoteAttachmentImage: View {
         }
     }
 
-    @ViewBuilder
-    private func decodedImage(_ image: HermexDecodedAttachmentImage) -> some View {
+    private func decodedImage(_ image: HermexDecodedAttachmentImage) -> Image {
 #if SKIP || canImport(UIKit)
-        Image(uiImage: image)
+        return Image(uiImage: image)
 #else
-        Image(nsImage: image)
+        return Image(nsImage: image)
 #endif
     }
 }
