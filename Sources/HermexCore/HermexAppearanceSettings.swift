@@ -14,6 +14,7 @@ public struct HermexColorPreset: Equatable, Sendable, Identifiable {
 
 public enum HermexAppearanceSettings {
     public static let defaultHeaderLogoColorHex = "#FFD700"
+    private static let allowedInitialCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
     public static let headerLogoColorPresets = [
         HermexColorPreset(name: "Yellow", hex: "#FFD700"),
@@ -41,11 +42,13 @@ public enum HermexAppearanceSettings {
     }
 
     public static func normalizedInitials(_ rawValue: String) -> String {
-        rawValue
-            .filter { $0.isLetter || $0.isNumber }
-            .prefix(3)
-            .map { String($0).uppercased() }
-            .joined()
+        var result = ""
+        for character in rawValue {
+            guard allowedInitialCharacters.contains(character) else { continue }
+            result.append(contentsOf: String(character).uppercased())
+            if result.count == 3 { break }
+        }
+        return result
     }
 
     public static func displayInitials(
@@ -64,12 +67,28 @@ public enum HermexAppearanceSettings {
     }
 
     private static func initials(from rawName: String) -> String {
-        rawName
-            .split(whereSeparator: { $0.isWhitespace || $0 == "-" || $0 == "_" })
-            .compactMap(\.first)
-            .prefix(2)
-            .map { String($0).uppercased() }
-            .joined()
+        var words: [String] = []
+        var current = ""
+        for character in rawName {
+            if character == " " || character == "\t" || character == "-" || character == "_" {
+                if !current.isEmpty {
+                    words.append(current)
+                    current = ""
+                }
+            } else {
+                current.append(character)
+            }
+        }
+        if !current.isEmpty { words.append(current) }
+
+        var result = ""
+        for word in words {
+            if let first = word.first {
+                result.append(contentsOf: String(first).uppercased())
+            }
+            if result.count == 2 { break }
+        }
+        return result
     }
 
     private static func rgbComponents(for rawValue: String) -> (red: Double, green: Double, blue: Double)? {
