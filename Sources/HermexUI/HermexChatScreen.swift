@@ -6,6 +6,9 @@ public struct HermexChatScreen: View {
     private let prefersComposerFocused: Bool
     private let onEvent: (HermexUIEvent) -> Void
     @State private var composerInset: CGFloat = HermexLayoutContract.composerFallbackInset
+    @State private var editingMessageContext: HermexMessageActionContext?
+    @State private var editingMessageText = ""
+    @State private var selectedMessageText: String?
 
     public init(
         state: HermexChatState,
@@ -25,8 +28,8 @@ public struct HermexChatScreen: View {
                 ScrollView {
 #if SKIP
                     VStack(alignment: .leading, spacing: HermexLayoutContract.chatTranscriptMessageSpacing) {
-                        ForEach(state.messages, id: \.stableId) { message in
-                            messageBlock(message)
+                        ForEach(Array(state.messages.enumerated()), id: \.offset) { index, message in
+                            messageBlock(message, visibleIndex: index)
                         }
 
                         if state.stream.isStreaming {
@@ -37,8 +40,8 @@ public struct HermexChatScreen: View {
                     .padding(.top, HermexLayoutContract.chatTranscriptTopPadding)
 #else
                     LazyVStack(alignment: .leading, spacing: HermexLayoutContract.chatTranscriptMessageSpacing) {
-                        ForEach(state.messages, id: \.stableId) { message in
-                            messageBlock(message)
+                        ForEach(Array(state.messages.enumerated()), id: \.offset) { index, message in
+                            messageBlock(message, visibleIndex: index)
                         }
 
                         if state.stream.isStreaming {
@@ -74,6 +77,18 @@ public struct HermexChatScreen: View {
                         onEvent: onEvent
                     )
                 }
+            }
+
+            if let context = editingMessageContext {
+                editMessagePanel(context: context)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, composerInset + 18)
+            }
+
+            if let selectedMessageText {
+                selectMessagePanel(text: selectedMessageText)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, composerInset + 18)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -126,7 +141,11 @@ public struct HermexChatScreen: View {
         .frame(minHeight: HermexLayoutContract.chatTopBarHeight)
     }
 
-    private func messageBlock(_ message: HermexChatMessageDTO) -> some View {
+    private func messageBlock(_ message: HermexChatMessageDTO, visibleIndex: Int) -> some View {
+        let actionContext = HermexMessageActionContextResolver.context(
+            for: message,
+            visibleIndex: visibleIndex
+        )
         VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: 7) {
             if let reasoning = message.reasoning, !reasoning.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
                 transcriptAccessory(title: "Thinking", text: reasoning, systemImage: "brain.head.profile")
@@ -143,6 +162,9 @@ public struct HermexChatScreen: View {
             let content = message.content ?? message.text ?? ""
             if !content.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
                 HStack {
+                    if let actionContext, message.role != "user" {
+                        messageActionMenu(actionContext)
+                    }
                     if message.role == "user" { Spacer(minLength: 52) }
                     HermexTranscriptMarkdown(content: content)
                         .font(.body)
@@ -162,11 +184,114 @@ public struct HermexChatScreen: View {
                                     .stroke(HermexUIColors.hairline, lineWidth: 0.5)
                             }
                         }
+                    if let actionContext, message.role == "user" {
+                        messageActionMenu(actionContext)
+                    }
                     if message.role != "user" { Spacer(minLength: 52) }
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: message.role == "user" ? .trailing : .leading)
+    }
+
+    private func messageActionMenu(_ context: HermexMessageActionContext) -> some View {
+        Menu {
+            Button("Copy") {
+                onEvent(.copyMessage(context))
+            }
+
+            if context.role == .assistant {
+                Button("Listen") {
+                    onEvent(.listenMessage(context))
+                }
+                Button("Select Text") {
+                    selectedMessageText = context.copyText
+                }
+                Button("Regenerate Response") {
+                    onEvent(.regenerateMessage(context))
+                }
+            }
+
+            if context.role == .user {
+                Button("Edit Message") {
+                    editingMessageContext = context
+                    editingMessageText = context.copyText
+                }
+            }
+
+            Button("Fork From Here") {
+                onEvent(.forkMessage(context))
+            }
+        } label: {
+            Image(systemName: HermexSystemImageName("ellipsis.circle"))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(HermexUIColors.secondaryText)
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func editMessagePanel(context: HermexMessageActionContext) -> some View {
+        HermexGlassPanel(cornerRadius: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Edit Message")
+                        .font(.headline.weight(.semibold))
+                    Spacer()
+                    Button("Cancel") {
+                        editingMessageContext = nil
+                    }
+                    .font(.caption.weight(.medium))
+                }
+
+#if SKIP
+                TextField("Message", text: $editingMessageText)
+                    .padding(10)
+                    .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+#else
+                TextEditor(text: $editingMessageText)
+                    .frame(minHeight: 90, maxHeight: 150)
+                    .padding(6)
+                    .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+#endif
+
+                HStack {
+                    Spacer()
+                    Button("Save") {
+                        let text = editingMessageText
+                        editingMessageContext = nil
+                        onEvent(.editMessage(context, text))
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+            .padding(14)
+        }
+    }
+
+    private func selectMessagePanel(text: String) -> some View {
+        HermexGlassPanel(cornerRadius: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Select Text")
+                        .font(.headline.weight(.semibold))
+                    Spacer()
+                    Button("Done") {
+                        selectedMessageText = nil
+                    }
+                    .font(.caption.weight(.medium))
+                }
+
+                ScrollView {
+                    Text(verbatim: text)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .hermexTextSelectionEnabled()
+                }
+                .frame(minHeight: 90, maxHeight: 190)
+            }
+            .padding(14)
+        }
     }
 
     private func transcriptAccessory(title: String, text: String, systemImage: String) -> some View {

@@ -5,7 +5,11 @@ import HermexPlatform
 import HermexUI
 
 #if SKIP
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.media.MediaRecorder
+import android.speech.tts.TextToSpeech
 import android.webkit.MimeTypeMap
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.registerForActivityResult
@@ -306,6 +310,31 @@ private final class HermexSkipAudioTranscriber: HermexAudioTranscriber, @uncheck
     }
 }
 
+private final class HermexSkipClipboard: HermexClipboardService, @unchecked Sendable {
+    func copy(_ text: String) async {
+        guard let clipboard = ProcessInfo.processInfo.androidContext
+            .getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        else { return }
+        clipboard.setPrimaryClip(ClipData.newPlainText("Hermex", text))
+    }
+}
+
+private final class HermexSkipSpeechSynthesizer: HermexSpeechSynthesizer, @unchecked Sendable {
+    private let textToSpeech: TextToSpeech
+
+    init() {
+        textToSpeech = TextToSpeech(ProcessInfo.processInfo.androidContext) { _ in }
+    }
+
+    func speak(_ text: String) async {
+        textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, nil, "hermex-message")
+    }
+
+    func stop() async {
+        textToSpeech.stop()
+    }
+}
+
 private struct HermexSkipSharedAttachmentPayload: Codable {
     var uri: String?
     var displayName: String?
@@ -387,7 +416,9 @@ private final class HermexSkipRuntime: @unchecked Sendable {
             attachmentPicker: HermexSkipAttachmentPicker(),
             attachmentUploader: HermexSkipAttachmentUploader(connection: connection),
             voiceRecorder: HermexSkipVoiceRecorder(),
-            audioTranscriber: HermexSkipAudioTranscriber(connection: connection)
+            audioTranscriber: HermexSkipAudioTranscriber(connection: connection),
+            speechSynthesizer: HermexSkipSpeechSynthesizer(),
+            clipboard: HermexSkipClipboard()
         ))
 #else
         self.coordinator = HermexPlatformCoordinator(services: HermexPlatformServiceBundle(cache: cacheStore))
@@ -433,6 +464,10 @@ private final class HermexSkipRuntime: @unchecked Sendable {
             await coordinator.startVoiceRecording(in: store)
         case .stopVoice:
             await coordinator.stopVoiceRecordingAndTranscribe(into: store)
+        case .copyMessage(let context):
+            await coordinator.copyMessage(context)
+        case .listenMessage(let context):
+            await coordinator.speakMessage(context)
         default:
             break
         }
@@ -734,6 +769,14 @@ private final class HermexSkipRuntime: @unchecked Sendable {
                 case .delete(let projectID):
                     return try await projects.delete(projectID: projectID)
                 }
+            },
+            branchSession: { sessionID, keepCount in
+                let sessions = try await connection.currentSessionsRepository()
+                return try await sessions.branch(id: sessionID, keepCount: keepCount)
+            },
+            truncateSession: { sessionID, keepCount in
+                let sessions = try await connection.currentSessionsRepository()
+                return try await sessions.truncate(id: sessionID, keepCount: keepCount)
             },
             updateServerRuntime: { server, authenticated in
                 if authenticated {

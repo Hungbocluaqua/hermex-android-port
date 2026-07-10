@@ -38,6 +38,11 @@ public enum HermexUIEvent: Equatable, Sendable {
     case undo
     case retry
     case compress
+    case copyMessage(HermexMessageActionContext)
+    case listenMessage(HermexMessageActionContext)
+    case editMessage(HermexMessageActionContext, String)
+    case regenerateMessage(HermexMessageActionContext)
+    case forkMessage(HermexMessageActionContext)
     case approval(String)
     case clarify(String)
     case openWorkspaceEntry(HermexWorkspaceEntryDTO)
@@ -134,6 +139,14 @@ public extension HermexUIEvent {
             return .retry
         case .compress:
             return .compress
+        case .editMessage(let context, let text):
+            return .editMessage(context, text)
+        case .regenerateMessage(let context):
+            return .regenerateMessage(context)
+        case .forkMessage(let context):
+            return .forkMessage(context)
+        case .copyMessage, .listenMessage:
+            return nil
         case .approval(let choice):
             return .approval(choice)
         case .clarify(let response):

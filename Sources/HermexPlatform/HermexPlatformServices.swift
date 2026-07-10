@@ -119,6 +119,10 @@ public protocol HermexSpeechSynthesizer: Sendable {
     func stop() async
 }
 
+public protocol HermexClipboardService: Sendable {
+    func copy(_ text: String) async
+}
+
 public protocol HermexStatusNotifier: Sendable {
     func showRunning(sessionID: String, streamID: String?, preview: String?) async
     func showComplete(sessionID: String) async
@@ -138,6 +142,7 @@ public struct HermexPlatformServiceBundle: Sendable {
     public var voiceRecorder: (any HermexVoiceRecorder)?
     public var audioTranscriber: (any HermexAudioTranscriber)?
     public var speechSynthesizer: (any HermexSpeechSynthesizer)?
+    public var clipboard: (any HermexClipboardService)?
     public var statusNotifier: (any HermexStatusNotifier)?
 
     public init(
@@ -148,6 +153,7 @@ public struct HermexPlatformServiceBundle: Sendable {
         voiceRecorder: (any HermexVoiceRecorder)? = nil,
         audioTranscriber: (any HermexAudioTranscriber)? = nil,
         speechSynthesizer: (any HermexSpeechSynthesizer)? = nil,
+        clipboard: (any HermexClipboardService)? = nil,
         statusNotifier: (any HermexStatusNotifier)? = nil
     ) {
         self.cache = cache
@@ -157,6 +163,7 @@ public struct HermexPlatformServiceBundle: Sendable {
         self.voiceRecorder = voiceRecorder
         self.audioTranscriber = audioTranscriber
         self.speechSynthesizer = speechSynthesizer
+        self.clipboard = clipboard
         self.statusNotifier = statusNotifier
     }
 }

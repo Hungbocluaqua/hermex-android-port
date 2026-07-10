@@ -137,6 +137,17 @@ public struct HermexPlatformCoordinator: Sendable {
         await speech.speak(text)
     }
 
+    public func copyMessage(_ context: HermexMessageActionContext) async {
+        await services.clipboard?.copy(context.copyText)
+    }
+
+    public func speakMessage(_ context: HermexMessageActionContext) async {
+        guard let speech = services.speechSynthesizer,
+              let text = context.listenText
+        else { return }
+        await speech.speak(text)
+    }
+
     @MainActor
     public func syncStatusNotification(from store: HermexAppStore) async {
         guard let notifier = services.statusNotifier, let sessionID = store.appState.selectedSessionID else { return }

@@ -41,6 +41,9 @@ public enum HermexAppAction: Equatable, Sendable {
     case undo
     case retry
     case compress
+    case forkMessage(HermexMessageActionContext)
+    case editMessage(HermexMessageActionContext, String)
+    case regenerateMessage(HermexMessageActionContext)
     case approval(String)
     case clarify(String)
     case applyStreamEvent(HermexSSEEvent)
@@ -127,6 +130,8 @@ public struct HermexAppEnvironment: Sendable {
     public var loadInsights: @Sendable (_ days: Int) async throws -> HermexJSONValue
     public var logout: @Sendable () async throws -> HermexJSONValue
     public var updateServerRuntime: @Sendable (_ server: HermexServerIdentity, _ authenticated: Bool) async -> Void
+    public var branchSession: @Sendable (_ sessionID: String, _ keepCount: Int?) async throws -> HermexJSONValue
+    public var truncateSession: @Sendable (_ sessionID: String, _ keepCount: Int) async throws -> HermexSessionResponse
 
     public init(
         testServerConnection: @escaping @Sendable (_ server: HermexServerIdentity) async throws -> HermexJSONValue,
@@ -173,7 +178,16 @@ public struct HermexAppEnvironment: Sendable {
                 "error": .string("Project operations are unavailable.")
             ])
         },
-        updateServerRuntime: @escaping @Sendable (_ server: HermexServerIdentity, _ authenticated: Bool) async -> Void = { _, _ in }
+        updateServerRuntime: @escaping @Sendable (_ server: HermexServerIdentity, _ authenticated: Bool) async -> Void = { _, _ in },
+        branchSession: @escaping @Sendable (_ sessionID: String, _ keepCount: Int?) async throws -> HermexJSONValue = { _, _ in
+            .dictionary([
+                "ok": .bool(false),
+                "error": .string("Forking messages is unavailable.")
+            ])
+        },
+        truncateSession: @escaping @Sendable (_ sessionID: String, _ keepCount: Int) async throws -> HermexSessionResponse = { _, _ in
+            HermexSessionResponse(error: "Editing messages is unavailable.")
+        }
     ) {
         self.testServerConnection = testServerConnection
         self.loginToServer = loginToServer
@@ -207,6 +221,8 @@ public struct HermexAppEnvironment: Sendable {
         self.loadInsights = loadInsights
         self.logout = logout
         self.updateServerRuntime = updateServerRuntime
+        self.branchSession = branchSession
+        self.truncateSession = truncateSession
     }
 
     public static func live(client: HermexAPIClient) -> HermexAppEnvironment {
@@ -384,6 +400,12 @@ public struct HermexAppEnvironment: Sendable {
                 case .delete(let projectID):
                     return try await projects.delete(projectID: projectID)
                 }
+            },
+            branchSession: { sessionID, keepCount in
+                try await sessions.branch(id: sessionID, keepCount: keepCount)
+            },
+            truncateSession: { sessionID, keepCount in
+                try await sessions.truncate(id: sessionID, keepCount: keepCount)
             }
         )
     }
@@ -544,7 +566,7 @@ public final class HermexAppStore {
             sendPreviewDraft()
         case .cancelStream:
             chat.stream = HermexStreamState()
-        case .undo, .retry, .compress:
+        case .undo, .retry, .compress, .forkMessage(_), .editMessage(_, _), .regenerateMessage(_):
             chat.errorMessage = nil
         case .approval(_):
             chat.pendingApproval = nil
@@ -1202,6 +1224,12 @@ public final class HermexAppStore {
             await mutateCurrentSession(environment.retrySession)
         case .compress:
             await compressCurrentSession()
+        case .forkMessage(let context):
+            await forkMessage(context)
+        case .editMessage(let context, let text):
+            await editMessage(context, text: text)
+        case .regenerateMessage(let context):
+            await regenerateMessage(context)
         case .approval(let choice):
             await respondApproval(choice)
         case .clarify(let response):
@@ -1617,6 +1645,141 @@ public final class HermexAppStore {
         } catch {
             chat.errorMessage = String(describing: error)
         }
+    }
+
+    private func forkMessage(_ context: HermexMessageActionContext) async {
+        guard let sessionID = appState.selectedSessionID else { return }
+        guard !chat.isViewingCachedData else {
+            chat.errorMessage = "Reconnect to the server to fork a conversation."
+            return
+        }
+        guard !chat.stream.isStreaming else {
+            chat.errorMessage = "Wait for the current response to finish before forking."
+            return
+        }
+
+        chat.errorMessage = nil
+        do {
+            let response = try await environment.branchSession(sessionID, context.keepCountThroughMessage)
+            guard let forkedSessionID = response.stringValue(forKey: "session_id")
+                ?? response.stringValue(forKey: "sessionId"),
+                  !forkedSessionID.isEmpty
+            else {
+                chat.errorMessage = response.stringValue(forKey: "error") ?? "The server did not return the forked session ID."
+                return
+            }
+            await openSession(forkedSessionID)
+        } catch {
+            chat.errorMessage = String(describing: error)
+        }
+    }
+
+    private func editMessage(_ context: HermexMessageActionContext, text: String) async {
+        guard context.role == .user else {
+            chat.errorMessage = "Only user messages can be edited."
+            return
+        }
+        let editedText = text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !editedText.isEmpty else {
+            chat.errorMessage = "The edited message cannot be empty."
+            return
+        }
+        guard let sessionID = appState.selectedSessionID else { return }
+        guard !chat.isViewingCachedData else {
+            chat.errorMessage = "Reconnect to the server to edit a message."
+            return
+        }
+        guard !chat.stream.isStreaming else {
+            chat.errorMessage = "Wait for the current response to finish before editing."
+            return
+        }
+
+        do {
+            let truncated = try await environment.truncateSession(sessionID, context.fullHistoryIndex)
+            applyHistoryMutationResponse(truncated)
+            try await startMessageAfterHistoryMutation(
+                sessionID: sessionID,
+                text: editedText,
+                appendOptimisticUser: true
+            )
+        } catch {
+            chat.stream.isStreaming = false
+            chat.errorMessage = String(describing: error)
+        }
+    }
+
+    private func regenerateMessage(_ context: HermexMessageActionContext) async {
+        guard context.role == .assistant else {
+            chat.errorMessage = "Only assistant messages can be regenerated."
+            return
+        }
+        guard let sessionID = appState.selectedSessionID else { return }
+        guard !chat.isViewingCachedData else {
+            chat.errorMessage = "Reconnect to the server to regenerate a response."
+            return
+        }
+        guard !chat.stream.isStreaming else {
+            chat.errorMessage = "Wait for the current response to finish before regenerating."
+            return
+        }
+        guard let userText = HermexMessageActionContextResolver.precedingUserMessageText(
+            in: chat.messages,
+            beforeVisibleIndex: context.visibleIndex
+        ) else {
+            chat.errorMessage = "Load older messages before regenerating this response."
+            return
+        }
+
+        do {
+            let truncated = try await environment.truncateSession(sessionID, context.fullHistoryIndex)
+            applyHistoryMutationResponse(truncated)
+            try await startMessageAfterHistoryMutation(
+                sessionID: sessionID,
+                text: userText,
+                appendOptimisticUser: false
+            )
+        } catch {
+            chat.stream.isStreaming = false
+            chat.errorMessage = String(describing: error)
+        }
+    }
+
+    private func applyHistoryMutationResponse(_ response: HermexSessionResponse) {
+        if let session = response.session {
+            chat.session = session
+        }
+        if let messages = response.messages {
+            chat.messages = messages
+        }
+        chat.errorMessage = response.error
+        chat.stream = HermexStreamState()
+    }
+
+    private func startMessageAfterHistoryMutation(
+        sessionID: String,
+        text: String,
+        appendOptimisticUser: Bool
+    ) async throws {
+        let composer = chat.composer
+        chat.errorMessage = nil
+        if appendOptimisticUser {
+            chat.messages.append(HermexChatMessageDTO(
+                role: "user",
+                content: text,
+                timestamp: Date().timeIntervalSince1970
+            ))
+        }
+        chat.stream = HermexStreamState(isStreaming: true, liveToolActivity: "Starting response")
+        let response = try await environment.startChat(
+            sessionID,
+            text,
+            composer.selectedWorkspace,
+            composer.selectedModel,
+            composer.selectedModelProvider,
+            composer.selectedProfile,
+            nil
+        )
+        chat.stream.streamID = response.stringValue(forKey: "stream_id") ?? response.stringValue(forKey: "streamId")
     }
 
     private func compressCurrentSession() async {

@@ -75,6 +75,10 @@ public struct HermexSessionRepository: Sendable {
         try await client.branchSession(id: id, keepCount: keepCount, title: title)
     }
 
+    public func truncate(id: String, keepCount: Int) async throws -> HermexSessionResponse {
+        try await client.truncateSession(id: id, keepCount: keepCount)
+    }
+
     public func compress(id: String, focusTopic: String? = nil) async throws -> HermexJSONValue {
         try await client.compressSession(id: id, focusTopic: focusTopic)
     }
