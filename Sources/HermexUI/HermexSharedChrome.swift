@@ -10,16 +10,18 @@ import AppKit
 enum HermexUIColors {
     static let gold = Color(red: 1.0, green: 0.843, blue: 0.0)
     static let darkBackground = Color.black
-    static let systemBackground = Color.black
-    static let secondarySystemBackground = Color.white.opacity(0.10)
-    static let separator = Color.white.opacity(0.14)
-    static let primaryText = Color.white
-    static let secondaryText = Color.white.opacity(0.58)
-    static let tertiaryText = Color.white.opacity(0.38)
-    static let glassFill = Color.white.opacity(0.085)
-    static let glassFillStrong = Color.white.opacity(0.12)
-    static let hairline = Color.white.opacity(0.16)
-    static let faintHairline = Color.white.opacity(0.08)
+    // Route backgrounds are supplied by HermexRootScreen so explicit light mode can
+    // change the surface without duplicating every screen's background modifier.
+    static let systemBackground = Color.clear
+    static let secondarySystemBackground = Color.primary.opacity(0.10)
+    static let separator = Color.primary.opacity(0.14)
+    static let primaryText = Color.primary
+    static let secondaryText = Color.secondary.opacity(0.82)
+    static let tertiaryText = Color.secondary.opacity(0.58)
+    static let glassFill = Color.primary.opacity(0.085)
+    static let glassFillStrong = Color.primary.opacity(0.12)
+    static let hairline = Color.primary.opacity(0.16)
+    static let faintHairline = Color.primary.opacity(0.08)
 
     static func color(for rawValue: String) -> Color {
         guard let components = HermexAppearanceSettings.rgbComponents(for: rawValue) else {
@@ -35,6 +37,17 @@ enum HermexUIColors {
 
     static func prefersDarkForeground(for rawValue: String) -> Bool {
         HermexAppearanceSettings.prefersDarkForeground(for: rawValue)
+    }
+}
+
+private struct HermexGlassEnabledKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    var hermexGlassEnabled: Bool {
+        get { self[HermexGlassEnabledKey.self] }
+        set { self[HermexGlassEnabledKey.self] = newValue }
     }
 }
 
@@ -248,6 +261,8 @@ public struct HermexAppIconMark: View {
 public struct HermexGlassPanel<Content: View>: View {
     private let content: Content
     private let cornerRadius: CGFloat
+    @Environment(\.hermexGlassEnabled) private var glassEnabled
+    @Environment(\.colorScheme) private var colorScheme
 
     public init(cornerRadius: CGFloat = HermexLayoutContract.composerCornerRadiusCollapsed, @ViewBuilder content: () -> Content) {
         self.cornerRadius = cornerRadius
@@ -258,7 +273,7 @@ public struct HermexGlassPanel<Content: View>: View {
         content
             .foregroundStyle(HermexUIColors.primaryText)
             .background(
-                HermexUIColors.glassFill,
+                glassEnabled ? HermexUIColors.glassFill : opaqueSurface,
                 in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             )
             .overlay {
@@ -266,6 +281,10 @@ public struct HermexGlassPanel<Content: View>: View {
                     .stroke(HermexUIColors.hairline, lineWidth: 0.6)
             }
             .shadow(color: Color.black.opacity(0.22), radius: 18, y: 8)
+    }
+
+    private var opaqueSurface: Color {
+        colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.07)
     }
 }
 
@@ -275,6 +294,8 @@ public struct HermexCircleIconButton: View {
     private let size: CGFloat
     private let isFilled: Bool
     private let action: () -> Void
+    @Environment(\.hermexGlassEnabled) private var glassEnabled
+    @Environment(\.colorScheme) private var colorScheme
 
     public init(
         systemImage: String,
@@ -296,7 +317,7 @@ public struct HermexCircleIconButton: View {
                 .font(.system(size: size * 0.34, weight: .semibold))
                 .frame(width: size, height: size)
                 .foregroundStyle(isFilled ? Color.black : HermexUIColors.primaryText)
-                .background(isFilled ? HermexUIColors.gold : HermexUIColors.glassFillStrong, in: Circle())
+                .background(isFilled ? HermexUIColors.gold : buttonFill, in: Circle())
                 .overlay {
                     Circle().stroke(HermexUIColors.hairline, lineWidth: 0.6)
                 }
@@ -304,10 +325,18 @@ public struct HermexCircleIconButton: View {
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
     }
+
+    private var buttonFill: Color {
+        if glassEnabled {
+            return HermexUIColors.glassFillStrong
+        }
+        return colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.08)
+    }
 }
 
 public struct HermexIconCluster<Content: View>: View {
     private let content: Content
+    @Environment(\.hermexGlassEnabled) private var glassEnabled
 
     public init(@ViewBuilder content: () -> Content) {
         self.content = content()
@@ -317,7 +346,7 @@ public struct HermexIconCluster<Content: View>: View {
         HStack(spacing: HermexLayoutContract.topChromeClusterSpacing) {
             content
         }
-        .background(HermexUIColors.glassFill, in: Capsule())
+        .background(glassEnabled ? HermexUIColors.glassFill : HermexUIColors.glassFillStrong, in: Capsule())
         .overlay {
             Capsule().stroke(HermexUIColors.hairline, lineWidth: 0.6)
         }
@@ -328,6 +357,7 @@ public struct HermexIconCluster<Content: View>: View {
 public struct HermexPillLabel: View {
     private let title: String
     private let systemImage: String?
+    @Environment(\.hermexGlassEnabled) private var glassEnabled
 
     public init(_ title: String, systemImage: String? = nil) {
         self.title = title
@@ -348,7 +378,7 @@ public struct HermexPillLabel: View {
         .foregroundStyle(HermexUIColors.primaryText)
         .padding(.horizontal, HermexLayoutContract.composerSecondaryBarHorizontalPadding)
         .padding(.vertical, HermexLayoutContract.composerSecondaryBarVerticalPadding)
-        .background(HermexUIColors.glassFillStrong, in: Capsule())
+        .background(glassEnabled ? HermexUIColors.glassFillStrong : HermexUIColors.glassFill, in: Capsule())
         .overlay {
             Capsule().stroke(HermexUIColors.hairline, lineWidth: 0.6)
         }
@@ -358,20 +388,12 @@ public struct HermexPillLabel: View {
 public extension View {
     @ViewBuilder
     func hermexThinMaterialBackground<S: Shape>(in shape: S) -> some View {
-#if SKIP
-        self.background(HermexUIColors.glassFillStrong, in: shape)
-#else
-        self.background(.thinMaterial, in: shape)
-#endif
+        modifier(HermexThinMaterialBackgroundModifier(shape: shape))
     }
 
     @ViewBuilder
     func hermexUltraThinMaterialBackground<S: Shape>(in shape: S) -> some View {
-#if SKIP
-        self.background(HermexUIColors.glassFill, in: shape)
-#else
-        self.background(.ultraThinMaterial, in: shape)
-#endif
+        modifier(HermexUltraThinMaterialBackgroundModifier(shape: shape))
     }
 
     @ViewBuilder
@@ -390,5 +412,51 @@ public extension View {
 #else
         self.layoutPriority(value)
 #endif
+    }
+}
+
+private struct HermexThinMaterialBackgroundModifier<S: Shape>: ViewModifier {
+    let shape: S
+    @Environment(\.hermexGlassEnabled) private var glassEnabled
+    @Environment(\.colorScheme) private var colorScheme
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+#if SKIP
+        content.background(glassEnabled ? HermexUIColors.glassFillStrong : opaqueSurface, in: shape)
+#else
+        if glassEnabled {
+            content.background(.thinMaterial, in: shape)
+        } else {
+            content.background(opaqueSurface, in: shape)
+        }
+#endif
+    }
+
+    private var opaqueSurface: Color {
+        colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.07)
+    }
+}
+
+private struct HermexUltraThinMaterialBackgroundModifier<S: Shape>: ViewModifier {
+    let shape: S
+    @Environment(\.hermexGlassEnabled) private var glassEnabled
+    @Environment(\.colorScheme) private var colorScheme
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+#if SKIP
+        content.background(glassEnabled ? HermexUIColors.glassFill : opaqueSurface, in: shape)
+#else
+        if glassEnabled {
+            content.background(.ultraThinMaterial, in: shape)
+        } else {
+            content.background(opaqueSurface, in: shape)
+        }
+#endif
+    }
+
+    private var opaqueSurface: Color {
+        colorScheme == .dark ? Color.white.opacity(0.09) : Color.black.opacity(0.05)
     }
 }

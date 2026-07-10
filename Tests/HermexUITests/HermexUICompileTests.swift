@@ -21,6 +21,15 @@ final class HermexUICompileTests: XCTestCase {
         }
     }
 
+    func testRootCanRenderExplicitLightThemeWithGlassDisabled() {
+        let view = HermexRootScreen(
+            appState: HermexAppState(route: .sessions),
+            settings: HermexSettingsState(appTheme: "light", glassEnabled: false)
+        )
+
+        XCTAssertTrue(String(describing: type(of: view)).contains("HermexRootScreen"))
+    }
+
     func testVisualFixtureRootCanInstantiateEveryGoldenScreen() throws {
         XCTAssertFalse(HermexVisualFixtureCatalog.all.isEmpty)
 

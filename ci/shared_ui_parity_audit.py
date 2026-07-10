@@ -152,6 +152,15 @@ def main() -> int:
         ok &= require(action in events and action in store, f"Shared local settings action is missing {action}.")
     ok &= require("saveLocalSettings" in store, "Shared store must persist local appearance and notification settings.")
     ok &= require("preferredColorScheme" in root, "Shared root must apply the persisted theme preference.")
+    ok &= require("rootBackground" in root and "Color.white" in root, "Shared root must provide an explicit light-mode background.")
+    ok &= require(
+        "Color.primary" in chrome and "Color.secondary" in chrome,
+        "Shared chrome colors must adapt to the active color scheme.",
+    )
+    ok &= require(
+        "hermexGlassEnabled" in chrome and "HermexThinMaterialBackgroundModifier" in chrome,
+        "Shared chrome must consume the persisted glass preference.",
+    )
     ok &= require("Toggle(" in settings and "Notifications" in settings, "Settings screen must expose interactive local preference controls.")
     for action in ["requestClearOfflineCache", "cancelClearOfflineCache", "clearOfflineCache"]:
         ok &= require(action in events and action in store, f"Shared cache action is missing {action}.")

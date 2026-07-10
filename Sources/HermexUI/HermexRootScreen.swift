@@ -73,8 +73,13 @@ public struct HermexRootScreen: View {
                 HermexPanelsScreen(state: panels, onEvent: onEvent)
             }
         }
-        .background(HermexUIColors.systemBackground)
+        .background(rootBackground)
+        .environment(\.hermexGlassEnabled, settings.glassEnabled)
         .preferredColorScheme(preferredColorScheme)
+    }
+
+    private var rootBackground: Color {
+        settings.appTheme.lowercased() == "light" ? Color.white : Color.black
     }
 
     private var preferredColorScheme: ColorScheme? {
