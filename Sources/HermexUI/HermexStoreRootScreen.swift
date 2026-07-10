@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import HermexCore
 
@@ -11,11 +12,17 @@ public struct HermexStoreRootScreen: View {
     @State private var workspace: HermexWorkspaceState
     @State private var git: HermexGitState
     @State private var panels: HermexPanelsState
+    private let loadAttachmentData: @Sendable (_ sessionID: String, _ path: String) async -> Data?
+    private let playAttachment: @Sendable (_ sessionID: String, _ path: String, _ filename: String) async -> Bool
+    private let stopAttachmentPlayback: @Sendable () async -> Void
     private let onUnhandledEvent: @MainActor (HermexUIEvent) async -> Void
     private let onActionCompleted: @MainActor () -> Void
 
     public init(
         store: HermexAppStore,
+        loadAttachmentData: @escaping @Sendable (_ sessionID: String, _ path: String) async -> Data? = { _, _ in nil },
+        playAttachment: @escaping @Sendable (_ sessionID: String, _ path: String, _ filename: String) async -> Bool = { _, _, _ in false },
+        stopAttachmentPlayback: @escaping @Sendable () async -> Void = {},
         onUnhandledEvent: @escaping @MainActor (HermexUIEvent) async -> Void = { _ in },
         onActionCompleted: @escaping @MainActor () -> Void = {}
     ) {
@@ -28,6 +35,9 @@ public struct HermexStoreRootScreen: View {
         self._workspace = State(initialValue: store.workspace)
         self._git = State(initialValue: store.git)
         self._panels = State(initialValue: store.panels)
+        self.loadAttachmentData = loadAttachmentData
+        self.playAttachment = playAttachment
+        self.stopAttachmentPlayback = stopAttachmentPlayback
         self.onUnhandledEvent = onUnhandledEvent
         self.onActionCompleted = onActionCompleted
     }
@@ -43,7 +53,10 @@ public struct HermexStoreRootScreen: View {
             settings: settings,
             workspace: workspace,
             git: git,
-            panels: panels
+            panels: panels,
+            loadAttachmentData: loadAttachmentData,
+            playAttachment: playAttachment,
+            stopAttachmentPlayback: stopAttachmentPlayback
         ) { event in
             if let action = event.appAction {
                 Task { @MainActor in

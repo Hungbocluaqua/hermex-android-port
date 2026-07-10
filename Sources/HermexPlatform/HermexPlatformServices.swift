@@ -104,6 +104,15 @@ public protocol HermexAttachmentUploader: Sendable {
     func uploadAttachment(at url: URL, sessionID: String) async throws -> HermexUploadResponse
 }
 
+public protocol HermexAttachmentDataLoader: Sendable {
+    func loadAttachmentData(sessionID: String, path: String) async throws -> Data
+}
+
+public protocol HermexAttachmentAudioPlayer: Sendable {
+    func play(data: Data, filename: String) async -> Bool
+    func stop() async
+}
+
 public protocol HermexVoiceRecorder: Sendable {
     func start() async throws
     func stop() async throws -> URL
@@ -139,6 +148,8 @@ public struct HermexPlatformServiceBundle: Sendable {
     public var shareIngress: (any HermexShareIngress)?
     public var attachmentPicker: (any HermexAttachmentPicker)?
     public var attachmentUploader: (any HermexAttachmentUploader)?
+    public var attachmentDataLoader: (any HermexAttachmentDataLoader)?
+    public var attachmentAudioPlayer: (any HermexAttachmentAudioPlayer)?
     public var voiceRecorder: (any HermexVoiceRecorder)?
     public var audioTranscriber: (any HermexAudioTranscriber)?
     public var speechSynthesizer: (any HermexSpeechSynthesizer)?
@@ -150,6 +161,8 @@ public struct HermexPlatformServiceBundle: Sendable {
         shareIngress: (any HermexShareIngress)? = nil,
         attachmentPicker: (any HermexAttachmentPicker)? = nil,
         attachmentUploader: (any HermexAttachmentUploader)? = nil,
+        attachmentDataLoader: (any HermexAttachmentDataLoader)? = nil,
+        attachmentAudioPlayer: (any HermexAttachmentAudioPlayer)? = nil,
         voiceRecorder: (any HermexVoiceRecorder)? = nil,
         audioTranscriber: (any HermexAudioTranscriber)? = nil,
         speechSynthesizer: (any HermexSpeechSynthesizer)? = nil,
@@ -160,6 +173,8 @@ public struct HermexPlatformServiceBundle: Sendable {
         self.shareIngress = shareIngress
         self.attachmentPicker = attachmentPicker
         self.attachmentUploader = attachmentUploader
+        self.attachmentDataLoader = attachmentDataLoader
+        self.attachmentAudioPlayer = attachmentAudioPlayer
         self.voiceRecorder = voiceRecorder
         self.audioTranscriber = audioTranscriber
         self.speechSynthesizer = speechSynthesizer

@@ -9,6 +9,9 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.media.MediaRecorder
+import android.media.MediaPlayer
+import android.content.Intent
+import android.net.Uri
 import android.speech.tts.TextToSpeech
 import android.webkit.MimeTypeMap
 import androidx.activity.result.ActivityResultLauncher
@@ -79,6 +82,9 @@ public struct HermexSkipAppRootView: View {
         } else {
             HermexStoreRootScreen(
                 store: runtime.store,
+                loadAttachmentData: runtime.loadAttachmentData,
+                playAttachment: runtime.playAttachment,
+                stopAttachmentPlayback: runtime.stopAttachmentPlayback,
                 onUnhandledEvent: runtime.handleUnhandledEvent,
                 onActionCompleted: runtime.handleActionCompleted
             )
@@ -229,6 +235,60 @@ private final class HermexSkipAttachmentUploader: HermexAttachmentUploader, @unc
             filename: filename,
             contentType: contentType
         )
+    }
+}
+
+private final class HermexSkipAttachmentDataLoader: HermexAttachmentDataLoader, @unchecked Sendable {
+    private let connection: HermexSkipConnection
+
+    init(connection: HermexSkipConnection) {
+        self.connection = connection
+    }
+
+    func loadAttachmentData(sessionID: String, path: String) async throws -> Data {
+        let repository = try await connection.currentWorkspaceRepository()
+        return try await repository.rawFile(sessionID: sessionID, path: path)
+    }
+}
+
+private final class HermexSkipAttachmentAudioPlayer: HermexAttachmentAudioPlayer, @unchecked Sendable {
+    private var player: MediaPlayer?
+    private var audioFile: java.io.File?
+
+    func play(data: Data, filename: String) async -> Bool {
+        await stop()
+        let safeName = filename.isEmpty ? "attachment" : filename
+        let file = java.io.File(
+            ProcessInfo.processInfo.androidContext.getCacheDir(),
+            "hermex-audio-\(UUID().uuidString)-\(safeName)"
+        )
+        let url = URL(fileURLWithPath: file.absolutePath)
+        guard (try? data.write(to: url)) != nil else { return false }
+
+        do {
+            let next = MediaPlayer()
+            next.setDataSource(file.absolutePath)
+            next.prepare()
+            next.start()
+            player = next
+            audioFile = file
+            return true
+        } catch {
+            file.delete()
+            return false
+        }
+    }
+
+    func stop() async {
+        if let player {
+            runCatching {
+                player.stop()
+                player.release()
+            }
+        }
+        player = nil
+        audioFile?.delete()
+        audioFile = nil
     }
 }
 
@@ -415,6 +475,8 @@ private final class HermexSkipRuntime: @unchecked Sendable {
             shareIngress: HermexSkipShareIngress(),
             attachmentPicker: HermexSkipAttachmentPicker(),
             attachmentUploader: HermexSkipAttachmentUploader(connection: connection),
+            attachmentDataLoader: HermexSkipAttachmentDataLoader(connection: connection),
+            attachmentAudioPlayer: HermexSkipAttachmentAudioPlayer(),
             voiceRecorder: HermexSkipVoiceRecorder(),
             audioTranscriber: HermexSkipAudioTranscriber(connection: connection),
             speechSynthesizer: HermexSkipSpeechSynthesizer(),
@@ -468,9 +530,27 @@ private final class HermexSkipRuntime: @unchecked Sendable {
             await coordinator.copyMessage(context)
         case .listenMessage(let context):
             await coordinator.speakMessage(context)
+        case .openExternalURL(let value):
+            guard let activity = UIApplication.shared.androidActivity else { return }
+            activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(value)))
         default:
             break
         }
+    }
+
+    @MainActor
+    func loadAttachmentData(sessionID: String, path: String) async -> Data? {
+        await coordinator.loadAttachmentData(sessionID: sessionID, path: path)
+    }
+
+    @MainActor
+    func playAttachment(sessionID: String, path: String, filename: String) async -> Bool {
+        await coordinator.playAttachment(sessionID: sessionID, path: path, filename: filename)
+    }
+
+    @MainActor
+    func stopAttachmentPlayback() async {
+        await coordinator.stopAttachmentPlayback()
     }
 
     @MainActor

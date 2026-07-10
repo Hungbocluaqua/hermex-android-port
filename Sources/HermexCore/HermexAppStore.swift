@@ -41,6 +41,7 @@ public enum HermexAppAction: Equatable, Sendable {
     case undo
     case retry
     case compress
+    case clearConversation
     case forkMessage(HermexMessageActionContext)
     case editMessage(HermexMessageActionContext, String)
     case regenerateMessage(HermexMessageActionContext)
@@ -110,6 +111,7 @@ public struct HermexAppEnvironment: Sendable {
     public var undoSession: @Sendable (_ sessionID: String) async throws -> HermexJSONValue
     public var retrySession: @Sendable (_ sessionID: String) async throws -> HermexJSONValue
     public var compressSession: @Sendable (_ sessionID: String, _ focusTopic: String?) async throws -> HermexJSONValue
+    public var clearSession: @Sendable (_ sessionID: String) async throws -> HermexJSONValue
     public var loadModels: @Sendable () async throws -> HermexModelsResponse
     public var loadProfiles: @Sendable () async throws -> HermexProfilesResponse
     public var loadWorkspaces: @Sendable () async throws -> HermexWorkspacesResponse
@@ -153,6 +155,12 @@ public struct HermexAppEnvironment: Sendable {
         undoSession: @escaping @Sendable (_ sessionID: String) async throws -> HermexJSONValue,
         retrySession: @escaping @Sendable (_ sessionID: String) async throws -> HermexJSONValue,
         compressSession: @escaping @Sendable (_ sessionID: String, _ focusTopic: String?) async throws -> HermexJSONValue,
+        clearSession: @escaping @Sendable (_ sessionID: String) async throws -> HermexJSONValue = { _ in
+            .dictionary([
+                "ok": .bool(false),
+                "error": .string("Clearing conversations is unavailable.")
+            ])
+        },
         loadModels: @escaping @Sendable () async throws -> HermexModelsResponse,
         loadProfiles: @escaping @Sendable () async throws -> HermexProfilesResponse,
         loadWorkspaces: @escaping @Sendable () async throws -> HermexWorkspacesResponse,
@@ -201,6 +209,7 @@ public struct HermexAppEnvironment: Sendable {
         self.undoSession = undoSession
         self.retrySession = retrySession
         self.compressSession = compressSession
+        self.clearSession = clearSession
         self.loadModels = loadModels
         self.loadProfiles = loadProfiles
         self.loadWorkspaces = loadWorkspaces
@@ -275,6 +284,9 @@ public struct HermexAppEnvironment: Sendable {
             },
             compressSession: { sessionID, focusTopic in
                 try await sessions.compress(id: sessionID, focusTopic: focusTopic)
+            },
+            clearSession: { sessionID in
+                try await sessions.clear(id: sessionID)
             },
             loadModels: {
                 try await client.models()
@@ -567,6 +579,11 @@ public final class HermexAppStore {
         case .cancelStream:
             chat.stream = HermexStreamState()
         case .undo, .retry, .compress, .forkMessage(_), .editMessage(_, _), .regenerateMessage(_):
+            chat.errorMessage = nil
+        case .clearConversation:
+            chat.messages = []
+            chat.composer.draft = ""
+            chat.composer.attachments = []
             chat.errorMessage = nil
         case .approval(_):
             chat.pendingApproval = nil
@@ -1224,6 +1241,8 @@ public final class HermexAppStore {
             await mutateCurrentSession(environment.retrySession)
         case .compress:
             await compressCurrentSession()
+        case .clearConversation:
+            await clearCurrentSession()
         case .forkMessage(let context):
             await forkMessage(context)
         case .editMessage(let context, let text):
@@ -1790,6 +1809,38 @@ public final class HermexAppStore {
             await openSession(sessionID)
         } catch {
             chat.errorMessage = String(describing: error)
+        }
+    }
+
+    private func clearCurrentSession() async {
+        guard let sessionID = appState.selectedSessionID else { return }
+        guard !chat.isViewingCachedData else {
+            chat.errorMessage = "Reconnect to the server to clear this conversation."
+            return
+        }
+        guard !chat.stream.isStreaming else {
+            chat.errorMessage = "Wait for the current response to finish before clearing."
+            return
+        }
+
+        chat.errorMessage = nil
+        chat.messages = []
+        chat.pendingApproval = nil
+        chat.pendingClarification = nil
+        chat.stream = HermexStreamState()
+        chat.composer.draft = ""
+        chat.composer.attachments = []
+        do {
+            let response = try await environment.clearSession(sessionID)
+            if let error = response.stringValue(forKey: "error"), !error.isEmpty {
+                chat.errorMessage = error
+                await openSession(sessionID)
+                return
+            }
+            await openSession(sessionID)
+        } catch {
+            chat.errorMessage = String(describing: error)
+            await openSession(sessionID)
         }
     }
 

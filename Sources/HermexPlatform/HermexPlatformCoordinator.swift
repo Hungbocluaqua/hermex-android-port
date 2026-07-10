@@ -148,6 +148,24 @@ public struct HermexPlatformCoordinator: Sendable {
         await speech.speak(text)
     }
 
+    public func loadAttachmentData(sessionID: String, path: String) async -> Data? {
+        guard let loader = services.attachmentDataLoader else { return nil }
+        return try? await loader.loadAttachmentData(sessionID: sessionID, path: path)
+    }
+
+    public func playAttachment(sessionID: String, path: String, filename: String) async -> Bool {
+        guard let loader = services.attachmentDataLoader,
+              let player = services.attachmentAudioPlayer,
+              let data = try? await loader.loadAttachmentData(sessionID: sessionID, path: path),
+              !data.isEmpty
+        else { return false }
+        return await player.play(data: data, filename: filename)
+    }
+
+    public func stopAttachmentPlayback() async {
+        await services.attachmentAudioPlayer?.stop()
+    }
+
     @MainActor
     public func syncStatusNotification(from store: HermexAppStore) async {
         guard let notifier = services.statusNotifier, let sessionID = store.appState.selectedSessionID else { return }

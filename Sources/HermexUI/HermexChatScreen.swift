@@ -1,22 +1,42 @@
+import Foundation
 import SwiftUI
 import HermexCore
+#if !SKIP && canImport(UIKit)
+import UIKit
+private typealias HermexDecodedAttachmentImage = UIImage
+#elseif !SKIP && canImport(AppKit)
+import AppKit
+private typealias HermexDecodedAttachmentImage = NSImage
+#elseif SKIP
+private typealias HermexDecodedAttachmentImage = UIImage
+#endif
 
 public struct HermexChatScreen: View {
     private let state: HermexChatState
     private let prefersComposerFocused: Bool
+    private let loadAttachmentData: @Sendable (_ sessionID: String, _ path: String) async -> Data?
+    private let playAttachment: @Sendable (_ sessionID: String, _ path: String, _ filename: String) async -> Bool
+    private let stopAttachmentPlayback: @Sendable () async -> Void
     private let onEvent: (HermexUIEvent) -> Void
     @State private var composerInset: CGFloat = HermexLayoutContract.composerFallbackInset
     @State private var editingMessageContext: HermexMessageActionContext?
     @State private var editingMessageText = ""
     @State private var selectedMessageText: String?
+    @State private var showsClearConversationConfirmation = false
 
     public init(
         state: HermexChatState,
         prefersComposerFocused: Bool = false,
+        loadAttachmentData: @escaping @Sendable (_ sessionID: String, _ path: String) async -> Data? = { _, _ in nil },
+        playAttachment: @escaping @Sendable (_ sessionID: String, _ path: String, _ filename: String) async -> Bool = { _, _, _ in false },
+        stopAttachmentPlayback: @escaping @Sendable () async -> Void = {},
         onEvent: @escaping (HermexUIEvent) -> Void = { _ in }
     ) {
         self.state = state
         self.prefersComposerFocused = prefersComposerFocused
+        self.loadAttachmentData = loadAttachmentData
+        self.playAttachment = playAttachment
+        self.stopAttachmentPlayback = stopAttachmentPlayback
         self.onEvent = onEvent
     }
 
@@ -90,6 +110,12 @@ public struct HermexChatScreen: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, composerInset + 18)
             }
+
+            if showsClearConversationConfirmation {
+                clearConversationPanel
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, composerInset + 18)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(HermexUIColors.systemBackground.ignoresSafeArea())
@@ -134,6 +160,16 @@ public struct HermexChatScreen: View {
                     accessibilityLabel: "Refresh",
                     action: { onEvent(.refresh) }
                 )
+                HermexCircleIconButton(
+                    systemImage: "trash",
+                    accessibilityLabel: "Clear conversation",
+                    action: {
+                        if canClearConversation {
+                            showsClearConversationConfirmation = true
+                        }
+                    }
+                )
+                .opacity(canClearConversation ? 1.0 : 0.42)
             }
         }
         .padding(.horizontal, HermexLayoutContract.chatTopBarHorizontalPadding)
@@ -156,7 +192,7 @@ public struct HermexChatScreen: View {
             }
 
             if let attachments = message.attachments, !attachments.isEmpty {
-                messageAttachmentStrip(attachments)
+                messageAttachmentStrip(attachments, sessionID: state.session?.sessionId)
             }
 
             let content = message.content ?? message.text ?? ""
@@ -189,6 +225,10 @@ public struct HermexChatScreen: View {
                     }
                     if message.role != "user" { Spacer(minLength: 52) }
                 }
+            }
+
+            if let url = previewURL(in: content) {
+                linkPreviewCard(url)
             }
         }
         .frame(maxWidth: .infinity, alignment: message.role == "user" ? .trailing : .leading)
@@ -293,6 +333,37 @@ public struct HermexChatScreen: View {
         }
     }
 
+    private var clearConversationPanel: some View {
+        HermexGlassPanel(cornerRadius: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Clear conversation")
+                    .font(.headline.weight(.semibold))
+
+                Text("Clear all messages? This cannot be undone.")
+                    .font(.callout)
+                    .foregroundStyle(HermexUIColors.secondaryText)
+
+                HStack {
+                    Button("Cancel") {
+                        showsClearConversationConfirmation = false
+                    }
+                    Spacer()
+                    Button("Clear") {
+                        showsClearConversationConfirmation = false
+                        onEvent(.clearConversation)
+                    }
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.red)
+                }
+            }
+            .padding(14)
+        }
+    }
+
+    private var canClearConversation: Bool {
+        !state.isLoading && !state.isViewingCachedData && !state.stream.isStreaming
+    }
+
     private func transcriptAccessory(title: String, text: String, systemImage: String) -> some View {
         HermexTranscriptAccessory(title: title, text: text, systemImage: systemImage)
     }
@@ -325,28 +396,84 @@ public struct HermexChatScreen: View {
         }
     }
 
-    private func messageAttachmentStrip(_ attachments: [HermexAttachmentDTO]) -> some View {
-        HStack(spacing: 7) {
-            ForEach(attachments) { attachment in
-                Button {
-                    if let path = attachment.path ?? attachment.name {
-                        onEvent(.openFile(path))
+    private func messageAttachmentStrip(_ attachments: [HermexAttachmentDTO], sessionID: String?) -> some View {
+        let audioAttachments = attachments.filter(\.hermexIsAudio)
+        let gridAttachments = attachments.filter { !$0.hermexIsAudio }
+
+        return VStack(alignment: .leading, spacing: 8) {
+            ForEach(audioAttachments) { attachment in
+                HermexInlineAudioAttachment(
+                    attachment: attachment,
+                    sessionID: sessionID,
+                    play: playAttachment,
+                    stop: stopAttachmentPlayback
+                )
+            }
+
+            if !gridAttachments.isEmpty {
+                HStack(spacing: 8) {
+                    ForEach(gridAttachments) { attachment in
+                        Button {
+                            if let path = attachment.path ?? attachment.name {
+                                onEvent(.openFile(path))
+                            }
+                        } label: {
+                            HermexAttachmentTile(
+                                attachment: attachment,
+                                sessionID: sessionID,
+                                loadData: loadAttachmentData
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
-                } label: {
-                    HermexMappedLabel(
-                        attachment.name ?? attachment.path ?? "Attachment",
-                        systemImage: attachment.isImage == true ? "photo" : "doc"
-                    )
-                    .font(.caption.weight(.medium))
-                    .lineLimit(1)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 7)
-                    .foregroundStyle(HermexUIColors.primaryText)
-                    .hermexThinMaterialBackground(in: Capsule())
                 }
-                .buttonStyle(.plain)
             }
         }
+    }
+
+    private func previewURL(in text: String) -> URL? {
+        for token in text.split(whereSeparator: { $0.isWhitespace }) {
+            let candidate = token
+                .trimmingCharacters(in: CharacterSet(charactersIn: "()[]{}<>\"'.,;"))
+            guard let url = URL(string: candidate),
+                  let scheme = url.scheme?.lowercased(),
+                  scheme == "http" || scheme == "https",
+                  url.host != nil
+            else { continue }
+            return url
+        }
+        return nil
+    }
+
+    private func linkPreviewCard(_ url: URL) -> some View {
+        Button {
+            onEvent(.openExternalURL(url.absoluteString))
+        } label: {
+            HStack(spacing: 10) {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(HermexUIColors.gold)
+                    .frame(width: 3, height: 42)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(url.host ?? url.absoluteString)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                    Text(url.path.isEmpty ? url.absoluteString : url.path)
+                        .font(.caption2)
+                        .foregroundStyle(HermexUIColors.secondaryText)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 4)
+                Image(systemName: HermexSystemImageName("arrow.up.right"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(HermexUIColors.gold)
+            }
+            .frame(maxWidth: 300, alignment: .leading)
+            .padding(10)
+            .hermexThinMaterialBackground(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     private var streamingIndicator: some View {
@@ -418,6 +545,184 @@ public struct HermexChatScreen: View {
                 }
             }
             .padding(14)
+        }
+    }
+}
+
+private extension HermexAttachmentDTO {
+    var hermexIsImage: Bool {
+        if isImage == true { return true }
+        if let mime, mime.lowercased().hasPrefix("image/") { return true }
+        return ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tif", "tiff"]
+            .contains(hermexFileExtension)
+    }
+
+    var hermexIsAudio: Bool {
+        if let mime, mime.lowercased().hasPrefix("audio/") { return true }
+        return ["aac", "flac", "m4a", "mp3", "ogg", "opus", "wav", "webm"]
+            .contains(hermexFileExtension)
+    }
+
+    var hermexDisplayName: String {
+        if let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+            return name
+        }
+        if let path = path?.trimmingCharacters(in: .whitespacesAndNewlines), !path.isEmpty {
+            let lastPathComponent = URL(fileURLWithPath: path).lastPathComponent
+            return lastPathComponent.isEmpty ? path : lastPathComponent
+        }
+        return "Attachment"
+    }
+
+    var hermexFileExtension: String {
+        URL(fileURLWithPath: name ?? path ?? "").pathExtension.lowercased()
+    }
+}
+
+private struct HermexAttachmentTile: View {
+    let attachment: HermexAttachmentDTO
+    let sessionID: String?
+    let loadData: @Sendable (_ sessionID: String, _ path: String) async -> Data?
+
+    var body: some View {
+        if attachment.hermexIsImage,
+           let sessionID,
+           let path = attachment.path ?? attachment.name {
+            HermexRemoteAttachmentImage(path: path) {
+                await loadData(sessionID, path)
+            }
+            .frame(width: 118, height: 118)
+        } else if attachment.hermexIsImage {
+            fallbackTile(systemImage: "photo")
+        } else {
+            fallbackTile(systemImage: "doc")
+        }
+    }
+
+    private func fallbackTile(systemImage: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: HermexSystemImageName(systemImage))
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(HermexUIColors.gold)
+            Text(attachment.hermexDisplayName)
+                .font(.caption2.weight(.medium))
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+            if !attachment.hermexFileExtension.isEmpty {
+                Text(String(attachment.hermexFileExtension.prefix(5)).uppercased())
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(HermexUIColors.secondaryText)
+            }
+        }
+        .frame(width: 118, height: 118)
+        .padding(8)
+        .hermexThinMaterialBackground(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+private struct HermexRemoteAttachmentImage: View {
+    let path: String
+    let loadData: @Sendable () async -> Data?
+    @State private var image: HermexDecodedAttachmentImage?
+    @State private var didAttempt = false
+
+    var body: some View {
+        ZStack {
+            if let image {
+                decodedImage(image)
+                    .resizable()
+                    .scaledToFill()
+            } else if didAttempt {
+                Image(systemName: HermexSystemImageName("photo"))
+                    .font(.title2)
+                    .foregroundStyle(HermexUIColors.secondaryText)
+            } else {
+                ProgressView()
+            }
+        }
+        .frame(width: 118, height: 118)
+        .clipped()
+        .hermexThinMaterialBackground(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .task(id: path) {
+            let data = await loadData()
+            guard !Task.isCancelled else { return }
+            image = data.flatMap { HermexDecodedAttachmentImage(data: $0) }
+            didAttempt = true
+        }
+    }
+
+    @ViewBuilder
+    private func decodedImage(_ image: HermexDecodedAttachmentImage) -> some View {
+#if SKIP || canImport(UIKit)
+        Image(uiImage: image)
+#else
+        Image(nsImage: image)
+#endif
+    }
+}
+
+private struct HermexInlineAudioAttachment: View {
+    let attachment: HermexAttachmentDTO
+    let sessionID: String?
+    let play: @Sendable (_ sessionID: String, _ path: String, _ filename: String) async -> Bool
+    let stop: @Sendable () async -> Void
+    @State private var isPlaying = false
+    @State private var isLoading = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button {
+                togglePlayback()
+            } label: {
+                Group {
+                    if isLoading {
+                        ProgressView()
+                    } else {
+                        Image(systemName: HermexSystemImageName(isPlaying ? "pause.fill" : "play.fill"))
+                            .font(.caption.weight(.bold))
+                    }
+                }
+                .frame(width: 34, height: 34)
+                .foregroundStyle(isPlaying ? Color.black : HermexUIColors.primaryText)
+                .background(isPlaying ? HermexUIColors.gold : HermexUIColors.glassFillStrong, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(isLoading || sessionID == nil || (attachment.path ?? attachment.name) == nil)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(attachment.hermexDisplayName)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                Text(isPlaying ? "Playing" : "Audio attachment")
+                    .font(.caption2)
+                    .foregroundStyle(HermexUIColors.secondaryText)
+            }
+            Spacer(minLength: 4)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .hermexThinMaterialBackground(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .onDisappear {
+            if isPlaying {
+                Task { await stop() }
+            }
+        }
+    }
+
+    private func togglePlayback() {
+        guard let sessionID, let path = attachment.path ?? attachment.name else { return }
+        if isPlaying {
+            isPlaying = false
+            Task { await stop() }
+            return
+        }
+
+        isLoading = true
+        Task {
+            let started = await play(sessionID, path, attachment.hermexDisplayName)
+            guard !Task.isCancelled else { return }
+            isLoading = false
+            isPlaying = started
         }
     }
 }

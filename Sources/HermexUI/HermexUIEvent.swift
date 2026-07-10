@@ -38,6 +38,7 @@ public enum HermexUIEvent: Equatable, Sendable {
     case undo
     case retry
     case compress
+    case clearConversation
     case copyMessage(HermexMessageActionContext)
     case listenMessage(HermexMessageActionContext)
     case editMessage(HermexMessageActionContext, String)
@@ -47,6 +48,7 @@ public enum HermexUIEvent: Equatable, Sendable {
     case clarify(String)
     case openWorkspaceEntry(HermexWorkspaceEntryDTO)
     case openFile(String)
+    case openExternalURL(String)
     case gitAction(String)
     case gitCommand(HermexGitCommand)
     case updateGitCommitMessage(String)
@@ -139,6 +141,8 @@ public extension HermexUIEvent {
             return .retry
         case .compress:
             return .compress
+        case .clearConversation:
+            return .clearConversation
         case .editMessage(let context, let text):
             return .editMessage(context, text)
         case .regenerateMessage(let context):
@@ -155,6 +159,8 @@ public extension HermexUIEvent {
             return .openWorkspaceEntry(entry)
         case .openFile(let path):
             return .openFile(path)
+        case .openExternalURL:
+            return nil
         case .gitAction(let action):
             return .gitAction(action)
         case .gitCommand(let command):

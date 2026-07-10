@@ -148,5 +148,7 @@ final class HermexUICompileTests: XCTestCase {
         XCTAssertEqual(HermexUIEvent.undo.appAction, .undo)
         XCTAssertEqual(HermexUIEvent.retry.appAction, .retry)
         XCTAssertEqual(HermexUIEvent.compress.appAction, .compress)
+        XCTAssertEqual(HermexUIEvent.clearConversation.appAction, .clearConversation)
+        XCTAssertNil(HermexUIEvent.openExternalURL("https://example.test").appAction)
     }
 }

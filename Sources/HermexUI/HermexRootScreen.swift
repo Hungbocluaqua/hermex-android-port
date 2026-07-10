@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import HermexCore
 
@@ -11,6 +12,9 @@ public struct HermexRootScreen: View {
     private let git: HermexGitState
     private let panels: HermexPanelsState
     private let prefersKeyboardVisible: Bool
+    private let loadAttachmentData: @Sendable (_ sessionID: String, _ path: String) async -> Data?
+    private let playAttachment: @Sendable (_ sessionID: String, _ path: String, _ filename: String) async -> Bool
+    private let stopAttachmentPlayback: @Sendable () async -> Void
     private let onEvent: (HermexUIEvent) -> Void
 
     public init(
@@ -23,6 +27,9 @@ public struct HermexRootScreen: View {
         git: HermexGitState = HermexGitState(),
         panels: HermexPanelsState = HermexPanelsState(),
         prefersKeyboardVisible: Bool = false,
+        loadAttachmentData: @escaping @Sendable (_ sessionID: String, _ path: String) async -> Data? = { _, _ in nil },
+        playAttachment: @escaping @Sendable (_ sessionID: String, _ path: String, _ filename: String) async -> Bool = { _, _, _ in false },
+        stopAttachmentPlayback: @escaping @Sendable () async -> Void = {},
         onEvent: @escaping (HermexUIEvent) -> Void = { _ in }
     ) {
         self.appState = appState
@@ -34,6 +41,9 @@ public struct HermexRootScreen: View {
         self.git = git
         self.panels = panels
         self.prefersKeyboardVisible = prefersKeyboardVisible
+        self.loadAttachmentData = loadAttachmentData
+        self.playAttachment = playAttachment
+        self.stopAttachmentPlayback = stopAttachmentPlayback
         self.onEvent = onEvent
     }
 
@@ -45,7 +55,14 @@ public struct HermexRootScreen: View {
             case .sessions:
                 HermexSessionListScreen(state: sessions, onEvent: onEvent)
             case .chat:
-                HermexChatScreen(state: chat, prefersComposerFocused: prefersKeyboardVisible, onEvent: onEvent)
+                HermexChatScreen(
+                    state: chat,
+                    prefersComposerFocused: prefersKeyboardVisible,
+                    loadAttachmentData: loadAttachmentData,
+                    playAttachment: playAttachment,
+                    stopAttachmentPlayback: stopAttachmentPlayback,
+                    onEvent: onEvent
+                )
             case .settings:
                 HermexSettingsScreen(state: settings, onEvent: onEvent)
             case .workspace:
