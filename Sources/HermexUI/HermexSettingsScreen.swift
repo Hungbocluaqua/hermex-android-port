@@ -487,12 +487,11 @@ public struct HermexSettingsScreen: View {
                             .fill(HermexUIColors.color(for: preset.hex))
                             .frame(width: 30, height: 30)
                             .overlay {
-                                Circle().stroke(
-                                    HermexAppearanceSettings.normalizedHex(serverHeaderLogoColorDraft) == preset.hex
-                                        ? HermexUIColors.primaryText
-                                        : HermexUIColors.hairline,
-                                    lineWidth: HermexAppearanceSettings.normalizedHex(serverHeaderLogoColorDraft) == preset.hex ? 2 : 0.7
-                                )
+                                if HermexAppearanceSettings.normalizedHex(serverHeaderLogoColorDraft) == preset.hex {
+                                    Circle().stroke(HermexUIColors.primaryText, lineWidth: 2.0)
+                                } else {
+                                    Circle().stroke(HermexUIColors.hairline, lineWidth: 0.7)
+                                }
                             }
                     }
                     .buttonStyle(.plain)
