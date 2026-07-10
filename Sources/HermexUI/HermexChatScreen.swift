@@ -591,9 +591,11 @@ private struct HermexAttachmentTile: View {
         if attachment.hermexIsImage,
            let sessionID,
            let path = attachment.path ?? attachment.name {
-            HermexRemoteAttachmentImage(path: path) {
-                await loadData(sessionID, path)
-            }
+            HermexRemoteAttachmentImage(
+                path: path,
+                sessionID: sessionID,
+                loadData: loadData
+            )
             .frame(width: 118, height: 118)
         } else if attachment.hermexIsImage {
             fallbackTile(systemImage: "photo")
@@ -625,7 +627,8 @@ private struct HermexAttachmentTile: View {
 
 private struct HermexRemoteAttachmentImage: View {
     let path: String
-    let loadData: @Sendable () async -> Data?
+    let sessionID: String
+    let loadData: @Sendable (_ sessionID: String, _ path: String) async -> Data?
     @State private var image: HermexDecodedAttachmentImage?
     @State private var didAttempt = false
 
@@ -647,7 +650,7 @@ private struct HermexRemoteAttachmentImage: View {
         .clipped()
         .hermexThinMaterialBackground(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .task(id: path) {
-            let data = await loadData()
+            let data = await loadData(sessionID, path)
             guard !Task.isCancelled else { return }
             image = data.flatMap { HermexDecodedAttachmentImage(data: $0) }
             didAttempt = true
