@@ -46,6 +46,10 @@ public enum HermexAppAction: Equatable, Sendable {
     case connectOnboardingDraft(serverURLString: String, displayName: String, password: String, customHeaderText: String)
     case selectServer(HermexServerIdentity)
     case updateShowCliSessions(Bool)
+    case updateAppTheme(String)
+    case updateHapticsEnabled(Bool)
+    case updateGlassEnabled(Bool)
+    case updateNotificationsEnabled(Bool)
     case updateActiveServer(displayName: String, initials: String, headerLogoColorHex: String, customHeaderText: String)
     case openDefaultModelPicker
     case dismissDefaultModelPicker
@@ -158,6 +162,7 @@ public struct HermexAppEnvironment: Sendable {
     public var saveDefaultModel: @Sendable (_ model: String) async throws -> HermexJSONValue
     public var switchProfile: @Sendable (_ name: String) async throws -> HermexJSONValue
     public var clearOfflineCache: @Sendable (_ serverID: String) async throws -> Void
+    public var saveLocalSettings: @Sendable (_ settings: HermexLocalSettings) async -> Void
     public var loadWorkspaces: @Sendable () async throws -> HermexWorkspacesResponse
     public var loadReasoning: @Sendable (_ model: String?, _ provider: String?) async throws -> HermexReasoningResponse
     public var saveReasoningEffort: @Sendable (_ effort: String, _ model: String?, _ provider: String?) async throws -> HermexJSONValue
@@ -256,7 +261,8 @@ public struct HermexAppEnvironment: Sendable {
         },
         truncateSession: @escaping @Sendable (_ sessionID: String, _ keepCount: Int) async throws -> HermexSessionResponse = { _, _ in
             HermexSessionResponse(error: "Editing messages is unavailable.")
-        }
+        },
+        saveLocalSettings: @escaping @Sendable (_ settings: HermexLocalSettings) async -> Void = { _ in }
     ) {
         self.testServerConnection = testServerConnection
         self.loginToServer = loginToServer
@@ -276,6 +282,7 @@ public struct HermexAppEnvironment: Sendable {
         self.saveDefaultModel = saveDefaultModel
         self.switchProfile = switchProfile
         self.clearOfflineCache = clearOfflineCache
+        self.saveLocalSettings = saveLocalSettings
         self.loadWorkspaces = loadWorkspaces
         self.loadReasoning = loadReasoning
         self.saveReasoningEffort = saveReasoningEffort
@@ -596,6 +603,14 @@ public final class HermexAppStore {
         case .updateShowCliSessions(let enabled):
             settings.showCliSessions = enabled
             settings.settingsErrorMessage = nil
+        case .updateAppTheme(let theme):
+            settings.appTheme = HermexLocalSettings(appTheme: theme).appTheme
+        case .updateHapticsEnabled(let enabled):
+            settings.hapticsEnabled = enabled
+        case .updateGlassEnabled(let enabled):
+            settings.glassEnabled = enabled
+        case .updateNotificationsEnabled(let enabled):
+            settings.notificationsEnabled = enabled
         case .updateActiveServer(let displayName, let initials, let headerLogoColorHex, let customHeaderText):
             updatePreviewActiveServer(
                 displayName: displayName,
@@ -1328,6 +1343,18 @@ public final class HermexAppStore {
             await refreshSessions()
         case .updateShowCliSessions(let enabled):
             await updateShowCliSessions(enabled)
+        case .updateAppTheme(let theme):
+            settings.appTheme = HermexLocalSettings(appTheme: theme).appTheme
+            await persistLocalSettings()
+        case .updateHapticsEnabled(let enabled):
+            settings.hapticsEnabled = enabled
+            await persistLocalSettings()
+        case .updateGlassEnabled(let enabled):
+            settings.glassEnabled = enabled
+            await persistLocalSettings()
+        case .updateNotificationsEnabled(let enabled):
+            settings.notificationsEnabled = enabled
+            await persistLocalSettings()
         case .updateActiveServer(let displayName, let initials, let headerLogoColorHex, let customHeaderText):
             await updateActiveServer(
                 displayName: displayName,
@@ -1631,6 +1658,10 @@ public final class HermexAppStore {
             settings.cacheStatusMessage = "Could not clear this server's offline cache."
         }
         settings.isClearingCache = false
+    }
+
+    private func persistLocalSettings() async {
+        await environment.saveLocalSettings(HermexLocalSettings(settings: settings))
     }
 
     private func updateShowCliSessions(_ enabled: Bool) async {

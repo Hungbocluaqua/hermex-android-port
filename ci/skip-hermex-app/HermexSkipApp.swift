@@ -12,6 +12,10 @@ import android.media.MediaRecorder
 import android.media.MediaPlayer
 import android.content.Intent
 import android.net.Uri
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import android.speech.tts.TextToSpeech
 import android.webkit.MimeTypeMap
 import androidx.activity.result.ActivityResultLauncher
@@ -101,11 +105,21 @@ public final class HermexSkipAppAppDelegate: Sendable {
     private init() {}
 
     public func onInit() {}
-    public func onLaunch() {}
-    public func onResume() {}
-    public func onPause() {}
-    public func onStop() {}
-    public func onDestroy() {}
+    public func onLaunch() {
+        Task { @MainActor in HermexSkipRuntime.notifyResume() }
+    }
+    public func onResume() {
+        Task { @MainActor in HermexSkipRuntime.notifyResume() }
+    }
+    public func onPause() {
+        Task { @MainActor in HermexSkipRuntime.notifyPause() }
+    }
+    public func onStop() {
+        Task { @MainActor in HermexSkipRuntime.notifyPause() }
+    }
+    public func onDestroy() {
+        Task { @MainActor in HermexSkipRuntime.notifyDestroy() }
+    }
     public func onLowMemory() {}
 }
 
@@ -448,16 +462,98 @@ private final class HermexSkipShareIngress: HermexShareIngress, @unchecked Senda
         preferences.edit().remove(key).apply()
     }
 }
+
+private final class HermexSkipStatusNotifier: HermexStatusNotifier, @unchecked Sendable {
+    private let context: Context
+    private let notificationManager: NotificationManagerCompat
+
+    init(context: Context = ProcessInfo.processInfo.androidContext) {
+        self.context = context
+        self.notificationManager = NotificationManagerCompat.from(context)
+    }
+
+    func showRunning(sessionID: String, streamID: String?, preview: String?) async {
+        ensureChannel()
+        let trimmedPreview = preview?.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) ?? ""
+        let content = trimmedPreview.isEmpty ? "Response streaming" : trimmedPreview
+        let notification = NotificationCompat.Builder(context, Self.statusChannelID)
+            .setSmallIcon(context.getApplicationInfo().icon)
+            .setContentTitle("Hermex is responding")
+            .setContentText(content)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setShowWhen(false)
+            .setSubText(streamID.map { String($0.prefix(8)) })
+            .build()
+        runCatching { notificationManager.notify(Self.notificationID(for: sessionID), notification) }
+    }
+
+    func showComplete(sessionID: String) async {
+        ensureCompletionChannel()
+        let notification = NotificationCompat.Builder(context, Self.completionChannelID)
+            .setSmallIcon(context.getApplicationInfo().icon)
+            .setContentTitle("Hermex response complete")
+            .setContentText("The assistant finished responding.")
+            .setAutoCancel(true)
+            .build()
+        runCatching { notificationManager.notify(Self.completionNotificationID(for: sessionID), notification) }
+        clear(sessionID: sessionID)
+    }
+
+    func clear(sessionID: String) async {
+        notificationManager.cancel(Self.notificationID(for: sessionID))
+    }
+
+    private func ensureChannel() {
+        guard let manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager,
+              manager.getNotificationChannel(Self.statusChannelID) == nil
+        else { return }
+        manager.createNotificationChannel(
+            NotificationChannel(
+                Self.statusChannelID,
+                "Chat status",
+                NotificationManager.IMPORTANCE_LOW
+            )
+        )
+    }
+
+    private func ensureCompletionChannel() {
+        guard let manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager,
+              manager.getNotificationChannel(Self.completionChannelID) == nil
+        else { return }
+        manager.createNotificationChannel(
+            NotificationChannel(
+                Self.completionChannelID,
+                "Response complete",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+        )
+    }
+
+    private static func notificationID(for sessionID: String) -> Int {
+        "stream:\(sessionID)".hashValue
+    }
+
+    private static func completionNotificationID(for sessionID: String) -> Int {
+        "complete:\(sessionID)".hashValue
+    }
+
+    private static let statusChannelID = "chat_stream_status"
+    private static let completionChannelID = "response_completion"
+}
 #endif
 
 @MainActor
 private final class HermexSkipRuntime: @unchecked Sendable {
+    private static weak var activeRuntime: HermexSkipRuntime?
     private let persistence: HermexSkipPersistence
     private let cookieStore: HermexSkipCookieStore
     private let cacheStore: HermexSkipCacheStore
     private let connection: HermexSkipConnection
     private let coordinator: HermexPlatformCoordinator
     private var streamTask: Task<Void, Never>?
+    private var streamGeneration = 0
+    private var appIsActive = true
     private var didBootstrap = false
 
     init() {
@@ -480,11 +576,28 @@ private final class HermexSkipRuntime: @unchecked Sendable {
             voiceRecorder: HermexSkipVoiceRecorder(),
             audioTranscriber: HermexSkipAudioTranscriber(connection: connection),
             speechSynthesizer: HermexSkipSpeechSynthesizer(),
-            clipboard: HermexSkipClipboard()
+            clipboard: HermexSkipClipboard(),
+            statusNotifier: HermexSkipStatusNotifier()
         ))
 #else
         self.coordinator = HermexPlatformCoordinator(services: HermexPlatformServiceBundle(cache: cacheStore))
 #endif
+        Self.activeRuntime = self
+    }
+
+    @MainActor
+    static func notifyResume() {
+        activeRuntime?.handleResume()
+    }
+
+    @MainActor
+    static func notifyPause() {
+        activeRuntime?.handlePause()
+    }
+
+    @MainActor
+    static func notifyDestroy() {
+        activeRuntime?.handleDestroy()
     }
 
     @MainActor
@@ -494,7 +607,7 @@ private final class HermexSkipRuntime: @unchecked Sendable {
             appState: restored.appState,
             onboarding: restored.onboarding,
             settings: restored.settings,
-            environment: Self.environment(connection: connection, cacheStore: cacheStore, onStreamStarted: { [weak self] streamID in
+            environment: Self.environment(connection: connection, cacheStore: cacheStore, persistence: persistence, onStreamStarted: { [weak self] streamID in
             self?.beginStreaming(streamID: streamID)
             })
         )
@@ -565,8 +678,11 @@ private final class HermexSkipRuntime: @unchecked Sendable {
 
     @MainActor
     private func beginStreaming(streamID: String) {
+        streamGeneration += 1
+        let generation = streamGeneration
         streamTask?.cancel()
         streamTask = Task { @MainActor in
+            await syncStatusNotification()
             do {
                 let client = try await connection.currentClient()
                 let headers = try await connection.currentCustomHeaders()
@@ -580,18 +696,74 @@ private final class HermexSkipRuntime: @unchecked Sendable {
                 for try await event in streamClient.events() {
                     if Task.isCancelled { break }
                     await store.send(.applyStreamEvent(event))
-                    if case .done = event { break }
-                    if case .error = event { break }
+                    if case .done = event {
+                        await syncStatusNotification(completedNormally: true)
+                        break
+                    }
+                    if case .error = event {
+                        await syncStatusNotification()
+                        break
+                    }
+                    await syncStatusNotification()
                 }
             } catch {
                 await store.send(.applyStreamEvent(.error(String(describing: error))))
+                await syncStatusNotification()
             }
+            if generation == streamGeneration {
+                streamTask = nil
+            }
+        }
+    }
+
+    @MainActor
+    private func handleResume() {
+        appIsActive = true
+        if streamTask == nil,
+           store.chat.stream.isStreaming,
+           let streamID = store.chat.stream.streamID {
+            beginStreaming(streamID: streamID)
+        } else {
+            Task { await syncStatusNotification() }
+        }
+    }
+
+    @MainActor
+    private func handlePause() {
+        appIsActive = false
+        Task { await syncStatusNotification() }
+    }
+
+    @MainActor
+    private func handleDestroy() {
+        streamTask?.cancel()
+        streamTask = nil
+        if let sessionID = store.appState.selectedSessionID {
+            Task { await coordinator.clearStatusNotification(sessionID: sessionID) }
+        }
+    }
+
+    @MainActor
+    private func syncStatusNotification(completedNormally: Bool = false) async {
+        guard let sessionID = store.appState.selectedSessionID else { return }
+        guard store.settings.notificationsEnabled else {
+            await coordinator.clearStatusNotification(sessionID: sessionID)
+            return
+        }
+
+        if completedNormally && !appIsActive {
+            await coordinator.syncStatusNotification(from: store)
+        } else if store.chat.stream.isStreaming {
+            await coordinator.syncStatusNotification(from: store)
+        } else {
+            await coordinator.clearStatusNotification(sessionID: sessionID)
         }
     }
 
     private static func environment(
         connection: HermexSkipConnection,
         cacheStore: HermexSkipCacheStore,
+        persistence: HermexSkipPersistence,
         onStreamStarted: @escaping @MainActor (String) -> Void
     ) -> HermexAppEnvironment {
         HermexAppEnvironment(
@@ -857,6 +1029,9 @@ private final class HermexSkipRuntime: @unchecked Sendable {
             clearOfflineCache: { serverID in
                 try await cacheStore.clearCachedData(for: serverID)
             },
+            saveLocalSettings: { settings in
+                persistence.saveLocalSettings(settings)
+            },
             performProjectCommand: { (command: HermexProjectCommand) in
                 let sessions = try await connection.currentSessionsRepository()
                 let projects = try await connection.currentProjectRepository()
@@ -1023,13 +1198,21 @@ private final class HermexSkipPersistence: @unchecked Sendable {
 
     func restoredStoreState() -> HermexSkipRestoredStoreState {
         let snapshot = loadServers()
+        let localSettings = loadLocalSettings()
         let active = snapshot.servers.first { serverID(for: $0) == snapshot.activeServerID }
         let onboarding = HermexOnboardingState(
             serverURLString: active?.baseURL.absoluteString ?? "",
             displayName: active?.displayName ?? "",
             customHeaderText: headerText(for: active)
         )
-        let settings = HermexSettingsState(activeServer: active, servers: snapshot.servers)
+        let settings = HermexSettingsState(
+            activeServer: active,
+            servers: snapshot.servers,
+            appTheme: localSettings.appTheme,
+            hapticsEnabled: localSettings.hapticsEnabled,
+            glassEnabled: localSettings.glassEnabled,
+            notificationsEnabled: localSettings.notificationsEnabled
+        )
 
         guard let active else {
             return HermexSkipRestoredStoreState(
@@ -1078,6 +1261,12 @@ private final class HermexSkipPersistence: @unchecked Sendable {
         storage.setData(data, for: key)
     }
 
+    func saveLocalSettings(_ settings: HermexLocalSettings) {
+        if let data = try? JSONEncoder().encode(settings) {
+            storage.setData(data, for: Self.localSettingsKey)
+        }
+    }
+
     func scopedKey(_ prefix: String, _ components: String...) -> String {
         let safe = components.joined(separator: "::")
             .replacingOccurrences(of: "://", with: "_")
@@ -1093,6 +1282,20 @@ private final class HermexSkipPersistence: @unchecked Sendable {
             return HermexSkipPersistedServers()
         }
         return snapshot
+    }
+
+    private func loadLocalSettings() -> HermexLocalSettings {
+        guard let data = storage.data(for: Self.localSettingsKey),
+              let settings = try? JSONDecoder().decode(HermexLocalSettings.self, from: data)
+        else {
+            return HermexLocalSettings()
+        }
+        return HermexLocalSettings(
+            appTheme: settings.appTheme,
+            hapticsEnabled: settings.hapticsEnabled,
+            glassEnabled: settings.glassEnabled,
+            notificationsEnabled: settings.notificationsEnabled
+        )
     }
 
     private func saveServers(_ snapshot: HermexSkipPersistedServers) {
@@ -1116,6 +1319,7 @@ private final class HermexSkipPersistence: @unchecked Sendable {
     }
 
     private static let serverStateKey = "hermex.skip.servers"
+    private static let localSettingsKey = "hermex.skip.local-settings"
 }
 
 private actor HermexSkipCookieStore: HermexCookieStore {

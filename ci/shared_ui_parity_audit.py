@@ -148,6 +148,11 @@ def main() -> int:
         and "Clear Offline Cache" in settings,
         "Settings screen must expose scoped offline-cache management.",
     )
+    for action in ["updateAppTheme", "updateHapticsEnabled", "updateGlassEnabled", "updateNotificationsEnabled"]:
+        ok &= require(action in events and action in store, f"Shared local settings action is missing {action}.")
+    ok &= require("saveLocalSettings" in store, "Shared store must persist local appearance and notification settings.")
+    ok &= require("preferredColorScheme" in root, "Shared root must apply the persisted theme preference.")
+    ok &= require("Toggle(" in settings and "Notifications" in settings, "Settings screen must expose interactive local preference controls.")
     for action in ["requestClearOfflineCache", "cancelClearOfflineCache", "clearOfflineCache"]:
         ok &= require(action in events and action in store, f"Shared cache action is missing {action}.")
     ok &= require("clearOfflineCache" in store, "Shared store must expose the cache-clearing environment hook.")

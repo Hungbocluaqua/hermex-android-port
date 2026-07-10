@@ -775,6 +775,52 @@ public struct HermexMemorySectionDTO: HermexStateCodable, Identifiable, Equatabl
     }
 }
 
+public struct HermexLocalSettings: Codable, Equatable, Sendable {
+    public var appTheme: String
+    public var hapticsEnabled: Bool
+    public var glassEnabled: Bool
+    public var notificationsEnabled: Bool
+
+    public init(
+        appTheme: String = "system",
+        hapticsEnabled: Bool = true,
+        glassEnabled: Bool = true,
+        notificationsEnabled: Bool = false
+    ) {
+        let normalizedTheme = appTheme.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).lowercased()
+        self.appTheme = ["system", "light", "dark"].contains(normalizedTheme) ? normalizedTheme : "system"
+        self.hapticsEnabled = hapticsEnabled
+        self.glassEnabled = glassEnabled
+        self.notificationsEnabled = notificationsEnabled
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            appTheme: try container.decodeIfPresent(String.self, forKey: .appTheme) ?? "system",
+            hapticsEnabled: try container.decodeIfPresent(Bool.self, forKey: .hapticsEnabled) ?? true,
+            glassEnabled: try container.decodeIfPresent(Bool.self, forKey: .glassEnabled) ?? true,
+            notificationsEnabled: try container.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? false
+        )
+    }
+
+    public init(settings: HermexSettingsState) {
+        self.init(
+            appTheme: settings.appTheme,
+            hapticsEnabled: settings.hapticsEnabled,
+            glassEnabled: settings.glassEnabled,
+            notificationsEnabled: settings.notificationsEnabled
+        )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case appTheme
+        case hapticsEnabled
+        case glassEnabled
+        case notificationsEnabled
+    }
+}
+
 public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
     public var activeServer: HermexServerIdentity?
     public var servers: [HermexServerIdentity]

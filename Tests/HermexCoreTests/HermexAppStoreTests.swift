@@ -410,6 +410,26 @@ final class HermexAppStoreTests: XCTestCase {
         XCTAssertEqual(clearedIDs, [HermexServerURLNormalizer.normalizedID(for: server.baseURL)])
     }
 
+    func testLocalSettingsActionsNormalizeAndPersistValues() async throws {
+        let probe = StoreProbe()
+        let store = HermexAppStore(environment: environment(probe: probe))
+
+        await store.send(.updateAppTheme(" LIGHT "))
+        await store.send(.updateHapticsEnabled(false))
+        await store.send(.updateGlassEnabled(false))
+        await store.send(.updateNotificationsEnabled(true))
+
+        XCTAssertEqual(store.settings.appTheme, "light")
+        XCTAssertFalse(store.settings.hapticsEnabled)
+        XCTAssertFalse(store.settings.glassEnabled)
+        XCTAssertTrue(store.settings.notificationsEnabled)
+        let saved = await probe.savedLocalSettings.last
+        XCTAssertEqual(
+            saved,
+            HermexLocalSettings(appTheme: "light", hapticsEnabled: false, glassEnabled: false, notificationsEnabled: true)
+        )
+    }
+
     func testProjectSelectionAndMutationsRouteThroughSharedStore() async throws {
         let probe = StoreProbe()
         let store = HermexAppStore(
@@ -728,6 +748,9 @@ final class HermexAppStoreTests: XCTestCase {
             clearOfflineCache: { serverID in
                 try await probe.clearOfflineCache(serverID: serverID)
             },
+            saveLocalSettings: { settings in
+                await probe.saveLocalSettings(settings)
+            },
             performProjectCommand: { command in
                 try await probe.performProjectCommand(command)
             },
@@ -786,6 +809,7 @@ private actor StoreProbe {
     private(set) var savedDefaultModels: [String] = []
     private(set) var switchedProfiles: [String] = []
     private(set) var clearedCacheServerIDs: [String] = []
+    private(set) var savedLocalSettings: [HermexLocalSettings] = []
     private(set) var testedServer: HermexServerIdentity?
     private(set) var loginServer: HermexServerIdentity?
     private(set) var loginPassword: String?
@@ -836,6 +860,10 @@ private actor StoreProbe {
 
     func clearOfflineCache(serverID: String) async throws {
         clearedCacheServerIDs.append(serverID)
+    }
+
+    func saveLocalSettings(_ settings: HermexLocalSettings) {
+        savedLocalSettings.append(settings)
     }
 
     func loadSessions(includeArchived: Bool, archivedLimit: Int?) async throws -> HermexSessionsResponse {

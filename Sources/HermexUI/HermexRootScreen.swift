@@ -74,5 +74,14 @@ public struct HermexRootScreen: View {
             }
         }
         .background(HermexUIColors.systemBackground)
+        .preferredColorScheme(preferredColorScheme)
+    }
+
+    private var preferredColorScheme: ColorScheme? {
+        switch settings.appTheme.lowercased() {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
     }
 }

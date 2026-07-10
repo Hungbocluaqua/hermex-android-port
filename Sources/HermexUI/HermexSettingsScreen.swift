@@ -156,9 +156,43 @@ public struct HermexSettingsScreen: View {
 
     private var appearanceSection: some View {
         settingsSection("Appearance") {
-            settingValueRow(systemImage: "circle.lefthalf.filled", title: "Theme", value: state.appTheme.capitalized)
-            settingValueRow(systemImage: "sparkles", title: "Glass", value: state.glassEnabled ? "On" : "Off")
-            settingValueRow(systemImage: "hand.tap", title: "Haptics", value: state.hapticsEnabled ? "On" : "Off")
+            VStack(alignment: .leading, spacing: 10) {
+                settingValueRow(systemImage: "circle.lefthalf.filled", title: "Theme", value: state.appTheme.capitalized)
+                HStack(spacing: 8) {
+                    ForEach(["system", "light", "dark"], id: \.self) { theme in
+                        Button {
+                            onEvent(.updateAppTheme(theme))
+                        } label: {
+                            Text(theme.capitalized)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(state.appTheme == theme ? Color.black : HermexUIColors.primaryText)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(
+                                    state.appTheme == theme ? HermexUIColors.gold : HermexUIColors.glassFillStrong,
+                                    in: Capsule()
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            Toggle(
+                "Glass",
+                isOn: Binding(
+                    get: { state.glassEnabled },
+                    set: { onEvent(.updateGlassEnabled($0)) }
+                )
+            )
+            .tint(.blue)
+            Toggle(
+                "Haptics",
+                isOn: Binding(
+                    get: { state.hapticsEnabled },
+                    set: { onEvent(.updateHapticsEnabled($0)) }
+                )
+            )
+            .tint(.blue)
         }
     }
 
@@ -181,7 +215,14 @@ public struct HermexSettingsScreen: View {
             }
             .buttonStyle(.plain)
 
-            settingValueRow(systemImage: "bell", title: "Notifications", value: state.notificationsEnabled ? "On" : "Off")
+            Toggle(
+                "Notifications",
+                isOn: Binding(
+                    get: { state.notificationsEnabled },
+                    set: { onEvent(.updateNotificationsEnabled($0)) }
+                )
+            )
+            .tint(.blue)
         }
     }
 

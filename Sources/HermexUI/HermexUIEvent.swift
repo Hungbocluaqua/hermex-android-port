@@ -16,6 +16,10 @@ public enum HermexUIEvent: Equatable, Sendable {
     case connectOnboardingDraft(serverURLString: String, displayName: String, password: String, customHeaderText: String)
     case selectServer(HermexServerIdentity)
     case updateShowCliSessions(Bool)
+    case updateAppTheme(String)
+    case updateHapticsEnabled(Bool)
+    case updateGlassEnabled(Bool)
+    case updateNotificationsEnabled(Bool)
     case updateActiveServer(displayName: String, initials: String, headerLogoColorHex: String, customHeaderText: String)
     case openDefaultModelPicker
     case dismissDefaultModelPicker
@@ -124,6 +128,14 @@ public extension HermexUIEvent {
             return .selectServer(server)
         case .updateShowCliSessions(let enabled):
             return .updateShowCliSessions(enabled)
+        case .updateAppTheme(let theme):
+            return .updateAppTheme(theme)
+        case .updateHapticsEnabled(let enabled):
+            return .updateHapticsEnabled(enabled)
+        case .updateGlassEnabled(let enabled):
+            return .updateGlassEnabled(enabled)
+        case .updateNotificationsEnabled(let enabled):
+            return .updateNotificationsEnabled(enabled)
         case .updateActiveServer(let displayName, let initials, let headerLogoColorHex, let customHeaderText):
             return .updateActiveServer(
                 displayName: displayName,
