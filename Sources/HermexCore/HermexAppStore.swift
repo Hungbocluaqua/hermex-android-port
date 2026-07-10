@@ -3,6 +3,31 @@ import Foundation
 import Observation
 #endif
 
+private func hermexUpdatedServer(
+    _ server: HermexServerIdentity,
+    displayName: String,
+    customHeaderText: String
+) -> HermexServerIdentity {
+    var updated = server
+    let trimmedName = displayName.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+    updated.displayName = trimmedName.isEmpty ? (server.baseURL.host ?? "Hermex") : trimmedName
+
+    var headers: [String: String] = [:]
+    let normalizedText = customHeaderText.replacingOccurrences(of: "\r\n", with: "\n")
+    for rawLine in normalizedText.split(separator: "\n", omittingEmptySubsequences: true) {
+        let line = String(rawLine)
+        guard let separator = line.firstIndex(of: ":") else { continue }
+        let header = HermexCustomHeader(
+            name: String(line[..<separator]),
+            value: String(line[line.index(after: separator)...])
+        )
+        guard header.isSafeForClient else { continue }
+        headers[header.sanitizedName] = header.sanitizedValue
+    }
+    updated.customHeaders = headers
+    return updated
+}
+
 public enum HermexAppAction: Equatable, Sendable {
     case openRoute(HermexRoute)
     case refresh
@@ -16,6 +41,7 @@ public enum HermexAppAction: Equatable, Sendable {
     case connectOnboardingDraft(serverURLString: String, displayName: String, password: String, customHeaderText: String)
     case selectServer(HermexServerIdentity)
     case updateShowCliSessions(Bool)
+    case updateActiveServer(displayName: String, customHeaderText: String)
     case selectProject(String?)
     case projectCommand(HermexProjectCommand)
     case openSession(String)
@@ -535,6 +561,8 @@ public final class HermexAppStore {
         case .updateShowCliSessions(let enabled):
             settings.showCliSessions = enabled
             settings.settingsErrorMessage = nil
+        case .updateActiveServer(let displayName, let customHeaderText):
+            updatePreviewActiveServer(displayName: displayName, customHeaderText: customHeaderText)
         case .selectProject(let projectID):
             sessions.selectedProjectID = projectID
         case .projectCommand(let command):
@@ -745,6 +773,27 @@ public final class HermexAppStore {
         } else {
             settings.servers.append(server)
         }
+    }
+
+    private func updatePreviewActiveServer(displayName: String, customHeaderText: String) {
+        guard let active = settings.activeServer else { return }
+        let updated = hermexUpdatedServer(
+            active,
+            displayName: displayName,
+            customHeaderText: customHeaderText
+        )
+        upsertPreviewServer(updated)
+        switch appState.auth {
+        case .loggedIn:
+            appState.auth = .loggedIn(server: updated)
+        case .loggedOut:
+            appState.auth = .loggedOut(server: updated)
+        case .unconfigured:
+            break
+        }
+        onboarding.displayName = updated.displayName
+        onboarding.customHeaderText = customHeaderText
+        settings.settingsErrorMessage = nil
     }
 
     private func updateSkill(named name: String, enabled: Bool) {
@@ -1201,6 +1250,8 @@ public final class HermexAppStore {
             await refreshSessions()
         case .updateShowCliSessions(let enabled):
             await updateShowCliSessions(enabled)
+        case .updateActiveServer(let displayName, let customHeaderText):
+            await updateActiveServer(displayName: displayName, customHeaderText: customHeaderText)
         case .selectProject(let projectID):
             sessions.selectedProjectID = projectID
         case .projectCommand(let command):
@@ -1397,6 +1448,41 @@ public final class HermexAppStore {
             settings.settingsErrorMessage = String(describing: error)
         }
         settings.isSavingShowCliSessions = false
+    }
+
+    private func updateActiveServer(displayName: String, customHeaderText: String) async {
+        guard let active = settings.activeServer else { return }
+        let updated = hermexUpdatedServer(
+            active,
+            displayName: displayName,
+            customHeaderText: customHeaderText
+        )
+        let authenticated: Bool
+        switch appState.auth {
+        case .loggedIn:
+            authenticated = true
+            appState.auth = .loggedIn(server: updated)
+        case .loggedOut:
+            authenticated = false
+            appState.auth = .loggedOut(server: updated)
+        case .unconfigured:
+            authenticated = false
+        }
+
+        settings.isSavingServer = true
+        settings.settingsErrorMessage = nil
+        await environment.updateServerRuntime(updated, authenticated)
+        settings.activeServer = updated
+        if let index = settings.servers.firstIndex(where: {
+            HermexServerURLNormalizer.normalizedID(for: $0.baseURL) == HermexServerURLNormalizer.normalizedID(for: updated.baseURL)
+        }) {
+            settings.servers[index] = updated
+        } else {
+            settings.servers.append(updated)
+        }
+        onboarding.displayName = updated.displayName
+        onboarding.customHeaderText = customHeaderText
+        settings.isSavingServer = false
     }
 
     private static func showCliSessionsValue(from response: HermexJSONValue) -> Bool? {

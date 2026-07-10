@@ -124,6 +124,8 @@ def main() -> int:
     ok &= require("Sign Out" in settings and ".signOut" in settings, "Settings screen must expose sign-out action.")
     ok &= require("Chat Defaults" in settings and "Default Model" in settings and "Default Profile" in settings, "Settings screen must expose chat default settings.")
     ok &= require("CLI Sessions" in settings and ".updateShowCliSessions" in settings, "Settings screen must expose the server-synced CLI session toggle.")
+    ok &= require("Edit Server" in settings and ".updateActiveServer" in settings, "Settings screen must expose active-server identity and custom-header editing.")
+    ok &= require("hermexUpdatedServer" in store and "isSafeForClient" in store, "Shared store must sanitize edited server headers before rebinding runtime state.")
     ok &= require("loadServerSettings" in store and "updateServerSettings" in store, "Shared store must route server-synced settings through the live environment.")
     ok &= require("HermexIconCluster" in chat, "Chat top chrome icon cluster is missing.")
     ok &= require("chatHeader" in chat, "Chat screen must use custom iOS-style top chrome.")

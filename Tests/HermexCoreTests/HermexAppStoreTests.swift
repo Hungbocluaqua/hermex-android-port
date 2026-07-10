@@ -299,6 +299,35 @@ final class HermexAppStoreTests: XCTestCase {
         XCTAssertEqual(updates, [StoreProbe.RuntimeUpdate(server: second, authenticated: true)])
     }
 
+    func testUpdatingActiveServerSanitizesHeadersAndRebindsRuntime() async throws {
+        let probe = StoreProbe()
+        let server = HermexServerIdentity(
+            baseURL: try XCTUnwrap(URL(string: "https://example.test")),
+            displayName: "Example",
+            customHeaders: ["Old-Header": "old"]
+        )
+        let store = HermexAppStore(
+            appState: HermexAppState(auth: .loggedIn(server: server), route: .settings),
+            settings: HermexSettingsState(activeServer: server, servers: [server]),
+            environment: environment(probe: probe)
+        )
+
+        await store.send(.updateActiveServer(
+            displayName: "  Proxy  ",
+            customHeaderText: "X-Token: abc\nOrigin: bad\nBad Header: nope"
+        ))
+
+        let updated = try XCTUnwrap(store.settings.activeServer)
+        XCTAssertEqual(updated.displayName, "Proxy")
+        XCTAssertEqual(updated.customHeaders, ["X-Token": "abc"])
+        XCTAssertEqual(store.settings.servers, [updated])
+        XCTAssertEqual(store.appState.auth, .loggedIn(server: updated))
+        XCTAssertFalse(store.settings.isSavingServer)
+        XCTAssertNil(store.settings.settingsErrorMessage)
+        let updates = await probe.runtimeUpdates
+        XCTAssertEqual(updates, [StoreProbe.RuntimeUpdate(server: updated, authenticated: true)])
+    }
+
     func testServerSettingsLoadAndUpdateCliSessionVisibility() async throws {
         let probe = StoreProbe()
         let store = HermexAppStore(

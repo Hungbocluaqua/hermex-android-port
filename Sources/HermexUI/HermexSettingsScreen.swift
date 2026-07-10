@@ -4,10 +4,15 @@ import HermexCore
 public struct HermexSettingsScreen: View {
     private let state: HermexSettingsState
     private let onEvent: (HermexUIEvent) -> Void
+    @State private var isEditingServer = false
+    @State private var serverDisplayNameDraft: String
+    @State private var serverCustomHeaderTextDraft: String
 
     public init(state: HermexSettingsState, onEvent: @escaping (HermexUIEvent) -> Void = { _ in }) {
         self.state = state
         self.onEvent = onEvent
+        _serverDisplayNameDraft = State(initialValue: state.activeServer?.displayName ?? "")
+        _serverCustomHeaderTextDraft = State(initialValue: Self.headerText(for: state.activeServer))
     }
 
     public var body: some View {
@@ -26,6 +31,10 @@ public struct HermexSettingsScreen: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 32)
+            }
+
+            if isEditingServer {
+                serverEditorOverlay
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -48,30 +57,50 @@ public struct HermexSettingsScreen: View {
     private var activeServerSection: some View {
         settingsSection("Active Server") {
             if let server = state.activeServer {
-                HStack(alignment: .top, spacing: 12) {
-                    serverIcon(systemImage: "server.rack")
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top, spacing: 12) {
+                        serverIcon(systemImage: "server.rack")
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(server.displayName)
-                                .font(.title3.weight(.semibold))
-                                .foregroundStyle(HermexUIColors.primaryText)
-                                .lineLimit(2)
-                            Spacer(minLength: 8)
-                            statusPill("Connected", tint: .green)
-                        }
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text(server.displayName)
+                                    .font(.title3.weight(.semibold))
+                                    .foregroundStyle(HermexUIColors.primaryText)
+                                    .lineLimit(2)
+                                Spacer(minLength: 8)
+                                statusPill("Connected", tint: .green)
+                            }
 
-                        Text(server.baseURL.absoluteString)
-                            .font(.footnote)
-                            .foregroundStyle(HermexUIColors.secondaryText)
-                            .lineLimit(2)
-
-                        if !server.customHeaders.isEmpty {
-                            HermexMappedLabel("\(server.customHeaders.count) custom headers", systemImage: "key.horizontal")
-                                .font(.caption.weight(.medium))
+                            Text(server.baseURL.absoluteString)
+                                .font(.footnote)
                                 .foregroundStyle(HermexUIColors.secondaryText)
+                                .lineLimit(2)
+
+                            if !server.customHeaders.isEmpty {
+                                HermexMappedLabel("\(server.customHeaders.count) custom headers", systemImage: "key.horizontal")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(HermexUIColors.secondaryText)
+                            }
                         }
                     }
+
+                    Button {
+                        beginServerEditing(server)
+                    } label: {
+                        HermexMappedLabel("Edit Server", systemImage: "pencil")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(HermexUIColors.primaryText)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 42)
+                            .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                    .stroke(HermexUIColors.hairline, lineWidth: 0.7)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(state.isSavingServer)
                 }
             } else {
                 emptyState("No server is selected.", systemImage: "exclamationmark.triangle")
@@ -268,6 +297,94 @@ public struct HermexSettingsScreen: View {
         .frame(minHeight: 36)
     }
 
+    private var serverEditorOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.52)
+                .ignoresSafeArea()
+
+            ScrollView {
+                HermexGlassPanel(cornerRadius: 18) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack {
+                            Text("Edit Server")
+                                .font(.title2.weight(.bold))
+                                .foregroundStyle(HermexUIColors.primaryText)
+                            Spacer()
+                            statusPill("Secure", tint: .green)
+                        }
+
+                        TextField("Display name", text: $serverDisplayNameDraft)
+                            .textFieldStyle(.plain)
+                            .foregroundStyle(HermexUIColors.primaryText)
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 50)
+                            .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(HermexUIColors.hairline, lineWidth: 0.7)
+                            }
+
+                        Text("Custom headers")
+                            .font(.caption.weight(.bold))
+                            .textCase(.uppercase)
+                            .foregroundStyle(HermexUIColors.secondaryText)
+
+                        TextEditor(text: $serverCustomHeaderTextDraft)
+                            .font(.footnote.monospaced())
+                            .foregroundStyle(HermexUIColors.primaryText)
+                            .frame(minHeight: 110)
+                            .padding(10)
+                            .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(HermexUIColors.hairline, lineWidth: 0.7)
+                            }
+
+                        Text("One header per line. Invalid or restricted headers are ignored.")
+                            .font(.caption)
+                            .foregroundStyle(HermexUIColors.secondaryText)
+
+                        HStack(spacing: 8) {
+                            settingsEditorButton("Cancel") {
+                                isEditingServer = false
+                            }
+                            settingsEditorButton("Save", isProminent: true) {
+                                onEvent(.updateActiveServer(
+                                    displayName: serverDisplayNameDraft,
+                                    customHeaderText: serverCustomHeaderTextDraft
+                                ))
+                                isEditingServer = false
+                            }
+                        }
+                    }
+                    .padding(18)
+                }
+                .padding(16)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func settingsEditorButton(
+        _ title: String,
+        isProminent: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(title, action: action)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(isProminent ? HermexUIColors.primaryText : HermexUIColors.secondaryText)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 44)
+            .background(
+                isProminent ? HermexUIColors.gold : HermexUIColors.glassFillStrong,
+                in: RoundedRectangle(cornerRadius: 11, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .stroke(HermexUIColors.hairline, lineWidth: 0.7)
+            }
+    }
+
     private func statusPill(_ label: String, tint: Color) -> some View {
         Text(label)
             .font(.caption.weight(.semibold))
@@ -296,5 +413,20 @@ public struct HermexSettingsScreen: View {
 
     private func isActive(_ server: HermexServerIdentity) -> Bool {
         state.activeServer?.baseURL == server.baseURL
+    }
+
+    private func beginServerEditing(_ server: HermexServerIdentity) {
+        serverDisplayNameDraft = server.displayName
+        serverCustomHeaderTextDraft = Self.headerText(for: server)
+        isEditingServer = true
+    }
+
+    private static func headerText(for server: HermexServerIdentity?) -> String {
+        guard let server else { return "" }
+        return server.customHeaders.keys.sorted {
+            $0.localizedCaseInsensitiveCompare($1) == ComparisonResult.orderedAscending
+        }.map { key in
+            "\(key): \(server.customHeaders[key] ?? "")"
+        }.joined(separator: "\n")
     }
 }

@@ -786,6 +786,7 @@ public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
     public var notificationsEnabled: Bool
     public var showCliSessions: Bool
     public var isSavingShowCliSessions: Bool
+    public var isSavingServer: Bool
     public var settingsErrorMessage: String?
 
     public init(
@@ -799,6 +800,7 @@ public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
         notificationsEnabled: Bool = false,
         showCliSessions: Bool = true,
         isSavingShowCliSessions: Bool = false,
+        isSavingServer: Bool = false,
         settingsErrorMessage: String? = nil
     ) {
         self.activeServer = activeServer
@@ -811,6 +813,7 @@ public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
         self.notificationsEnabled = notificationsEnabled
         self.showCliSessions = showCliSessions
         self.isSavingShowCliSessions = isSavingShowCliSessions
+        self.isSavingServer = isSavingServer
         self.settingsErrorMessage = settingsErrorMessage
     }
 }
