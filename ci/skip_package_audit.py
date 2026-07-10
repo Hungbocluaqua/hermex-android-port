@@ -284,8 +284,10 @@ def main() -> int:
     ok &= require(
         "actions/cache@v4" in parity_workflow
         and "gradle/actions/setup-gradle" in parity_workflow
+        and "Sources/**/*.swift" in parity_workflow
+        and "steps.skip_generated_cache.outputs.cache-hit" in parity_workflow
         and "HERMEX_REUSE_SKIP_APP_WORKDIR" in parity_workflow,
-        "Skip parity workflow must cache SwiftPM/Gradle state and reuse the generated workspace.",
+        "Skip parity workflow must cache SwiftPM/Gradle state and reuse the generated workspace only on an exact source cache hit.",
     )
     ok &= require(
         "Parity Audits" in parity_workflow

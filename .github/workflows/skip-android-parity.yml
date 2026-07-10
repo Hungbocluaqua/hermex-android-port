@@ -175,20 +175,20 @@ jobs:
     env:
       HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
       HERMEX_ALLOW_INCOMPLETE_SKIP_APK: "1"
-      HERMEX_REUSE_SKIP_APP_WORKDIR: "1"
       SKIP_APP_WORKDIR: ${{ github.workspace }}/.build/hermex-skip-app
     steps:
       - name: Check out
         uses: actions/checkout@v7
 
       - name: Cache SwiftPM and generated Skip workspace
+        id: skip_generated_cache
         uses: actions/cache@v4
         with:
           path: |
             .build/hermex-skip-app
             ~/Library/Caches/org.swift.swiftpm
             ~/Library/org.swift.swiftpm
-          key: skip-generated-apk-${{ runner.os }}-${{ hashFiles('Package.swift', 'Package.resolved', 'ci/build_skip_android_app.sh', 'ci/prepare_skip_hermex_app.py', 'ci/skip-hermex-app/**') }}
+          key: skip-generated-apk-${{ runner.os }}-${{ hashFiles('Package.swift', 'Package.resolved', 'Sources/**/*.swift', 'ci/build_skip_android_app.sh', 'ci/prepare_skip_hermex_app.py', 'ci/skip-hermex-app/**') }}
           restore-keys: |
             skip-generated-apk-${{ runner.os }}-
 
@@ -221,6 +221,8 @@ jobs:
           fi
 
       - name: Build incomplete generated Skip APK for inspection
+        env:
+          HERMEX_REUSE_SKIP_APP_WORKDIR: ${{ steps.skip_generated_cache.outputs.cache-hit == 'true' && '1' || '0' }}
         run: |
           set -euo pipefail
           bash ci/build_skip_android_app.sh "$RUNNER_TEMP/hermex-skip-smoke"
