@@ -32,6 +32,7 @@ public struct HermexSettingsScreen: View {
                     appearanceSection
                     chatSection
                     sessionsSection
+                    offlineDataSection
                     securitySection
                     signOutButton
                 }
@@ -48,6 +49,9 @@ public struct HermexSettingsScreen: View {
             }
             if state.showDefaultProfilePicker == true {
                 defaultProfilePickerOverlay
+            }
+            if state.showClearCacheConfirmation == true {
+                clearCacheConfirmationOverlay
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -219,6 +223,40 @@ public struct HermexSettingsScreen: View {
             settingValueRow(systemImage: "lock", title: "Passwords", value: "Not stored")
             settingValueRow(systemImage: "key.horizontal", title: "Custom Headers", value: headerCount == 0 ? "None" : "\(headerCount)")
             settingValueRow(systemImage: "externaldrive.badge.checkmark", title: "Server Scope", value: "Per URL")
+        }
+    }
+
+    private var offlineDataSection: some View {
+        settingsSection("Offline Data") {
+            Text(state.cacheStatusMessage ?? "Cached sessions and messages are kept for offline viewing. Clearing removes this server's cache only.")
+                .font(.caption)
+                .foregroundStyle(HermexUIColors.secondaryText)
+
+            Button {
+                onEvent(.requestClearOfflineCache)
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: HermexSystemImageName("externaldrive"))
+                        .font(.subheadline.weight(.semibold))
+                    Text(state.isClearingCache == true ? "Clearing..." : "Clear Offline Cache")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer(minLength: 8)
+                    if state.isClearingCache == true {
+                        ProgressView()
+                    }
+                }
+                .foregroundStyle(Color.red.opacity(0.95))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .background(Color.red.opacity(0.10), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .stroke(Color.red.opacity(0.25), lineWidth: 0.7)
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(state.isClearingCache == true)
         }
     }
 
@@ -566,6 +604,38 @@ public struct HermexSettingsScreen: View {
         if let model = profile.model, !model.isEmpty { details.append(model) }
         if let provider = profile.provider, !provider.isEmpty { details.append(provider) }
         return details.isEmpty ? nil : details.joined(separator: " / ")
+    }
+
+    private var clearCacheConfirmationOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.52)
+                .ignoresSafeArea()
+
+            HermexGlassPanel(cornerRadius: 18) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Clear this server's cache?")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(HermexUIColors.primaryText)
+
+                    Text("Cached sessions and messages for this server will be deleted. Other servers and online server data are not affected.")
+                        .font(.subheadline)
+                        .foregroundStyle(HermexUIColors.secondaryText)
+
+                    HStack(spacing: 8) {
+                        settingsEditorButton("Cancel") {
+                            onEvent(.cancelClearOfflineCache)
+                        }
+                        settingsEditorButton("Clear Cache", isProminent: true) {
+                            onEvent(.clearOfflineCache)
+                        }
+                        .disabled(state.isClearingCache == true)
+                    }
+                }
+                .padding(18)
+            }
+            .padding(16)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var serverEditorOverlay: some View {

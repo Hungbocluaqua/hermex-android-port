@@ -387,6 +387,29 @@ final class HermexAppStoreTests: XCTestCase {
         XCTAssertEqual(switchedProfiles, ["default"])
     }
 
+    func testOfflineCacheClearIsScopedToTheActiveServer() async throws {
+        let probe = StoreProbe()
+        let server = HermexServerIdentity(
+            baseURL: try XCTUnwrap(URL(string: "https://cache.example/path")),
+            displayName: "Cache Server"
+        )
+        let store = HermexAppStore(
+            appState: HermexAppState(auth: .loggedIn(server: server), route: .settings),
+            settings: HermexSettingsState(activeServer: server, servers: [server]),
+            environment: environment(probe: probe)
+        )
+
+        await store.send(.requestClearOfflineCache)
+        XCTAssertTrue(store.settings.showClearCacheConfirmation == true)
+        await store.send(.clearOfflineCache)
+
+        XCTAssertFalse(store.settings.showClearCacheConfirmation == true)
+        XCTAssertFalse(store.settings.isClearingCache == true)
+        XCTAssertEqual(store.settings.cacheStatusMessage, "This server's offline cache was cleared.")
+        let clearedIDs = await probe.clearedCacheServerIDs
+        XCTAssertEqual(clearedIDs, [HermexServerURLNormalizer.normalizedID(for: server.baseURL)])
+    }
+
     func testProjectSelectionAndMutationsRouteThroughSharedStore() async throws {
         let probe = StoreProbe()
         let store = HermexAppStore(
@@ -702,6 +725,9 @@ final class HermexAppStoreTests: XCTestCase {
             switchProfile: { name in
                 try await probe.switchProfile(name: name)
             },
+            clearOfflineCache: { serverID in
+                try await probe.clearOfflineCache(serverID: serverID)
+            },
             performProjectCommand: { command in
                 try await probe.performProjectCommand(command)
             },
@@ -759,6 +785,7 @@ private actor StoreProbe {
     private(set) var updatedCliSessions: [Bool] = []
     private(set) var savedDefaultModels: [String] = []
     private(set) var switchedProfiles: [String] = []
+    private(set) var clearedCacheServerIDs: [String] = []
     private(set) var testedServer: HermexServerIdentity?
     private(set) var loginServer: HermexServerIdentity?
     private(set) var loginPassword: String?
@@ -805,6 +832,10 @@ private actor StoreProbe {
             "active": .string(name),
             "default_model": .string("gpt-5.5")
         ])
+    }
+
+    func clearOfflineCache(serverID: String) async throws {
+        clearedCacheServerIDs.append(serverID)
     }
 
     func loadSessions(includeArchived: Bool, archivedLimit: Int?) async throws -> HermexSessionsResponse {

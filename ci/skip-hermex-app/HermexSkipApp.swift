@@ -854,6 +854,9 @@ private final class HermexSkipRuntime: @unchecked Sendable {
                 let repository = try await connection.currentSettingsRepository()
                 return try await repository.switchProfile(name: name)
             },
+            clearOfflineCache: { serverID in
+                try await cacheStore.clearCachedData(for: serverID)
+            },
             performProjectCommand: { (command: HermexProjectCommand) in
                 let sessions = try await connection.currentSessionsRepository()
                 let projects = try await connection.currentProjectRepository()
@@ -1229,6 +1232,36 @@ private actor HermexSkipCacheStore: HermexCacheStore {
     func replaceCachedMessages(_ messages: [HermexChatMessageDTO], sessionID: String, serverID: String) async throws {
         guard let data = try? JSONEncoder().encode(messages) else { return }
         persistence.setData(data, for: persistence.scopedKey("messages", serverID, sessionID))
+
+        var sessionIDs = loadMessageSessionIDs(for: serverID)
+        if !sessionIDs.contains(sessionID) {
+            sessionIDs.append(sessionID)
+            if let indexData = try? JSONEncoder().encode(sessionIDs) {
+                persistence.setData(indexData, for: messageSessionIndexKey(for: serverID))
+            }
+        }
+    }
+
+    func clearCachedData(for serverID: String) async throws {
+        var sessionIDs = loadMessageSessionIDs(for: serverID)
+        let cachedSessionIDs = try await cachedSessions(for: serverID).compactMap(\.sessionId)
+        for sessionID in cachedSessionIDs where !sessionIDs.contains(sessionID) {
+            sessionIDs.append(sessionID)
+        }
+        persistence.setData(nil, for: persistence.scopedKey("sessions", serverID))
+        for sessionID in sessionIDs where !sessionID.isEmpty {
+            persistence.setData(nil, for: persistence.scopedKey("messages", serverID, sessionID))
+        }
+        persistence.setData(nil, for: messageSessionIndexKey(for: serverID))
+    }
+
+    private func loadMessageSessionIDs(for serverID: String) -> [String] {
+        guard let data = persistence.data(for: messageSessionIndexKey(for: serverID)) else { return [] }
+        return (try? JSONDecoder().decode([String].self, from: data)) ?? []
+    }
+
+    private func messageSessionIndexKey(for serverID: String) -> String {
+        persistence.scopedKey("message-sessions", serverID)
     }
 }
 

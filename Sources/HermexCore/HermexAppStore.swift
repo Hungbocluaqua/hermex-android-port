@@ -53,6 +53,9 @@ public enum HermexAppAction: Equatable, Sendable {
     case openDefaultProfilePicker
     case dismissDefaultProfilePicker
     case chooseDefaultProfile(String)
+    case requestClearOfflineCache
+    case cancelClearOfflineCache
+    case clearOfflineCache
     case selectProject(String?)
     case projectCommand(HermexProjectCommand)
     case openSession(String)
@@ -154,6 +157,7 @@ public struct HermexAppEnvironment: Sendable {
     public var loadProfiles: @Sendable () async throws -> HermexProfilesResponse
     public var saveDefaultModel: @Sendable (_ model: String) async throws -> HermexJSONValue
     public var switchProfile: @Sendable (_ name: String) async throws -> HermexJSONValue
+    public var clearOfflineCache: @Sendable (_ serverID: String) async throws -> Void
     public var loadWorkspaces: @Sendable () async throws -> HermexWorkspacesResponse
     public var loadReasoning: @Sendable (_ model: String?, _ provider: String?) async throws -> HermexReasoningResponse
     public var saveReasoningEffort: @Sendable (_ effort: String, _ model: String?, _ provider: String?) async throws -> HermexJSONValue
@@ -234,6 +238,9 @@ public struct HermexAppEnvironment: Sendable {
         switchProfile: @escaping @Sendable (_ name: String) async throws -> HermexJSONValue = { _ in
             .dictionary(["ok": .bool(false), "error": .string("Profile changes are unavailable.")])
         },
+        clearOfflineCache: @escaping @Sendable (_ serverID: String) async throws -> Void = { _ in
+            throw HermexAPIError.network("Offline cache clearing is unavailable.")
+        },
         performProjectCommand: @escaping @Sendable (_ command: HermexProjectCommand) async throws -> HermexJSONValue = { _ in
             .dictionary([
                 "ok": .bool(false),
@@ -268,6 +275,7 @@ public struct HermexAppEnvironment: Sendable {
         self.loadProfiles = loadProfiles
         self.saveDefaultModel = saveDefaultModel
         self.switchProfile = switchProfile
+        self.clearOfflineCache = clearOfflineCache
         self.loadWorkspaces = loadWorkspaces
         self.loadReasoning = loadReasoning
         self.saveReasoningEffort = saveReasoningEffort
@@ -611,6 +619,13 @@ public final class HermexAppStore {
             settings.defaultProfile = profile
             settings.showDefaultProfilePicker = false
             settings.settingsErrorMessage = nil
+        case .requestClearOfflineCache:
+            settings.showClearCacheConfirmation = true
+        case .cancelClearOfflineCache:
+            settings.showClearCacheConfirmation = false
+        case .clearOfflineCache:
+            settings.showClearCacheConfirmation = false
+            settings.cacheStatusMessage = "This server's offline cache was cleared."
         case .selectProject(let projectID):
             sessions.selectedProjectID = projectID
         case .projectCommand(let command):
@@ -1338,6 +1353,12 @@ public final class HermexAppStore {
             settings.showDefaultProfilePicker = false
         case .chooseDefaultProfile(let profile):
             await updateDefaultProfile(profile)
+        case .requestClearOfflineCache:
+            settings.showClearCacheConfirmation = true
+        case .cancelClearOfflineCache:
+            settings.showClearCacheConfirmation = false
+        case .clearOfflineCache:
+            await clearOfflineCache()
         case .selectProject(let projectID):
             sessions.selectedProjectID = projectID
         case .projectCommand(let command):
@@ -1593,6 +1614,23 @@ public final class HermexAppStore {
             settings.settingsErrorMessage = String(describing: error)
         }
         settings.isSavingDefaultConfiguration = false
+    }
+
+    private func clearOfflineCache() async {
+        guard let server = settings.activeServer,
+              settings.isClearingCache != true
+        else { return }
+        let serverID = HermexServerURLNormalizer.normalizedID(for: server.baseURL)
+        settings.isClearingCache = true
+        settings.cacheStatusMessage = nil
+        do {
+            try await environment.clearOfflineCache(serverID)
+            settings.cacheStatusMessage = "This server's offline cache was cleared."
+            settings.showClearCacheConfirmation = false
+        } catch {
+            settings.cacheStatusMessage = "Could not clear this server's offline cache."
+        }
+        settings.isClearingCache = false
     }
 
     private func updateShowCliSessions(_ enabled: Bool) async {

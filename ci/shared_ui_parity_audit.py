@@ -142,6 +142,15 @@ def main() -> int:
         and ".updateActiveServer" in settings,
         "Settings screen must expose active-server identity, logo-color, and custom-header editing.",
     )
+    ok &= require(
+        "offlineDataSection" in settings
+        and "clearCacheConfirmationOverlay" in settings
+        and "Clear Offline Cache" in settings,
+        "Settings screen must expose scoped offline-cache management.",
+    )
+    for action in ["requestClearOfflineCache", "cancelClearOfflineCache", "clearOfflineCache"]:
+        ok &= require(action in events and action in store, f"Shared cache action is missing {action}.")
+    ok &= require("clearOfflineCache" in store, "Shared store must expose the cache-clearing environment hook.")
     ok &= require("hermexUpdatedServer" in store and "isSafeForClient" in store, "Shared store must sanitize edited server headers before rebinding runtime state.")
     ok &= require("HermexAppearanceSettings" in read("Sources/HermexCore/HermexAppearanceSettings.swift"), "Shared Core must own normalized identity and logo-color contracts.")
     ok &= require("HermexLogoMark(accent:" in session_list and "settingsColorHex" in session_list, "Session list must consume the active server's logo color.")

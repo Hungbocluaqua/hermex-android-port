@@ -788,6 +788,9 @@ public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
     public var showDefaultProfilePicker: Bool?
     public var isLoadingDefaultConfiguration: Bool?
     public var isSavingDefaultConfiguration: Bool?
+    public var showClearCacheConfirmation: Bool?
+    public var isClearingCache: Bool?
+    public var cacheStatusMessage: String?
     public var hapticsEnabled: Bool
     public var glassEnabled: Bool
     public var notificationsEnabled: Bool
@@ -809,6 +812,9 @@ public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
         showDefaultProfilePicker: Bool? = nil,
         isLoadingDefaultConfiguration: Bool? = nil,
         isSavingDefaultConfiguration: Bool? = nil,
+        showClearCacheConfirmation: Bool? = nil,
+        isClearingCache: Bool? = nil,
+        cacheStatusMessage: String? = nil,
         hapticsEnabled: Bool = true,
         glassEnabled: Bool = true,
         notificationsEnabled: Bool = false,
@@ -829,6 +835,9 @@ public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
         self.showDefaultProfilePicker = showDefaultProfilePicker
         self.isLoadingDefaultConfiguration = isLoadingDefaultConfiguration
         self.isSavingDefaultConfiguration = isSavingDefaultConfiguration
+        self.showClearCacheConfirmation = showClearCacheConfirmation
+        self.isClearingCache = isClearingCache
+        self.cacheStatusMessage = cacheStatusMessage
         self.hapticsEnabled = hapticsEnabled
         self.glassEnabled = glassEnabled
         self.notificationsEnabled = notificationsEnabled

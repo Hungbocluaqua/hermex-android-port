@@ -23,6 +23,9 @@ public enum HermexUIEvent: Equatable, Sendable {
     case openDefaultProfilePicker
     case dismissDefaultProfilePicker
     case chooseDefaultProfile(String)
+    case requestClearOfflineCache
+    case cancelClearOfflineCache
+    case clearOfflineCache
     case searchSessions(String)
     case selectProject(String?)
     case projectCommand(HermexProjectCommand)
@@ -140,6 +143,12 @@ public extension HermexUIEvent {
             return .dismissDefaultProfilePicker
         case .chooseDefaultProfile(let profile):
             return .chooseDefaultProfile(profile)
+        case .requestClearOfflineCache:
+            return .requestClearOfflineCache
+        case .cancelClearOfflineCache:
+            return .cancelClearOfflineCache
+        case .clearOfflineCache:
+            return .clearOfflineCache
         case .selectProject(let projectID):
             return .selectProject(projectID)
         case .projectCommand(let command):
