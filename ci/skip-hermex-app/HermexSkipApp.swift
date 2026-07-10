@@ -488,7 +488,7 @@ private actor HermexSkipConnection {
         persistence.rememberServer(server, authenticated: false)
     }
 
-    func clearActiveServer() {
+    func clearActiveServer() async {
         if let activeServer {
             persistence.rememberServer(activeServer, authenticated: false)
             try? await cookieStore.clearCookies(for: serverID(for: activeServer))
