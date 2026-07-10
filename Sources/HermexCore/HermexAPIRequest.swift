@@ -27,7 +27,7 @@ public struct HermexAPIRequestBuilder: Sendable {
             request.timeoutInterval = timeout
         }
 
-        for header in customHeaders().sanitizedForClient() {
+        for header in hermexSanitizedForClient(customHeaders()) {
             request.setValue(header.sanitizedValue, forHTTPHeaderField: header.sanitizedName)
         }
 

@@ -1269,9 +1269,11 @@ public final class HermexAppStore {
     private func selectServer(_ server: HermexServerIdentity) {
         onboarding.serverURLString = server.baseURL.absoluteString
         onboarding.displayName = server.displayName
-        onboarding.customHeaderText = server.customHeaders
-            .sorted { $0.key.localizedCaseInsensitiveCompare($1.key) == ComparisonResult.orderedAscending }
-            .map { "\($0.key): \($0.value)" }
+        let headerKeys = server.customHeaders.keys.sorted {
+            $0.localizedCaseInsensitiveCompare($1) == ComparisonResult.orderedAscending
+        }
+        onboarding.customHeaderText = headerKeys
+            .map { key in "\(key): \(server.customHeaders[key] ?? "")" }
             .joined(separator: "\n")
         onboarding.errorMessage = nil
         onboarding.statusMessage = nil
@@ -1990,7 +1992,7 @@ public final class HermexAppStore {
             guard pieces.count == 2 else { continue }
             headers.append(HermexCustomHeader(name: String(pieces[0]), value: String(pieces[1])))
         }
-        return headers.sanitizedForClient()
+        return hermexSanitizedForClient(headers)
     }
 
     private func upsertServer(_ server: HermexServerIdentity) {

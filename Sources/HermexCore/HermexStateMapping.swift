@@ -282,7 +282,7 @@ public extension HermexSkillDetailDTO {
     }
 }
 
-private func skillLinkedFileNames(from value: HermexJSONValue) -> [String] {
+func skillLinkedFileNames(from value: HermexJSONValue) -> [String] {
     switch value {
     case .string(let name):
         let trimmed = name.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
@@ -306,7 +306,7 @@ private func skillLinkedFileNames(from value: HermexJSONValue) -> [String] {
     }
 }
 
-private func uniqueSkillFileNames(_ names: [String]) -> [String] {
+func uniqueSkillFileNames(_ names: [String]) -> [String] {
     var unique: [String] = []
     for name in names {
         if !unique.contains(name) {

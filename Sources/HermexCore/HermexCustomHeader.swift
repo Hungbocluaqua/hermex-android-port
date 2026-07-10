@@ -37,8 +37,6 @@ public struct HermexCustomHeader: Codable, Equatable, Sendable {
     private static let allowedHeaderNameCharacters = "!#$%&'*+-.^_`|~0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 }
 
-public extension Sequence where Element == HermexCustomHeader {
-    func sanitizedForClient() -> [HermexCustomHeader] {
-        filter(\.isSafeForClient)
-    }
+public func hermexSanitizedForClient(_ headers: [HermexCustomHeader]) -> [HermexCustomHeader] {
+    headers.filter { $0.isSafeForClient }
 }

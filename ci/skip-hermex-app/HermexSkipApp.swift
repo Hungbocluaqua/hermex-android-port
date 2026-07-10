@@ -510,15 +510,15 @@ private actor HermexSkipConnection {
         guard let activeServer else {
             throw HermexAPIError.network("No active Hermex server. Connect to a server first.")
         }
-        return activeServer.customHeaders
+        let headers = activeServer.customHeaders
             .map { HermexCustomHeader(name: $0.key, value: $0.value) }
-            .sanitizedForClient()
+        return hermexSanitizedForClient(headers)
     }
 
     func client(for server: HermexServerIdentity) -> HermexAPIClient {
-        let headers = server.customHeaders
+        let rawHeaders = server.customHeaders
             .map { HermexCustomHeader(name: $0.key, value: $0.value) }
-            .sanitizedForClient()
+        let headers = hermexSanitizedForClient(rawHeaders)
 
         return HermexAPIClient(
             baseURL: server.baseURL,
@@ -668,9 +668,11 @@ private final class HermexSkipPersistence: @unchecked Sendable {
 
     private func headerText(for server: HermexServerIdentity?) -> String {
         guard let server else { return "" }
-        return server.customHeaders
-            .sorted { $0.key.localizedCaseInsensitiveCompare($1.key) == ComparisonResult.orderedAscending }
-            .map { "\($0.key): \($0.value)" }
+        let headerKeys = server.customHeaders.keys.sorted {
+            $0.localizedCaseInsensitiveCompare($1) == ComparisonResult.orderedAscending
+        }
+        return headerKeys
+            .map { key in "\(key): \(server.customHeaders[key] ?? "")" }
             .joined(separator: "\n")
     }
 
