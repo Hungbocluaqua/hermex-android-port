@@ -43,7 +43,8 @@ final class HermexPlatformCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(store.chat.composer.attachments.map(\.path), ["/workspace/report.pdf"])
         XCTAssertFalse(store.chat.composer.isUploadingAttachment)
-        XCTAssertEqual(await uploader.uploadedURLs.map(\.lastPathComponent), ["report.pdf"])
+        let uploadedURLs = await uploader.uploadedURLs
+        XCTAssertEqual(uploadedURLs.map(\.lastPathComponent), ["report.pdf"])
     }
 
     func testSharedAttachmentIsReplacedAfterUpload() async throws {
@@ -68,7 +69,8 @@ final class HermexPlatformCoordinatorTests: XCTestCase {
         await coordinator.consumePendingShare(into: store)
 
         XCTAssertEqual(store.chat.composer.attachments.map(\.path), ["/workspace/shared-note.txt"])
-        XCTAssertEqual(await uploader.uploadedURLs.map(\.path), [sharedURL.path])
+        let uploadedURLs = await uploader.uploadedURLs
+        XCTAssertEqual(uploadedURLs.map(\.path), [sharedURL.path])
     }
 
     func testCacheHydrationAndPersistenceRoutesThroughSharedStore() async throws {
