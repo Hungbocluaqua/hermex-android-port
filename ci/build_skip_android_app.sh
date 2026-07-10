@@ -10,6 +10,7 @@ ANDROID_VARIANT="${HERMEX_SKIP_ANDROID_VARIANT:-debug}"
 MODULE_NAME="HermexSkipApp"
 APP_PARENT="$(dirname "$APP_DIR")"
 APP_PROJECT_NAME="$(basename "$APP_DIR")"
+REUSE_APP_WORKDIR="${HERMEX_REUSE_SKIP_APP_WORKDIR:-0}"
 
 case "$ANDROID_VARIANT" in
   debug)
@@ -24,17 +25,26 @@ case "$ANDROID_VARIANT" in
     ;;
 esac
 
-rm -rf "$APP_DIR" "$DIST_DIR"
+reusable_app=0
+if [[ "$REUSE_APP_WORKDIR" == "1" && -f "$APP_DIR/Package.swift" && -d "$APP_DIR/Sources/$MODULE_NAME" ]]; then
+  reusable_app=1
+  echo "Reusing generated Skip app workspace at $APP_DIR"
+else
+  rm -rf "$APP_DIR"
+fi
+rm -rf "$DIST_DIR"
 mkdir -p "$APP_PARENT" "$DIST_DIR"
 
 if [[ "${HERMEX_ALLOW_INCOMPLETE_SKIP_APK:-0}" != "1" ]]; then
   python3 "$ROOT/ci/skip_release_readiness_audit.py"
 fi
 
-(
-  cd "$APP_PARENT"
-  skip init --transpiled-app --appid="$APP_ID" --version="$APP_VERSION" "$APP_PROJECT_NAME" "$MODULE_NAME"
-)
+if [[ "$reusable_app" != "1" ]]; then
+  (
+    cd "$APP_PARENT"
+    skip init --transpiled-app --appid="$APP_ID" --version="$APP_VERSION" "$APP_PROJECT_NAME" "$MODULE_NAME"
+  )
+fi
 prepare_args=(
   --app-dir "$APP_DIR"
   --repo-root "$ROOT"

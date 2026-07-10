@@ -102,6 +102,10 @@ def main() -> int:
     )
     ok &= require("skip_release_readiness_audit.py" in export_script, "Skip app export must run release readiness checks by default.")
     ok &= require("HERMEX_ALLOW_INCOMPLETE_SKIP_APK" in export_script, "Skip app export must require an explicit debug override for incomplete APKs.")
+    ok &= require(
+        "HERMEX_REUSE_SKIP_APP_WORKDIR" in export_script and "Reusing generated Skip app workspace" in export_script,
+        "Skip app export must support reusing a valid generated workspace for cached CI builds.",
+    )
     ok &= require("hermes_mobile_dark_icon.png" in export_script, "Skip app export must use the real Hermex launcher icon asset.")
     ok &= require("hermex_app_icon.png" in export_script, "Skip app export must copy a Hermex launcher PNG into generated Android resources.")
     ok &= require('android:label="Hermex"' in export_script, "Skip app export must force the generated launcher label to Hermex.")
@@ -242,6 +246,24 @@ def main() -> int:
 
     parity_workflow = (ROOT / ".github" / "workflows" / "skip-android-parity.yml").read_text(encoding="utf-8")
     ok &= require("Skip Generated APK Smoke" in parity_workflow, "Skip parity workflow must expose a generated APK smoke job.")
+    ok &= require(
+        "build_generated_apk" in parity_workflow
+        and "type: boolean" in parity_workflow
+        and "inputs.build_generated_apk == true" in parity_workflow,
+        "Skip parity workflow must make generated APK smoke explicitly opt-in.",
+    )
+    ok &= require(
+        "actions/cache@v4" in parity_workflow
+        and "gradle/actions/setup-gradle" in parity_workflow
+        and "HERMEX_REUSE_SKIP_APP_WORKDIR" in parity_workflow,
+        "Skip parity workflow must cache SwiftPM/Gradle state and reuse the generated workspace.",
+    )
+    ok &= require(
+        "Parity Audits" in parity_workflow
+        and "run_android" in parity_workflow
+        and "run_visual" in parity_workflow,
+        "Skip parity workflow must combine audits and scope Android/visual jobs by changed paths.",
+    )
     ok &= require("HERMEX_ALLOW_INCOMPLETE_SKIP_APK" in parity_workflow, "Skip APK smoke job must explicitly mark generated artifacts incomplete.")
     ok &= require("actions/upload-artifact" in parity_workflow, "Skip APK smoke job must upload generated artifacts for inspection.")
     ok &= require("capture_skip_android_fixture.sh --self-test" in parity_workflow, "Skip parity workflow must self-test Android visual capture wiring.")

@@ -2,6 +2,12 @@ name: Skip Android Parity
 
 on:
   workflow_dispatch:
+    inputs:
+      build_generated_apk:
+        description: "Build and upload the generated Skip APK smoke artifact"
+        required: false
+        default: false
+        type: boolean
   pull_request:
     paths:
       - Package.swift
@@ -21,6 +27,7 @@ on:
       - ci/skip_migration_audit.py
       - ci/skip_migration_manifest.json
       - ci/skip_package_audit.py
+      - ci/skip_release_readiness_audit.py
       - ci/shared_ui_parity_audit.py
       - docs/android-skip-port.md
       - .github/workflows/skip-android-parity.yml
@@ -33,6 +40,49 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  change-scope:
+    name: Classify Changed Paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run_android: ${{ steps.scope.outputs.run_android }}
+      run_visual: ${{ steps.scope.outputs.run_visual }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed files
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MERGE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "run_android=true" >> "$GITHUB_OUTPUT"
+            echo "run_visual=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_files="$(git diff --name-only "$BASE_SHA" "$MERGE_SHA")"
+          echo "Changed files:"
+          printf '%s\n' "$changed_files"
+
+          if grep -qE '^android/' <<<"$changed_files"; then
+            echo "run_android=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_android=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if grep -qE '^(Sources/HermexUI/|HermesMobile/Features/|HermesMobile/Resources/|ci/visual-goldens/|ci/capture_skip_android_fixture|\.github/workflows/(android-visual|visual-golden))' <<<"$changed_files"; then
+            echo "run_visual=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_visual=false" >> "$GITHUB_OUTPUT"
+          fi
+
   shared-swift-contracts:
     name: Shared Swift Contracts
     runs-on: macos-26
@@ -58,6 +108,8 @@ jobs:
 
   android-compose-safety:
     name: Android Compose Safety Build
+    needs: change-scope
+    if: needs.change-scope.outputs.run_android == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -81,7 +133,6 @@ jobs:
     name: Skip Toolchain Check
     runs-on: macos-26
     timeout-minutes: 45
-    if: github.event_name == 'workflow_dispatch'
     steps:
       - name: Check out
         uses: actions/checkout@v7
@@ -120,13 +171,29 @@ jobs:
     name: Skip Generated APK Smoke
     runs-on: macos-26
     timeout-minutes: 90
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.build_generated_apk == true
     env:
       HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
       HERMEX_ALLOW_INCOMPLETE_SKIP_APK: "1"
+      HERMEX_REUSE_SKIP_APP_WORKDIR: "1"
+      SKIP_APP_WORKDIR: ${{ github.workspace }}/.build/hermex-skip-app
     steps:
       - name: Check out
         uses: actions/checkout@v7
+
+      - name: Cache SwiftPM and generated Skip workspace
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build/hermex-skip-app
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/org.swift.swiftpm
+          key: skip-generated-apk-${{ runner.os }}-${{ hashFiles('Package.swift', 'Package.resolved', 'ci/build_skip_android_app.sh', 'ci/prepare_skip_hermex_app.py', 'ci/skip-hermex-app/**') }}
+          restore-keys: |
+            skip-generated-apk-${{ runner.os }}-
+
+      - name: Configure Gradle cache
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Install Skip
         run: |
@@ -169,6 +236,8 @@ jobs:
 
   visual-golden-manifest:
     name: Visual Golden Harness
+    needs: change-scope
+    if: needs.change-scope.outputs.run_visual == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -193,46 +262,18 @@ jobs:
       - name: Self-test Android fixture capture wiring
         run: bash ci/capture_skip_android_fixture.sh --self-test --screen session-list --state dark --device-name compact-phone
 
-  endpoint-parity:
-    name: Endpoint Parity
+  parity-audits:
+    name: Parity Audits
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Check out
         uses: actions/checkout@v7
 
-      - name: Compare endpoint path sets
-        run: python3 ci/endpoint_parity.py
-
-  skip-migration-audit:
-    name: Skip Migration Audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Check out
-        uses: actions/checkout@v7
-
-      - name: Audit migration feature coverage
-        run: python3 ci/skip_migration_audit.py
-
-  skip-package-audit:
-    name: Skip Package Audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Check out
-        uses: actions/checkout@v7
-
-      - name: Audit Skip package wiring
-        run: python3 ci/skip_package_audit.py
-
-  shared-ui-parity-audit:
-    name: Shared UI Parity Audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Check out
-        uses: actions/checkout@v7
-
-      - name: Audit shared SwiftUI parity guardrails
-        run: python3 ci/shared_ui_parity_audit.py
+      - name: Run parity audits
+        run: |
+          set -euo pipefail
+          python3 ci/endpoint_parity.py
+          python3 ci/skip_migration_audit.py
+          python3 ci/skip_package_audit.py
+          python3 ci/shared_ui_parity_audit.py

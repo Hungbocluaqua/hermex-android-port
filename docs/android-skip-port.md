@@ -32,7 +32,7 @@ Hermex is moving the Android app to a Skip-first architecture. The iOS SwiftUI a
 
 ## Verification
 
-The `Skip Android Parity` workflow runs a full shared Swift package build, shared Swift tests, Android fallback builds, endpoint parity, migration audits, visual manifest validation, and an Android fixture-capture wiring self-test. The manual Skip toolchain job is the macOS lane for enabling generated Android verification after the SwiftUI targets are migrated into Skip-compatible modules.
+The `Skip Android Parity` workflow runs the shared Swift package build, shared Swift tests, scoped Android fallback builds, combined parity audits, and scoped visual manifest validation. The generated APK smoke job is opt-in: dispatch the workflow with `build_generated_apk=true` when generated artifact verification is needed. That macOS lane caches SwiftPM and Gradle state and reuses its generated Skip workspace when available; a missing or incomplete cache still falls back to a clean `skip init`.
 
 The `Skip Android Named Release` workflow is the runnable Skip APK lane. It creates a temporary conventional Skip transpiled app with `skip init --transpiled-app`, patches that app to launch `HermexStoreRootScreen`, runs the Skip-enabled Swift build so `skipstone` generates the Android Gradle project, builds that generated project with `assembleDebug`, and uploads the resulting APK/AAB assets to a named GitHub release. The release APK from this workflow is the Skip-generated Android artifact; the legacy Gradle APK remains the Kotlin Compose fallback.
 
