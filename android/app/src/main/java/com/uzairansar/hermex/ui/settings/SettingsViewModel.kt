@@ -9,6 +9,7 @@ import com.uzairansar.hermex.core.model.SettingsResponse
 import com.uzairansar.hermex.core.network.CustomHeader
 import com.uzairansar.hermex.core.network.parseCustomHeaderLines
 import com.uzairansar.hermex.data.repository.AddServerResult
+import com.uzairansar.hermex.data.repository.AuthState
 import com.uzairansar.hermex.data.preferences.modelIdentifier
 import com.uzairansar.hermex.data.preferences.AppThemeMode
 import com.uzairansar.hermex.data.preferences.ChatDisplaySettings
@@ -88,6 +89,7 @@ data class SettingsUiState(
     val addServerError: String? = null,
     val clearCacheServer: ServerAccount? = null,
     val forgetServer: ServerAccount? = null,
+    val isForgettingServer: Boolean = false,
     val isClearingCache: Boolean = false,
     val isMaintainingCache: Boolean = false,
     val notice: String? = null,
@@ -870,19 +872,33 @@ class SettingsViewModel(
     fun confirmForgetServer(onSignedOut: () -> Unit) {
         val account = _state.value.forgetServer ?: return
         val wasActive = account.id == _state.value.serverSnapshot.activeServerId
-        runCatching { authRepository.forget(account.id) }
-            .onSuccess {
-                _state.update {
-                    it.copy(
-                        forgetServer = null,
-                        customHeadersByServer = it.customHeadersByServer - account.id,
-                        notice = "Server removed.",
-                        error = null,
-                    )
-                }
-                if (wasActive) onSignedOut()
+        _state.update { it.copy(isForgettingServer = true, error = null) }
+        viewModelScope.launch {
+            runCatching {
+                cacheMaintenanceRepository?.clearServer(account.urlString)
+                authRepository.forget(account.id)
             }
-            .onFailure { error -> _state.update { it.copy(error = error.message ?: "Could not remove server.") } }
+                .onSuccess {
+                    _state.update {
+                        it.copy(
+                            forgetServer = null,
+                            isForgettingServer = false,
+                            customHeadersByServer = it.customHeadersByServer - account.id,
+                            notice = "Server removed.",
+                            error = null,
+                        )
+                    }
+                    if (wasActive && authRepository.state.value !is AuthState.LoggedIn) onSignedOut()
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isForgettingServer = false,
+                            error = error.message ?: "Could not remove server.",
+                        )
+                    }
+                }
+        }
     }
 
     fun saveDefaultProfile(profile: ProfileSummary) {

@@ -798,10 +798,13 @@ private fun SettingsDialogs(
         AlertDialog(
             onDismissRequest = viewModel::cancelForgetServer,
             title = { Text("Forget Server?") },
-            text = { Text("Remove ${server.displayName}, its encrypted custom headers, and its saved registry entry. Sign in again to add it back.") },
+            text = { Text("Remove ${server.displayName}, its encrypted headers, cookies, offline cache, and saved registry entry. Sign in again to add it back.") },
             confirmButton = {
-                TextButton(onClick = { viewModel.confirmForgetServer(onSignedOut) }) {
-                    Text("Forget")
+                TextButton(
+                    onClick = { viewModel.confirmForgetServer(onSignedOut) },
+                    enabled = !state.isForgettingServer,
+                ) {
+                    Text(if (state.isForgettingServer) "Removing..." else "Forget")
                 }
             },
             dismissButton = { TextButton(onClick = viewModel::cancelForgetServer) { Text("Cancel") } },

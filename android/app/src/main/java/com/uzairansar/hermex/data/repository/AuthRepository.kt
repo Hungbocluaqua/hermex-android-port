@@ -121,6 +121,13 @@ class AuthRepository(
     }
 
     fun forget(id: String) {
+        registry.snapshot.value.servers
+            .firstOrNull { it.id == id }
+            ?.let { account ->
+                runCatching { account.urlString.toHttpUrl() }
+                    .getOrNull()
+                    ?.let(cookieJar::clear)
+            }
         registry.remove(id)
         _state.value = restoreState()
     }

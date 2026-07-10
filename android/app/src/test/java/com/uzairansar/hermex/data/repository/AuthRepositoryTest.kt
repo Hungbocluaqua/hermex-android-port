@@ -8,6 +8,7 @@ import com.uzairansar.hermex.data.secure.ServerRegistry
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import okhttp3.Cookie
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -94,12 +95,51 @@ class AuthRepositoryTest {
         }
     }
 
+    @Test
+    fun forgettingServerClearsItsCookiesAndRestoresUnconfiguredState() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            server.enqueue(json("""{"status":"ok"}"""))
+            server.enqueue(json("""{"auth_enabled":false,"password_auth_enabled":true}"""))
+            val secretStore = InMemorySecretStore()
+            val registry = ServerRegistry(secretStore)
+            val cookieJar = PersistentCookieJar(secretStore)
+            val repository = authRepository(registry, secretStore, cookieJar)
+
+            repository.configure(server.url("/").toString(), password = "")
+            val account = requireNotNull(registry.activeServer())
+            val url = server.url("/")
+            cookieJar.saveFromResponse(
+                url,
+                listOf(
+                    Cookie.Builder()
+                        .name("session")
+                        .value("token")
+                        .hostOnlyDomain(url.host)
+                        .path("/")
+                        .build(),
+                ),
+            )
+            assertTrue(cookieJar.loadForRequest(url).isNotEmpty())
+
+            repository.forget(account.id)
+
+            assertTrue(cookieJar.loadForRequest(url).isEmpty())
+            assertTrue(registry.snapshot.value.servers.isEmpty())
+            assertTrue(repository.state.value is AuthState.Unconfigured)
+        } finally {
+            server.close()
+        }
+    }
+
     private fun authRepository(
         registry: ServerRegistry,
         secretStore: SecretStore,
+        cookieJar: PersistentCookieJar = PersistentCookieJar(secretStore),
     ): AuthRepository {
         val okHttpClient = OkHttpClient.Builder()
-            .cookieJar(PersistentCookieJar(secretStore))
+            .cookieJar(cookieJar)
             .build()
         return AuthRepository(
             registry = registry,
@@ -117,7 +157,7 @@ class AuthRepositoryTest {
                     customHeaders = { headers },
                 )
             },
-            cookieJar = PersistentCookieJar(secretStore),
+            cookieJar = cookieJar,
         )
     }
 
