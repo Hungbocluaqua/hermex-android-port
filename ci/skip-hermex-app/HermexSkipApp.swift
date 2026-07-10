@@ -530,9 +530,11 @@ private final class HermexSkipRuntime: @unchecked Sendable {
             await coordinator.copyMessage(context)
         case .listenMessage(let context):
             await coordinator.speakMessage(context)
+#if SKIP
         case .openExternalURL(let value):
             guard let activity = UIApplication.shared.androidActivity else { return }
             activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(value)))
+#endif
         default:
             break
         }
