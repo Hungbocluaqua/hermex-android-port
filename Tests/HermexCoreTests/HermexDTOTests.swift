@@ -104,7 +104,18 @@ final class HermexDTOTests: XCTestCase {
             ])
         ]))
         let tasks = HermexPanelsState.tasks(from: .dictionary([
-            "jobs": .array([.dictionary(["id": .string("job-1"), "title": .string("Morning")])])
+            "jobs": .array([.dictionary([
+                "id": .string("job-1"),
+                "name": .string("Morning"),
+                "state": .string("paused"),
+                "schedule": .dictionary(["expression": .string("0 9 * * 1")]),
+                "prompt": .string("Prepare the digest"),
+                "deliver": .string("local"),
+                "skills": .array([.string("research")]),
+                "model": .string("gpt-5.5"),
+                "profile": .string("default"),
+                "toast_notifications": .bool(false)
+            ])])
         ]))
         let skills = HermexPanelsState.skills(from: .dictionary([
             "skills": .array([.dictionary(["name": .string("swift"), "enabled": .bool(true)])])
@@ -121,6 +132,11 @@ final class HermexDTOTests: XCTestCase {
         XCTAssertEqual(git.branch, "main")
         XCTAssertEqual(git.files.first?.additions, 2)
         XCTAssertEqual(tasks.tasks.first?.id, "job-1")
+        XCTAssertEqual(tasks.tasks.first?.status, "paused")
+        XCTAssertEqual(tasks.tasks.first?.schedule, "0 9 * * 1")
+        XCTAssertEqual(tasks.tasks.first?.prompt, "Prepare the digest")
+        XCTAssertEqual(tasks.tasks.first?.skills, ["research"])
+        XCTAssertEqual(tasks.tasks.first?.toastNotifications, false)
         XCTAssertEqual(skills.skills.first?.enabled, true)
         XCTAssertEqual(memory.memory.map(\.section), ["memory", "user"])
         XCTAssertEqual(memory.memory.first?.content, "Notes")

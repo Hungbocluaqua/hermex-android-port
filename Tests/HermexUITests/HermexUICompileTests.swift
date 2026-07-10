@@ -128,6 +128,9 @@ final class HermexUICompileTests: XCTestCase {
         XCTAssertEqual(HermexUIEvent.gitCommand(.stage(path: "README.md")).appAction, .gitCommand(.stage(path: "README.md")))
         XCTAssertEqual(HermexUIEvent.updateGitCommitMessage("Update").appAction, .updateGitCommitMessage("Update"))
         XCTAssertEqual(HermexUIEvent.selectInsightsRange(days: 365).appAction, .selectInsightsRange(days: 365))
+        XCTAssertEqual(HermexUIEvent.beginTaskCreation.appAction, .beginTaskCreation)
+        XCTAssertEqual(HermexUIEvent.beginTaskEdit(jobID: "job-1").appAction, .beginTaskEdit(jobID: "job-1"))
+        XCTAssertEqual(HermexUIEvent.dismissTaskDetails.appAction, .dismissTaskDetails)
         XCTAssertEqual(
             HermexUIEvent.openWorkspaceEntry(HermexWorkspaceEntryDTO(name: "README.md", path: "/repo/README.md", isDirectory: false)).appAction,
             .openWorkspaceEntry(HermexWorkspaceEntryDTO(name: "README.md", path: "/repo/README.md", isDirectory: false))

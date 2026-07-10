@@ -26,10 +26,28 @@ public struct HermexPanelsScreen: View {
                 .padding(.top, 12)
                 .padding(.bottom, 32)
             }
+
+            if state.taskDraft != nil {
+                taskEditorOverlay
+            }
+
+            if let task = selectedTask {
+                taskDetailOverlay(task)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(HermexUIColors.systemBackground.ignoresSafeArea())
         .foregroundStyle(HermexUIColors.primaryText)
+        .alert("Delete Task?", isPresented: deleteConfirmationBinding) {
+            Button("Cancel", role: .cancel) {
+                onEvent(.cancelTaskDeletion)
+            }
+            Button("Delete", role: .destructive) {
+                onEvent(.confirmTaskDeletion)
+            }
+        } message: {
+            Text("This scheduled task will be removed from the Hermes server.")
+        }
     }
 
     private var topBar: some View {
@@ -75,7 +93,9 @@ public struct HermexPanelsScreen: View {
 
     private var taskRows: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Button { } label: {
+            Button {
+                onEvent(.beginTaskCreation)
+            } label: {
                 Text("New Task")
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.white)
@@ -104,15 +124,32 @@ public struct HermexPanelsScreen: View {
                         metricRow("Schedule", schedule)
                     }
 
+                    if let prompt = task.prompt, !prompt.isEmpty {
+                        Text(prompt)
+                            .font(.subheadline)
+                            .foregroundStyle(HermexUIColors.secondaryText)
+                            .lineLimit(3)
+                    }
+
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            panelActionButton("Details", isProminent: true)
-                            panelActionButton("Edit")
-                            panelActionButton("Run") {
+                            panelActionButton("Details", isProminent: true, disabled: state.isMutating) {
+                                onEvent(.taskCommand(.loadOutput(jobID: task.id, limit: 5)))
+                            }
+                            panelActionButton("Edit", disabled: state.isMutating) {
+                                onEvent(.beginTaskEdit(jobID: task.id))
+                            }
+                            panelActionButton("Run", disabled: state.isMutating) {
                                 onEvent(.taskCommand(.run(jobID: task.id)))
                             }
-                            panelActionButton(taskPauseResumeTitle(task)) {
+                            panelActionButton(taskPauseResumeTitle(task), disabled: state.isMutating) {
                                 onEvent(.taskCommand(taskPauseResumeCommand(task)))
+                            }
+                            panelActionButton("Output", disabled: state.isMutating) {
+                                onEvent(.taskCommand(.loadOutput(jobID: task.id, limit: 5)))
+                            }
+                            panelActionButton("Delete", disabled: state.isMutating) {
+                                onEvent(.requestTaskDeletion(jobID: task.id))
                             }
                         }
                         .padding(.trailing, 8)
@@ -121,6 +158,212 @@ public struct HermexPanelsScreen: View {
                 .padding(.vertical, 8)
             }
         }
+    }
+
+    private var taskEditorOverlay: some View {
+        let draft = taskDraftBinding
+
+        return ZStack {
+            Color.black.opacity(0.52)
+                .ignoresSafeArea()
+
+            ScrollView {
+                HermexGlassPanel(cornerRadius: 18) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text(draft.wrappedValue.isEditing ? "Edit Task" : "New Task")
+                                .font(.title2.weight(.bold))
+                            Spacer()
+                            panelActionButton("Cancel", disabled: state.isMutating) {
+                                onEvent(.cancelTaskEditor)
+                            }
+                        }
+
+                        taskEditorField("Name", text: draft.name)
+                        taskEditorTextEditor("Prompt", text: draft.prompt, minHeight: 108)
+                        taskEditorField("Schedule", text: draft.schedule)
+
+                        Text("Delivery")
+                            .font(.caption.weight(.bold))
+                            .textCase(.uppercase)
+                            .foregroundStyle(HermexUIColors.secondaryText)
+                        taskEditorField("Deliver", text: draft.deliver)
+                        Toggle("Toast Notifications", isOn: draft.toastNotifications)
+                            .tint(.blue)
+
+                        Text("Configuration")
+                            .font(.caption.weight(.bold))
+                            .textCase(.uppercase)
+                            .foregroundStyle(HermexUIColors.secondaryText)
+                        taskEditorTextEditor("Skills", text: draft.skillsText, minHeight: 72)
+                        taskEditorField("Model", text: draft.model)
+                        taskEditorField("Profile", text: draft.profile)
+
+                        if let validationMessage = draft.wrappedValue.validationMessage {
+                            Text(validationMessage)
+                                .font(.footnote)
+                                .foregroundStyle(Color.orange)
+                        }
+
+                        HStack {
+                            Spacer()
+                            panelActionButton(
+                                draft.wrappedValue.isEditing ? "Save Changes" : "Create",
+                                isProminent: true,
+                                disabled: state.isMutating || draft.wrappedValue.validationMessage != nil
+                            ) {
+                                let command: HermexTaskCommand = draft.wrappedValue.isEditing
+                                    ? .update(draft: draft.wrappedValue)
+                                    : .create(draft: draft.wrappedValue)
+                                onEvent(.taskCommand(command))
+                            }
+                        }
+                    }
+                    .padding(18)
+                }
+                .padding(16)
+            }
+        }
+    }
+
+    private func taskDetailOverlay(_ task: HermexTaskDTO) -> some View {
+        ZStack {
+            Color.black.opacity(0.52)
+                .ignoresSafeArea()
+
+            ScrollView {
+                HermexGlassPanel(cornerRadius: 18) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text(task.title ?? task.id)
+                                .font(.title2.weight(.bold))
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 8)
+                            statusBadge(task.status ?? "Scheduled")
+                        }
+
+                        if let prompt = task.prompt, !prompt.isEmpty {
+                            Text(prompt)
+                                .font(.body)
+                                .foregroundStyle(HermexUIColors.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Details")
+                                .font(.caption.weight(.bold))
+                                .textCase(.uppercase)
+                                .foregroundStyle(HermexUIColors.secondaryText)
+                            if let schedule = task.schedule, !schedule.isEmpty {
+                                metricRow("Schedule", schedule)
+                            }
+                            metricRow("Deliver", task.deliver ?? "local")
+                            if let model = task.model, !model.isEmpty {
+                                metricRow("Model", model)
+                            }
+                            if let profile = task.profile, !profile.isEmpty {
+                                metricRow("Profile", profile)
+                            }
+                            if let skills = task.skills, !skills.isEmpty {
+                                metricRow("Skills", skills.joined(separator: ", "))
+                            }
+                            metricRow("Toasts", task.toastNotifications == false ? "Off" : "On")
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Recent Output")
+                                .font(.caption.weight(.bold))
+                                .textCase(.uppercase)
+                                .foregroundStyle(HermexUIColors.secondaryText)
+                            if state.isLoadingTaskOutput {
+                                ProgressView("Loading output...")
+                            } else if let outputError = taskOutputError {
+                                Text(outputError)
+                                    .font(.footnote)
+                                    .foregroundStyle(Color.red)
+                            } else if taskOutputItems.isEmpty {
+                                Text("This task has not produced any output yet.")
+                                    .font(.footnote)
+                                    .foregroundStyle(HermexUIColors.secondaryText)
+                            } else {
+                                ForEach(Array(taskOutputItems.enumerated()), id: \.offset) { _, item in
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text(jsonText(item["filename"]) ?? "Untitled")
+                                            .font(.subheadline.weight(.semibold))
+                                        Text(jsonText(item["content"]) ?? "Empty output")
+                                            .font(.system(.footnote, design: .monospaced))
+                                            .foregroundStyle(HermexUIColors.primaryText)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(10)
+                                            .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                    }
+                                }
+                            }
+                        }
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                panelActionButton("Refresh", disabled: state.isLoadingTaskOutput) {
+                                    onEvent(.taskCommand(.loadOutput(jobID: task.id, limit: 5)))
+                                }
+                                panelActionButton("Run Now", disabled: state.isMutating) {
+                                    onEvent(.taskCommand(.run(jobID: task.id)))
+                                }
+                                panelActionButton(taskPauseResumeTitle(task), disabled: state.isMutating) {
+                                    onEvent(.taskCommand(taskPauseResumeCommand(task)))
+                                }
+                                panelActionButton("Edit", disabled: state.isMutating) {
+                                    onEvent(.beginTaskEdit(jobID: task.id))
+                                }
+                                panelActionButton("Delete", disabled: state.isMutating) {
+                                    onEvent(.requestTaskDeletion(jobID: task.id))
+                                }
+                                panelActionButton("Done", isProminent: true) {
+                                    onEvent(.dismissTaskDetails)
+                                }
+                            }
+                        }
+                    }
+                    .padding(18)
+                }
+                .padding(16)
+            }
+        }
+    }
+
+    private func taskEditorField(_ title: String, text: Binding<String>) -> some View {
+        TextField(title, text: text)
+            .textFieldStyle(.plain)
+            .foregroundStyle(HermexUIColors.primaryText)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 50)
+            .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(HermexUIColors.hairline, lineWidth: 0.7)
+            }
+    }
+
+    private func taskEditorTextEditor(_ title: String, text: Binding<String>, minHeight: CGFloat) -> some View {
+        TextEditor(text: text)
+            .font(.body)
+            .foregroundStyle(HermexUIColors.primaryText)
+            .frame(minHeight: minHeight)
+            .padding(8)
+            .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(alignment: .topLeading) {
+                if text.wrappedValue.isEmpty {
+                    Text(title)
+                        .foregroundStyle(HermexUIColors.secondaryText)
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 15)
+                        .allowsHitTesting(false)
+                }
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(HermexUIColors.hairline, lineWidth: 0.7)
+            }
     }
 
     private var skillRows: some View {
@@ -282,6 +525,40 @@ public struct HermexPanelsScreen: View {
         (task.status ?? "").lowercased().contains("pause")
     }
 
+    private var selectedTask: HermexTaskDTO? {
+        guard let selectedTaskID = state.selectedTaskID else { return nil }
+        return state.tasks.first(where: { $0.id == selectedTaskID })
+    }
+
+    private var taskDraftBinding: Binding<HermexTaskDraft> {
+        Binding(
+            get: { state.taskDraft ?? HermexTaskDraft() },
+            set: { onEvent(.updateTaskDraft($0)) }
+        )
+    }
+
+    private var deleteConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { state.pendingTaskDeletionID != nil },
+            set: { isPresented in
+                if !isPresented {
+                    onEvent(.cancelTaskDeletion)
+                }
+            }
+        )
+    }
+
+    private var taskOutputItems: [[String: HermexJSONValue]] {
+        guard let output = state.taskOutput?.objectValue,
+              case .array(let values) = output["outputs"]
+        else { return [] }
+        return values.compactMap { $0.objectValue }
+    }
+
+    private var taskOutputError: String? {
+        state.taskOutput?.objectValue?.stringValue("error")
+    }
+
     private func writableMemorySection(_ section: String) -> String? {
         let normalizedSection = section.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         switch normalizedSection {
@@ -379,7 +656,12 @@ public struct HermexPanelsScreen: View {
             .background(HermexUIColors.glassFillStrong, in: Circle())
     }
 
-    private func panelActionButton(_ title: String, isProminent: Bool = false, action: @escaping () -> Void = {}) -> some View {
+    private func panelActionButton(
+        _ title: String,
+        isProminent: Bool = false,
+        disabled: Bool = false,
+        action: @escaping () -> Void = {}
+    ) -> some View {
         Button(action: action) {
             Text(title)
                 .font(.headline.weight(.semibold))
@@ -392,6 +674,8 @@ public struct HermexPanelsScreen: View {
                 }
         }
         .buttonStyle(.plain)
+        .disabled(disabled)
+        .opacity(disabled ? 0.55 : 1)
     }
 
     private func statusBadge(_ status: String) -> some View {

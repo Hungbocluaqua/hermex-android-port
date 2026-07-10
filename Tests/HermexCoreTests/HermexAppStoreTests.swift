@@ -261,6 +261,80 @@ final class HermexAppStoreTests: XCTestCase {
         XCTAssertNil(store.panels.errorMessage)
     }
 
+    func testTaskEditorDetailsAndMutationCommandsRouteThroughEnvironment() async throws {
+        let probe = StoreProbe()
+        let store = HermexAppStore(
+            panels: HermexPanelsState(
+                tasks: [HermexTaskDTO(
+                    id: "job-1",
+                    title: "Morning",
+                    status: "active",
+                    schedule: "0 9 * * 1",
+                    prompt: "Prepare the digest",
+                    deliver: "local",
+                    skills: ["research"],
+                    model: "gpt-5.5",
+                    profile: "default",
+                    toastNotifications: true
+                )],
+                selectedPanel: .tasks
+            ),
+            environment: environment(probe: probe)
+        )
+
+        await store.send(.beginTaskEdit(jobID: "job-1"))
+        XCTAssertEqual(store.panels.taskDraft?.editingJobID, "job-1")
+        XCTAssertEqual(store.panels.taskDraft?.prompt, "Prepare the digest")
+
+        let updatedDraft = HermexTaskDraft(
+            editingJobID: "job-1",
+            name: "Morning digest",
+            prompt: "Prepare the updated digest",
+            schedule: "0 10 * * 1",
+            deliver: "local",
+            skillsText: "research",
+            model: "gpt-5.5",
+            profile: "default",
+            toastNotifications: false
+        )
+        await store.send(.updateTaskDraft(updatedDraft))
+        await store.send(.taskCommand(.update(draft: updatedDraft)))
+        XCTAssertNil(store.panels.taskDraft)
+
+        await store.send(.taskCommand(.loadOutput(jobID: "job-1", limit: 5)))
+        XCTAssertEqual(store.panels.selectedTaskID, "job-1")
+        XCTAssertEqual(store.panels.taskOutput?.objectValue?["job_id"], .string("job-1"))
+
+        await store.send(.beginTaskCreation)
+        XCTAssertEqual(store.panels.taskDraft?.deliver, "local")
+        let newDraft = HermexTaskDraft(prompt: "Create a new digest", schedule: "manual")
+        await store.send(.taskCommand(.create(draft: newDraft)))
+        XCTAssertNil(store.panels.taskDraft)
+
+        await store.send(.requestTaskDeletion(jobID: "job-1"))
+        XCTAssertEqual(store.panels.pendingTaskDeletionID, "job-1")
+        await store.send(.confirmTaskDeletion)
+        XCTAssertNil(store.panels.pendingTaskDeletionID)
+
+        let commands = await probe.taskCommands
+        XCTAssertTrue(commands.contains { command in
+            if case .update = command { return true }
+            return false
+        })
+        XCTAssertTrue(commands.contains { command in
+            if case .loadOutput = command { return true }
+            return false
+        })
+        XCTAssertTrue(commands.contains { command in
+            if case .create = command { return true }
+            return false
+        })
+        XCTAssertTrue(commands.contains { command in
+            if case .delete = command { return true }
+            return false
+        })
+    }
+
     func testWriteMemoryRoutesThroughEnvironmentAndRefreshesPanelState() async throws {
         let probe = StoreProbe()
         let store = HermexAppStore(
@@ -635,6 +709,37 @@ private actor StoreProbe {
         case .resume(let jobID):
             taskStatus = "active"
             return .dictionary(["ok": .bool(true), "job": .dictionary(["id": .string(jobID), "status": .string(taskStatus)])])
+        case .create(let draft):
+            return .dictionary([
+                "ok": .bool(true),
+                "job": .dictionary([
+                    "id": .string("created-job"),
+                    "name": .string(draft.trimmedName ?? "Created task"),
+                    "prompt": .string(draft.trimmedPrompt),
+                    "schedule": .string(draft.trimmedSchedule),
+                    "state": .string("active")
+                ])
+            ])
+        case .update(let draft):
+            return .dictionary([
+                "ok": .bool(true),
+                "job": .dictionary([
+                    "id": .string(draft.editingJobID ?? "job-1"),
+                    "name": .string(draft.trimmedName ?? "Updated task"),
+                    "prompt": .string(draft.trimmedPrompt),
+                    "schedule": .string(draft.trimmedSchedule),
+                    "state": .string("active")
+                ])
+            ])
+        case .delete(let jobID):
+            return .dictionary(["ok": .bool(true), "job_id": .string(jobID)])
+        case .loadOutput(let jobID, _):
+            return .dictionary([
+                "job_id": .string(jobID),
+                "outputs": .array([
+                    .dictionary(["filename": .string("latest-run.md"), "content": .string("output")])
+                ])
+            ])
         }
     }
 

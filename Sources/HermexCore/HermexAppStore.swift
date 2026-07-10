@@ -45,6 +45,14 @@ public enum HermexAppAction: Equatable, Sendable {
     case updateGitCommitMessage(String)
     case selectPanel(HermexPanel)
     case taskCommand(HermexTaskCommand)
+    case beginTaskCreation
+    case beginTaskEdit(jobID: String)
+    case updateTaskDraft(HermexTaskDraft)
+    case cancelTaskEditor
+    case requestTaskDeletion(jobID: String)
+    case cancelTaskDeletion
+    case confirmTaskDeletion
+    case dismissTaskDetails
     case toggleSkill(name: String, enabled: Bool)
     case writeMemory(section: String, content: String)
     case selectInsightsRange(days: Int)
@@ -55,6 +63,10 @@ public enum HermexTaskCommand: Equatable, Sendable {
     case run(jobID: String)
     case pause(jobID: String)
     case resume(jobID: String)
+    case create(draft: HermexTaskDraft)
+    case update(draft: HermexTaskDraft)
+    case delete(jobID: String)
+    case loadOutput(jobID: String, limit: Int)
 }
 
 public struct HermexAppEnvironment: Sendable {
@@ -279,6 +291,33 @@ public struct HermexAppEnvironment: Sendable {
                     return try await panels.pauseCron(jobID: jobID)
                 case .resume(let jobID):
                     return try await panels.resumeCron(jobID: jobID)
+                case .create(let draft):
+                    return try await panels.createCron(
+                        prompt: draft.trimmedPrompt,
+                        schedule: draft.trimmedSchedule,
+                        name: draft.trimmedName,
+                        deliver: draft.trimmedDeliver,
+                        skills: draft.skills,
+                        model: draft.trimmedModel,
+                        profile: draft.trimmedProfile,
+                        toastNotifications: draft.toastNotifications
+                    )
+                case .update(let draft):
+                    return try await panels.updateCron(
+                        jobID: draft.editingJobID ?? "",
+                        prompt: draft.trimmedPrompt,
+                        schedule: draft.trimmedSchedule,
+                        name: draft.trimmedName,
+                        deliver: draft.trimmedDeliver,
+                        skills: draft.skills,
+                        model: draft.trimmedModel,
+                        profile: draft.trimmedProfile,
+                        toastNotifications: draft.toastNotifications
+                    )
+                case .delete(let jobID):
+                    return try await panels.deleteCron(jobID: jobID)
+                case .loadOutput(let jobID, let limit):
+                    return try await panels.cronOutput(jobID: jobID, limit: limit)
                 }
             },
             loadSkills: {
@@ -476,6 +515,32 @@ public final class HermexAppStore {
             appState.route = .panels
         case .taskCommand(let command):
             applyPreviewTaskCommand(command)
+        case .beginTaskCreation:
+            panels.taskDraft = HermexTaskDraft()
+            panels.selectedTaskID = nil
+            panels.taskOutput = nil
+            panels.errorMessage = nil
+        case .beginTaskEdit(let jobID):
+            beginPreviewTaskEdit(jobID: jobID)
+        case .updateTaskDraft(let draft):
+            panels.taskDraft = draft
+            panels.errorMessage = nil
+        case .cancelTaskEditor:
+            panels.taskDraft = nil
+        case .requestTaskDeletion(let jobID):
+            panels.pendingTaskDeletionID = jobID
+            panels.errorMessage = nil
+        case .cancelTaskDeletion:
+            panels.pendingTaskDeletionID = nil
+        case .confirmTaskDeletion:
+            if let jobID = panels.pendingTaskDeletionID {
+                panels.pendingTaskDeletionID = nil
+                applyPreviewTaskCommand(.delete(jobID: jobID))
+            }
+        case .dismissTaskDetails:
+            panels.selectedTaskID = nil
+            panels.taskOutput = nil
+            panels.isLoadingTaskOutput = false
         case .toggleSkill(let name, let enabled):
             updateSkill(named: name, enabled: enabled)
         case .writeMemory(let section, let content):
@@ -554,20 +619,83 @@ public final class HermexAppStore {
     }
 
     private func applyPreviewTaskCommand(_ command: HermexTaskCommand) {
-        let jobID: String
-        let status: String
         switch command {
         case .run(let id):
-            jobID = id
-            status = "Running"
+            updateTask(jobID: id, status: "Running")
         case .pause(let id):
-            jobID = id
-            status = "Paused"
+            updateTask(jobID: id, status: "Paused")
         case .resume(let id):
-            jobID = id
-            status = "Active"
+            updateTask(jobID: id, status: "Active")
+        case .create(let draft):
+            guard draft.validationMessage == nil else {
+                panels.errorMessage = draft.validationMessage
+                return
+            }
+            let jobID = "preview-task-\(panels.tasks.count + 1)"
+            panels.tasks.append(HermexTaskDTO(
+                id: jobID,
+                title: draft.trimmedName ?? draft.trimmedPrompt,
+                status: "Active",
+                schedule: draft.trimmedSchedule,
+                prompt: draft.trimmedPrompt,
+                deliver: draft.trimmedDeliver,
+                skills: draft.skills,
+                model: draft.trimmedModel,
+                profile: draft.trimmedProfile,
+                toastNotifications: draft.toastNotifications
+            ))
+            panels.taskDraft = nil
+            panels.errorMessage = nil
+        case .update(let draft):
+            guard draft.validationMessage == nil else {
+                panels.errorMessage = draft.validationMessage
+                return
+            }
+            guard let jobID = draft.editingJobID,
+                  let index = panels.tasks.firstIndex(where: { $0.id == jobID })
+            else {
+                panels.errorMessage = "Task id unavailable."
+                return
+            }
+            panels.tasks[index].title = draft.trimmedName ?? draft.trimmedPrompt
+            panels.tasks[index].schedule = draft.trimmedSchedule
+            panels.tasks[index].prompt = draft.trimmedPrompt
+            panels.tasks[index].deliver = draft.trimmedDeliver
+            panels.tasks[index].skills = draft.skills
+            panels.tasks[index].model = draft.trimmedModel
+            panels.tasks[index].profile = draft.trimmedProfile
+            panels.tasks[index].toastNotifications = draft.toastNotifications
+            panels.taskDraft = nil
+            panels.errorMessage = nil
+        case .delete(let jobID):
+            panels.tasks.removeAll { $0.id == jobID }
+            if panels.selectedTaskID == jobID {
+                panels.selectedTaskID = nil
+                panels.taskOutput = nil
+            }
+            panels.errorMessage = nil
+        case .loadOutput(let jobID, _):
+            panels.selectedTaskID = jobID
+            panels.isLoadingTaskOutput = false
+            panels.taskOutput = .dictionary([
+                "job_id": .string(jobID),
+                "outputs": .array([
+                    .dictionary([
+                        "filename": .string("latest-run.md"),
+                        "content": .string("Preview output for \(jobID).")
+                    ])
+                ])
+            ])
+            panels.errorMessage = nil
         }
-        updateTask(jobID: jobID, status: status)
+    }
+
+    private func beginPreviewTaskEdit(jobID: String) {
+        guard let task = panels.tasks.first(where: { $0.id == jobID }) else { return }
+        panels.taskDraft = HermexTaskDraft(task: task)
+        panels.selectedTaskID = nil
+        panels.taskOutput = nil
+        panels.errorMessage = nil
     }
 
     private func updateTask(jobID: String, status: String) {
@@ -729,7 +857,18 @@ public final class HermexAppStore {
     private static func previewPanels() -> HermexPanelsState {
         HermexPanelsState(
             tasks: [
-                HermexTaskDTO(id: "weekly-graphics", title: "Weekly computer graphics research digest", status: "Active", schedule: "0 9 * * 1")
+                HermexTaskDTO(
+                    id: "weekly-graphics",
+                    title: "Weekly computer graphics research digest",
+                    status: "Active",
+                    schedule: "0 9 * * 1",
+                    prompt: "Summarize the latest computer graphics papers.",
+                    deliver: "local",
+                    skills: ["architecture-diagram"],
+                    model: "gpt-5.5",
+                    profile: "default",
+                    toastNotifications: true
+                )
             ],
             skills: [
                 HermexSkillDTO(name: "coding-agent-delegation", enabled: true, summary: "Delegate coding tasks to external agent CLIs."),
@@ -927,6 +1066,29 @@ public final class HermexAppStore {
             await loadPanel(panel)
         case .taskCommand(let command):
             await runTaskCommand(command)
+        case .beginTaskCreation:
+            panels.taskDraft = HermexTaskDraft()
+            panels.selectedTaskID = nil
+            panels.taskOutput = nil
+            panels.errorMessage = nil
+        case .beginTaskEdit(let jobID):
+            beginTaskEdit(jobID: jobID)
+        case .updateTaskDraft(let draft):
+            panels.taskDraft = draft
+            panels.errorMessage = nil
+        case .cancelTaskEditor:
+            panels.taskDraft = nil
+        case .requestTaskDeletion(let jobID):
+            panels.pendingTaskDeletionID = jobID
+            panels.errorMessage = nil
+        case .cancelTaskDeletion:
+            panels.pendingTaskDeletionID = nil
+        case .confirmTaskDeletion:
+            await confirmTaskDeletion()
+        case .dismissTaskDetails:
+            panels.selectedTaskID = nil
+            panels.taskOutput = nil
+            panels.isLoadingTaskOutput = false
         case .toggleSkill(let name, let enabled):
             await toggleSkill(name: name, enabled: enabled)
         case .writeMemory(let section, let content):
@@ -1426,11 +1588,31 @@ public final class HermexAppStore {
     }
 
     private func runTaskCommand(_ command: HermexTaskCommand) async {
+        switch command {
+        case .run, .pause, .resume:
+            await runTaskStatusCommand(command)
+        case .create(let draft), .update(let draft):
+            await saveTaskCommand(command, draft: draft)
+        case .delete(let jobID):
+            await deleteTask(jobID: jobID)
+        case .loadOutput(let jobID, let limit):
+            await loadTaskOutput(jobID: jobID, limit: limit)
+        }
+    }
+
+    private func runTaskStatusCommand(_ command: HermexTaskCommand) async {
         let previousTasks = panels.tasks
         panels.errorMessage = nil
+        panels.isMutating = true
         applyTaskCommandOptimistically(command)
         do {
-            _ = try await environment.performTaskCommand(command)
+            let response = try await environment.performTaskCommand(command)
+            if let error = taskCommandError(response) {
+                panels.tasks = previousTasks
+                panels.errorMessage = error
+                panels.isMutating = false
+                return
+            }
             if panels.selectedPanel == .tasks {
                 await loadPanel(.tasks)
             }
@@ -1438,6 +1620,106 @@ public final class HermexAppStore {
             panels.tasks = previousTasks
             panels.errorMessage = String(describing: error)
         }
+        panels.isMutating = false
+    }
+
+    private func saveTaskCommand(_ command: HermexTaskCommand, draft: HermexTaskDraft) async {
+        guard draft.validationMessage == nil else {
+            panels.errorMessage = draft.validationMessage
+            return
+        }
+        if case .update = command, draft.editingJobID == nil {
+            panels.errorMessage = "Task id unavailable."
+            return
+        }
+
+        panels.errorMessage = nil
+        panels.isMutating = true
+        do {
+            let response = try await environment.performTaskCommand(command)
+            if let error = taskCommandError(response) {
+                panels.errorMessage = error
+                panels.isMutating = false
+                return
+            }
+            panels.taskDraft = nil
+            if panels.selectedPanel == .tasks {
+                await loadPanel(.tasks)
+            }
+        } catch {
+            panels.errorMessage = String(describing: error)
+        }
+        panels.isMutating = false
+    }
+
+    private func deleteTask(jobID: String) async {
+        let normalizedJobID = jobID.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !normalizedJobID.isEmpty else {
+            panels.errorMessage = "Task id unavailable."
+            return
+        }
+
+        let previousTasks = panels.tasks
+        panels.errorMessage = nil
+        panels.isMutating = true
+        panels.tasks.removeAll { $0.id == normalizedJobID }
+        if panels.selectedTaskID == normalizedJobID {
+            panels.selectedTaskID = nil
+            panels.taskOutput = nil
+        }
+        do {
+            let response = try await environment.performTaskCommand(.delete(jobID: normalizedJobID))
+            if let error = taskCommandError(response) {
+                panels.tasks = previousTasks
+                panels.errorMessage = error
+                panels.isMutating = false
+                return
+            }
+            if panels.selectedPanel == .tasks {
+                await loadPanel(.tasks)
+            }
+        } catch {
+            panels.tasks = previousTasks
+            panels.errorMessage = String(describing: error)
+        }
+        panels.isMutating = false
+    }
+
+    private func loadTaskOutput(jobID: String, limit: Int) async {
+        let normalizedJobID = jobID.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !normalizedJobID.isEmpty else { return }
+        panels.selectedTaskID = normalizedJobID
+        panels.taskOutput = nil
+        panels.isLoadingTaskOutput = true
+        panels.errorMessage = nil
+        do {
+            panels.taskOutput = try await environment.performTaskCommand(.loadOutput(jobID: normalizedJobID, limit: max(1, min(50, limit))))
+        } catch {
+            panels.errorMessage = String(describing: error)
+        }
+        panels.isLoadingTaskOutput = false
+    }
+
+    private func beginTaskEdit(jobID: String) {
+        guard let task = panels.tasks.first(where: { $0.id == jobID }) else { return }
+        panels.taskDraft = HermexTaskDraft(task: task)
+        panels.selectedTaskID = nil
+        panels.taskOutput = nil
+        panels.errorMessage = nil
+    }
+
+    private func confirmTaskDeletion() async {
+        guard let jobID = panels.pendingTaskDeletionID else { return }
+        panels.pendingTaskDeletionID = nil
+        await runTaskCommand(.delete(jobID: jobID))
+    }
+
+    private func taskCommandError(_ response: HermexJSONValue) -> String? {
+        let fields = response.objectValue ?? [:]
+        if fields.boolValue("ok") == false {
+            return fields.stringValue("error") ?? "Task operation failed."
+        }
+        return fields.stringValue("error")
     }
 
     private func updateTask(jobID: String, status: String) {
@@ -1457,6 +1739,8 @@ public final class HermexAppStore {
             updateTask(jobID: jobID, status: "Paused")
         case .resume(let jobID):
             updateTask(jobID: jobID, status: "Active")
+        case .create, .update, .delete, .loadOutput:
+            break
         }
     }
 

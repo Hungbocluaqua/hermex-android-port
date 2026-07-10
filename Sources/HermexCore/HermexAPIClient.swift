@@ -510,6 +510,68 @@ public struct HermexAPIClient: @unchecked Sendable {
     }
 
     public func crons() async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.crons, method: "GET") }
+    public func createCron(
+        prompt: String,
+        schedule: String,
+        name: String?,
+        deliver: String?,
+        skills: [String],
+        model: String?,
+        profile: String?,
+        toastNotifications: Bool
+    ) async throws -> HermexJSONValue {
+        try await sendJSON(
+            endpoint: HermexEndpoints.cronCreate,
+            method: "POST",
+            body: HermexJSONObjectBody([
+                "prompt": .string(prompt),
+                "schedule": .string(schedule),
+                "name": .stringOrNil(name),
+                "deliver": .stringOrNil(deliver),
+                "skills": .array(skills.map { .string($0) }),
+                "model": .stringOrNil(model),
+                "profile": .stringOrNil(profile),
+                "toast_notifications": .bool(toastNotifications)
+            ])
+        )
+    }
+
+    public func updateCron(
+        jobID: String,
+        prompt: String?,
+        schedule: String?,
+        name: String?,
+        deliver: String?,
+        skills: [String]?,
+        model: String?,
+        profile: String?,
+        toastNotifications: Bool?
+    ) async throws -> HermexJSONValue {
+        try await sendJSON(
+            endpoint: HermexEndpoints.cronUpdate,
+            method: "POST",
+            body: HermexJSONObjectBody([
+                "job_id": .string(jobID),
+                "prompt": .stringOrNil(prompt),
+                "schedule": .stringOrNil(schedule),
+                "name": .stringOrNil(name),
+                "deliver": .stringOrNil(deliver),
+                "skills": skills.map { .array($0.map { .string($0) }) },
+                "model": .stringOrNil(model),
+                "profile": .stringOrNil(profile),
+                "toast_notifications": toastNotifications.map { .bool($0) }
+            ])
+        )
+    }
+
+    public func deleteCron(jobID: String) async throws -> HermexJSONValue {
+        try await sendJSON(
+            endpoint: HermexEndpoints.cronDelete,
+            method: "POST",
+            body: HermexJSONObjectBody(["job_id": .string(jobID)])
+        )
+    }
+
     public func runCron(jobID: String) async throws -> HermexJSONValue {
         try await sendJSON(endpoint: HermexEndpoints.cronRun, method: "POST", body: HermexJSONObjectBody(["job_id": .string(jobID)]))
     }

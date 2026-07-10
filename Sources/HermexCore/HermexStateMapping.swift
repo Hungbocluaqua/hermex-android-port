@@ -218,11 +218,22 @@ public extension HermexTaskDTO {
     static func fromJSON(_ value: HermexJSONValue) -> HermexTaskDTO? {
         guard let fields = value.objectValue else { return nil }
         guard let id = fields.stringValue("id", "job_id", "name") else { return nil }
+        let scheduleFields = fields["schedule"]?.objectValue ?? [:]
+        let schedule = fields.stringValue("schedule", "cron", "next_run")
+            ?? scheduleFields.stringValue("expression", "expr", "run_at", "runAt", "every", "kind")
+        let status = fields.stringValue("status", "state", "last_status")
+            ?? (fields.boolValue("paused") == true ? "paused" : nil)
         return HermexTaskDTO(
             id: id,
             title: fields.stringValue("title", "name", "command"),
-            status: fields.stringValue("status", "state"),
-            schedule: fields.stringValue("schedule", "cron", "next_run")
+            status: status,
+            schedule: schedule,
+            prompt: fields.stringValue("prompt"),
+            deliver: fields.stringValue("deliver"),
+            skills: fields.arrayValue("skills").compactMap { $0.stringValue },
+            model: fields.stringValue("model"),
+            profile: fields.stringValue("profile"),
+            toastNotifications: fields.boolValue("toast_notifications", "toastNotifications")
         )
     }
 }

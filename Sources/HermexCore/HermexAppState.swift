@@ -437,6 +437,12 @@ public enum HermexGitCommand: Equatable, Sendable {
 
 public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
     public var tasks: [HermexTaskDTO]
+    public var taskDraft: HermexTaskDraft?
+    public var selectedTaskID: String?
+    public var taskOutput: HermexJSONValue?
+    public var isLoadingTaskOutput: Bool
+    public var pendingTaskDeletionID: String?
+    public var isMutating: Bool
     public var skills: [HermexSkillDTO]
     public var memory: [HermexMemorySectionDTO]
     public var insights: HermexJSONValue?
@@ -447,6 +453,12 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
 
     public init(
         tasks: [HermexTaskDTO] = [],
+        taskDraft: HermexTaskDraft? = nil,
+        selectedTaskID: String? = nil,
+        taskOutput: HermexJSONValue? = nil,
+        isLoadingTaskOutput: Bool = false,
+        pendingTaskDeletionID: String? = nil,
+        isMutating: Bool = false,
         skills: [HermexSkillDTO] = [],
         memory: [HermexMemorySectionDTO] = [],
         insights: HermexJSONValue? = nil,
@@ -456,6 +468,12 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
         errorMessage: String? = nil
     ) {
         self.tasks = tasks
+        self.taskDraft = taskDraft
+        self.selectedTaskID = selectedTaskID
+        self.taskOutput = taskOutput
+        self.isLoadingTaskOutput = isLoadingTaskOutput
+        self.pendingTaskDeletionID = pendingTaskDeletionID
+        self.isMutating = isMutating
         self.skills = skills
         self.memory = memory
         self.insights = insights
@@ -468,6 +486,12 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
 #if !SKIP
     private enum CodingKeys: String, CodingKey {
         case tasks
+        case taskDraft
+        case selectedTaskID
+        case taskOutput
+        case isLoadingTaskOutput
+        case pendingTaskDeletionID
+        case isMutating
         case skills
         case memory
         case insights
@@ -480,6 +504,12 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.tasks = try container.decodeIfPresent([HermexTaskDTO].self, forKey: .tasks) ?? []
+        self.taskDraft = try container.decodeIfPresent(HermexTaskDraft.self, forKey: .taskDraft)
+        self.selectedTaskID = try container.decodeIfPresent(String.self, forKey: .selectedTaskID)
+        self.taskOutput = try container.decodeIfPresent(HermexJSONValue.self, forKey: .taskOutput)
+        self.isLoadingTaskOutput = try container.decodeIfPresent(Bool.self, forKey: .isLoadingTaskOutput) ?? false
+        self.pendingTaskDeletionID = try container.decodeIfPresent(String.self, forKey: .pendingTaskDeletionID)
+        self.isMutating = try container.decodeIfPresent(Bool.self, forKey: .isMutating) ?? false
         self.skills = try container.decodeIfPresent([HermexSkillDTO].self, forKey: .skills) ?? []
         self.memory = try container.decodeIfPresent([HermexMemorySectionDTO].self, forKey: .memory) ?? []
         self.insights = try container.decodeIfPresent(HermexJSONValue.self, forKey: .insights)
@@ -492,6 +522,12 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(tasks, forKey: .tasks)
+        try container.encodeIfPresent(taskDraft, forKey: .taskDraft)
+        try container.encodeIfPresent(selectedTaskID, forKey: .selectedTaskID)
+        try container.encodeIfPresent(taskOutput, forKey: .taskOutput)
+        try container.encode(isLoadingTaskOutput, forKey: .isLoadingTaskOutput)
+        try container.encodeIfPresent(pendingTaskDeletionID, forKey: .pendingTaskDeletionID)
+        try container.encode(isMutating, forKey: .isMutating)
         try container.encode(skills, forKey: .skills)
         try container.encode(memory, forKey: .memory)
         try container.encodeIfPresent(insights, forKey: .insights)
@@ -515,12 +551,119 @@ public struct HermexTaskDTO: HermexStateCodable, Identifiable, Equatable, Sendab
     public var title: String?
     public var status: String?
     public var schedule: String?
+    public var prompt: String?
+    public var deliver: String?
+    public var skills: [String]?
+    public var model: String?
+    public var profile: String?
+    public var toastNotifications: Bool?
 
-    public init(id: String, title: String? = nil, status: String? = nil, schedule: String? = nil) {
+    public init(
+        id: String,
+        title: String? = nil,
+        status: String? = nil,
+        schedule: String? = nil,
+        prompt: String? = nil,
+        deliver: String? = nil,
+        skills: [String]? = nil,
+        model: String? = nil,
+        profile: String? = nil,
+        toastNotifications: Bool? = nil
+    ) {
         self.id = id
         self.title = title
         self.status = status
         self.schedule = schedule
+        self.prompt = prompt
+        self.deliver = deliver
+        self.skills = skills
+        self.model = model
+        self.profile = profile
+        self.toastNotifications = toastNotifications
+    }
+}
+
+public struct HermexTaskDraft: HermexStateCodable, Equatable, Sendable {
+    public var editingJobID: String?
+    public var name: String
+    public var prompt: String
+    public var schedule: String
+    public var deliver: String
+    public var skillsText: String
+    public var model: String
+    public var profile: String
+    public var toastNotifications: Bool
+
+    public init(
+        editingJobID: String? = nil,
+        name: String = "",
+        prompt: String = "",
+        schedule: String = "",
+        deliver: String = "local",
+        skillsText: String = "",
+        model: String = "",
+        profile: String = "",
+        toastNotifications: Bool = true
+    ) {
+        self.editingJobID = editingJobID
+        self.name = name
+        self.prompt = prompt
+        self.schedule = schedule
+        self.deliver = deliver
+        self.skillsText = skillsText
+        self.model = model
+        self.profile = profile
+        self.toastNotifications = toastNotifications
+    }
+
+    public init(task: HermexTaskDTO) {
+        self.init(
+            editingJobID: task.id,
+            name: task.title ?? "",
+            prompt: task.prompt ?? "",
+            schedule: task.schedule ?? "",
+            deliver: task.deliver ?? "local",
+            skillsText: task.skills?.joined(separator: ", ") ?? "",
+            model: task.model ?? "",
+            profile: task.profile ?? "",
+            toastNotifications: task.toastNotifications ?? true
+        )
+    }
+
+    public var isEditing: Bool { editingJobID != nil }
+
+    public var trimmedName: String? { Self.nonEmpty(name) }
+
+    public var trimmedPrompt: String {
+        prompt.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+    }
+
+    public var trimmedSchedule: String {
+        schedule.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+    }
+
+    public var trimmedDeliver: String? { Self.nonEmpty(deliver) }
+
+    public var trimmedModel: String? { Self.nonEmpty(model) }
+
+    public var trimmedProfile: String? { Self.nonEmpty(profile) }
+
+    public var skills: [String] {
+        skillsText
+            .split { $0 == "," || $0 == "\n" }
+            .map { String($0).trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    public var validationMessage: String? {
+        if trimmedPrompt.isEmpty { return "Prompt is required." }
+        if trimmedSchedule.isEmpty { return "Schedule is required." }
+        return nil
+    }
+
+    private static func nonEmpty(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 

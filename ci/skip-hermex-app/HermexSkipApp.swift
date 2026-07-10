@@ -316,6 +316,33 @@ private final class HermexSkipRuntime {
                     return try await repository.pauseCron(jobID: jobID)
                 case .resume(let jobID):
                     return try await repository.resumeCron(jobID: jobID)
+                case .create(let draft):
+                    return try await repository.createCron(
+                        prompt: draft.trimmedPrompt,
+                        schedule: draft.trimmedSchedule,
+                        name: draft.trimmedName,
+                        deliver: draft.trimmedDeliver,
+                        skills: draft.skills,
+                        model: draft.trimmedModel,
+                        profile: draft.trimmedProfile,
+                        toastNotifications: draft.toastNotifications
+                    )
+                case .update(let draft):
+                    return try await repository.updateCron(
+                        jobID: draft.editingJobID ?? "",
+                        prompt: draft.trimmedPrompt,
+                        schedule: draft.trimmedSchedule,
+                        name: draft.trimmedName,
+                        deliver: draft.trimmedDeliver,
+                        skills: draft.skills,
+                        model: draft.trimmedModel,
+                        profile: draft.trimmedProfile,
+                        toastNotifications: draft.toastNotifications
+                    )
+                case .delete(let jobID):
+                    return try await repository.deleteCron(jobID: jobID)
+                case .loadOutput(let jobID, let limit):
+                    return try await repository.cronOutput(jobID: jobID, limit: limit)
                 }
             },
             loadSkills: {

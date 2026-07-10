@@ -168,8 +168,24 @@ def main() -> int:
     ok &= require("taskRows" in panels and "skillRows" in panels and "memoryRows" in panels and "insightsPanel" in panels, "Panels screen must expose tasks/skills/memory/insights sections.")
     ok &= require("Search skills..." in panels and "filteredSkills" in panels, "Skills panel must expose the iOS-style search field.")
     ok &= require(".toggleSkill(name: skill.name" in panels and "case .toggleSkill" in events, "Skills panel toggle button must route through shared Core.")
-    ok &= require("New Task" in panels and "Details" in panels and "Run" in panels, "Tasks panel must expose iOS-style task actions.")
+    ok &= require(
+        "New Task" in panels
+        and "Details" in panels
+        and "Run" in panels
+        and "Output" in panels
+        and "Delete" in panels
+        and "taskEditorOverlay" in panels
+        and "taskDetailOverlay" in panels,
+        "Tasks panel must expose iOS-style task editor, detail, output, and delete actions."
+    )
     ok &= require(".taskCommand(.run(jobID: task.id))" in panels and "taskPauseResumeCommand" in panels, "Tasks panel run/pause/resume buttons must route through shared Core.")
+    for action in ["beginTaskCreation", "beginTaskEdit", "updateTaskDraft", "confirmTaskDeletion", "dismissTaskDetails"]:
+        ok &= require(action in events and action in store, f"Shared task action is missing {action}.")
+    for command in [".create(draft:", ".update(draft:", ".loadOutput(jobID:"]:
+        store_command = command[1:] if command.startswith(".") else command
+        ok &= require(command in panels and (command in store or store_command in store), f"Shared task command is missing {command}.")
+    ok &= require(".delete(jobID:" in store and "confirmTaskDeletion" in panels, "Shared task delete command is missing confirmation routing.")
+    ok &= require("createCron" in store and "updateCron" in store and "deleteCron" in store and "cronOutput" in store, "Shared store is missing cron mutation/output transport hooks.")
     ok &= require("TextEditor(text: $memoryDraft)" in panels and ".writeMemory(section: section" in panels, "Memory panel edit/save must route through shared Core.")
     ok &= require("Last 30 Days" in panels and "All Time" in panels and "Estimated Cost" in panels and "Cache Hit Rate" in panels, "Insights panel must expose iOS-style analytics rows.")
     ok &= require(".selectInsightsRange(days: days)" in panels and "selectedInsightsDays" in panels, "Insights range chips must route through shared Core state.")

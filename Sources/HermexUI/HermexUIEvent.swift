@@ -44,6 +44,14 @@ public enum HermexUIEvent: Equatable, Sendable {
     case updateGitCommitMessage(String)
     case selectPanel(HermexPanel)
     case taskCommand(HermexTaskCommand)
+    case beginTaskCreation
+    case beginTaskEdit(jobID: String)
+    case updateTaskDraft(HermexTaskDraft)
+    case cancelTaskEditor
+    case requestTaskDeletion(jobID: String)
+    case cancelTaskDeletion
+    case confirmTaskDeletion
+    case dismissTaskDetails
     case toggleSkill(name: String, enabled: Bool)
     case writeMemory(section: String, content: String)
     case selectInsightsRange(days: Int)
@@ -131,6 +139,22 @@ public extension HermexUIEvent {
             return .selectPanel(panel)
         case .taskCommand(let command):
             return .taskCommand(command)
+        case .beginTaskCreation:
+            return .beginTaskCreation
+        case .beginTaskEdit(let jobID):
+            return .beginTaskEdit(jobID: jobID)
+        case .updateTaskDraft(let draft):
+            return .updateTaskDraft(draft)
+        case .cancelTaskEditor:
+            return .cancelTaskEditor
+        case .requestTaskDeletion(let jobID):
+            return .requestTaskDeletion(jobID: jobID)
+        case .cancelTaskDeletion:
+            return .cancelTaskDeletion
+        case .confirmTaskDeletion:
+            return .confirmTaskDeletion
+        case .dismissTaskDetails:
+            return .dismissTaskDetails
         case .toggleSkill(let name, let enabled):
             return .toggleSkill(name: name, enabled: enabled)
         case .writeMemory(let section, let content):

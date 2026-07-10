@@ -64,6 +64,53 @@ final class HermexAPIClientTests: XCTestCase {
         XCTAssertEqual(body["explicit_model_pick"] as? Bool, true)
     }
 
+    func testCronMutationBodiesUseServerSnakeCaseContract() async throws {
+        let transport = RecordingTransport(json: #"{"ok":true}"#)
+        let client = try makeClient(transport: transport)
+
+        _ = try await client.createCron(
+            prompt: "Prepare a digest",
+            schedule: "0 9 * * 1",
+            name: "Weekly digest",
+            deliver: "local",
+            skills: ["research"],
+            model: "gpt-5.5",
+            profile: "default",
+            toastNotifications: false
+        )
+        let createRequest = try XCTUnwrap(transport.requests.last)
+        XCTAssertEqual(createRequest.url?.path, "/api/crons/create")
+        let createBody = try jsonObject(from: createRequest)
+        XCTAssertEqual(createBody["toast_notifications"] as? Bool, false)
+        XCTAssertNil(createBody["toastNotifications"])
+        XCTAssertEqual(createBody["skills"] as? [String], ["research"])
+
+        _ = try await client.updateCron(
+            jobID: "job-1",
+            prompt: "Updated digest",
+            schedule: "manual",
+            name: nil,
+            deliver: "origin",
+            skills: ["research", "writing"],
+            model: nil,
+            profile: "default",
+            toastNotifications: true
+        )
+        let updateRequest = try XCTUnwrap(transport.requests.last)
+        XCTAssertEqual(updateRequest.url?.path, "/api/crons/update")
+        let updateBody = try jsonObject(from: updateRequest)
+        XCTAssertEqual(updateBody["job_id"] as? String, "job-1")
+        XCTAssertEqual(updateBody["toast_notifications"] as? Bool, true)
+        XCTAssertNil(updateBody["toastNotifications"])
+        XCTAssertEqual(updateBody["skills"] as? [String], ["research", "writing"])
+        XCTAssertNil(updateBody["name"])
+
+        _ = try await client.deleteCron(jobID: "job-1")
+        let deleteRequest = try XCTUnwrap(transport.requests.last)
+        XCTAssertEqual(deleteRequest.url?.path, "/api/crons/delete")
+        XCTAssertEqual(try jsonObject(from: deleteRequest)["job_id"] as? String, "job-1")
+    }
+
     func testTtsUsesAudioAcceptHeader() async throws {
         let transport = RecordingTransport(data: Data([0x01, 0x02]), statusCode: 200)
         let client = try makeClient(transport: transport)

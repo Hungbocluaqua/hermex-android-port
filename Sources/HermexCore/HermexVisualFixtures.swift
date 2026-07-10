@@ -324,8 +324,30 @@ public enum HermexVisualFixtureCatalog {
     private static func panelsState() -> HermexPanelsState {
         HermexPanelsState(
             tasks: [
-                HermexTaskDTO(id: "weekly-graphics", title: "Weekly computer graphics research digest", status: "Active", schedule: "0 9 * * 1"),
-                HermexTaskDTO(id: "android-parity", title: "Android visual parity screenshot pass", status: "Paused", schedule: "manual"),
+                HermexTaskDTO(
+                    id: "weekly-graphics",
+                    title: "Weekly computer graphics research digest",
+                    status: "Active",
+                    schedule: "0 9 * * 1",
+                    prompt: "Summarize the latest computer graphics papers.",
+                    deliver: "local",
+                    skills: ["architecture-diagram"],
+                    model: "gpt-5.5",
+                    profile: "default",
+                    toastNotifications: true
+                ),
+                HermexTaskDTO(
+                    id: "android-parity",
+                    title: "Android visual parity screenshot pass",
+                    status: "Paused",
+                    schedule: "manual",
+                    prompt: "Capture the shared panel screens.",
+                    deliver: "origin",
+                    skills: ["coding-agent-delegation"],
+                    model: "gpt-5.5",
+                    profile: "default",
+                    toastNotifications: false
+                ),
             ],
             skills: [
                 HermexSkillDTO(name: "coding-agent-delegation", enabled: true, summary: "Delegate coding tasks from Hermes to external coding agent CLIs."),
