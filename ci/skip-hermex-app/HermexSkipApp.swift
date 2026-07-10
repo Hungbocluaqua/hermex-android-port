@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import HermexCore
+import HermexPlatform
 import HermexUI
 
 private let hermexVisualFixtureName: String? = nil
@@ -66,6 +67,9 @@ public struct HermexSkipAppRootView: View {
                 onUnhandledEvent: runtime.handleUnhandledEvent
             )
         }
+        .task {
+            await runtime.bootstrap()
+        }
     }
 }
 
@@ -119,15 +123,49 @@ public final class HermexSkipAppDelegate: Sendable {
 }
 
 private final class HermexSkipRuntime {
-    private let connection = HermexSkipConnection()
+    private let persistence: HermexSkipPersistence
+    private let cookieStore: HermexSkipCookieStore
+    private let cacheStore: HermexSkipCacheStore
+    private let connection: HermexSkipConnection
+    private let coordinator: HermexPlatformCoordinator
     private var streamTask: Task<Void, Never>?
+    private var didBootstrap = false
+
+    init() {
+        let persistence = HermexSkipPersistence()
+        let cookieStore = HermexSkipCookieStore(persistence: persistence)
+        let cacheStore = HermexSkipCacheStore(persistence: persistence)
+        self.persistence = persistence
+        self.cookieStore = cookieStore
+        self.cacheStore = cacheStore
+        self.connection = HermexSkipConnection(persistence: persistence, cookieStore: cookieStore)
+        self.coordinator = HermexPlatformCoordinator(services: HermexPlatformServiceBundle(cache: cacheStore))
+    }
 
     @MainActor
-    lazy var store: HermexAppStore = HermexAppStore(
-        environment: Self.environment(connection: connection, onStreamStarted: { [weak self] streamID in
+    lazy var store: HermexAppStore = {
+        let restored = persistence.restoredStoreState()
+        return HermexAppStore(
+            appState: restored.appState,
+            onboarding: restored.onboarding,
+            settings: restored.settings,
+            environment: Self.environment(connection: connection, cacheStore: cacheStore, onStreamStarted: { [weak self] streamID in
             self?.beginStreaming(streamID: streamID)
-        })
-    )
+            })
+        )
+    }()
+
+    @MainActor
+    func bootstrap() async {
+        guard !didBootstrap else { return }
+        didBootstrap = true
+        guard store.appState.route != .onboarding,
+              let serverID = await connection.currentServerID()
+        else { return }
+
+        await coordinator.hydrateCachedSessions(serverID: serverID, into: store)
+        await store.send(.refresh)
+    }
 
     @MainActor
     func handleUnhandledEvent(_ event: HermexUIEvent) {
@@ -146,8 +184,13 @@ private final class HermexSkipRuntime {
             do {
                 let client = try await connection.currentClient()
                 let headers = try await connection.currentCustomHeaders()
+                let cookieHeader = await connection.currentCookieHeader()
                 let streamURL = client.streamURL(streamID: streamID)
-                let streamClient = HermexSSEStreamClient(url: streamURL, customHeaders: headers)
+                var streamHeaders = headers
+                if let cookieHeader {
+                    streamHeaders.append(HermexCustomHeader(name: "Cookie", value: cookieHeader))
+                }
+                let streamClient = HermexSSEStreamClient(url: streamURL, customHeaders: streamHeaders)
                 for try await event in streamClient.events() {
                     if Task.isCancelled { break }
                     await store.send(.applyStreamEvent(event))
@@ -160,7 +203,11 @@ private final class HermexSkipRuntime {
         }
     }
 
-    private static func environment(connection: HermexSkipConnection, onStreamStarted: @escaping @MainActor (String) -> Void) -> HermexAppEnvironment {
+    private static func environment(
+        connection: HermexSkipConnection,
+        cacheStore: HermexSkipCacheStore,
+        onStreamStarted: @escaping @MainActor (String) -> Void
+    ) -> HermexAppEnvironment {
         HermexAppEnvironment(
             testServerConnection: { server in
                 let client = await connection.client(for: server)
@@ -168,20 +215,45 @@ private final class HermexSkipRuntime {
             },
             loginToServer: { server, password in
                 let client = await connection.client(for: server)
-                let response = try await client.login(password: password)
-                await connection.setActiveServer(server)
-                return response
+                return try await client.login(password: password)
             },
             loadSessions: { includeArchived, archivedLimit in
                 let repository = try await connection.currentSessionsRepository()
-                return try await repository.list(
-                    includeArchived: includeArchived,
-                    archivedLimit: archivedLimit
-                )
+                do {
+                    let response = try await repository.list(
+                        includeArchived: includeArchived,
+                        archivedLimit: archivedLimit
+                    )
+                    if let serverID = await connection.currentServerID() {
+                        try? await cacheStore.replaceCachedSessions(response.sessions ?? [], for: serverID)
+                    }
+                    return response
+                } catch {
+                    if let serverID = await connection.currentServerID(),
+                       let cached = try? await cacheStore.cachedSessions(for: serverID),
+                       !cached.isEmpty {
+                        return HermexSessionsResponse(sessions: cached)
+                    }
+                    throw error
+                }
             },
             loadSession: { sessionID in
                 let repository = try await connection.currentSessionsRepository()
-                return try await repository.detail(id: sessionID)
+                do {
+                    let response = try await repository.detail(id: sessionID)
+                    if let serverID = await connection.currentServerID(),
+                       let messages = response.messages {
+                        try? await cacheStore.replaceCachedMessages(messages, sessionID: sessionID, serverID: serverID)
+                    }
+                    return response
+                } catch {
+                    if let serverID = await connection.currentServerID(),
+                       let cached = try? await cacheStore.cachedMessages(sessionID: sessionID, serverID: serverID),
+                       !cached.isEmpty {
+                        return HermexSessionResponse(messages: cached)
+                    }
+                    throw error
+                }
             },
             startChat: { sessionID, message, workspace, model, modelProvider, profile, attachments in
                 let repository = try await connection.currentChatRepository()
@@ -371,23 +443,66 @@ private final class HermexSkipRuntime {
             },
             logout: {
                 let repository = try await connection.currentAuthRepository()
-                let response = try await repository.logout()
-                await connection.clearActiveServer()
-                return response
+                do {
+                    let response = try await repository.logout()
+                    await connection.clearActiveServer()
+                    return response
+                } catch {
+                    await connection.clearActiveServer()
+                    throw error
+                }
+            },
+            updateServerRuntime: { server, authenticated in
+                if authenticated {
+                    await connection.activateServer(server)
+                } else {
+                    await connection.rememberServer(server)
+                }
             }
         )
     }
 }
 
 private actor HermexSkipConnection {
+    private let persistence: HermexSkipPersistence
+    private let cookieStore: HermexSkipCookieStore
     private var activeServer: HermexServerIdentity?
 
-    func setActiveServer(_ server: HermexServerIdentity) {
+    init(persistence: HermexSkipPersistence, cookieStore: HermexSkipCookieStore) {
+        self.persistence = persistence
+        self.cookieStore = cookieStore
+        let restored = persistence.restoredStoreState()
+        if case .loggedIn(let server) = restored.appState.auth {
+            self.activeServer = server
+        } else {
+            self.activeServer = nil
+        }
+    }
+
+    func activateServer(_ server: HermexServerIdentity) {
         activeServer = server
+        persistence.rememberServer(server, authenticated: true)
+    }
+
+    func rememberServer(_ server: HermexServerIdentity) {
+        persistence.rememberServer(server, authenticated: false)
     }
 
     func clearActiveServer() {
+        if let activeServer {
+            persistence.rememberServer(activeServer, authenticated: false)
+            try? await cookieStore.clearCookies(for: serverID(for: activeServer))
+        }
         activeServer = nil
+    }
+
+    func currentServerID() -> String? {
+        activeServer.map { serverID(for: $0) }
+    }
+
+    func currentCookieHeader() async -> String? {
+        guard let activeServer else { return nil }
+        return try? await cookieStore.cookieHeader(for: activeServer.baseURL, serverID: serverID(for: activeServer))
     }
 
     func currentCustomHeaders() throws -> [HermexCustomHeader] {
@@ -406,6 +521,11 @@ private actor HermexSkipConnection {
 
         return HermexAPIClient(
             baseURL: server.baseURL,
+            transport: HermexSkipCookieTransport(
+                serverID: serverID(for: server),
+                persistence: persistence,
+                cookieStore: cookieStore
+            ),
             customHeaders: { headers }
         )
     }
@@ -440,6 +560,334 @@ private actor HermexSkipConnection {
     func currentPanelsRepository() throws -> HermexPanelsRepository {
         HermexPanelsRepository(client: try currentClient())
     }
+
+    private func serverID(for server: HermexServerIdentity) -> String {
+        HermexServerURLNormalizer.normalizedID(for: server.baseURL)
+    }
+}
+
+private struct HermexSkipPersistedServers: Codable {
+    var servers: [HermexServerIdentity] = []
+    var activeServerID: String?
+    var authenticated = false
+}
+
+private struct HermexSkipRestoredStoreState {
+    let appState: HermexAppState
+    let onboarding: HermexOnboardingState
+    let settings: HermexSettingsState
+}
+
+private final class HermexSkipPersistence: @unchecked Sendable {
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    func restoredStoreState() -> HermexSkipRestoredStoreState {
+        let snapshot = loadServers()
+        let active = snapshot.servers.first { serverID(for: $0) == snapshot.activeServerID }
+        let onboarding = HermexOnboardingState(
+            serverURLString: active?.baseURL.absoluteString ?? "",
+            displayName: active?.displayName ?? "",
+            customHeaderText: headerText(for: active)
+        )
+        let settings = HermexSettingsState(activeServer: active, servers: snapshot.servers)
+
+        guard let active else {
+            return HermexSkipRestoredStoreState(
+                appState: HermexAppState(),
+                onboarding: onboarding,
+                settings: settings
+            )
+        }
+
+        let auth: HermexAuthState = snapshot.authenticated
+            ? .loggedIn(server: active)
+            : .loggedOut(server: active)
+        let route: HermexRoute = snapshot.authenticated ? .sessions : .onboarding
+        return HermexSkipRestoredStoreState(
+            appState: HermexAppState(auth: auth, route: route),
+            onboarding: onboarding,
+            settings: settings
+        )
+    }
+
+    func rememberServer(_ server: HermexServerIdentity, authenticated: Bool) {
+        var snapshot = loadServers()
+        let id = serverID(for: server)
+        if let index = snapshot.servers.firstIndex(where: { serverID(for: $0) == id }) {
+            snapshot.servers[index] = server
+        } else {
+            snapshot.servers.append(server)
+        }
+        snapshot.activeServerID = id
+        snapshot.authenticated = authenticated
+        saveServers(snapshot)
+    }
+
+    func markUnauthenticated(serverID: String) {
+        var snapshot = loadServers()
+        guard snapshot.activeServerID == serverID else { return }
+        snapshot.authenticated = false
+        saveServers(snapshot)
+    }
+
+    func data(for key: String) -> Data? {
+        defaults.data(forKey: key)
+    }
+
+    func setData(_ data: Data?, for key: String) {
+        defaults.set(data, forKey: key)
+    }
+
+    func scopedKey(_ prefix: String, _ components: String...) -> String {
+        let safe = components.joined(separator: "::")
+            .replacingOccurrences(of: "://", with: "_")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: ":", with: "_")
+        return "hermex.skip.\(prefix).\(safe)"
+    }
+
+    private func loadServers() -> HermexSkipPersistedServers {
+        guard let data = defaults.data(forKey: Self.serverStateKey),
+              let snapshot = try? JSONDecoder().decode(HermexSkipPersistedServers.self, from: data)
+        else {
+            return HermexSkipPersistedServers()
+        }
+        return snapshot
+    }
+
+    private func saveServers(_ snapshot: HermexSkipPersistedServers) {
+        if let data = try? JSONEncoder().encode(snapshot) {
+            defaults.set(data, forKey: Self.serverStateKey)
+        }
+    }
+
+    private func headerText(for server: HermexServerIdentity?) -> String {
+        guard let server else { return "" }
+        return server.customHeaders
+            .sorted { $0.key.localizedCaseInsensitiveCompare($1.key) == ComparisonResult.orderedAscending }
+            .map { "\($0.key): \($0.value)" }
+            .joined(separator: "\n")
+    }
+
+    private func serverID(for server: HermexServerIdentity) -> String {
+        HermexServerURLNormalizer.normalizedID(for: server.baseURL)
+    }
+
+    private static let serverStateKey = "hermex.skip.servers"
+}
+
+private actor HermexSkipCookieStore: HermexCookieStore {
+    private let persistence: HermexSkipPersistence
+    private var loadedServerIDs: Set<String> = []
+    private var recordsByServer: [String: [HermexCookieRecord]] = [:]
+
+    init(persistence: HermexSkipPersistence) {
+        self.persistence = persistence
+    }
+
+    func cookies(for serverID: String) async throws -> [HermexCookieRecord] {
+        loadIfNeeded(serverID)
+        let now = Date()
+        let fresh = recordsByServer[serverID, default: []].filter { record in
+            record.expiresAt == nil || record.expiresAt! > now
+        }
+        recordsByServer[serverID] = fresh
+        persist(serverID)
+        return fresh
+    }
+
+    func replaceCookies(_ cookies: [HermexCookieRecord], for serverID: String) async throws {
+        loadedServerIDs.insert(serverID)
+        recordsByServer[serverID] = cookies
+        persist(serverID)
+    }
+
+    func clearCookies(for serverID: String) async throws {
+        loadedServerIDs.insert(serverID)
+        recordsByServer[serverID] = []
+        persist(serverID)
+    }
+
+    func merge(_ incoming: [HermexCookieRecord], for serverID: String) async {
+        guard !incoming.isEmpty else { return }
+        let existing = (try? await cookies(for: serverID)) ?? []
+        var merged = existing
+        for cookie in incoming {
+            merged.removeAll { current in
+                current.name == cookie.name &&
+                    current.domain == cookie.domain &&
+                    current.path == cookie.path
+            }
+            if cookie.expiresAt == nil || cookie.expiresAt! > Date() {
+                merged.append(cookie)
+            }
+        }
+        try? await replaceCookies(merged, for: serverID)
+    }
+
+    func cookieHeader(for url: URL, serverID: String) async throws -> String? {
+        let host = url.host?.lowercased() ?? ""
+        let path = url.path.isEmpty ? "/" : url.path
+        let secureConnection = url.scheme?.lowercased() == "https"
+        let records = try await cookies(for: serverID)
+        let matching = records.filter { cookie in
+            guard cookie.expiresAt == nil || cookie.expiresAt! > Date() else { return false }
+            if cookie.isSecure && !secureConnection { return false }
+            if let domain = cookie.domain?.lowercased(),
+               host != domain,
+               !host.hasSuffix(".\(domain.trimmingCharacters(in: CharacterSet(charactersIn: ".")))") {
+                return false
+            }
+            return path.hasPrefix(cookie.path.isEmpty ? "/" : cookie.path)
+        }
+        guard !matching.isEmpty else { return nil }
+        return matching.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
+    }
+
+    private func loadIfNeeded(_ serverID: String) {
+        guard loadedServerIDs.insert(serverID).inserted else { return }
+        let key = persistence.scopedKey("cookies", serverID)
+        if let data = persistence.data(for: key),
+           let records = try? JSONDecoder().decode([HermexCookieRecord].self, from: data) {
+            recordsByServer[serverID] = records
+        } else {
+            recordsByServer[serverID] = []
+        }
+    }
+
+    private func persist(_ serverID: String) {
+        guard let records = recordsByServer[serverID],
+              let data = try? JSONEncoder().encode(records)
+        else { return }
+        persistence.setData(data, for: persistence.scopedKey("cookies", serverID))
+    }
+}
+
+private actor HermexSkipCacheStore: HermexCacheStore {
+    private let persistence: HermexSkipPersistence
+
+    init(persistence: HermexSkipPersistence) {
+        self.persistence = persistence
+    }
+
+    func cachedSessions(for serverID: String) async throws -> [HermexSessionDTO] {
+        decode([HermexSessionDTO].self, key: persistence.scopedKey("sessions", serverID)) ?? []
+    }
+
+    func replaceCachedSessions(_ sessions: [HermexSessionDTO], for serverID: String) async throws {
+        encode(sessions, key: persistence.scopedKey("sessions", serverID))
+    }
+
+    func cachedMessages(sessionID: String, serverID: String) async throws -> [HermexChatMessageDTO] {
+        decode(
+            [HermexChatMessageDTO].self,
+            key: persistence.scopedKey("messages", serverID, sessionID)
+        ) ?? []
+    }
+
+    func replaceCachedMessages(_ messages: [HermexChatMessageDTO], sessionID: String, serverID: String) async throws {
+        encode(messages, key: persistence.scopedKey("messages", serverID, sessionID))
+    }
+
+    private func encode<T: Encodable>(_ value: T, key: String) {
+        if let data = try? JSONEncoder().encode(value) {
+            persistence.setData(data, for: key)
+        }
+    }
+
+    private func decode<T: Decodable>(_ type: T.Type, key: String) -> T? {
+        guard let data = persistence.data(for: key) else { return nil }
+        return try? JSONDecoder().decode(type, from: data)
+    }
+}
+
+private final class HermexSkipCookieTransport: HermexHTTPTransport, @unchecked Sendable {
+    private let serverID: String
+    private let persistence: HermexSkipPersistence
+    private let cookieStore: HermexSkipCookieStore
+    private let baseTransport: HermexURLSessionTransport
+
+    init(serverID: String, persistence: HermexSkipPersistence, cookieStore: HermexSkipCookieStore) {
+        self.serverID = serverID
+        self.persistence = persistence
+        self.cookieStore = cookieStore
+        self.baseTransport = HermexURLSessionTransport()
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        var request = request
+        if let url = request.url,
+           let cookieHeader = try? await cookieStore.cookieHeader(for: url, serverID: serverID),
+           !cookieHeader.isEmpty {
+            request.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
+        }
+
+        let result = try await baseTransport.data(for: request)
+        if result.1.statusCode == 401 {
+            persistence.markUnauthenticated(serverID: serverID)
+        }
+        if let url = request.url {
+            let received = responseCookies(result.1, url: url)
+            await cookieStore.merge(received, for: serverID)
+        }
+        return result
+    }
+
+    private func responseCookies(_ response: HTTPURLResponse, url: URL) -> [HermexCookieRecord] {
+        guard let header = response.value(forHTTPHeaderField: "Set-Cookie") else { return [] }
+        return [parseCookie(header, url: url)].compactMap { $0 }
+    }
+}
+
+private func parseCookie(_ raw: String, url: URL) -> HermexCookieRecord? {
+    let parts = raw.split(separator: ";", omittingEmptySubsequences: true).map(String.init)
+    guard let first = parts.first else { return nil }
+    let pair = first.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+    guard pair.count == 2 else { return nil }
+
+    var domain = url.host
+    var path = "/"
+    var expiresAt: Date?
+    var isSecure = false
+    var isHTTPOnly = false
+
+    for attribute in parts.dropFirst() {
+        let pieces = attribute.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+        let name = pieces[0].trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).lowercased()
+        let value = pieces.count > 1
+            ? pieces[1].trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+            : ""
+        switch name {
+        case "domain":
+            domain = value
+        case "path":
+            path = value.isEmpty ? "/" : value
+        case "max-age":
+            if let seconds = Double(value) {
+                expiresAt = Date(timeIntervalSinceNow: seconds)
+            }
+        case "secure":
+            isSecure = true
+        case "httponly":
+            isHTTPOnly = true
+        default:
+            break
+        }
+    }
+
+    return HermexCookieRecord(
+        name: String(pair[0]).trimmingCharacters(in: CharacterSet.whitespacesAndNewlines),
+        value: String(pair[1]),
+        domain: domain,
+        path: path,
+        expiresAt: expiresAt,
+        isSecure: isSecure,
+        isHTTPOnly: isHTTPOnly
+    )
 }
 
 

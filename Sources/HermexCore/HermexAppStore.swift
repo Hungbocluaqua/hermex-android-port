@@ -112,6 +112,7 @@ public struct HermexAppEnvironment: Sendable {
     public var writeMemory: @Sendable (_ section: String, _ content: String) async throws -> HermexJSONValue
     public var loadInsights: @Sendable (_ days: Int) async throws -> HermexJSONValue
     public var logout: @Sendable () async throws -> HermexJSONValue
+    public var updateServerRuntime: @Sendable (_ server: HermexServerIdentity, _ authenticated: Bool) async -> Void
 
     public init(
         testServerConnection: @escaping @Sendable (_ server: HermexServerIdentity) async throws -> HermexJSONValue,
@@ -151,7 +152,8 @@ public struct HermexAppEnvironment: Sendable {
         loadMemory: @escaping @Sendable () async throws -> HermexJSONValue,
         writeMemory: @escaping @Sendable (_ section: String, _ content: String) async throws -> HermexJSONValue,
         loadInsights: @escaping @Sendable (_ days: Int) async throws -> HermexJSONValue,
-        logout: @escaping @Sendable () async throws -> HermexJSONValue
+        logout: @escaping @Sendable () async throws -> HermexJSONValue,
+        updateServerRuntime: @escaping @Sendable (_ server: HermexServerIdentity, _ authenticated: Bool) async -> Void = { _, _ in }
     ) {
         self.testServerConnection = testServerConnection
         self.loginToServer = loginToServer
@@ -183,6 +185,7 @@ public struct HermexAppEnvironment: Sendable {
         self.writeMemory = writeMemory
         self.loadInsights = loadInsights
         self.logout = logout
+        self.updateServerRuntime = updateServerRuntime
     }
 
     public static func live(client: HermexAPIClient) -> HermexAppEnvironment {
@@ -1041,7 +1044,11 @@ public final class HermexAppStore {
             )
             await connectOnboarding()
         case .selectServer(let server):
+            await environment.updateServerRuntime(server, true)
             selectServer(server)
+            appState.auth = .loggedIn(server: server)
+            appState.route = .sessions
+            await refreshSessions()
         case .openSession(let sessionID):
             await openSession(sessionID)
         case .newChat:
@@ -1218,6 +1225,7 @@ public final class HermexAppStore {
         onboarding.statusMessage = "Testing \(server.displayName)"
         do {
             _ = try await environment.testServerConnection(server)
+            await environment.updateServerRuntime(server, false)
             onboarding.lastValidatedServer = server
             onboarding.statusMessage = "Connection OK"
             appState.auth = .loggedOut(server: server)
@@ -1242,6 +1250,7 @@ public final class HermexAppStore {
         onboarding.statusMessage = "Signing in"
         do {
             _ = try await environment.loginToServer(server, password)
+            await environment.updateServerRuntime(server, true)
             onboarding.password = ""
             onboarding.lastValidatedServer = server
             onboarding.statusMessage = "Connected"
@@ -1923,6 +1932,10 @@ public final class HermexAppStore {
             _ = try await environment.logout()
         } catch {
             settings.notificationsEnabled = false
+        }
+
+        if let server = settings.activeServer {
+            await environment.updateServerRuntime(server, false)
         }
 
         appState.selectedSessionID = nil

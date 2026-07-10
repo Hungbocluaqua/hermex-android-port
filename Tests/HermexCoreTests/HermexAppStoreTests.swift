@@ -237,6 +237,32 @@ final class HermexAppStoreTests: XCTestCase {
         XCTAssertNil(store.panels.errorMessage)
     }
 
+    func testSelectingServerUpdatesRuntimeAndReloadsSessions() async throws {
+        let probe = StoreProbe()
+        let first = HermexServerIdentity(
+            baseURL: try XCTUnwrap(URL(string: "https://first.example")),
+            displayName: "First"
+        )
+        let second = HermexServerIdentity(
+            baseURL: try XCTUnwrap(URL(string: "https://second.example")),
+            displayName: "Second"
+        )
+        let store = HermexAppStore(
+            appState: HermexAppState(route: .settings),
+            settings: HermexSettingsState(activeServer: first, servers: [first, second]),
+            environment: environment(probe: probe)
+        )
+
+        await store.send(.selectServer(second))
+
+        XCTAssertEqual(store.appState.auth, .loggedIn(server: second))
+        XCTAssertEqual(store.appState.route, .sessions)
+        XCTAssertEqual(store.settings.activeServer, second)
+        XCTAssertEqual(store.sessions.sessions.map(\.id), ["s1"])
+        let updates = await probe.runtimeUpdates
+        XCTAssertEqual(updates, [StoreProbe.RuntimeUpdate(server: second, authenticated: true)])
+    }
+
     func testSkillDetailsAndLinkedFilesRouteThroughEnvironment() async throws {
         let probe = StoreProbe()
         let store = HermexAppStore(
@@ -515,6 +541,9 @@ final class HermexAppStoreTests: XCTestCase {
             },
             logout: {
                 try await probe.logout()
+            },
+            updateServerRuntime: { server, authenticated in
+                await probe.updateServerRuntime(server: server, authenticated: authenticated)
             }
         )
     }
@@ -540,6 +569,11 @@ private actor StoreProbe {
         var file: String?
     }
 
+    struct RuntimeUpdate: Equatable {
+        var server: HermexServerIdentity
+        var authenticated: Bool
+    }
+
     struct MemoryWrite: Equatable {
         var section: String
         var content: String
@@ -555,6 +589,7 @@ private actor StoreProbe {
     private(set) var taskCommands: [HermexTaskCommand] = []
     private(set) var skillToggles: [SkillToggle] = []
     private(set) var skillContentRequests: [SkillContentRequest] = []
+    private(set) var runtimeUpdates: [RuntimeUpdate] = []
     private(set) var memoryWrites: [MemoryWrite] = []
     private(set) var loadedInsightsDays: [Int] = []
     private(set) var testedServer: HermexServerIdentity?
@@ -813,6 +848,10 @@ private actor StoreProbe {
                 "references": .array([.string("readme.md"), .string("guide.md")])
             ])
         ])
+    }
+
+    func updateServerRuntime(server: HermexServerIdentity, authenticated: Bool) {
+        runtimeUpdates.append(RuntimeUpdate(server: server, authenticated: authenticated))
     }
 
     func loadMemory() async throws -> HermexJSONValue {

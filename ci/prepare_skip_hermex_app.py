@@ -41,6 +41,7 @@ def patch_package(package_path: Path, repo_root: Path, module_name: str) -> None
 
     hermex_dependencies = [
         '.product(name: "HermexCore", package: "HermexShared")',
+        '.product(name: "HermexPlatform", package: "HermexShared")',
         '.product(name: "HermexUI", package: "HermexShared")',
     ]
     body = target_match.group(2)

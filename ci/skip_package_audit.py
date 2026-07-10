@@ -78,6 +78,15 @@ def main() -> int:
     ok &= require("HermexVisualFixtureRootScreen" in launcher, "Skip launcher must be able to render shared visual fixtures.")
     ok &= require("HermexAppEnvironment" in launcher, "Skip launcher must provide a live HermexAppEnvironment.")
     ok &= require("HermexAPIClient" in launcher, "Skip launcher must connect shared UI to HermexAPIClient.")
+    ok &= require(
+        "import HermexPlatform" in launcher
+        and "HermexSkipPersistence" in launcher
+        and "HermexSkipCookieTransport" in launcher
+        and "HermexSkipCacheStore" in launcher,
+        "Skip launcher must provide durable server, cookie, and offline-cache services."
+    )
+    ok &= require("bootstrap()" in launcher and "restoredStoreState" in launcher, "Skip launcher must restore persisted server state at startup.")
+    ok &= require("updateServerRuntime" in launcher and "activateServer" in launcher, "Skip launcher must rebind the runtime when the active server changes.")
 
     prepare_script = (ROOT / "ci" / "prepare_skip_hermex_app.py").read_text(encoding="utf-8")
     ok &= require("--visual-fixture-name" in prepare_script, "Skip app preparation must accept a named visual fixture.")
@@ -88,6 +97,10 @@ def main() -> int:
         "--enable-runtime-visual-fixtures" in prepare_script
         and "HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES" in prepare_script,
         "Skip app preparation must require an explicit opt-in before runtime fixture selector files are honored.",
+    )
+    ok &= require(
+        '.product(name: "HermexPlatform", package: "HermexShared")' in prepare_script,
+        "Skip app preparation must link HermexPlatform for durable Android services.",
     )
 
     export_script = (ROOT / "ci" / "build_skip_android_app.sh").read_text(encoding="utf-8")
