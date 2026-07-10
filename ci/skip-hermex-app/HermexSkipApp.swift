@@ -658,7 +658,7 @@ private final class HermexSkipRuntime: @unchecked Sendable {
                     ])
                 }
             },
-            performGitCommand: { sessionID, command in
+            performGitCommand: { (sessionID: String, command: HermexGitCommand) in
                 let git = try await connection.currentGitRepository()
                 switch command {
                 case .fetch:
@@ -683,7 +683,7 @@ private final class HermexSkipRuntime: @unchecked Sendable {
                 let repository = try await connection.currentPanelsRepository()
                 return try await repository.crons()
             },
-            performTaskCommand: { command in
+            performTaskCommand: { (command: HermexTaskCommand) in
                 let repository = try await connection.currentPanelsRepository()
                 switch command {
                 case .run(let jobID):
@@ -756,7 +756,7 @@ private final class HermexSkipRuntime: @unchecked Sendable {
                     throw error
                 }
             },
-            performProjectCommand: { command in
+            performProjectCommand: { (command: HermexProjectCommand) in
                 let sessions = try await connection.currentSessionsRepository()
                 let projects = try await connection.currentProjectRepository()
                 switch command {
