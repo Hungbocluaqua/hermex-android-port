@@ -498,7 +498,8 @@ private actor HermexSkipConnection {
     }
 
     func currentServerID() -> String? {
-        activeServer.map { serverID(for: $0) }
+        guard let activeServer else { return nil }
+        return serverID(for: activeServer)
     }
 
     func currentCookieHeader() async -> String? {
@@ -778,33 +779,25 @@ private actor HermexSkipCacheStore: HermexCacheStore {
     }
 
     func cachedSessions(for serverID: String) async throws -> [HermexSessionDTO] {
-        decode([HermexSessionDTO].self, key: persistence.scopedKey("sessions", serverID)) ?? []
+        let key = persistence.scopedKey("sessions", serverID)
+        guard let data = persistence.data(for: key) else { return [] }
+        return (try? JSONDecoder().decode([HermexSessionDTO].self, from: data)) ?? []
     }
 
     func replaceCachedSessions(_ sessions: [HermexSessionDTO], for serverID: String) async throws {
-        encode(sessions, key: persistence.scopedKey("sessions", serverID))
+        guard let data = try? JSONEncoder().encode(sessions) else { return }
+        persistence.setData(data, for: persistence.scopedKey("sessions", serverID))
     }
 
     func cachedMessages(sessionID: String, serverID: String) async throws -> [HermexChatMessageDTO] {
-        decode(
-            [HermexChatMessageDTO].self,
-            key: persistence.scopedKey("messages", serverID, sessionID)
-        ) ?? []
+        let key = persistence.scopedKey("messages", serverID, sessionID)
+        guard let data = persistence.data(for: key) else { return [] }
+        return (try? JSONDecoder().decode([HermexChatMessageDTO].self, from: data)) ?? []
     }
 
     func replaceCachedMessages(_ messages: [HermexChatMessageDTO], sessionID: String, serverID: String) async throws {
-        encode(messages, key: persistence.scopedKey("messages", serverID, sessionID))
-    }
-
-    private func encode<T: Encodable>(_ value: T, key: String) {
-        if let data = try? JSONEncoder().encode(value) {
-            persistence.setData(data, for: key)
-        }
-    }
-
-    private func decode<T: Decodable>(_ type: T.Type, key: String) -> T? {
-        guard let data = persistence.data(for: key) else { return nil }
-        return try? JSONDecoder().decode(type, from: data)
+        guard let data = try? JSONEncoder().encode(messages) else { return }
+        persistence.setData(data, for: persistence.scopedKey("messages", serverID, sessionID))
     }
 }
 
@@ -842,14 +835,15 @@ private final class HermexSkipCookieTransport: HermexHTTPTransport, @unchecked S
 
     private func responseCookies(_ response: HTTPURLResponse, url: URL) -> [HermexCookieRecord] {
         guard let header = response.value(forHTTPHeaderField: "Set-Cookie") else { return [] }
-        return [parseCookie(header, url: url)].compactMap { $0 }
+        guard let cookie = parseCookie(header, url: url) else { return [] }
+        return [cookie]
     }
 }
 
 private func parseCookie(_ raw: String, url: URL) -> HermexCookieRecord? {
-    let parts = raw.split(separator: ";", omittingEmptySubsequences: true).map(String.init)
+    let parts = raw.split(separator: ";", omittingEmptySubsequences: true).map { String($0) }
     guard let first = parts.first else { return nil }
-    let pair = first.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+    let pair = first.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false).map { String($0) }
     guard pair.count == 2 else { return nil }
 
     var domain = url.host
@@ -859,7 +853,7 @@ private func parseCookie(_ raw: String, url: URL) -> HermexCookieRecord? {
     var isHTTPOnly = false
 
     for attribute in parts.dropFirst() {
-        let pieces = attribute.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+        let pieces = attribute.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false).map { String($0) }
         let name = pieces[0].trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).lowercased()
         let value = pieces.count > 1
             ? pieces[1].trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
