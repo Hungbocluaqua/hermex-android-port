@@ -133,55 +133,86 @@ public struct HermexChatScreen: View {
             }
 
             if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
-                transcriptAccessory(title: "Tool calls", text: "\(toolCalls.count) item(s)", systemImage: "hammer")
+                transcriptAccessory(title: "Tool calls", text: toolCallSummary(toolCalls), systemImage: "hammer")
             }
 
             if let attachments = message.attachments, !attachments.isEmpty {
                 messageAttachmentStrip(attachments)
             }
 
-            HStack {
-                if message.role == "user" { Spacer(minLength: 52) }
-                Text(message.content ?? message.text ?? "")
-                    .font(.body)
-                    .foregroundStyle(HermexUIColors.primaryText)
-                    .hermexTextSelectionEnabled()
-                    .padding(.horizontal, message.role == "user" ? 14.0 : 0.0)
-                    .padding(.vertical, message.role == "user" ? 8.0 : 0.0)
-                    .background(
-                        message.role == "user"
-                            ? HermexUIColors.glassFillStrong
-                            : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    )
-                    .overlay {
-                        if message.role == "user" {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(HermexUIColors.hairline, lineWidth: 0.5)
+            let content = message.content ?? message.text ?? ""
+            if !content.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
+                HStack {
+                    if message.role == "user" { Spacer(minLength: 52) }
+                    HermexTranscriptMarkdown(content: content)
+                        .font(.body)
+                        .foregroundStyle(HermexUIColors.primaryText)
+                        .hermexTextSelectionEnabled()
+                        .padding(.horizontal, message.role == "user" ? 14.0 : 0.0)
+                        .padding(.vertical, message.role == "user" ? 8.0 : 0.0)
+                        .background(
+                            message.role == "user"
+                                ? HermexUIColors.glassFillStrong
+                                : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        )
+                        .overlay {
+                            if message.role == "user" {
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .stroke(HermexUIColors.hairline, lineWidth: 0.5)
+                            }
                         }
-                    }
-                if message.role != "user" { Spacer(minLength: 52) }
+                    if message.role != "user" { Spacer(minLength: 52) }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: message.role == "user" ? .trailing : .leading)
     }
 
     private func transcriptAccessory(title: String, text: String, systemImage: String) -> some View {
-        Label {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                Text(text)
-                    .font(.caption)
-                    .lineLimit(2)
-            }
-        } icon: {
-            Image(systemName: HermexSystemImageName(systemImage))
+        DisclosureGroup {
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(HermexUIColors.primaryText)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 5)
+        } label: {
+            HermexMappedLabel(title, systemImage: systemImage)
+                .font(.caption.weight(.semibold))
         }
         .foregroundStyle(HermexUIColors.secondaryText)
         .padding(.horizontal, 10)
         .padding(.vertical, 9)
         .hermexThinMaterialBackground(in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func toolCallSummary(_ calls: [HermexJSONValue]) -> String {
+        calls.enumerated().map { index, value in
+            "\(index + 1). \(jsonPreview(value))"
+        }.joined(separator: "\n")
+    }
+
+    private func jsonPreview(_ value: HermexJSONValue) -> String {
+        switch value {
+        case .string(let text):
+            return text
+        case .number(let number):
+            return String(number)
+        case .bool(let flag):
+            return flag ? "true" : "false"
+        case .null:
+            return "null"
+        case .array(let values):
+            return "[\(values.count) item(s)]"
+        case .dictionary(let fields):
+            for key in ["name", "tool", "function", "command", "path"] {
+                if case .string(let text)? = fields[key], !text.isEmpty {
+                    return text
+                }
+            }
+            return "{\(fields.count) field(s)}"
+        }
     }
 
     private func messageAttachmentStrip(_ attachments: [HermexAttachmentDTO]) -> some View {
