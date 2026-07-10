@@ -2113,7 +2113,7 @@ public final class HermexAppStore {
             guard pieces.count == 2 else { continue }
             headers.append(HermexCustomHeader(name: String(pieces[0]), value: String(pieces[1])))
         }
-        return hermexSanitizedForClient(headers)
+        return headers.filter { $0.isSafeForClient }
     }
 
     private func upsertServer(_ server: HermexServerIdentity) {
