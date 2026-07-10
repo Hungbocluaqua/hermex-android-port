@@ -650,8 +650,9 @@ public struct HermexTaskDraft: HermexStateCodable, Equatable, Sendable {
 
     public var skills: [String] {
         skillsText
-            .split { $0 == "," || $0 == "\n" }
-            .map { String($0).trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) }
+            .replacingOccurrences(of: "\n", with: ",")
+            .components(separatedBy: ",")
+            .map { $0.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
     }
 
