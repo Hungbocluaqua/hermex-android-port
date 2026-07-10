@@ -581,10 +581,10 @@ private struct HermexSkipRestoredStoreState {
 }
 
 private final class HermexSkipPersistence: @unchecked Sendable {
-    private let defaults: UserDefaults
+    private let storage: HermexSecureDataStore
 
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
+    init(storage: HermexSecureDataStore = HermexSecureDataStore()) {
+        self.storage = storage
     }
 
     func restoredStoreState() -> HermexSkipRestoredStoreState {
@@ -637,11 +637,11 @@ private final class HermexSkipPersistence: @unchecked Sendable {
     }
 
     func data(for key: String) -> Data? {
-        defaults.data(forKey: key)
+        storage.data(for: key)
     }
 
     func setData(_ data: Data?, for key: String) {
-        defaults.set(data, forKey: key)
+        storage.setData(data, for: key)
     }
 
     func scopedKey(_ prefix: String, _ components: String...) -> String {
@@ -653,7 +653,7 @@ private final class HermexSkipPersistence: @unchecked Sendable {
     }
 
     private func loadServers() -> HermexSkipPersistedServers {
-        guard let data = defaults.data(forKey: Self.serverStateKey),
+        guard let data = storage.data(for: Self.serverStateKey),
               let snapshot = try? JSONDecoder().decode(HermexSkipPersistedServers.self, from: data)
         else {
             return HermexSkipPersistedServers()
@@ -663,7 +663,7 @@ private final class HermexSkipPersistence: @unchecked Sendable {
 
     private func saveServers(_ snapshot: HermexSkipPersistedServers) {
         if let data = try? JSONEncoder().encode(snapshot) {
-            defaults.set(data, forKey: Self.serverStateKey)
+            storage.setData(data, for: Self.serverStateKey)
         }
     }
 

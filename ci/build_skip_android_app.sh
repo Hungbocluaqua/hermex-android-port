@@ -148,6 +148,31 @@ patch_android_branding() {
     if ! grep -q 'android:roundIcon=' "$manifest"; then
       ROUND_ICON_REF="$round_icon_ref" perl -0pi -e 's/<application\b/<application android:roundIcon="$ENV{ROUND_ICON_REF}"/' "$manifest"
     fi
+    if ! grep -q 'android:fullBackupContent=' "$manifest"; then
+      perl -0pi -e 's/<application\b/<application android:fullBackupContent="\@xml\/hermex_backup_rules"/' "$manifest"
+    fi
+    if ! grep -q 'android:dataExtractionRules=' "$manifest"; then
+      perl -0pi -e 's/<application\b/<application android:dataExtractionRules="\@xml\/hermex_data_extraction_rules"/' "$manifest"
+    fi
+
+    mkdir -p "$res_dir/xml"
+    cat > "$res_dir/xml/hermex_backup_rules.xml" <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="sharedpref" path="tools.skip.SkipKeychain.xml" />
+</full-backup-content>
+XML
+    cat > "$res_dir/xml/hermex_data_extraction_rules.xml" <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="tools.skip.SkipKeychain.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="tools.skip.SkipKeychain.xml" />
+    </device-transfer>
+</data-extraction-rules>
+XML
 
     if [[ -f "$res_dir/values/strings.xml" ]]; then
       perl -0pi -e 's/(<string\s+name="app_name">)[^<]*(<\/string>)/${1}Hermex${2}/g' "$res_dir/values/strings.xml"

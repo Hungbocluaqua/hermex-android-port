@@ -16,7 +16,8 @@ let package = Package(
     dependencies: [
         .package(url: "https://source.skip.tools/skip-foundation.git", from: "1.4.1"),
         .package(url: "https://source.skip.tools/skip.git", from: "1.7.2"),
-        .package(url: "https://source.skip.tools/skip-ui.git", from: "1.0.0")
+        .package(url: "https://source.skip.tools/skip-ui.git", from: "1.0.0"),
+        .package(url: "https://source.skip.dev/skip-keychain.git", "0.0.0"..<"2.0.0")
     ],
     targets: [
         .target(
@@ -31,7 +32,8 @@ let package = Package(
             name: "HermexPlatform",
             dependencies: [
                 "HermexCore",
-                .product(name: "SkipFoundation", package: "skip-foundation")
+                .product(name: "SkipFoundation", package: "skip-foundation"),
+                .product(name: "SkipKeychain", package: "skip-keychain")
             ],
             path: "Sources/HermexPlatform",
             plugins: [.plugin(name: "skipstone", package: "skip")]

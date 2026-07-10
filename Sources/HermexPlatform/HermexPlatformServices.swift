@@ -1,5 +1,53 @@
 import Foundation
 import HermexCore
+#if SKIP
+import SkipKeychain
+#endif
+
+public final class HermexSecureDataStore: @unchecked Sendable {
+#if SKIP
+    private let keychain: Keychain
+
+    public init(keychain: Keychain = .shared) {
+        self.keychain = keychain
+    }
+#else
+    private let defaults: UserDefaults
+
+    public init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+#endif
+
+    public func data(for key: String) -> Data? {
+#if SKIP
+        do {
+            guard let encoded = try keychain.string(forKey: key) else { return nil }
+            return Data(base64Encoded: encoded)
+        } catch {
+            return nil
+        }
+#else
+        return defaults.data(forKey: key)
+#endif
+    }
+
+    public func setData(_ data: Data?, for key: String) {
+#if SKIP
+        do {
+            if let data {
+                try keychain.set(data.base64EncodedString(), forKey: key)
+            } else {
+                try keychain.removeValue(forKey: key)
+            }
+        } catch {
+            return
+        }
+#else
+        defaults.set(data, forKey: key)
+#endif
+    }
+}
 
 public protocol HermexSecretStore: Sendable {
     func value(for key: String, serverID: String) async throws -> Data?

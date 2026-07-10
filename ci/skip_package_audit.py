@@ -80,10 +80,11 @@ def main() -> int:
     ok &= require("HermexAPIClient" in launcher, "Skip launcher must connect shared UI to HermexAPIClient.")
     ok &= require(
         "import HermexPlatform" in launcher
+        and "HermexSecureDataStore" in launcher
         and "HermexSkipPersistence" in launcher
         and "HermexSkipCookieTransport" in launcher
         and "HermexSkipCacheStore" in launcher,
-        "Skip launcher must provide durable server, cookie, and offline-cache services."
+        "Skip launcher must provide secure durable server, cookie, and offline-cache services."
     )
     ok &= require("bootstrap()" in launcher and "restoredStoreState" in launcher, "Skip launcher must restore persisted server state at startup.")
     ok &= require("updateServerRuntime" in launcher and "activateServer" in launcher, "Skip launcher must rebind the runtime when the active server changes.")
@@ -101,6 +102,16 @@ def main() -> int:
     ok &= require(
         '.product(name: "HermexPlatform", package: "HermexShared")' in prepare_script,
         "Skip app preparation must link HermexPlatform for durable Android services.",
+    )
+
+    package_manifest = (ROOT / "Package.swift").read_text(encoding="utf-8")
+    platform_services = (ROOT / "Sources" / "HermexPlatform" / "HermexPlatformServices.swift").read_text(encoding="utf-8")
+    ok &= require(
+        "skip-keychain.git" in package_manifest
+        and '.product(name: "SkipKeychain", package: "skip-keychain")' in package_manifest
+        and "import SkipKeychain" in platform_services
+        and "HermexSecureDataStore" in platform_services,
+        "HermexPlatform must use SkipKeychain for encrypted Android persistence.",
     )
 
     export_script = (ROOT / "ci" / "build_skip_android_app.sh").read_text(encoding="utf-8")
@@ -123,6 +134,11 @@ def main() -> int:
     ok &= require("hermex_app_icon.png" in export_script, "Skip app export must copy a Hermex launcher PNG into generated Android resources.")
     ok &= require('android:label="Hermex"' in export_script, "Skip app export must force the generated launcher label to Hermex.")
     ok &= require("android_app_name" in export_script, "Skip app export must rewrite generated Android app-name strings.")
+    ok &= require(
+        "tools.skip.SkipKeychain.xml" in export_script
+        and "hermex_data_extraction_rules.xml" in export_script,
+        "Skip app export must exclude encrypted SkipKeychain storage from Android backups.",
+    )
 
     capture_script = (ROOT / "ci" / "capture_skip_android_fixture.sh").read_text(encoding="utf-8")
     ok &= require("HERMEX_VISUAL_FIXTURE_NAME" in capture_script, "Android visual capture must build a named shared fixture.")
