@@ -45,6 +45,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
@@ -1941,7 +1942,19 @@ class ChatViewModel(
         val replayBaseText = assistantText
         var replayMatchedPrefixLength = if (replayAfterSeq == 0) 0 else replayBaseText.length
         streamJob = viewModelScope.launch {
-            repository.stream(streamId, replayAfterSeq).collect { event ->
+            repository.stream(streamId, replayAfterSeq)
+                .onCompletion { cause ->
+                    if (
+                        ChatStreamRecoveryPolicy.shouldRecoverAfterFlowCompletion(
+                            cause = cause,
+                            activeStreamId = _state.value.activeStreamId,
+                            streamId = streamId,
+                        )
+                    ) {
+                        handleStreamTransportError(streamId, "SSE connection closed unexpectedly.")
+                    }
+                }
+                .collect { event ->
                 when (event) {
                     is SseEvent.Token -> {
                         val tokenText = if (replayAfterSeq == 0) {
