@@ -252,8 +252,7 @@ private struct HermexMarkdownLine: View {
     private func orderedListMarker(in value: String) -> (label: String, text: String)? {
         guard let dot = value.firstIndex(of: "."), dot > value.startIndex else { return nil }
         let number = String(value[..<dot])
-        guard !number.isEmpty,
-              number.trimmingCharacters(in: CharacterSet.decimalDigits).isEmpty else { return nil }
+        guard !number.isEmpty, Int(number) != nil else { return nil }
         let start = value.index(after: dot)
         guard start < value.endIndex, value[start] == " " else { return nil }
         return ("\(number).", String(value[value.index(after: start)...]))
