@@ -228,7 +228,7 @@ public struct HermexAPIClient: @unchecked Sendable {
         if let color {
             fields["color"] = .string(color)
         }
-        try await sendJSON(
+        return try await sendJSON(
             endpoint: HermexEndpoints.createProject,
             method: "POST",
             body: HermexJSONObjectBody(fields)
@@ -243,7 +243,7 @@ public struct HermexAPIClient: @unchecked Sendable {
         if let color {
             fields["color"] = .string(color)
         }
-        try await sendJSON(
+        return try await sendJSON(
             endpoint: HermexEndpoints.renameProject,
             method: "POST",
             body: HermexJSONObjectBody(fields)
