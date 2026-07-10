@@ -1325,18 +1325,18 @@ public final class HermexAppStore {
 
     private func projectCommandError(_ response: HermexJSONValue) -> String? {
         let fields = response.objectValue ?? [:]
-        if fields.boolValue("ok") == false {
-            return fields.stringValue("error") ?? "Project operation failed."
+        if fields["ok"]?.boolValue == false {
+            return fields["error"]?.stringValue ?? "Project operation failed."
         }
-        return fields.stringValue("error")
+        return fields["error"]?.stringValue
     }
 
     private func projectID(from response: HermexJSONValue) -> String? {
         let fields = response.objectValue ?? [:]
         if let project = fields["project"]?.objectValue {
-            return project.stringValue("project_id", "id")
+            return project["project_id"]?.stringValue ?? project["id"]?.stringValue
         }
-        return fields.stringValue("project_id", "id")
+        return fields["project_id"]?.stringValue ?? fields["id"]?.stringValue
     }
 
     private func testOnboardingConnection() async {
@@ -1913,10 +1913,10 @@ public final class HermexAppStore {
 
     private func taskCommandError(_ response: HermexJSONValue) -> String? {
         let fields = response.objectValue ?? [:]
-        if fields.boolValue("ok") == false {
-            return fields.stringValue("error") ?? "Task operation failed."
+        if fields["ok"]?.boolValue == false {
+            return fields["error"]?.stringValue ?? "Task operation failed."
         }
-        return fields.stringValue("error")
+        return fields["error"]?.stringValue
     }
 
     private func updateTask(jobID: String, status: String) {

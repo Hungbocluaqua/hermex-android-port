@@ -224,7 +224,7 @@ public struct HermexAPIClient: @unchecked Sendable {
     }
 
     public func createProject(name: String, color: String? = nil) async throws -> HermexJSONValue {
-        var fields: [String: HermexJSONValue] = ["name": .string(name)]
+        var fields: [String: HermexJSONValue?] = ["name": .string(name)]
         if let color {
             fields["color"] = .string(color)
         }
@@ -236,7 +236,7 @@ public struct HermexAPIClient: @unchecked Sendable {
     }
 
     public func renameProject(projectID: String, name: String, color: String? = nil) async throws -> HermexJSONValue {
-        var fields: [String: HermexJSONValue] = [
+        var fields: [String: HermexJSONValue?] = [
             "project_id": .string(projectID),
             "name": .string(name)
         ]
