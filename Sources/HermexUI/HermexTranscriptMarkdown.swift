@@ -169,6 +169,35 @@ struct HermexTranscriptMarkdown: View {
     }
 }
 
+struct HermexTranscriptAccessory: View {
+    let title: String
+    let text: String
+    let systemImage: String
+    @State private var isExpanded = false
+
+    var body: some View {
+        DisclosureGroup(
+            isExpanded: $isExpanded,
+            content: {
+                Text(text)
+                    .font(.caption)
+                    .foregroundStyle(HermexUIColors.primaryText)
+                    .hermexTextSelectionEnabled()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 5)
+            },
+            label: {
+                HermexMappedLabel(title, systemImage: systemImage)
+                    .font(.caption.weight(.semibold))
+            }
+        )
+        .foregroundStyle(HermexUIColors.secondaryText)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .hermexThinMaterialBackground(in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
 private struct HermexMarkdownParagraph: View {
     let text: String
 
@@ -262,7 +291,7 @@ private struct HermexMarkdownCodeBlock: View {
                 Text(content.isEmpty ? " " : content)
                     .font(.system(.callout, design: .monospaced))
                     .foregroundColor(HermexUIColors.primaryText)
-                    .textSelection(.enabled)
+                    .hermexTextSelectionEnabled()
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }

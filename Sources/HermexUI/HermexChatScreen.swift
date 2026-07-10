@@ -170,21 +170,7 @@ public struct HermexChatScreen: View {
     }
 
     private func transcriptAccessory(title: String, text: String, systemImage: String) -> some View {
-        DisclosureGroup {
-            Text(text)
-                .font(.caption)
-                .foregroundStyle(HermexUIColors.primaryText)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 5)
-        } label: {
-            HermexMappedLabel(title, systemImage: systemImage)
-                .font(.caption.weight(.semibold))
-        }
-        .foregroundStyle(HermexUIColors.secondaryText)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 9)
-        .hermexThinMaterialBackground(in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        HermexTranscriptAccessory(title: title, text: text, systemImage: systemImage)
     }
 
     private func toolCallSummary(_ calls: [HermexJSONValue]) -> String {

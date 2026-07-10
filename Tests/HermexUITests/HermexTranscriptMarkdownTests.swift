@@ -18,6 +18,12 @@ final class HermexTranscriptMarkdownTests: XCTestCase {
     func testUnclosedFenceFallsBackToMarkdown() {
         let segments = HermexMarkdownSegmentParser.segments(in: "Before\n```swift\nlet answer = 42")
 
-        XCTAssertEqual(segments, [.markdown("Before\n```swift\nlet answer = 42")])
+        XCTAssertEqual(
+            segments,
+            [
+                .markdown("Before"),
+                .markdown("```swift\nlet answer = 42")
+            ]
+        )
     }
 }
