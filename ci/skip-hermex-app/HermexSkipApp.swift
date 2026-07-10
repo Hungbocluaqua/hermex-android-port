@@ -66,9 +66,9 @@ public struct HermexSkipAppRootView: View {
                 store: runtime.store,
                 onUnhandledEvent: runtime.handleUnhandledEvent
             )
-        }
-        .task {
-            await runtime.bootstrap()
+            .task {
+                await runtime.bootstrap()
+            }
         }
     }
 }
@@ -819,18 +819,18 @@ private final class HermexSkipCookieTransport: HermexHTTPTransport, @unchecked S
     }
 
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        var request = request
-        if let url = request.url,
+        var mutableRequest = request
+        if let url = mutableRequest.url,
            let cookieHeader = try? await cookieStore.cookieHeader(for: url, serverID: serverID),
            !cookieHeader.isEmpty {
-            request.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
+            mutableRequest.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
         }
 
-        let result = try await baseTransport.data(for: request)
+        let result = try await baseTransport.data(for: mutableRequest)
         if result.1.statusCode == 401 {
             persistence.markUnauthenticated(serverID: serverID)
         }
-        if let url = request.url {
+        if let url = mutableRequest.url {
             let received = responseCookies(result.1, url: url)
             await cookieStore.merge(received, for: serverID)
         }
