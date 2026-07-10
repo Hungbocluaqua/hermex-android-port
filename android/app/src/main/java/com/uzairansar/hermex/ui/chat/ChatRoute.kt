@@ -13,6 +13,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.speech.tts.TextToSpeech
+import android.view.HapticFeedbackConstants
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -92,6 +93,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -154,6 +156,7 @@ import com.uzairansar.hermex.ui.theme.HermexGlassShape
 import com.uzairansar.hermex.ui.theme.HermexIconButton
 import com.uzairansar.hermex.ui.theme.HermexPillButton
 import com.uzairansar.hermex.ui.theme.HermexSelectorPill
+import com.uzairansar.hermex.ui.theme.LocalHermexHapticsEnabled
 import com.uzairansar.hermex.ui.git.HermexGitDiffContent
 import com.uzairansar.hermex.ui.theme.hermexColorFromHex
 import com.uzairansar.hermex.ui.theme.hermexGlass
@@ -271,6 +274,8 @@ fun ChatRoute(
         }
     }
     val context = LocalContext.current
+    val hapticView = LocalView.current
+    val hapticsEnabled = LocalHermexHapticsEnabled.current
     val density = LocalDensity.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var appIsActive by remember(lifecycleOwner) {
@@ -466,6 +471,34 @@ fun ChatRoute(
                 ) {
                     streamNotifier.showResponseComplete(sessionId)
                 }
+            }
+    }
+
+    LaunchedEffect(viewModel, sessionId, hapticsEnabled) {
+        var previousIsStreaming = viewModel.state.value.isStreaming
+        var previousCompletionTrigger = viewModel.state.value.responseCompletionTrigger
+        viewModel.state
+            .map { Triple(it.isStreaming, it.responseCompletionTrigger, it.error != null) }
+            .distinctUntilChanged()
+            .collect { (isStreaming, completionTrigger, hasError) ->
+                if (hapticsEnabled) {
+                    when (
+                        ChatHapticPolicy.eventForTransition(
+                            previousIsStreaming = previousIsStreaming,
+                            currentIsStreaming = isStreaming,
+                            previousCompletionTrigger = previousCompletionTrigger,
+                            currentCompletionTrigger = completionTrigger,
+                            hasError = hasError,
+                        )
+                    ) {
+                        ChatHapticEvent.MessageSent -> hapticView.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        ChatHapticEvent.ResponseCompleted -> hapticView.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                        ChatHapticEvent.StreamCancelled -> hapticView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        ChatHapticEvent.None -> Unit
+                    }
+                }
+                previousIsStreaming = isStreaming
+                previousCompletionTrigger = completionTrigger
             }
     }
 

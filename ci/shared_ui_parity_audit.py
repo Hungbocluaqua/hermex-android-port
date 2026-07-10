@@ -152,7 +152,12 @@ def main() -> int:
         ok &= require(action in events and action in store, f"Shared local settings action is missing {action}.")
     ok &= require("saveLocalSettings" in store, "Shared store must persist local appearance and notification settings.")
     ok &= require("preferredColorScheme" in root, "Shared root must apply the persisted theme preference.")
-    ok &= require("rootBackground" in root and "Color.white" in root, "Shared root must provide an explicit light-mode background.")
+    ok &= require(
+        "rootBackground" in root
+        and "Color.white" in root
+        and "@Environment(\\.colorScheme)" in root,
+        "Shared root must provide explicit light-mode and system-theme backgrounds.",
+    )
     ok &= require(
         "Color.primary" in chrome and "Color.secondary" in chrome,
         "Shared chrome colors must adapt to the active color scheme.",

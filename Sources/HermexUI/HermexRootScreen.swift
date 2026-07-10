@@ -3,6 +3,7 @@ import SwiftUI
 import HermexCore
 
 public struct HermexRootScreen: View {
+    @Environment(\.colorScheme) private var colorScheme
     private let appState: HermexAppState
     private let onboarding: HermexOnboardingState
     private let sessions: HermexSessionListState
@@ -79,7 +80,11 @@ public struct HermexRootScreen: View {
     }
 
     private var rootBackground: Color {
-        settings.appTheme.lowercased() == "light" ? Color.white : Color.black
+        switch settings.appTheme.lowercased() {
+        case "light": return Color.white
+        case "dark": return Color.black
+        default: return colorScheme == .dark ? Color.black : Color.white
+        }
     }
 
     private var preferredColorScheme: ColorScheme? {

@@ -30,6 +30,15 @@ final class HermexUICompileTests: XCTestCase {
         XCTAssertTrue(String(describing: type(of: view)).contains("HermexRootScreen"))
     }
 
+    func testRootCanRenderSystemTheme() {
+        let view = HermexRootScreen(
+            appState: HermexAppState(route: .sessions),
+            settings: HermexSettingsState(appTheme: "system")
+        )
+
+        XCTAssertTrue(String(describing: type(of: view)).contains("HermexRootScreen"))
+    }
+
     func testVisualFixtureRootCanInstantiateEveryGoldenScreen() throws {
         XCTAssertFalse(HermexVisualFixtureCatalog.all.isEmpty)
 
