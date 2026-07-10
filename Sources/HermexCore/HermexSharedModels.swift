@@ -32,19 +32,16 @@ public struct HermexServerIdentity: Codable, Equatable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        let baseURL = try container.decode(URL.self, forKey: .baseURL)
-        let displayName = try container.decodeIfPresent(String.self, forKey: .displayName) ?? ""
-        let customHeaders = try container.decodeIfPresent([String: String].self, forKey: .customHeaders) ?? [:]
-        let initials = try container.decodeIfPresent(String.self, forKey: .initials) ?? ""
-        let headerLogoColorHex = try container.decodeIfPresent(String.self, forKey: .headerLogoColorHex)
-            ?? HermexAppearanceSettings.defaultHeaderLogoColorHex
-        self.init(
-            baseURL: baseURL,
-            displayName: displayName,
-            customHeaders: customHeaders,
-            initials: initials,
-            headerLogoColorHex: headerLogoColorHex
+        self.baseURL = try container.decode(URL.self, forKey: .baseURL)
+        self.displayName = try container.decodeIfPresent(String.self, forKey: .displayName) ?? ""
+        self.customHeaders = try container.decodeIfPresent([String: String].self, forKey: .customHeaders) ?? [:]
+        self.initials = HermexAppearanceSettings.normalizedInitials(
+            try container.decodeIfPresent(String.self, forKey: .initials) ?? ""
         )
+        self.headerLogoColorHex = HermexAppearanceSettings.normalizedHex(
+            try container.decodeIfPresent(String.self, forKey: .headerLogoColorHex)
+                ?? HermexAppearanceSettings.defaultHeaderLogoColorHex
+        ) ?? HermexAppearanceSettings.defaultHeaderLogoColorHex
     }
 
     public func encode(to encoder: Encoder) throws {
