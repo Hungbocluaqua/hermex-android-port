@@ -132,6 +132,10 @@ final class HermexUICompileTests: XCTestCase {
         XCTAssertEqual(HermexUIEvent.testOnboardingConnection.appAction, .testOnboardingConnection)
         XCTAssertEqual(HermexUIEvent.connectOnboarding.appAction, .connectOnboarding)
         XCTAssertEqual(HermexUIEvent.updateShowCliSessions(false).appAction, .updateShowCliSessions(false))
+        XCTAssertEqual(HermexUIEvent.openDefaultModelPicker.appAction, .openDefaultModelPicker)
+        XCTAssertEqual(HermexUIEvent.chooseDefaultModel("gpt-5.5").appAction, .chooseDefaultModel("gpt-5.5"))
+        XCTAssertEqual(HermexUIEvent.dismissDefaultProfilePicker.appAction, .dismissDefaultProfilePicker)
+        XCTAssertEqual(HermexUIEvent.chooseDefaultProfile("default").appAction, .chooseDefaultProfile("default"))
         XCTAssertEqual(
             HermexUIEvent.updateActiveServer(
                 displayName: "Proxy",

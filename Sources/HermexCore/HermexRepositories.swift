@@ -312,6 +312,7 @@ public struct HermexSettingsRepository: Sendable {
 
     public func settings() async throws -> HermexJSONValue { try await client.settings() }
     public func updateShowCliSessions(_ enabled: Bool) async throws -> HermexJSONValue { try await client.updateSettings(showCliSessions: enabled) }
+    public func saveDefaultModel(model: String) async throws -> HermexJSONValue { try await client.saveDefaultModel(model: model) }
     public func profiles() async throws -> HermexJSONValue { try await client.profiles() }
     public func switchProfile(name: String) async throws -> HermexJSONValue { try await client.switchProfile(name: name) }
     public func providers() async throws -> HermexJSONValue { try await client.providers() }

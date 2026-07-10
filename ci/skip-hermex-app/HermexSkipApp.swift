@@ -846,6 +846,14 @@ private final class HermexSkipRuntime: @unchecked Sendable {
                 let repository = try await connection.currentSettingsRepository()
                 return try await repository.updateShowCliSessions(showCliSessions)
             },
+            saveDefaultModel: { model in
+                let repository = try await connection.currentSettingsRepository()
+                return try await repository.saveDefaultModel(model: model)
+            },
+            switchProfile: { name in
+                let repository = try await connection.currentSettingsRepository()
+                return try await repository.switchProfile(name: name)
+            },
             performProjectCommand: { (command: HermexProjectCommand) in
                 let sessions = try await connection.currentSessionsRepository()
                 let projects = try await connection.currentProjectRepository()

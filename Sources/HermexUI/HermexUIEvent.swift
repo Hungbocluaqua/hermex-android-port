@@ -17,6 +17,12 @@ public enum HermexUIEvent: Equatable, Sendable {
     case selectServer(HermexServerIdentity)
     case updateShowCliSessions(Bool)
     case updateActiveServer(displayName: String, initials: String, headerLogoColorHex: String, customHeaderText: String)
+    case openDefaultModelPicker
+    case dismissDefaultModelPicker
+    case chooseDefaultModel(String)
+    case openDefaultProfilePicker
+    case dismissDefaultProfilePicker
+    case chooseDefaultProfile(String)
     case searchSessions(String)
     case selectProject(String?)
     case projectCommand(HermexProjectCommand)
@@ -122,6 +128,18 @@ public extension HermexUIEvent {
                 headerLogoColorHex: headerLogoColorHex,
                 customHeaderText: customHeaderText
             )
+        case .openDefaultModelPicker:
+            return .openDefaultModelPicker
+        case .dismissDefaultModelPicker:
+            return .dismissDefaultModelPicker
+        case .chooseDefaultModel(let model):
+            return .chooseDefaultModel(model)
+        case .openDefaultProfilePicker:
+            return .openDefaultProfilePicker
+        case .dismissDefaultProfilePicker:
+            return .dismissDefaultProfilePicker
+        case .chooseDefaultProfile(let profile):
+            return .chooseDefaultProfile(profile)
         case .selectProject(let projectID):
             return .selectProject(projectID)
         case .projectCommand(let command):

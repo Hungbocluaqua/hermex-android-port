@@ -781,6 +781,13 @@ public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
     public var appTheme: String
     public var defaultModel: String?
     public var defaultProfile: String?
+    public var availableModels: [HermexModelOption]?
+    public var availableProfiles: [HermexProfileOption]?
+    public var isSingleProfileMode: Bool?
+    public var showDefaultModelPicker: Bool?
+    public var showDefaultProfilePicker: Bool?
+    public var isLoadingDefaultConfiguration: Bool?
+    public var isSavingDefaultConfiguration: Bool?
     public var hapticsEnabled: Bool
     public var glassEnabled: Bool
     public var notificationsEnabled: Bool
@@ -795,6 +802,13 @@ public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
         appTheme: String = "system",
         defaultModel: String? = nil,
         defaultProfile: String? = nil,
+        availableModels: [HermexModelOption]? = nil,
+        availableProfiles: [HermexProfileOption]? = nil,
+        isSingleProfileMode: Bool? = nil,
+        showDefaultModelPicker: Bool? = nil,
+        showDefaultProfilePicker: Bool? = nil,
+        isLoadingDefaultConfiguration: Bool? = nil,
+        isSavingDefaultConfiguration: Bool? = nil,
         hapticsEnabled: Bool = true,
         glassEnabled: Bool = true,
         notificationsEnabled: Bool = false,
@@ -808,6 +822,13 @@ public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
         self.appTheme = appTheme
         self.defaultModel = defaultModel
         self.defaultProfile = defaultProfile
+        self.availableModels = availableModels
+        self.availableProfiles = availableProfiles
+        self.isSingleProfileMode = isSingleProfileMode
+        self.showDefaultModelPicker = showDefaultModelPicker
+        self.showDefaultProfilePicker = showDefaultProfilePicker
+        self.isLoadingDefaultConfiguration = isLoadingDefaultConfiguration
+        self.isSavingDefaultConfiguration = isSavingDefaultConfiguration
         self.hapticsEnabled = hapticsEnabled
         self.glassEnabled = glassEnabled
         self.notificationsEnabled = notificationsEnabled

@@ -9,6 +9,9 @@ public struct HermexSettingsScreen: View {
     @State private var serverInitialsDraft: String
     @State private var serverHeaderLogoColorDraft: String
     @State private var serverCustomHeaderTextDraft: String
+    @State private var defaultModelSearchText = ""
+    @State private var defaultProfileSearchText = ""
+    @State private var customDefaultModelDraft = ""
 
     public init(state: HermexSettingsState, onEvent: @escaping (HermexUIEvent) -> Void = { _ in }) {
         self.state = state
@@ -39,6 +42,12 @@ public struct HermexSettingsScreen: View {
 
             if isEditingServer {
                 serverEditorOverlay
+            }
+            if state.showDefaultModelPicker == true {
+                defaultModelPickerOverlay
+            }
+            if state.showDefaultProfilePicker == true {
+                defaultProfilePickerOverlay
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -151,8 +160,23 @@ public struct HermexSettingsScreen: View {
 
     private var chatSection: some View {
         settingsSection("Chat Defaults") {
-            settingValueRow(systemImage: "cpu", title: "Default Model", value: state.defaultModel ?? "Server default")
-            settingValueRow(systemImage: "person.crop.circle", title: "Default Profile", value: state.defaultProfile ?? "Active profile")
+            Button {
+                defaultModelSearchText = ""
+                customDefaultModelDraft = ""
+                onEvent(.openDefaultModelPicker)
+            } label: {
+                settingValueRow(systemImage: "cpu", title: "Default Model", value: state.defaultModel ?? "Server default")
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                defaultProfileSearchText = ""
+                onEvent(.openDefaultProfilePicker)
+            } label: {
+                settingValueRow(systemImage: "person.crop.circle", title: "Default Profile", value: state.defaultProfile ?? "Server default")
+            }
+            .buttonStyle(.plain)
+
             settingValueRow(systemImage: "bell", title: "Notifications", value: state.notificationsEnabled ? "On" : "Off")
         }
     }
@@ -299,6 +323,249 @@ public struct HermexSettingsScreen: View {
         }
         .font(.body)
         .frame(minHeight: 36)
+    }
+
+    private var defaultModelPickerOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.52)
+                .ignoresSafeArea()
+
+            ScrollView {
+                HermexGlassPanel(cornerRadius: 18) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        pickerHeader("Default Model") {
+                            onEvent(.dismissDefaultModelPicker)
+                        }
+
+                        pickerTextField("Search models", text: $defaultModelSearchText)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Custom")
+                                .font(.caption.weight(.bold))
+                                .textCase(.uppercase)
+                                .foregroundStyle(HermexUIColors.secondaryText)
+
+                            pickerTextField("Custom model ID", text: $customDefaultModelDraft)
+
+                            Text("Type a model ID exactly as the server expects it.")
+                                .font(.caption)
+                                .foregroundStyle(HermexUIColors.secondaryText)
+
+                            settingsEditorButton("Save Custom Model", isProminent: true) {
+                                onEvent(.chooseDefaultModel(customDefaultModelDraft))
+                            }
+                            .disabled(customDefaultModelDraft.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty || state.isSavingDefaultConfiguration == true)
+                        }
+
+                        if state.isLoadingDefaultConfiguration == true {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text("Loading models...")
+                            }
+                            .font(.caption)
+                            .foregroundStyle(HermexUIColors.secondaryText)
+                        }
+
+                        if let errorMessage = state.settingsErrorMessage, !errorMessage.isEmpty {
+                            Text(errorMessage)
+                                .font(.caption)
+                                .foregroundStyle(Color.red.opacity(0.9))
+                        }
+
+                        if filteredDefaultModels.isEmpty && state.isLoadingDefaultConfiguration != true {
+                            Text("No matching models.")
+                                .font(.subheadline)
+                                .foregroundStyle(HermexUIColors.secondaryText)
+                        } else {
+                            VStack(spacing: 0) {
+                                ForEach(filteredDefaultModels) { model in
+                                    Button {
+                                        onEvent(.chooseDefaultModel(model.id))
+                                    } label: {
+                                        HStack(spacing: 10) {
+                                            VStack(alignment: .leading, spacing: 3) {
+                                                Text(model.displayName)
+                                                    .font(.subheadline.weight(.medium))
+                                                    .foregroundStyle(HermexUIColors.primaryText)
+                                                    .lineLimit(2)
+                                                if model.id != model.displayName {
+                                                    Text(model.id)
+                                                        .font(.caption)
+                                                        .foregroundStyle(HermexUIColors.secondaryText)
+                                                        .lineLimit(2)
+                                                }
+                                                if let provider = model.provider, !provider.isEmpty {
+                                                    Text(provider)
+                                                        .font(.caption2)
+                                                        .foregroundStyle(HermexUIColors.tertiaryText)
+                                                }
+                                            }
+                                            Spacer(minLength: 8)
+                                            if state.defaultModel == model.id {
+                                                Text("Selected")
+                                                    .font(.caption.weight(.semibold))
+                                                    .foregroundStyle(HermexUIColors.gold)
+                                            }
+                                        }
+                                        .padding(.vertical, 10)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(state.isSavingDefaultConfiguration == true)
+                                }
+                            }
+                        }
+                    }
+                    .padding(18)
+                }
+                .padding(16)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var defaultProfilePickerOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.52)
+                .ignoresSafeArea()
+
+            ScrollView {
+                HermexGlassPanel(cornerRadius: 18) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        pickerHeader("Default Profile") {
+                            onEvent(.dismissDefaultProfilePicker)
+                        }
+
+                        pickerTextField("Search profiles", text: $defaultProfileSearchText)
+
+                        if state.isSingleProfileMode == true {
+                            Text("This server is running in single-profile mode.")
+                                .font(.caption)
+                                .foregroundStyle(HermexUIColors.secondaryText)
+                        }
+
+                        if state.isLoadingDefaultConfiguration == true {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text("Loading profiles...")
+                            }
+                            .font(.caption)
+                            .foregroundStyle(HermexUIColors.secondaryText)
+                        }
+
+                        if let errorMessage = state.settingsErrorMessage, !errorMessage.isEmpty {
+                            Text(errorMessage)
+                                .font(.caption)
+                                .foregroundStyle(Color.red.opacity(0.9))
+                        }
+
+                        if filteredDefaultProfiles.isEmpty && state.isLoadingDefaultConfiguration != true {
+                            Text("No matching profiles.")
+                                .font(.subheadline)
+                                .foregroundStyle(HermexUIColors.secondaryText)
+                        } else {
+                            VStack(spacing: 0) {
+                                ForEach(filteredDefaultProfiles) { profile in
+                                    Button {
+                                        onEvent(.chooseDefaultProfile(profile.name))
+                                    } label: {
+                                        HStack(spacing: 10) {
+                                            VStack(alignment: .leading, spacing: 3) {
+                                                Text(profile.title)
+                                                    .font(.subheadline.weight(.medium))
+                                                    .foregroundStyle(HermexUIColors.primaryText)
+                                                    .lineLimit(2)
+                                                if let details = profileDetails(profile) {
+                                                    Text(details)
+                                                        .font(.caption)
+                                                        .foregroundStyle(HermexUIColors.secondaryText)
+                                                        .lineLimit(2)
+                                                }
+                                            }
+                                            Spacer(minLength: 8)
+                                            if state.defaultProfile == profile.name {
+                                                Text("Selected")
+                                                    .font(.caption.weight(.semibold))
+                                                    .foregroundStyle(HermexUIColors.gold)
+                                            } else if profile.isDefault == true {
+                                                Text("Server Default")
+                                                    .font(.caption)
+                                                    .foregroundStyle(HermexUIColors.secondaryText)
+                                            }
+                                        }
+                                        .padding(.vertical, 10)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(state.isSavingDefaultConfiguration == true)
+                                }
+                            }
+                        }
+                    }
+                    .padding(18)
+                }
+                .padding(16)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func pickerHeader(_ title: String, onClose: @escaping () -> Void) -> some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .font(.title2.weight(.bold))
+                .foregroundStyle(HermexUIColors.primaryText)
+            Spacer(minLength: 8)
+            HermexCircleIconButton(
+                systemImage: "xmark",
+                accessibilityLabel: "Close",
+                size: 34,
+                action: onClose
+            )
+        }
+    }
+
+    private func pickerTextField(_ placeholder: String, text: Binding<String>) -> some View {
+        TextField(placeholder, text: text)
+            .textFieldStyle(.plain)
+            .foregroundStyle(HermexUIColors.primaryText)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .stroke(HermexUIColors.hairline, lineWidth: 0.7)
+            }
+    }
+
+    private var filteredDefaultModels: [HermexModelOption] {
+        let models = state.availableModels ?? []
+        let query = defaultModelSearchText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else { return models }
+        return models.filter { model in
+            model.id.lowercased().contains(query)
+                || model.displayName.lowercased().contains(query)
+                || (model.provider?.lowercased().contains(query) ?? false)
+        }
+    }
+
+    private var filteredDefaultProfiles: [HermexProfileOption] {
+        let profiles = state.availableProfiles ?? []
+        let query = defaultProfileSearchText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else { return profiles }
+        return profiles.filter { profile in
+            profile.name.lowercased().contains(query)
+                || profile.title.lowercased().contains(query)
+                || (profile.model?.lowercased().contains(query) ?? false)
+                || (profile.provider?.lowercased().contains(query) ?? false)
+        }
+    }
+
+    private func profileDetails(_ profile: HermexProfileOption) -> String? {
+        var details: [String] = []
+        if let model = profile.model, !model.isEmpty { details.append(model) }
+        if let provider = profile.provider, !provider.isEmpty { details.append(provider) }
+        return details.isEmpty ? nil : details.joined(separator: " / ")
     }
 
     private var serverEditorOverlay: some View {

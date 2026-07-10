@@ -47,6 +47,12 @@ public enum HermexAppAction: Equatable, Sendable {
     case selectServer(HermexServerIdentity)
     case updateShowCliSessions(Bool)
     case updateActiveServer(displayName: String, initials: String, headerLogoColorHex: String, customHeaderText: String)
+    case openDefaultModelPicker
+    case dismissDefaultModelPicker
+    case chooseDefaultModel(String)
+    case openDefaultProfilePicker
+    case dismissDefaultProfilePicker
+    case chooseDefaultProfile(String)
     case selectProject(String?)
     case projectCommand(HermexProjectCommand)
     case openSession(String)
@@ -146,6 +152,8 @@ public struct HermexAppEnvironment: Sendable {
     public var clearSession: @Sendable (_ sessionID: String) async throws -> HermexJSONValue
     public var loadModels: @Sendable () async throws -> HermexModelsResponse
     public var loadProfiles: @Sendable () async throws -> HermexProfilesResponse
+    public var saveDefaultModel: @Sendable (_ model: String) async throws -> HermexJSONValue
+    public var switchProfile: @Sendable (_ name: String) async throws -> HermexJSONValue
     public var loadWorkspaces: @Sendable () async throws -> HermexWorkspacesResponse
     public var loadReasoning: @Sendable (_ model: String?, _ provider: String?) async throws -> HermexReasoningResponse
     public var saveReasoningEffort: @Sendable (_ effort: String, _ model: String?, _ provider: String?) async throws -> HermexJSONValue
@@ -220,6 +228,12 @@ public struct HermexAppEnvironment: Sendable {
         updateServerSettings: @escaping @Sendable (_ showCliSessions: Bool) async throws -> HermexJSONValue = { _ in
             .dictionary(["error": .string("Server settings are unavailable.")])
         },
+        saveDefaultModel: @escaping @Sendable (_ model: String) async throws -> HermexJSONValue = { _ in
+            .dictionary(["ok": .bool(false), "error": .string("Default model changes are unavailable.")])
+        },
+        switchProfile: @escaping @Sendable (_ name: String) async throws -> HermexJSONValue = { _ in
+            .dictionary(["ok": .bool(false), "error": .string("Profile changes are unavailable.")])
+        },
         performProjectCommand: @escaping @Sendable (_ command: HermexProjectCommand) async throws -> HermexJSONValue = { _ in
             .dictionary([
                 "ok": .bool(false),
@@ -252,6 +266,8 @@ public struct HermexAppEnvironment: Sendable {
         self.clearSession = clearSession
         self.loadModels = loadModels
         self.loadProfiles = loadProfiles
+        self.saveDefaultModel = saveDefaultModel
+        self.switchProfile = switchProfile
         self.loadWorkspaces = loadWorkspaces
         self.loadReasoning = loadReasoning
         self.saveReasoningEffort = saveReasoningEffort
@@ -450,6 +466,12 @@ public struct HermexAppEnvironment: Sendable {
             updateServerSettings: { showCliSessions in
                 try await settings.updateShowCliSessions(showCliSessions)
             },
+            saveDefaultModel: { model in
+                try await client.saveDefaultModel(model: model)
+            },
+            switchProfile: { name in
+                try await client.switchProfile(name: name)
+            },
             performProjectCommand: { command in
                 switch command {
                 case .moveSession(let sessionID, let projectID):
@@ -573,6 +595,22 @@ public final class HermexAppStore {
                 headerLogoColorHex: headerLogoColorHex,
                 customHeaderText: customHeaderText
             )
+        case .openDefaultModelPicker:
+            settings.showDefaultModelPicker = true
+        case .dismissDefaultModelPicker:
+            settings.showDefaultModelPicker = false
+        case .chooseDefaultModel(let model):
+            settings.defaultModel = model
+            settings.showDefaultModelPicker = false
+            settings.settingsErrorMessage = nil
+        case .openDefaultProfilePicker:
+            settings.showDefaultProfilePicker = true
+        case .dismissDefaultProfilePicker:
+            settings.showDefaultProfilePicker = false
+        case .chooseDefaultProfile(let profile):
+            settings.defaultProfile = profile
+            settings.showDefaultProfilePicker = false
+            settings.settingsErrorMessage = nil
         case .selectProject(let projectID):
             sessions.selectedProjectID = projectID
         case .projectCommand(let command):
@@ -1046,6 +1084,14 @@ public final class HermexAppStore {
         }
         updated.defaultModel = updated.defaultModel ?? "gpt-5.5"
         updated.defaultProfile = updated.defaultProfile ?? "default"
+        updated.availableModels = updated.availableModels ?? [
+            HermexModelOption(id: "gpt-5.5", label: "GPT-5.5", provider: "openai"),
+            HermexModelOption(id: "deepseek-v4-pro", label: "DeepSeek V4 Pro", provider: "deepseek")
+        ]
+        updated.availableProfiles = updated.availableProfiles ?? [
+            HermexProfileOption(name: "default", displayName: "Default", isDefault: true, isActive: true, model: "gpt-5.5")
+        ]
+        updated.isSingleProfileMode = updated.isSingleProfileMode ?? false
         return updated
     }
 
@@ -1274,6 +1320,24 @@ public final class HermexAppStore {
                 headerLogoColorHex: headerLogoColorHex,
                 customHeaderText: customHeaderText
             )
+        case .openDefaultModelPicker:
+            settings.showDefaultModelPicker = true
+            if (settings.availableModels ?? []).isEmpty {
+                await refreshDefaultConfiguration()
+            }
+        case .dismissDefaultModelPicker:
+            settings.showDefaultModelPicker = false
+        case .chooseDefaultModel(let model):
+            await updateDefaultModel(model)
+        case .openDefaultProfilePicker:
+            settings.showDefaultProfilePicker = true
+            if (settings.availableProfiles ?? []).isEmpty {
+                await refreshDefaultConfiguration()
+            }
+        case .dismissDefaultProfilePicker:
+            settings.showDefaultProfilePicker = false
+        case .chooseDefaultProfile(let profile):
+            await updateDefaultProfile(profile)
         case .selectProject(let projectID):
             sessions.selectedProjectID = projectID
         case .projectCommand(let command):
@@ -1452,6 +1516,83 @@ public final class HermexAppStore {
         } catch {
             settings.settingsErrorMessage = String(describing: error)
         }
+        await refreshDefaultConfiguration()
+    }
+
+    private func refreshDefaultConfiguration() async {
+        guard settings.activeServer != nil else { return }
+        settings.isLoadingDefaultConfiguration = true
+        do {
+            async let models = environment.loadModels()
+            async let profiles = environment.loadProfiles()
+            let loadedModels = try await models
+            let loadedProfiles = try await profiles
+            settings.availableModels = loadedModels.normalizedModels
+            settings.defaultModel = loadedModels.defaultModel ?? settings.defaultModel
+            settings.availableProfiles = loadedProfiles.profiles ?? []
+            settings.defaultProfile = loadedProfiles.active
+                ?? loadedProfiles.profiles?.first(where: { $0.isActive == true })?.name
+                ?? settings.defaultProfile
+            settings.isSingleProfileMode = loadedProfiles.singleProfileMode
+            settings.settingsErrorMessage = nil
+        } catch {
+            settings.settingsErrorMessage = String(describing: error)
+        }
+        settings.isLoadingDefaultConfiguration = false
+    }
+
+    private func updateDefaultModel(_ rawModel: String) async {
+        let model = rawModel.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !model.isEmpty, settings.isSavingDefaultConfiguration != true else { return }
+        let previousModel = settings.defaultModel
+        settings.defaultModel = model
+        settings.isSavingDefaultConfiguration = true
+        settings.settingsErrorMessage = nil
+        do {
+            let response = try await environment.saveDefaultModel(model)
+            let fields = response.objectValue ?? [:]
+            guard fields.boolValue("ok") == true else {
+                settings.defaultModel = previousModel
+                settings.settingsErrorMessage = fields.stringValue("error") ?? "The server did not confirm the default model change."
+                settings.isSavingDefaultConfiguration = false
+                return
+            }
+            settings.showDefaultModelPicker = false
+        } catch {
+            settings.defaultModel = previousModel
+            settings.settingsErrorMessage = String(describing: error)
+        }
+        settings.isSavingDefaultConfiguration = false
+    }
+
+    private func updateDefaultProfile(_ rawProfile: String) async {
+        let profile = rawProfile.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !profile.isEmpty, settings.isSavingDefaultConfiguration != true else { return }
+        let previousProfile = settings.defaultProfile
+        let previousModel = settings.defaultModel
+        settings.defaultProfile = profile
+        settings.isSavingDefaultConfiguration = true
+        settings.settingsErrorMessage = nil
+        do {
+            let response = try await environment.switchProfile(profile)
+            let fields = response.objectValue ?? [:]
+            if let error = fields.stringValue("error") {
+                settings.defaultProfile = previousProfile
+                settings.settingsErrorMessage = error
+                settings.isSavingDefaultConfiguration = false
+                return
+            }
+            settings.defaultProfile = fields.stringValue("active", "profile") ?? profile
+            if let model = fields.stringValue("default_model", "defaultModel") {
+                settings.defaultModel = model
+            }
+            settings.showDefaultProfilePicker = false
+        } catch {
+            settings.defaultProfile = previousProfile
+            settings.defaultModel = previousModel
+            settings.settingsErrorMessage = String(describing: error)
+        }
+        settings.isSavingDefaultConfiguration = false
     }
 
     private func updateShowCliSessions(_ enabled: Bool) async {

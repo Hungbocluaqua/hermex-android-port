@@ -352,6 +352,41 @@ final class HermexAppStoreTests: XCTestCase {
         XCTAssertEqual(updates, [true])
     }
 
+    func testDefaultModelAndProfileSettingsUseSharedStoreActions() async throws {
+        let probe = StoreProbe()
+        let server = HermexServerIdentity(
+            baseURL: try XCTUnwrap(URL(string: "https://defaults.example")),
+            displayName: "Defaults"
+        )
+        let store = HermexAppStore(
+            appState: HermexAppState(auth: .loggedIn(server: server), route: .settings),
+            settings: HermexSettingsState(activeServer: server, servers: [server]),
+            environment: environment(probe: probe)
+        )
+
+        await store.send(.refresh)
+        XCTAssertEqual(store.settings.defaultModel, "gpt-5.5")
+        XCTAssertEqual(store.settings.defaultProfile, "default")
+        XCTAssertEqual(store.settings.availableModels?.map(\.id), ["gpt-5.5"])
+        XCTAssertEqual(store.settings.availableProfiles?.map(\.name), ["default"])
+
+        await store.send(.openDefaultModelPicker)
+        XCTAssertTrue(store.settings.showDefaultModelPicker == true)
+        await store.send(.chooseDefaultModel(" custom-model "))
+        XCTAssertEqual(store.settings.defaultModel, "custom-model")
+        XCTAssertFalse(store.settings.showDefaultModelPicker == true)
+
+        await store.send(.openDefaultProfilePicker)
+        XCTAssertTrue(store.settings.showDefaultProfilePicker == true)
+        await store.send(.chooseDefaultProfile("default"))
+        XCTAssertEqual(store.settings.defaultProfile, "default")
+        XCTAssertFalse(store.settings.showDefaultProfilePicker == true)
+        let savedModels = await probe.savedDefaultModels
+        let switchedProfiles = await probe.switchedProfiles
+        XCTAssertEqual(savedModels, ["custom-model"])
+        XCTAssertEqual(switchedProfiles, ["default"])
+    }
+
     func testProjectSelectionAndMutationsRouteThroughSharedStore() async throws {
         let probe = StoreProbe()
         let store = HermexAppStore(
@@ -661,6 +696,12 @@ final class HermexAppStoreTests: XCTestCase {
             updateServerSettings: { showCliSessions in
                 try await probe.updateServerSettings(showCliSessions: showCliSessions)
             },
+            saveDefaultModel: { model in
+                try await probe.saveDefaultModel(model: model)
+            },
+            switchProfile: { name in
+                try await probe.switchProfile(name: name)
+            },
             performProjectCommand: { command in
                 try await probe.performProjectCommand(command)
             },
@@ -716,6 +757,8 @@ private actor StoreProbe {
     private(set) var memoryWrites: [MemoryWrite] = []
     private(set) var loadedInsightsDays: [Int] = []
     private(set) var updatedCliSessions: [Bool] = []
+    private(set) var savedDefaultModels: [String] = []
+    private(set) var switchedProfiles: [String] = []
     private(set) var testedServer: HermexServerIdentity?
     private(set) var loginServer: HermexServerIdentity?
     private(set) var loginPassword: String?
@@ -748,6 +791,20 @@ private actor StoreProbe {
         updatedCliSessions.append(showCliSessions)
         self.showCliSessions = showCliSessions
         return .dictionary(["show_cli_sessions": .bool(showCliSessions)])
+    }
+
+    func saveDefaultModel(model: String) async throws -> HermexJSONValue {
+        savedDefaultModels.append(model)
+        return .dictionary(["ok": .bool(true)])
+    }
+
+    func switchProfile(name: String) async throws -> HermexJSONValue {
+        switchedProfiles.append(name)
+        return .dictionary([
+            "ok": .bool(true),
+            "active": .string(name),
+            "default_model": .string("gpt-5.5")
+        ])
     }
 
     func loadSessions(includeArchived: Bool, archivedLimit: Int?) async throws -> HermexSessionsResponse {

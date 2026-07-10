@@ -123,6 +123,17 @@ def main() -> int:
     ok &= require("Privacy & Security" in settings and "Passwords" in settings and "Not stored" in settings, "Settings screen must state password storage behavior.")
     ok &= require("Sign Out" in settings and ".signOut" in settings, "Settings screen must expose sign-out action.")
     ok &= require("Chat Defaults" in settings and "Default Model" in settings and "Default Profile" in settings, "Settings screen must expose chat default settings.")
+    ok &= require(
+        "defaultModelPickerOverlay" in settings
+        and "defaultProfilePickerOverlay" in settings
+        and "filteredDefaultModels" in settings
+        and "filteredDefaultProfiles" in settings,
+        "Settings screen must expose searchable default model/profile picker overlays.",
+    )
+    for action in ["openDefaultModelPicker", "chooseDefaultModel", "openDefaultProfilePicker", "chooseDefaultProfile"]:
+        ok &= require(action in events and action in store, f"Shared default settings action is missing {action}.")
+    for closure in ["saveDefaultModel", "switchProfile"]:
+        ok &= require(closure in store, f"Shared default settings environment is missing {closure}.")
     ok &= require("CLI Sessions" in settings and ".updateShowCliSessions" in settings, "Settings screen must expose the server-synced CLI session toggle.")
     ok &= require(
         "Edit Server" in settings
