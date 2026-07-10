@@ -524,14 +524,14 @@ public struct HermexAPIClient: @unchecked Sendable {
             endpoint: HermexEndpoints.cronCreate,
             method: "POST",
             body: HermexJSONObjectBody([
-                "prompt": .string(prompt),
-                "schedule": .string(schedule),
-                "name": .stringOrNil(name),
-                "deliver": .stringOrNil(deliver),
-                "skills": .array(skills.map { .string($0) }),
-                "model": .stringOrNil(model),
-                "profile": .stringOrNil(profile),
-                "toast_notifications": .bool(toastNotifications)
+                "prompt": HermexJSONValue.string(prompt),
+                "schedule": HermexJSONValue.string(schedule),
+                "name": HermexJSONValue.stringOrNil(name),
+                "deliver": HermexJSONValue.stringOrNil(deliver),
+                "skills": HermexJSONValue.strings(skills),
+                "model": HermexJSONValue.stringOrNil(model),
+                "profile": HermexJSONValue.stringOrNil(profile),
+                "toast_notifications": HermexJSONValue.bool(toastNotifications)
             ])
         )
     }
@@ -551,15 +551,15 @@ public struct HermexAPIClient: @unchecked Sendable {
             endpoint: HermexEndpoints.cronUpdate,
             method: "POST",
             body: HermexJSONObjectBody([
-                "job_id": .string(jobID),
-                "prompt": .stringOrNil(prompt),
-                "schedule": .stringOrNil(schedule),
-                "name": .stringOrNil(name),
-                "deliver": .stringOrNil(deliver),
-                "skills": skills.map { .array($0.map { .string($0) }) },
-                "model": .stringOrNil(model),
-                "profile": .stringOrNil(profile),
-                "toast_notifications": toastNotifications.map { .bool($0) }
+                "job_id": HermexJSONValue.string(jobID),
+                "prompt": HermexJSONValue.stringOrNil(prompt),
+                "schedule": HermexJSONValue.stringOrNil(schedule),
+                "name": HermexJSONValue.stringOrNil(name),
+                "deliver": HermexJSONValue.stringOrNil(deliver),
+                "skills": skills.map { HermexJSONValue.strings($0) },
+                "model": HermexJSONValue.stringOrNil(model),
+                "profile": HermexJSONValue.stringOrNil(profile),
+                "toast_notifications": toastNotifications.map { HermexJSONValue.bool($0) }
             ])
         )
     }

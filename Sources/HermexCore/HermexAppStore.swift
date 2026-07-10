@@ -1591,8 +1591,10 @@ public final class HermexAppStore {
         switch command {
         case .run, .pause, .resume:
             await runTaskStatusCommand(command)
-        case .create(let draft), .update(let draft):
-            await saveTaskCommand(command, draft: draft)
+        case .create(let draft):
+            await saveTaskCommand(.create(draft: draft), draft: draft)
+        case .update(let draft):
+            await saveTaskCommand(.update(draft: draft), draft: draft)
         case .delete(let jobID):
             await deleteTask(jobID: jobID)
         case .loadOutput(let jobID, let limit):
