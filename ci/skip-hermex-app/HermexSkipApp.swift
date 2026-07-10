@@ -770,6 +770,13 @@ private final class HermexSkipRuntime: @unchecked Sendable {
                     return try await projects.delete(projectID: projectID)
                 }
             },
+            updateServerRuntime: { server, authenticated in
+                if authenticated {
+                    await connection.activateServer(server)
+                } else {
+                    await connection.rememberServer(server)
+                }
+            },
             branchSession: { sessionID, keepCount in
                 let sessions = try await connection.currentSessionsRepository()
                 return try await sessions.branch(id: sessionID, keepCount: keepCount)
@@ -777,13 +784,6 @@ private final class HermexSkipRuntime: @unchecked Sendable {
             truncateSession: { sessionID, keepCount in
                 let sessions = try await connection.currentSessionsRepository()
                 return try await sessions.truncate(id: sessionID, keepCount: keepCount)
-            },
-            updateServerRuntime: { server, authenticated in
-                if authenticated {
-                    await connection.activateServer(server)
-                } else {
-                    await connection.rememberServer(server)
-                }
             }
         )
     }
