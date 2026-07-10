@@ -141,4 +141,43 @@ final class HermexDTOTests: XCTestCase {
         XCTAssertEqual(memory.memory.map(\.section), ["memory", "user"])
         XCTAssertEqual(memory.memory.first?.content, "Notes")
     }
+
+    func testSkillMappersPreserveMetadataAndNormalizeLinkedFiles() throws {
+        let skills = HermexPanelsState.skills(from: .dictionary([
+            "skills": .array([.dictionary([
+                "name": .string("review"),
+                "description": .string("Review code"),
+                "category": .string("Engineering"),
+                "path": .string("skills/review/SKILL.md"),
+                "disabled": .bool(true),
+                "tags": .array([.string("quality")]),
+                "related_skills": .array([.string("testing")])
+            ])])
+        ]))
+
+        let skill = try XCTUnwrap(skills.skills.first)
+        XCTAssertEqual(skill.name, "review")
+        XCTAssertEqual(skill.description, "Review code")
+        XCTAssertEqual(skill.category, "Engineering")
+        XCTAssertEqual(skill.path, "skills/review/SKILL.md")
+        XCTAssertEqual(skill.disabled, true)
+        XCTAssertEqual(skill.isEnabled, false)
+        XCTAssertEqual(skill.tags, ["quality"])
+        XCTAssertEqual(skill.relatedSkills, ["testing"])
+
+        let detail = try XCTUnwrap(HermexSkillDetailDTO.fromJSON(.dictionary([
+            "name": .string("review"),
+            "content": .string("Review this change."),
+            "files": .array([.string("skill.md"), .string("readme.md")]),
+            "linked_files": .dictionary([
+                "references": .array([.string("guide.md"), .string("readme.md")]),
+                "templates": .array([.string("template.md")])
+            ])
+        ])))
+
+        XCTAssertEqual(detail.name, "review")
+        XCTAssertEqual(detail.content, "Review this change.")
+        XCTAssertEqual(detail.linkedFiles, ["guide.md", "readme.md", "skill.md", "template.md"])
+        XCTAssertNil(detail.error)
+    }
 }

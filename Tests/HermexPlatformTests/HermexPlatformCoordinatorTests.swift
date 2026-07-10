@@ -164,6 +164,7 @@ private extension HermexAppEnvironment {
             loadTasks: { .dictionary([:]) },
             performTaskCommand: { _ in .dictionary(["ok": .bool(true)]) },
             loadSkills: { .dictionary([:]) },
+            loadSkillContent: { _, _ in .dictionary([:]) },
             toggleSkill: { _, _ in .dictionary(["ok": .bool(true)]) },
             loadMemory: { .dictionary([:]) },
             writeMemory: { _, _ in .dictionary(["ok": .bool(true)]) },

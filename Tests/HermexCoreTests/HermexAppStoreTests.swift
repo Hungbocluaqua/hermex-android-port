@@ -237,6 +237,41 @@ final class HermexAppStoreTests: XCTestCase {
         XCTAssertNil(store.panels.errorMessage)
     }
 
+    func testSkillDetailsAndLinkedFilesRouteThroughEnvironment() async throws {
+        let probe = StoreProbe()
+        let store = HermexAppStore(
+            panels: HermexPanelsState(selectedPanel: .skills),
+            environment: environment(probe: probe)
+        )
+
+        await store.send(.openSkillDetail(name: " review "))
+
+        XCTAssertEqual(store.panels.selectedSkillName, "review")
+        XCTAssertEqual(store.panels.selectedSkillDetail?.content, "Review this skill.")
+        XCTAssertEqual(store.panels.selectedSkillDetail?.linkedFiles, ["guide.md", "readme.md"])
+        XCTAssertFalse(store.panels.isLoadingSkillDetail)
+
+        await store.send(.loadSkillFile(fileName: " readme.md "))
+
+        XCTAssertEqual(store.panels.selectedSkillFileName, "readme.md")
+        XCTAssertEqual(store.panels.selectedSkillFileContent, "Linked file content.")
+        XCTAssertFalse(store.panels.isLoadingSkillFile)
+
+        await store.send(.dismissSkillFile)
+        XCTAssertNil(store.panels.selectedSkillFileName)
+        XCTAssertNil(store.panels.selectedSkillFileContent)
+
+        await store.send(.dismissSkillDetail)
+        XCTAssertNil(store.panels.selectedSkillName)
+        XCTAssertNil(store.panels.selectedSkillDetail)
+
+        let requests = await probe.skillContentRequests
+        XCTAssertEqual(requests, [
+            StoreProbe.SkillContentRequest(name: "review", file: nil),
+            StoreProbe.SkillContentRequest(name: "review", file: "readme.md")
+        ])
+    }
+
     func testTaskCommandsRouteThroughEnvironmentAndRefreshPanelState() async throws {
         let probe = StoreProbe()
         let store = HermexAppStore(
@@ -463,6 +498,9 @@ final class HermexAppStoreTests: XCTestCase {
             loadSkills: {
                 try await probe.loadSkills()
             },
+            loadSkillContent: { name, file in
+                try await probe.loadSkillContent(name: name, file: file)
+            },
             toggleSkill: { name, enabled in
                 try await probe.toggleSkill(name: name, enabled: enabled)
             },
@@ -497,6 +535,11 @@ private actor StoreProbe {
         var enabled: Bool
     }
 
+    struct SkillContentRequest: Equatable {
+        var name: String
+        var file: String?
+    }
+
     struct MemoryWrite: Equatable {
         var section: String
         var content: String
@@ -511,6 +554,7 @@ private actor StoreProbe {
     private(set) var gitCommands: [String] = []
     private(set) var taskCommands: [HermexTaskCommand] = []
     private(set) var skillToggles: [SkillToggle] = []
+    private(set) var skillContentRequests: [SkillContentRequest] = []
     private(set) var memoryWrites: [MemoryWrite] = []
     private(set) var loadedInsightsDays: [Int] = []
     private(set) var testedServer: HermexServerIdentity?
@@ -751,6 +795,24 @@ private actor StoreProbe {
         skillToggles.append(SkillToggle(name: name, enabled: enabled))
         swiftSkillEnabled = enabled
         return .dictionary(["ok": .bool(true), "name": .string(name), "enabled": .bool(enabled)])
+    }
+
+    func loadSkillContent(name: String, file: String?) async throws -> HermexJSONValue {
+        skillContentRequests.append(SkillContentRequest(name: name, file: file))
+        if let file {
+            return .dictionary([
+                "name": .string(name),
+                "content": .string("Linked file content."),
+                "path": .string(file)
+            ])
+        }
+        return .dictionary([
+            "name": .string(name),
+            "content": .string("Review this skill."),
+            "linked_files": .dictionary([
+                "references": .array([.string("readme.md"), .string("guide.md")])
+            ])
+        ])
     }
 
     func loadMemory() async throws -> HermexJSONValue {

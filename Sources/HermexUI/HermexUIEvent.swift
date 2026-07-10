@@ -53,6 +53,10 @@ public enum HermexUIEvent: Equatable, Sendable {
     case confirmTaskDeletion
     case dismissTaskDetails
     case toggleSkill(name: String, enabled: Bool)
+    case openSkillDetail(name: String)
+    case loadSkillFile(fileName: String)
+    case dismissSkillDetail
+    case dismissSkillFile
     case writeMemory(section: String, content: String)
     case selectInsightsRange(days: Int)
     case signOut
@@ -157,6 +161,14 @@ public extension HermexUIEvent {
             return .dismissTaskDetails
         case .toggleSkill(let name, let enabled):
             return .toggleSkill(name: name, enabled: enabled)
+        case .openSkillDetail(let name):
+            return .openSkillDetail(name: name)
+        case .loadSkillFile(let fileName):
+            return .loadSkillFile(fileName: fileName)
+        case .dismissSkillDetail:
+            return .dismissSkillDetail
+        case .dismissSkillFile:
+            return .dismissSkillFile
         case .writeMemory(let section, let content):
             return .writeMemory(section: section, content: content)
         case .selectInsightsRange(let days):

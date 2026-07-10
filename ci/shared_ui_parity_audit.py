@@ -169,6 +169,12 @@ def main() -> int:
     ok &= require("Search skills..." in panels and "filteredSkills" in panels, "Skills panel must expose the iOS-style search field.")
     ok &= require(".toggleSkill(name: skill.name" in panels and "case .toggleSkill" in events, "Skills panel toggle button must route through shared Core.")
     ok &= require(
+        ".openSkillDetail(name: skill.name" in panels
+        and "skillDetailOverlay" in panels
+        and "skillFileOverlay" in panels,
+        "Skills panel must expose shared skill detail and linked-file surfaces."
+    )
+    ok &= require(
         "New Task" in panels
         and "Details" in panels
         and "Run" in panels
@@ -194,6 +200,13 @@ def main() -> int:
         ok &= require(closure in store, f"Shared store is missing panel loader {closure}.")
     ok &= require("performTaskCommand" in store and "runTaskCommand" in store, "Shared store is missing task mutation handling.")
     ok &= require("toggleSkill" in store and "environment.toggleSkill" in store, "Shared store is missing skill toggle handling.")
+    ok &= require(
+        "loadSkillContent" in store
+        and "environment.loadSkillContent" in store
+        and "openSkillDetail" in events
+        and "loadSkillFile" in events,
+        "Shared skill detail transport and action routing are missing."
+    )
     ok &= require("writeMemory" in store and "environment.writeMemory" in store, "Shared store is missing memory write handling.")
     ok &= require("selectInsightsRange" in store and "panels.insightsDays" in store and "environment.loadInsights(panels.insightsDays)" in store, "Shared store is missing insights timeframe handling.")
     for asset in [

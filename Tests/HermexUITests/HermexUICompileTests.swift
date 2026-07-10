@@ -60,6 +60,7 @@ final class HermexUICompileTests: XCTestCase {
             loadTasks: { .dictionary([:]) },
             performTaskCommand: { _ in .dictionary(["ok": .bool(true)]) },
             loadSkills: { .dictionary([:]) },
+            loadSkillContent: { _, _ in .dictionary([:]) },
             toggleSkill: { _, _ in .dictionary(["ok": .bool(true)]) },
             loadMemory: { .dictionary([:]) },
             writeMemory: { _, _ in .dictionary(["ok": .bool(true)]) },
@@ -131,6 +132,10 @@ final class HermexUICompileTests: XCTestCase {
         XCTAssertEqual(HermexUIEvent.beginTaskCreation.appAction, .beginTaskCreation)
         XCTAssertEqual(HermexUIEvent.beginTaskEdit(jobID: "job-1").appAction, .beginTaskEdit(jobID: "job-1"))
         XCTAssertEqual(HermexUIEvent.dismissTaskDetails.appAction, .dismissTaskDetails)
+        XCTAssertEqual(HermexUIEvent.openSkillDetail(name: "review").appAction, .openSkillDetail(name: "review"))
+        XCTAssertEqual(HermexUIEvent.loadSkillFile(fileName: "README.md").appAction, .loadSkillFile(fileName: "README.md"))
+        XCTAssertEqual(HermexUIEvent.dismissSkillDetail.appAction, .dismissSkillDetail)
+        XCTAssertEqual(HermexUIEvent.dismissSkillFile.appAction, .dismissSkillFile)
         XCTAssertEqual(
             HermexUIEvent.openWorkspaceEntry(HermexWorkspaceEntryDTO(name: "README.md", path: "/repo/README.md", isDirectory: false)).appAction,
             .openWorkspaceEntry(HermexWorkspaceEntryDTO(name: "README.md", path: "/repo/README.md", isDirectory: false))

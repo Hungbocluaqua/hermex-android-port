@@ -444,6 +444,12 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
     public var pendingTaskDeletionID: String?
     public var isMutating: Bool
     public var skills: [HermexSkillDTO]
+    public var selectedSkillName: String?
+    public var selectedSkillDetail: HermexSkillDetailDTO?
+    public var selectedSkillFileName: String?
+    public var selectedSkillFileContent: String?
+    public var isLoadingSkillDetail: Bool
+    public var isLoadingSkillFile: Bool
     public var memory: [HermexMemorySectionDTO]
     public var insights: HermexJSONValue?
     public var insightsDays: Int
@@ -460,6 +466,12 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
         pendingTaskDeletionID: String? = nil,
         isMutating: Bool = false,
         skills: [HermexSkillDTO] = [],
+        selectedSkillName: String? = nil,
+        selectedSkillDetail: HermexSkillDetailDTO? = nil,
+        selectedSkillFileName: String? = nil,
+        selectedSkillFileContent: String? = nil,
+        isLoadingSkillDetail: Bool = false,
+        isLoadingSkillFile: Bool = false,
         memory: [HermexMemorySectionDTO] = [],
         insights: HermexJSONValue? = nil,
         insightsDays: Int = 30,
@@ -475,6 +487,12 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
         self.pendingTaskDeletionID = pendingTaskDeletionID
         self.isMutating = isMutating
         self.skills = skills
+        self.selectedSkillName = selectedSkillName
+        self.selectedSkillDetail = selectedSkillDetail
+        self.selectedSkillFileName = selectedSkillFileName
+        self.selectedSkillFileContent = selectedSkillFileContent
+        self.isLoadingSkillDetail = isLoadingSkillDetail
+        self.isLoadingSkillFile = isLoadingSkillFile
         self.memory = memory
         self.insights = insights
         self.insightsDays = insightsDays
@@ -493,6 +511,12 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
         case pendingTaskDeletionID
         case isMutating
         case skills
+        case selectedSkillName
+        case selectedSkillDetail
+        case selectedSkillFileName
+        case selectedSkillFileContent
+        case isLoadingSkillDetail
+        case isLoadingSkillFile
         case memory
         case insights
         case insightsDays
@@ -511,6 +535,12 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
         self.pendingTaskDeletionID = try container.decodeIfPresent(String.self, forKey: .pendingTaskDeletionID)
         self.isMutating = try container.decodeIfPresent(Bool.self, forKey: .isMutating) ?? false
         self.skills = try container.decodeIfPresent([HermexSkillDTO].self, forKey: .skills) ?? []
+        self.selectedSkillName = try container.decodeIfPresent(String.self, forKey: .selectedSkillName)
+        self.selectedSkillDetail = try container.decodeIfPresent(HermexSkillDetailDTO.self, forKey: .selectedSkillDetail)
+        self.selectedSkillFileName = try container.decodeIfPresent(String.self, forKey: .selectedSkillFileName)
+        self.selectedSkillFileContent = try container.decodeIfPresent(String.self, forKey: .selectedSkillFileContent)
+        self.isLoadingSkillDetail = try container.decodeIfPresent(Bool.self, forKey: .isLoadingSkillDetail) ?? false
+        self.isLoadingSkillFile = try container.decodeIfPresent(Bool.self, forKey: .isLoadingSkillFile) ?? false
         self.memory = try container.decodeIfPresent([HermexMemorySectionDTO].self, forKey: .memory) ?? []
         self.insights = try container.decodeIfPresent(HermexJSONValue.self, forKey: .insights)
         self.insightsDays = try container.decodeIfPresent(Int.self, forKey: .insightsDays) ?? 30
@@ -529,6 +559,12 @@ public struct HermexPanelsState: HermexStateCodable, Equatable, Sendable {
         try container.encodeIfPresent(pendingTaskDeletionID, forKey: .pendingTaskDeletionID)
         try container.encode(isMutating, forKey: .isMutating)
         try container.encode(skills, forKey: .skills)
+        try container.encodeIfPresent(selectedSkillName, forKey: .selectedSkillName)
+        try container.encodeIfPresent(selectedSkillDetail, forKey: .selectedSkillDetail)
+        try container.encodeIfPresent(selectedSkillFileName, forKey: .selectedSkillFileName)
+        try container.encodeIfPresent(selectedSkillFileContent, forKey: .selectedSkillFileContent)
+        try container.encode(isLoadingSkillDetail, forKey: .isLoadingSkillDetail)
+        try container.encode(isLoadingSkillFile, forKey: .isLoadingSkillFile)
         try container.encode(memory, forKey: .memory)
         try container.encodeIfPresent(insights, forKey: .insights)
         try container.encode(insightsDays, forKey: .insightsDays)
@@ -673,11 +709,58 @@ public struct HermexSkillDTO: HermexStateCodable, Identifiable, Equatable, Senda
     public var name: String
     public var enabled: Bool?
     public var summary: String?
+    public var category: String?
+    public var description: String?
+    public var path: String?
+    public var disabled: Bool?
+    public var tags: [String]?
+    public var relatedSkills: [String]?
 
-    public init(name: String, enabled: Bool? = nil, summary: String? = nil) {
+    public var isEnabled: Bool? {
+        if let enabled { return enabled }
+        if let disabled { return !disabled }
+        return nil
+    }
+
+    public init(
+        name: String,
+        enabled: Bool? = nil,
+        summary: String? = nil,
+        category: String? = nil,
+        description: String? = nil,
+        path: String? = nil,
+        disabled: Bool? = nil,
+        tags: [String]? = nil,
+        relatedSkills: [String]? = nil
+    ) {
         self.name = name
         self.enabled = enabled
         self.summary = summary
+        self.category = category
+        self.description = description
+        self.path = path
+        self.disabled = disabled
+        self.tags = tags
+        self.relatedSkills = relatedSkills
+    }
+}
+
+public struct HermexSkillDetailDTO: HermexStateCodable, Equatable, Sendable {
+    public var name: String?
+    public var content: String?
+    public var linkedFiles: [String]
+    public var error: String?
+
+    public init(
+        name: String? = nil,
+        content: String? = nil,
+        linkedFiles: [String] = [],
+        error: String? = nil
+    ) {
+        self.name = name
+        self.content = content
+        self.linkedFiles = linkedFiles
+        self.error = error
     }
 }
 

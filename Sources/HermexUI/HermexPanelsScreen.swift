@@ -34,6 +34,14 @@ public struct HermexPanelsScreen: View {
             if let task = selectedTask {
                 taskDetailOverlay(task)
             }
+
+            if state.selectedSkillName != nil && state.selectedSkillFileName == nil {
+                skillDetailOverlay(state.selectedSkillDetail)
+            }
+
+            if let fileName = state.selectedSkillFileName {
+                skillFileOverlay(fileName)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(HermexUIColors.systemBackground.ignoresSafeArea())
@@ -398,21 +406,140 @@ public struct HermexPanelsScreen: View {
                                 .foregroundStyle(HermexUIColors.primaryText)
                                 .fixedSize(horizontal: false, vertical: true)
 
-                            Text(skill.summary ?? (skill.enabled == true ? "Enabled" : "Disabled"))
+                            Text(skill.summary ?? (skill.isEnabled == true ? "Enabled" : "Disabled"))
                                 .font(.body)
                                 .foregroundStyle(HermexUIColors.secondaryText)
                                 .lineLimit(3)
 
                             HStack(spacing: 8) {
-                                panelActionButton("Open")
-                                panelActionButton(skill.enabled == true ? "Disable" : "Enable") {
-                                    onEvent(.toggleSkill(name: skill.name, enabled: skill.enabled != true))
+                                panelActionButton("Open") {
+                                    onEvent(.openSkillDetail(name: skill.name))
+                                }
+                                panelActionButton(skill.isEnabled == true ? "Disable" : "Enable") {
+                                    onEvent(.toggleSkill(name: skill.name, enabled: skill.isEnabled != true))
                                 }
                             }
                         }
                     }
                     .padding(.vertical, 10)
                 }
+            }
+        }
+    }
+
+    private func skillDetailOverlay(_ detail: HermexSkillDetailDTO?) -> some View {
+        let title = detail?.name ?? state.selectedSkillName ?? "Skill"
+
+        return ZStack {
+            Color.black.opacity(0.52)
+                .ignoresSafeArea()
+
+            ScrollView {
+                HermexGlassPanel(cornerRadius: 18) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text(title)
+                                .font(.title2.weight(.bold))
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 8)
+                            panelActionButton("Close") {
+                                onEvent(.dismissSkillDetail)
+                            }
+                        }
+
+                        if state.isLoadingSkillDetail {
+                            ProgressView("Loading skill...")
+                        } else if let error = detail?.error, !error.isEmpty {
+                            panelNotice(error, systemImage: "exclamationmark.triangle")
+                        } else if let content = detail?.content, !content.isEmpty {
+                            Text(content)
+                                .font(.system(.body, design: .monospaced))
+                                .foregroundStyle(HermexUIColors.primaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(12)
+                                .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        } else {
+                            Text("No Content")
+                                .font(.headline.weight(.semibold))
+                            Text("This skill has no content.")
+                                .font(.footnote)
+                                .foregroundStyle(HermexUIColors.secondaryText)
+                        }
+
+                        if let detail, !detail.linkedFiles.isEmpty {
+                            Text("Linked Files")
+                                .font(.caption.weight(.bold))
+                                .textCase(.uppercase)
+                                .foregroundStyle(HermexUIColors.secondaryText)
+
+                            ForEach(detail.linkedFiles, id: \.self) { fileName in
+                                panelActionButton(fileName, disabled: state.isLoadingSkillFile) {
+                                    onEvent(.loadSkillFile(fileName: fileName))
+                                }
+                            }
+                        }
+
+                        HStack {
+                            Spacer()
+                            panelActionButton("Done", isProminent: true) {
+                                onEvent(.dismissSkillDetail)
+                            }
+                        }
+                    }
+                    .padding(18)
+                }
+                .padding(16)
+            }
+        }
+    }
+
+    private func skillFileOverlay(_ fileName: String) -> some View {
+        ZStack {
+            Color.black.opacity(0.52)
+                .ignoresSafeArea()
+
+            ScrollView {
+                HermexGlassPanel(cornerRadius: 18) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text(fileName)
+                                .font(.title2.weight(.bold))
+                                .lineLimit(2)
+                            Spacer(minLength: 8)
+                            panelActionButton("Close") {
+                                onEvent(.dismissSkillFile)
+                            }
+                        }
+
+                        if state.isLoadingSkillFile {
+                            ProgressView("Loading file...")
+                        } else if let content = state.selectedSkillFileContent, !content.isEmpty {
+                            Text(content)
+                                .font(.system(.body, design: .monospaced))
+                                .foregroundStyle(HermexUIColors.primaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(12)
+                                .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        } else {
+                            Text("No Content")
+                                .font(.headline.weight(.semibold))
+                            Text("This file appears to be empty.")
+                                .font(.footnote)
+                                .foregroundStyle(HermexUIColors.secondaryText)
+                        }
+
+                        HStack {
+                            Spacer()
+                            panelActionButton("Done", isProminent: true) {
+                                onEvent(.dismissSkillFile)
+                            }
+                        }
+                    }
+                    .padding(18)
+                }
+                .padding(16)
             }
         }
     }

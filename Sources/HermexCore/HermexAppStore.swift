@@ -54,6 +54,10 @@ public enum HermexAppAction: Equatable, Sendable {
     case confirmTaskDeletion
     case dismissTaskDetails
     case toggleSkill(name: String, enabled: Bool)
+    case openSkillDetail(name: String)
+    case loadSkillFile(fileName: String)
+    case dismissSkillDetail
+    case dismissSkillFile
     case writeMemory(section: String, content: String)
     case selectInsightsRange(days: Int)
     case signOut
@@ -102,6 +106,7 @@ public struct HermexAppEnvironment: Sendable {
     public var loadTasks: @Sendable () async throws -> HermexJSONValue
     public var performTaskCommand: @Sendable (_ command: HermexTaskCommand) async throws -> HermexJSONValue
     public var loadSkills: @Sendable () async throws -> HermexJSONValue
+    public var loadSkillContent: @Sendable (_ name: String, _ file: String?) async throws -> HermexJSONValue
     public var toggleSkill: @Sendable (_ name: String, _ enabled: Bool) async throws -> HermexJSONValue
     public var loadMemory: @Sendable () async throws -> HermexJSONValue
     public var writeMemory: @Sendable (_ section: String, _ content: String) async throws -> HermexJSONValue
@@ -141,6 +146,7 @@ public struct HermexAppEnvironment: Sendable {
         loadTasks: @escaping @Sendable () async throws -> HermexJSONValue,
         performTaskCommand: @escaping @Sendable (_ command: HermexTaskCommand) async throws -> HermexJSONValue,
         loadSkills: @escaping @Sendable () async throws -> HermexJSONValue,
+        loadSkillContent: @escaping @Sendable (_ name: String, _ file: String?) async throws -> HermexJSONValue,
         toggleSkill: @escaping @Sendable (_ name: String, _ enabled: Bool) async throws -> HermexJSONValue,
         loadMemory: @escaping @Sendable () async throws -> HermexJSONValue,
         writeMemory: @escaping @Sendable (_ section: String, _ content: String) async throws -> HermexJSONValue,
@@ -171,6 +177,7 @@ public struct HermexAppEnvironment: Sendable {
         self.loadTasks = loadTasks
         self.performTaskCommand = performTaskCommand
         self.loadSkills = loadSkills
+        self.loadSkillContent = loadSkillContent
         self.toggleSkill = toggleSkill
         self.loadMemory = loadMemory
         self.writeMemory = writeMemory
@@ -322,6 +329,9 @@ public struct HermexAppEnvironment: Sendable {
             },
             loadSkills: {
                 try await panels.skills()
+            },
+            loadSkillContent: { name, file in
+                try await panels.skillContent(name: name, file: file)
             },
             toggleSkill: { name, enabled in
                 try await panels.toggleSkill(name: name, enabled: enabled)
@@ -543,6 +553,16 @@ public final class HermexAppStore {
             panels.isLoadingTaskOutput = false
         case .toggleSkill(let name, let enabled):
             updateSkill(named: name, enabled: enabled)
+        case .openSkillDetail(let name):
+            openPreviewSkillDetail(name: name)
+        case .loadSkillFile(let fileName):
+            loadPreviewSkillFile(fileName: fileName)
+        case .dismissSkillDetail:
+            clearSkillDetail()
+        case .dismissSkillFile:
+            panels.selectedSkillFileName = nil
+            panels.selectedSkillFileContent = nil
+            panels.isLoadingSkillFile = false
         case .writeMemory(let section, let content):
             updateMemorySection(section: section, content: content)
         case .selectInsightsRange(let days):
@@ -616,6 +636,39 @@ public final class HermexAppStore {
             panels.skills[index].enabled = enabled
             panels.errorMessage = nil
         }
+    }
+
+    private func openPreviewSkillDetail(name: String) {
+        let normalizedName = name.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !normalizedName.isEmpty else { return }
+        panels.selectedSkillName = normalizedName
+        panels.selectedSkillDetail = HermexSkillDetailDTO(
+            name: normalizedName,
+            content: "# \(normalizedName)\n\nPreview skill content for the shared Android UI.",
+            linkedFiles: ["SKILL.md", "README.md"]
+        )
+        panels.selectedSkillFileName = nil
+        panels.selectedSkillFileContent = nil
+        panels.isLoadingSkillDetail = false
+        panels.isLoadingSkillFile = false
+        panels.errorMessage = nil
+    }
+
+    private func loadPreviewSkillFile(fileName: String) {
+        guard panels.selectedSkillName != nil else { return }
+        panels.selectedSkillFileName = fileName
+        panels.selectedSkillFileContent = "Preview content for \(fileName)."
+        panels.isLoadingSkillFile = false
+        panels.errorMessage = nil
+    }
+
+    private func clearSkillDetail() {
+        panels.selectedSkillName = nil
+        panels.selectedSkillDetail = nil
+        panels.selectedSkillFileName = nil
+        panels.selectedSkillFileContent = nil
+        panels.isLoadingSkillDetail = false
+        panels.isLoadingSkillFile = false
     }
 
     private func applyPreviewTaskCommand(_ command: HermexTaskCommand) {
@@ -1091,6 +1144,16 @@ public final class HermexAppStore {
             panels.isLoadingTaskOutput = false
         case .toggleSkill(let name, let enabled):
             await toggleSkill(name: name, enabled: enabled)
+        case .openSkillDetail(let name):
+            await openSkillDetail(name: name)
+        case .loadSkillFile(let fileName):
+            await loadSkillFile(fileName: fileName)
+        case .dismissSkillDetail:
+            clearSkillDetail()
+        case .dismissSkillFile:
+            panels.selectedSkillFileName = nil
+            panels.selectedSkillFileContent = nil
+            panels.isLoadingSkillFile = false
         case .writeMemory(let section, let content):
             await writeMemory(section: section, content: content)
         case .selectInsightsRange(let days):
@@ -1801,6 +1864,58 @@ public final class HermexAppStore {
             panels.skills = previousSkills
             panels.errorMessage = String(describing: error)
         }
+    }
+
+    private func openSkillDetail(name: String) async {
+        let normalizedName = name.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !normalizedName.isEmpty else { return }
+        panels.selectedSkillName = normalizedName
+        panels.selectedSkillDetail = nil
+        panels.selectedSkillFileName = nil
+        panels.selectedSkillFileContent = nil
+        panels.isLoadingSkillDetail = true
+        panels.isLoadingSkillFile = false
+        panels.errorMessage = nil
+
+        do {
+            let response = try await environment.loadSkillContent(normalizedName, nil)
+            panels.selectedSkillDetail = HermexSkillDetailDTO.fromJSON(response)
+                ?? HermexSkillDetailDTO(name: normalizedName, error: "Could not decode skill content.")
+        } catch {
+            panels.selectedSkillDetail = HermexSkillDetailDTO(name: normalizedName, error: String(describing: error))
+            panels.errorMessage = String(describing: error)
+        }
+        panels.isLoadingSkillDetail = false
+    }
+
+    private func loadSkillFile(fileName: String) async {
+        let normalizedFileName = fileName.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !normalizedFileName.isEmpty,
+              let skillName = panels.selectedSkillName,
+              !skillName.isEmpty
+        else { return }
+
+        panels.selectedSkillFileName = normalizedFileName
+        panels.selectedSkillFileContent = nil
+        panels.isLoadingSkillFile = true
+        panels.errorMessage = nil
+        do {
+            let response = try await environment.loadSkillContent(skillName, normalizedFileName)
+            let detail = HermexSkillDetailDTO.fromJSON(response)
+            panels.selectedSkillFileContent = detail?.content ?? detail?.error ?? ""
+        } catch {
+            panels.selectedSkillFileContent = "Could not load file: \(String(describing: error))"
+        }
+        panels.isLoadingSkillFile = false
+    }
+
+    private func clearSkillDetail() {
+        panels.selectedSkillName = nil
+        panels.selectedSkillDetail = nil
+        panels.selectedSkillFileName = nil
+        panels.selectedSkillFileContent = nil
+        panels.isLoadingSkillDetail = false
+        panels.isLoadingSkillFile = false
     }
 
     private func signOut() async {

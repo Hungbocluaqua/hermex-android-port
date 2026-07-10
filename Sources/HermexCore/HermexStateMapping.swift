@@ -242,12 +242,78 @@ public extension HermexSkillDTO {
     static func fromJSON(_ value: HermexJSONValue) -> HermexSkillDTO? {
         guard let fields = value.objectValue else { return nil }
         guard let name = fields.stringValue("name", "id") else { return nil }
+        let disabled = fields.boolValue("disabled", "is_disabled")
+        let enabled: Bool?
+        if let explicitEnabled = fields.boolValue("enabled", "is_enabled") {
+            enabled = explicitEnabled
+        } else if let disabled {
+            enabled = !disabled
+        } else {
+            enabled = nil
+        }
         return HermexSkillDTO(
             name: name,
-            enabled: fields.boolValue("enabled", "is_enabled"),
-            summary: fields.stringValue("summary", "description")
+            enabled: enabled,
+            summary: fields.stringValue("summary", "description"),
+            category: fields.stringValue("category"),
+            description: fields.stringValue("description", "summary"),
+            path: fields.stringValue("path"),
+            disabled: disabled,
+            tags: fields.arrayValue("tags").compactMap { $0.stringValue },
+            relatedSkills: fields.arrayValue("related_skills", "relatedSkills").compactMap { $0.stringValue }
         )
     }
+}
+
+public extension HermexSkillDetailDTO {
+    static func fromJSON(_ value: HermexJSONValue) -> HermexSkillDetailDTO? {
+        guard let fields = value.objectValue else { return nil }
+        var linkedFiles = fields.arrayValue("files").compactMap { $0.stringValue }
+        if let linked = fields["linked_files"] {
+            linkedFiles.append(contentsOf: skillLinkedFileNames(from: linked))
+        }
+
+        return HermexSkillDetailDTO(
+            name: fields.stringValue("name"),
+            content: fields.stringValue("content"),
+            linkedFiles: uniqueSkillFileNames(linkedFiles),
+            error: fields.stringValue("error")
+        )
+    }
+}
+
+private func skillLinkedFileNames(from value: HermexJSONValue) -> [String] {
+    switch value {
+    case .string(let name):
+        let trimmed = name.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        return trimmed.isEmpty ? [] : [trimmed]
+    case .array(let values):
+        return values.flatMap { skillLinkedFileNames(from: $0) }
+    case .dictionary(let fields):
+        var names: [String] = []
+        for (key, nested) in fields {
+            switch nested {
+            case .string:
+                let trimmed = key.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+                if !trimmed.isEmpty { names.append(trimmed) }
+            default:
+                names.append(contentsOf: skillLinkedFileNames(from: nested))
+            }
+        }
+        return names
+    default:
+        return []
+    }
+}
+
+private func uniqueSkillFileNames(_ names: [String]) -> [String] {
+    var unique: [String] = []
+    for name in names {
+        if !unique.contains(name) {
+            unique.append(name)
+        }
+    }
+    return unique.sorted()
 }
 
 public extension HermexMemorySectionDTO {
