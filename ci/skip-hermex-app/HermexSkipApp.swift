@@ -453,6 +453,20 @@ private final class HermexSkipRuntime: @unchecked Sendable {
                     throw error
                 }
             },
+            performProjectCommand: { command in
+                let sessions = try await connection.currentSessionsRepository()
+                let projects = try await connection.currentProjectRepository()
+                switch command {
+                case .moveSession(let sessionID, let projectID):
+                    return try await sessions.move(id: sessionID, projectID: projectID)
+                case .create(let name, let color, _):
+                    return try await projects.create(name: name, color: color)
+                case .rename(let projectID, let name, let color):
+                    return try await projects.rename(projectID: projectID, name: name, color: color)
+                case .delete(let projectID):
+                    return try await projects.delete(projectID: projectID)
+                }
+            },
             updateServerRuntime: { server, authenticated in
                 if authenticated {
                     await connection.activateServer(server)
@@ -545,6 +559,10 @@ private actor HermexSkipConnection {
 
     func currentSessionsRepository() throws -> HermexSessionRepository {
         HermexSessionRepository(client: try currentClient())
+    }
+
+    func currentProjectRepository() throws -> HermexProjectRepository {
+        HermexProjectRepository(client: try currentClient())
     }
 
     func currentChatRepository() throws -> HermexChatRepository {

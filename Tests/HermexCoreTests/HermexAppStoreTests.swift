@@ -263,6 +263,30 @@ final class HermexAppStoreTests: XCTestCase {
         XCTAssertEqual(updates, [StoreProbe.RuntimeUpdate(server: second, authenticated: true)])
     }
 
+    func testProjectSelectionAndMutationsRouteThroughSharedStore() async throws {
+        let probe = StoreProbe()
+        let store = HermexAppStore(
+            appState: HermexAppState(route: .sessions),
+            sessions: HermexSessionListState(
+                sessions: [HermexSessionDTO(sessionId: "s1", title: "Workspace")],
+                projects: [HermexProjectDTO(projectId: "p1", name: "Work")]
+            ),
+            environment: environment(probe: probe)
+        )
+
+        await store.send(.selectProject("p1"))
+        XCTAssertEqual(store.sessions.selectedProjectID, "p1")
+
+        await store.send(.projectCommand(.create(name: "New", color: "#f5c542", moveSessionID: "s1")))
+
+        let commands = await probe.projectCommands
+        XCTAssertEqual(commands, [
+            .create(name: "New", color: "#f5c542", moveSessionID: "s1"),
+            .moveSession(sessionID: "s1", projectID: "p2")
+        ])
+        XCTAssertNil(store.sessions.errorMessage)
+    }
+
     func testSkillDetailsAndLinkedFilesRouteThroughEnvironment() async throws {
         let probe = StoreProbe()
         let store = HermexAppStore(
@@ -542,6 +566,9 @@ final class HermexAppStoreTests: XCTestCase {
             logout: {
                 try await probe.logout()
             },
+            performProjectCommand: { command in
+                try await probe.performProjectCommand(command)
+            },
             updateServerRuntime: { server, authenticated in
                 await probe.updateServerRuntime(server: server, authenticated: authenticated)
             }
@@ -590,6 +617,7 @@ private actor StoreProbe {
     private(set) var skillToggles: [SkillToggle] = []
     private(set) var skillContentRequests: [SkillContentRequest] = []
     private(set) var runtimeUpdates: [RuntimeUpdate] = []
+    private(set) var projectCommands: [HermexProjectCommand] = []
     private(set) var memoryWrites: [MemoryWrite] = []
     private(set) var loadedInsightsDays: [Int] = []
     private(set) var testedServer: HermexServerIdentity?
@@ -627,6 +655,19 @@ private actor StoreProbe {
             session: HermexSessionDTO(sessionId: sessionID, title: "Workspace", messageCount: 1, workspace: "Home"),
             messages: [HermexChatMessageDTO(role: "assistant", content: "Hello")]
         )
+    }
+
+    func performProjectCommand(_ command: HermexProjectCommand) async throws -> HermexJSONValue {
+        projectCommands.append(command)
+        switch command {
+        case .create:
+            return .dictionary([
+                "ok": .bool(true),
+                "project": .dictionary(["project_id": .string("p2"), "name": .string("New")])
+            ])
+        default:
+            return .dictionary(["ok": .bool(true)])
+        }
     }
 
     func startChat(

@@ -88,6 +88,30 @@ public struct HermexSessionRepository: Sendable {
     }
 }
 
+public struct HermexProjectRepository: Sendable {
+    private let client: HermexAPIClient
+
+    public init(client: HermexAPIClient) {
+        self.client = client
+    }
+
+    public func list() async throws -> HermexJSONValue {
+        try await client.projects()
+    }
+
+    public func create(name: String, color: String? = nil) async throws -> HermexJSONValue {
+        try await client.createProject(name: name, color: color)
+    }
+
+    public func rename(projectID: String, name: String, color: String? = nil) async throws -> HermexJSONValue {
+        try await client.renameProject(projectID: projectID, name: name, color: color)
+    }
+
+    public func delete(projectID: String) async throws -> HermexJSONValue {
+        try await client.deleteProject(projectID: projectID)
+    }
+}
+
 public struct HermexChatRepository: Sendable {
     private let client: HermexAPIClient
 

@@ -109,6 +109,11 @@ final class HermexUICompileTests: XCTestCase {
         XCTAssertNil(HermexUIEvent.attach.appAction)
         XCTAssertNil(HermexUIEvent.startVoice.appAction)
         XCTAssertNil(HermexUIEvent.stopVoice.appAction)
+        XCTAssertEqual(HermexUIEvent.selectProject("p1").appAction, .selectProject("p1"))
+        XCTAssertEqual(
+            HermexUIEvent.projectCommand(.moveSession(sessionID: "s1", projectID: "p1")).appAction,
+            .projectCommand(.moveSession(sessionID: "s1", projectID: "p1"))
+        )
         XCTAssertEqual(
             HermexUIEvent.chooseModel(HermexModelOption(id: "m", provider: "p")).appAction,
             .selectModel(HermexModelOption(id: "m", provider: "p"))

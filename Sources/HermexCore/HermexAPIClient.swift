@@ -223,15 +223,30 @@ public struct HermexAPIClient: @unchecked Sendable {
         try await sendJSON(endpoint: HermexEndpoints.projects, method: "GET")
     }
 
-    public func createProject(name: String) async throws -> HermexJSONValue {
-        try await sendJSON(endpoint: HermexEndpoints.createProject, method: "POST", body: HermexJSONObjectBody(["name": .string(name)]))
+    public func createProject(name: String, color: String? = nil) async throws -> HermexJSONValue {
+        var fields: [String: HermexJSONValue] = ["name": .string(name)]
+        if let color {
+            fields["color"] = .string(color)
+        }
+        try await sendJSON(
+            endpoint: HermexEndpoints.createProject,
+            method: "POST",
+            body: HermexJSONObjectBody(fields)
+        )
     }
 
-    public func renameProject(projectID: String, name: String) async throws -> HermexJSONValue {
+    public func renameProject(projectID: String, name: String, color: String? = nil) async throws -> HermexJSONValue {
+        var fields: [String: HermexJSONValue] = [
+            "project_id": .string(projectID),
+            "name": .string(name)
+        ]
+        if let color {
+            fields["color"] = .string(color)
+        }
         try await sendJSON(
             endpoint: HermexEndpoints.renameProject,
             method: "POST",
-            body: HermexJSONObjectBody(["project_id": .string(projectID), "name": .string(name)])
+            body: HermexJSONObjectBody(fields)
         )
     }
 

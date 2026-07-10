@@ -15,6 +15,8 @@ public enum HermexAppAction: Equatable, Sendable {
     case connectOnboarding
     case connectOnboardingDraft(serverURLString: String, displayName: String, password: String, customHeaderText: String)
     case selectServer(HermexServerIdentity)
+    case selectProject(String?)
+    case projectCommand(HermexProjectCommand)
     case openSession(String)
     case newChat
     case searchSessions(String)
@@ -73,11 +75,19 @@ public enum HermexTaskCommand: Equatable, Sendable {
     case loadOutput(jobID: String, limit: Int)
 }
 
+public enum HermexProjectCommand: Equatable, Sendable {
+    case moveSession(sessionID: String, projectID: String?)
+    case create(name: String, color: String?, moveSessionID: String?)
+    case rename(projectID: String, name: String, color: String?)
+    case delete(projectID: String)
+}
+
 public struct HermexAppEnvironment: Sendable {
     public var testServerConnection: @Sendable (_ server: HermexServerIdentity) async throws -> HermexJSONValue
     public var loginToServer: @Sendable (_ server: HermexServerIdentity, _ password: String) async throws -> HermexJSONValue
     public var loadSessions: @Sendable (_ includeArchived: Bool, _ archivedLimit: Int?) async throws -> HermexSessionsResponse
     public var loadSession: @Sendable (_ sessionID: String) async throws -> HermexSessionResponse
+    public var performProjectCommand: @Sendable (_ command: HermexProjectCommand) async throws -> HermexJSONValue
     public var startChat: @Sendable (
         _ sessionID: String?,
         _ message: String,
@@ -153,12 +163,19 @@ public struct HermexAppEnvironment: Sendable {
         writeMemory: @escaping @Sendable (_ section: String, _ content: String) async throws -> HermexJSONValue,
         loadInsights: @escaping @Sendable (_ days: Int) async throws -> HermexJSONValue,
         logout: @escaping @Sendable () async throws -> HermexJSONValue,
+        performProjectCommand: @escaping @Sendable (_ command: HermexProjectCommand) async throws -> HermexJSONValue = { _ in
+            .dictionary([
+                "ok": .bool(false),
+                "error": .string("Project operations are unavailable.")
+            ])
+        },
         updateServerRuntime: @escaping @Sendable (_ server: HermexServerIdentity, _ authenticated: Bool) async -> Void = { _, _ in }
     ) {
         self.testServerConnection = testServerConnection
         self.loginToServer = loginToServer
         self.loadSessions = loadSessions
         self.loadSession = loadSession
+        self.performProjectCommand = performProjectCommand
         self.startChat = startChat
         self.cancelStream = cancelStream
         self.respondApproval = respondApproval
@@ -190,6 +207,7 @@ public struct HermexAppEnvironment: Sendable {
 
     public static func live(client: HermexAPIClient) -> HermexAppEnvironment {
         let sessions = HermexSessionRepository(client: client)
+        let projects = HermexProjectRepository(client: client)
         let chat = HermexChatRepository(client: client)
         let auth = HermexAuthRepository(client: client)
         let workspace = HermexWorkspaceRepository(client: client)
@@ -350,6 +368,18 @@ public struct HermexAppEnvironment: Sendable {
             },
             logout: {
                 try await auth.logout()
+            },
+            performProjectCommand: { command in
+                switch command {
+                case .moveSession(let sessionID, let projectID):
+                    return try await sessions.move(id: sessionID, projectID: projectID)
+                case .create(let name, let color, _):
+                    return try await projects.create(name: name, color: color)
+                case .rename(let projectID, let name, let color):
+                    return try await projects.rename(projectID: projectID, name: name, color: color)
+                case .delete(let projectID):
+                    return try await projects.delete(projectID: projectID)
+                }
             }
         )
     }
@@ -446,6 +476,10 @@ public final class HermexAppStore {
             appState.auth = .loggedIn(server: server)
             settings.activeServer = server
             appState.route = .sessions
+        case .selectProject(let projectID):
+            sessions.selectedProjectID = projectID
+        case .projectCommand(let command):
+            applyPreviewProjectCommand(command)
         case .openSession(let sessionID):
             appState.selectedSessionID = sessionID
             appState.route = .chat
@@ -774,6 +808,37 @@ public final class HermexAppStore {
         panels.errorMessage = nil
     }
 
+    private func applyPreviewProjectCommand(_ command: HermexProjectCommand) {
+        switch command {
+        case .moveSession(let sessionID, let projectID):
+            if let index = sessions.sessions.firstIndex(where: { $0.id == sessionID }) {
+                sessions.sessions[index].projectId = projectID
+            }
+        case .create(let name, let color, let moveSessionID):
+            let projectID = "preview-project-" + String(sessions.projects.count + 1)
+            sessions.projects.append(HermexProjectDTO(projectId: projectID, name: name, color: color))
+            if let moveSessionID,
+               let index = sessions.sessions.firstIndex(where: { $0.id == moveSessionID }) {
+                sessions.sessions[index].projectId = projectID
+            }
+        case .rename(let projectID, let name, let color):
+            if let index = sessions.projects.firstIndex(where: { $0.id == projectID }) {
+                sessions.projects[index].name = name
+                if let color {
+                    sessions.projects[index].color = color
+                }
+            }
+        case .delete(let projectID):
+            sessions.projects.removeAll { $0.id == projectID }
+            for index in sessions.sessions.indices where sessions.sessions[index].projectId == projectID {
+                sessions.sessions[index].projectId = nil
+            }
+            if sessions.selectedProjectID == projectID {
+                sessions.selectedProjectID = nil
+            }
+        }
+    }
+
     private static func normalizedInsightsDays(_ days: Int) -> Int {
         switch days {
         case 1, 7, 30, 365:
@@ -1049,6 +1114,10 @@ public final class HermexAppStore {
             appState.auth = .loggedIn(server: server)
             appState.route = .sessions
             await refreshSessions()
+        case .selectProject(let projectID):
+            sessions.selectedProjectID = projectID
+        case .projectCommand(let command):
+            await runProjectCommand(command)
         case .openSession(let sessionID):
             await openSession(sessionID)
         case .newChat:
@@ -1216,6 +1285,58 @@ public final class HermexAppStore {
             sessions.errorMessage = String(describing: error)
         }
         sessions.isLoading = false
+    }
+
+    private func runProjectCommand(_ command: HermexProjectCommand) async {
+        guard !sessions.isViewingCachedData else {
+            sessions.errorMessage = "Project changes are unavailable while viewing cached data."
+            return
+        }
+
+        sessions.isLoading = true
+        sessions.errorMessage = nil
+        do {
+            let response = try await environment.performProjectCommand(command)
+            if let error = projectCommandError(response) {
+                throw HermexAPIError.network(error)
+            }
+
+            if case .create(_, _, let moveSessionID) = command,
+               let moveSessionID,
+               let projectID = projectID(from: response) {
+                let moveResponse = try await environment.performProjectCommand(
+                    .moveSession(sessionID: moveSessionID, projectID: projectID)
+                )
+                if let error = projectCommandError(moveResponse) {
+                    throw HermexAPIError.network("Project created, but moving the session failed: " + error)
+                }
+            }
+
+            if case .delete(let projectID) = command,
+               sessions.selectedProjectID == projectID {
+                sessions.selectedProjectID = nil
+            }
+            await refreshSessions()
+        } catch {
+            sessions.isLoading = false
+            sessions.errorMessage = String(describing: error)
+        }
+    }
+
+    private func projectCommandError(_ response: HermexJSONValue) -> String? {
+        let fields = response.objectValue ?? [:]
+        if fields.boolValue("ok") == false {
+            return fields.stringValue("error") ?? "Project operation failed."
+        }
+        return fields.stringValue("error")
+    }
+
+    private func projectID(from response: HermexJSONValue) -> String? {
+        let fields = response.objectValue ?? [:]
+        if let project = fields["project"]?.objectValue {
+            return project.stringValue("project_id", "id")
+        }
+        return fields.stringValue("project_id", "id")
     }
 
     private func testOnboardingConnection() async {

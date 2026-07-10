@@ -4,11 +4,27 @@ import HermexCore
 public struct HermexSessionListScreen: View {
     private static let searchChromeIconVisualSize: CGFloat = 36
     private static let searchChromeIconHitTarget: CGFloat = 44
+    private static let projectColorPalette = [
+        "#7cb9ff", "#f5c542", "#e94560", "#50c878",
+        "#c084fc", "#fb923c", "#67e8f9", "#f472b6"
+    ]
+
+    private struct ProjectEditorState: Equatable {
+        var projectID: String?
+        var sessionID: String?
+        var name: String
+        var color: String?
+    }
 
     private let state: HermexSessionListState
     private let onEvent: (HermexUIEvent) -> Void
     @State private var searchChromeIsExpanded: Bool
     @State private var searchText: String
+    @State private var projectsAreExpanded = false
+    @State private var projectPickerSessionID: String?
+    @State private var projectEditor: ProjectEditorState?
+    @State private var projectEditorError = ""
+    @State private var projectPendingDeletionID: String?
 
     public init(state: HermexSessionListState, onEvent: @escaping (HermexUIEvent) -> Void = { _ in }) {
         self.state = state
@@ -24,10 +40,31 @@ public struct HermexSessionListScreen: View {
             newSessionButton
             .padding(.trailing, HermexLayoutContract.sessionListFloatingButtonTrailing)
             .padding(.bottom, HermexLayoutContract.sessionListFloatingButtonBottom)
+
+            if let sessionID = projectPickerSessionID {
+                projectPickerOverlay(sessionID: sessionID)
+            }
+
+            if projectEditor != nil {
+                projectEditorOverlay
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(HermexUIColors.systemBackground.ignoresSafeArea())
         .foregroundStyle(HermexUIColors.primaryText)
+        .alert("Delete Project?", isPresented: projectDeletionBinding) {
+            Button("Cancel", role: .cancel) {
+                projectPendingDeletionID = nil
+            }
+            Button("Delete", role: .destructive) {
+                if let projectID = projectPendingDeletionID {
+                    onEvent(.projectCommand(.delete(projectID: projectID)))
+                }
+                projectPendingDeletionID = nil
+            }
+        } message: {
+            Text("Sessions in this project will be moved to No project. The sessions themselves will not be deleted.")
+        }
     }
 
     private var scrollContent: some View {
@@ -316,6 +353,8 @@ public struct HermexSessionListScreen: View {
 
     @ViewBuilder
     private var sessionContent: some View {
+        let visibleSessions = filteredSessions
+
         if state.isLoading {
             HStack(spacing: 10) {
                 ProgressView()
@@ -336,12 +375,12 @@ public struct HermexSessionListScreen: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(18)
             }
-        } else if state.sessions.isEmpty {
+        } else if visibleSessions.isEmpty {
             HermexGlassPanel(cornerRadius: 18) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("No sessions yet")
+                    Text(state.selectedProjectID == nil ? "No sessions yet" : "No sessions in this project")
                         .font(.headline.weight(.semibold))
-                    Text("Tap Chat to start.")
+                    Text(state.selectedProjectID == nil ? "Tap Chat to start." : "Choose another project or tap Chat to start.")
                         .font(.caption)
                         .foregroundStyle(HermexUIColors.secondaryText)
                 }
@@ -350,7 +389,7 @@ public struct HermexSessionListScreen: View {
             }
         } else {
             VStack(spacing: 0) {
-                ForEach(state.sessions, id: \.id) { session in
+                ForEach(visibleSessions, id: \.id) { session in
                     sessionRow(session)
                         .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
                         .hermexContentShapeRectangle()
@@ -369,6 +408,10 @@ public struct HermexSessionListScreen: View {
                 .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
                 .padding(.top, HermexLayoutContract.sessionListUtilityTopPadding)
                 .padding(.bottom, HermexLayoutContract.sessionListUtilityRowSpacing)
+
+            projectsSection
+                .padding(.horizontal, HermexLayoutContract.sessionListHorizontalPadding)
+                .padding(.top, HermexLayoutContract.sessionListUtilityRowSpacing)
 
             selectorRow(
                 icon: "person.crop.circle.badge.gearshape",
@@ -396,6 +439,137 @@ public struct HermexSessionListScreen: View {
             sidebarNavigationRow("hammer", "Skills", .selectPanel(.skills))
             sidebarNavigationRow("brain.head.profile", "Memory", .selectPanel(.memory))
             sidebarNavigationRow("chart.bar", "Insights", .selectPanel(.insights))
+        }
+    }
+
+    private var projectsSection: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 8) {
+                Button {
+                    projectsAreExpanded.toggle()
+                } label: {
+                    HStack(spacing: 18) {
+                        Image(systemName: HermexSystemImageName("folder"))
+                            .font(.system(size: HermexLayoutContract.sessionListUtilityIconSize, weight: .semibold))
+                            .frame(width: HermexLayoutContract.sessionListUtilityIconSlotWidth)
+
+                        Text("Projects")
+                            .font(.body.weight(.semibold))
+
+                        Image(systemName: HermexSystemImageName(projectsAreExpanded ? "chevron.down" : "chevron.forward"))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(HermexUIColors.secondaryText)
+                    }
+                    .frame(minHeight: HermexLayoutContract.sessionListUtilityRowMinimumHeight)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(projectsAreExpanded ? "Collapse projects" : "Expand projects")
+
+                Spacer(minLength: 0)
+
+                if projectsAreExpanded {
+                    Button {
+                        beginProjectEditor(sessionID: nil)
+                    } label: {
+                        Image(systemName: HermexSystemImageName("plus"))
+                            .font(.body.weight(.semibold))
+                            .frame(width: 36, height: 36)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add project")
+                    .disabled(state.isViewingCachedData)
+                }
+
+                if state.selectedProjectID != nil {
+                    Button {
+                        onEvent(.selectProject(nil))
+                    } label: {
+                        Text("All")
+                            .font(.footnote.weight(.medium))
+                            .padding(.horizontal, 10)
+                            .frame(minHeight: 32)
+                            .background(HermexUIColors.glassFillStrong, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Show all projects")
+                }
+            }
+
+            if projectsAreExpanded {
+                if state.projects.isEmpty {
+                    Text("No projects")
+                        .font(.footnote)
+                        .foregroundStyle(HermexUIColors.secondaryText)
+                        .padding(.leading, HermexLayoutContract.sessionListUtilityIconSlotWidth + 18)
+                        .padding(.vertical, 8)
+                } else {
+                    ForEach(state.projects, id: \.id) { project in
+                        projectRow(project)
+                    }
+                }
+            }
+        }
+    }
+
+    private func projectRow(_ project: HermexProjectDTO) -> some View {
+        let projectID = project.id
+        let isSelected = state.selectedProjectID == projectID
+        let count = state.sessions.filter { $0.projectId == projectID }.count
+
+        return HStack(spacing: 6) {
+            Button {
+                onEvent(.selectProject(isSelected ? nil : projectID))
+            } label: {
+                HStack(spacing: 12) {
+                    Circle()
+                        .fill(projectColor(project.color))
+                        .frame(width: 8, height: 8)
+
+                    Text(project.name ?? "Untitled project")
+                        .font(.body)
+                        .lineLimit(1)
+
+                    Spacer(minLength: 0)
+
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(HermexUIColors.secondaryText)
+                    }
+
+                    if isSelected {
+                        Image(systemName: HermexSystemImageName("checkmark"))
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(HermexUIColors.gold)
+                    }
+                }
+                .padding(.leading, HermexLayoutContract.sessionListUtilityIconSlotWidth + 18)
+                .frame(minHeight: 40, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .disabled(state.isViewingCachedData)
+
+            Menu {
+                Button {
+                    beginProjectEditor(project: project)
+                } label: {
+                    Label("Rename Project", systemImage: HermexSystemImageName("pencil"))
+                }
+                .disabled(state.isViewingCachedData)
+
+                Button(role: .destructive) {
+                    projectPendingDeletionID = projectID
+                } label: {
+                    Label("Delete Project", systemImage: HermexSystemImageName("trash"))
+                }
+                .disabled(state.isViewingCachedData)
+            } label: {
+                Image(systemName: HermexSystemImageName("ellipsis"))
+                    .font(.body.weight(.semibold))
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Project actions")
         }
     }
 
@@ -528,7 +702,7 @@ public struct HermexSessionListScreen: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Button {
-                onEvent(.selectProject(session.projectId))
+                projectPickerSessionID = session.id
             } label: {
                 Image(systemName: HermexSystemImageName("ellipsis"))
                     .font(.headline.weight(.semibold))
@@ -559,6 +733,232 @@ public struct HermexSessionListScreen: View {
                 .frame(height: 0.6)
         }
         .hermexContentShapeRectangle()
+    }
+
+    private var filteredSessions: [HermexSessionDTO] {
+        let query = state.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return state.sessions.filter { session in
+            if let selectedProjectID = state.selectedProjectID,
+               session.projectId != selectedProjectID {
+                return false
+            }
+            guard !query.isEmpty else { return true }
+            return [session.title, session.workspace, session.sessionId]
+                .compactMap { $0?.lowercased() }
+                .contains { $0.contains(query) }
+        }
+    }
+
+    private var projectDeletionBinding: Binding<Bool> {
+        Binding(
+            get: { projectPendingDeletionID != nil },
+            set: { isPresented in
+                if !isPresented {
+                    projectPendingDeletionID = nil
+                }
+            }
+        )
+    }
+
+    private func projectPickerOverlay(sessionID: String) -> some View {
+        ZStack {
+            Color.black.opacity(0.52)
+                .ignoresSafeArea()
+
+            HermexGlassPanel(cornerRadius: 18) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Move to Project")
+                            .font(.title3.weight(.bold))
+                        Spacer()
+                        Button {
+                            projectPickerSessionID = nil
+                        } label: {
+                            Image(systemName: HermexSystemImageName("xmark"))
+                                .frame(width: 36, height: 36)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Close project picker")
+                    }
+
+                    projectPickerRow(title: "No project", color: HermexUIColors.secondaryText) {
+                        onEvent(.projectCommand(.moveSession(sessionID: sessionID, projectID: nil)))
+                        projectPickerSessionID = nil
+                    }
+
+                    ForEach(state.projects, id: \.id) { project in
+                        projectPickerRow(title: project.name ?? "Untitled project", color: projectColor(project.color)) {
+                            onEvent(.projectCommand(.moveSession(sessionID: sessionID, projectID: project.id)))
+                            projectPickerSessionID = nil
+                        }
+                    }
+
+                    Button {
+                        projectPickerSessionID = nil
+                        beginProjectEditor(sessionID: sessionID)
+                    } label: {
+                        Label("New Project", systemImage: HermexSystemImageName("plus"))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(state.isViewingCachedData)
+                }
+                .padding(18)
+            }
+            .padding(16)
+        }
+    }
+
+    private func projectPickerRow(title: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 9, height: 9)
+                Text(title)
+                    .font(.body)
+                Spacer(minLength: 0)
+                Image(systemName: HermexSystemImageName("chevron.forward"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(HermexUIColors.secondaryText)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var projectEditorOverlay: some View {
+        if let editor = projectEditor {
+            ZStack {
+                Color.black.opacity(0.52)
+                    .ignoresSafeArea()
+
+                ScrollView {
+                    HermexGlassPanel(cornerRadius: 18) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text(editor.projectID == nil ? "New Project" : "Rename Project")
+                                    .font(.title2.weight(.bold))
+                                Spacer()
+                                Button {
+                                    projectEditor = nil
+                                    projectEditorError = ""
+                                } label: {
+                                    Image(systemName: HermexSystemImageName("xmark"))
+                                        .frame(width: 36, height: 36)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Cancel project editor")
+                            }
+
+                            TextField("Project name", text: projectNameBinding)
+                                .textFieldStyle(.plain)
+                                .foregroundStyle(HermexUIColors.primaryText)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 12)
+                                .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                            Text("Color")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(HermexUIColors.secondaryText)
+
+                            HStack(spacing: 10) {
+                                ForEach(Self.projectColorPalette, id: \.self) { color in
+                                    Button {
+                                        updateProjectColor(color)
+                                    } label: {
+                                        Circle()
+                                            .fill(projectColor(color))
+                                            .frame(width: 24, height: 24)
+                                            .overlay {
+                                                if editor.color == color {
+                                                    Circle().stroke(HermexUIColors.primaryText, lineWidth: 2)
+                                                }
+                                            }
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Choose project color")
+                                }
+                            }
+
+                            if !projectEditorError.isEmpty {
+                                Text(projectEditorError)
+                                    .font(.footnote)
+                                    .foregroundStyle(Color.orange)
+                            }
+
+                            HStack {
+                                Spacer()
+                                Button(editor.projectID == nil ? "Create" : "Save") {
+                                    saveProjectEditor()
+                                }
+                                .font(.headline.weight(.semibold))
+                                .disabled(editor.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            }
+                        }
+                        .padding(18)
+                    }
+                    .padding(16)
+                }
+            }
+        }
+    }
+
+    private var projectNameBinding: Binding<String> {
+        Binding(
+            get: { projectEditor?.name ?? "" },
+            set: { value in
+                projectEditor?.name = value
+                projectEditorError = ""
+            }
+        )
+    }
+
+    private func beginProjectEditor(project: HermexProjectDTO? = nil, sessionID: String? = nil) {
+        projectEditorError = ""
+        projectEditor = ProjectEditorState(
+            projectID: project?.id,
+            sessionID: sessionID,
+            name: project?.name ?? "",
+            color: project?.color ?? Self.projectColorPalette.first
+        )
+    }
+
+    private func updateProjectColor(_ color: String) {
+        guard var editor = projectEditor else { return }
+        editor.color = color
+        projectEditor = editor
+    }
+
+    private func saveProjectEditor() {
+        guard let editor = projectEditor else { return }
+        let name = editor.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else {
+            projectEditorError = "Enter a project name."
+            return
+        }
+        if let projectID = editor.projectID {
+            onEvent(.projectCommand(.rename(projectID: projectID, name: name, color: editor.color)))
+        } else {
+            onEvent(.projectCommand(.create(name: name, color: editor.color, moveSessionID: editor.sessionID)))
+        }
+        projectEditor = nil
+        projectEditorError = ""
+    }
+
+    private func projectColor(_ hex: String?) -> Color {
+        switch hex?.lowercased() {
+        case "#7cb9ff": return Color(red: 0.49, green: 0.73, blue: 1.0)
+        case "#f5c542": return Color(red: 0.96, green: 0.77, blue: 0.26)
+        case "#e94560": return Color(red: 0.91, green: 0.27, blue: 0.38)
+        case "#50c878": return Color(red: 0.31, green: 0.78, blue: 0.47)
+        case "#c084fc": return Color(red: 0.75, green: 0.52, blue: 0.99)
+        case "#fb923c": return Color(red: 0.98, green: 0.57, blue: 0.24)
+        case "#67e8f9": return Color(red: 0.40, green: 0.91, blue: 0.98)
+        case "#f472b6": return Color(red: 0.96, green: 0.45, blue: 0.71)
+        default: return HermexUIColors.secondaryText
+        }
     }
 
     private func sessionMetadata(_ session: HermexSessionDTO) -> String {

@@ -17,6 +17,7 @@ public enum HermexUIEvent: Equatable, Sendable {
     case selectServer(HermexServerIdentity)
     case searchSessions(String)
     case selectProject(String?)
+    case projectCommand(HermexProjectCommand)
     case toggleArchived
     case updateDraft(String)
     case sendDraft
@@ -101,6 +102,10 @@ public extension HermexUIEvent {
             )
         case .selectServer(let server):
             return .selectServer(server)
+        case .selectProject(let projectID):
+            return .selectProject(projectID)
+        case .projectCommand(let command):
+            return .projectCommand(command)
         case .searchSessions(let query):
             return .searchSessions(query)
         case .toggleArchived:
@@ -175,8 +180,7 @@ public extension HermexUIEvent {
             return .selectInsightsRange(days: days)
         case .signOut:
             return .signOut
-        case .selectProject,
-             .attach,
+        case .attach,
              .startVoice,
              .stopVoice,
              .selectModel,

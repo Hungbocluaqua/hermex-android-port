@@ -98,6 +98,19 @@ def main() -> int:
     ok &= require("sessionListBottomSpacerHeight" in session_list, "Session list must reserve the iOS bottom spacer behind the floating chat button.")
     ok &= require("sessionListRowActionSize" in session_list, "Session rows must preserve the trailing action button contract.")
     ok &= require("searchChrome" in session_list and "searchChromeIsExpanded" in session_list, "Session list must expose iOS-style expandable search chrome.")
+    ok &= require(
+        "projectsSection" in session_list
+        and "projectPickerOverlay" in session_list
+        and "projectEditorOverlay" in session_list
+        and ".projectCommand" in session_list,
+        "Session list must expose shared project filtering, move, and CRUD controls."
+    )
+    ok &= require(
+        "HermexProjectCommand" in store
+        and "performProjectCommand" in store
+        and "runProjectCommand" in store,
+        "Shared store must route session/project management through typed project commands."
+    )
     ok &= require("HermexSystemImageName(\"square.and.pencil\")" in session_list, "Skip Android must not render a warning placeholder for the floating Chat icon.")
     ok &= require("func HermexSystemImageName" in chrome, "Shared chrome must expose Skip-safe system image mapping.")
     ok &= require('case "folder", "folder.fill":\n        return "folder"' in chrome or 'case "folder":\n        return "folder"' in chrome, "Skip icon map must keep folder icons distinct.")
