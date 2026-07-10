@@ -483,7 +483,7 @@ private final class HermexSkipStatusNotifier: HermexStatusNotifier, @unchecked S
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
-            .setSubText(streamID.map { String($0.prefix(8)) })
+            .setSubText(streamID ?? "")
             .build()
         runCatching { notificationManager.notify(Self.notificationID(for: sessionID), notification) }
     }
