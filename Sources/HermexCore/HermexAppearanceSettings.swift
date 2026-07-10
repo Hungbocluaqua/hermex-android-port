@@ -49,7 +49,7 @@ public enum HermexAppearanceSettings {
         var result = ""
         for character in rawValue {
             guard isAllowedInitialCharacter(character) else { continue }
-            result.append(contentsOf: String(character).uppercased())
+            result = result + String(character).uppercased()
             if result.count == 3 { break }
         }
         return result
@@ -80,7 +80,7 @@ public enum HermexAppearanceSettings {
                     current = ""
                 }
             } else {
-                current.append(contentsOf: String(character))
+                current = current + String(character)
             }
         }
         if !current.isEmpty { words.append(current) }
@@ -88,7 +88,7 @@ public enum HermexAppearanceSettings {
         var result = ""
         for word in words {
             if let first = word.first {
-                result.append(contentsOf: String(first).uppercased())
+                result = result + String(first).uppercased()
             }
             if result.count == 2 { break }
         }
