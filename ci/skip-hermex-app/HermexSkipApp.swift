@@ -136,17 +136,17 @@ public final class HermexSkipAppDelegate: Sendable {
 
 #if SKIP
 private final class HermexSkipAttachmentPicker: HermexAttachmentPicker, @unchecked Sendable {
-    private var documentLauncher: ActivityResultLauncher<kotlin.Array<String>>?
-    private var photoLauncher: ActivityResultLauncher<kotlin.Array<String>>?
+    private var documentLauncher: ActivityResultLauncher<String>?
+    private var photoLauncher: ActivityResultLauncher<String>?
     private let documentContinuations: MutableList<Continuation<[URL]>> = mutableListOf<Continuation<[URL]>>()
     private let photoContinuations: MutableList<Continuation<[URL]>> = mutableListOf<Continuation<[URL]>>()
 
     init() {
         guard let activity = UIApplication.shared.androidActivity else { return }
-        documentLauncher = activity.registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris in
+        documentLauncher = activity.registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris in
             self.finish(uris, continuations: self.documentContinuations)
         }
-        photoLauncher = activity.registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris in
+        photoLauncher = activity.registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris in
             self.finish(uris, continuations: self.photoContinuations)
         }
     }
@@ -157,7 +157,7 @@ private final class HermexSkipAttachmentPicker: HermexAttachmentPicker, @uncheck
         }
         return await suspendCoroutine { continuation in
             documentContinuations.add(continuation)
-            launcher.launch(arrayOf("*/*"))
+            launcher.launch("*/*")
         }
     }
 
@@ -167,7 +167,7 @@ private final class HermexSkipAttachmentPicker: HermexAttachmentPicker, @uncheck
         }
         return await suspendCoroutine { continuation in
             photoContinuations.add(continuation)
-            launcher.launch(arrayOf("image/*"))
+            launcher.launch("image/*")
         }
     }
 
@@ -180,7 +180,12 @@ private final class HermexSkipAttachmentPicker: HermexAttachmentPicker, @uncheck
             waiting = ArrayList(continuations)
             continuations.clear()
         }
-        let files = uris.mapNotNull { copyToCache($0) }
+        var files: [URL] = []
+        for uri in uris {
+            if let file = copyToCache(uri) {
+                files.append(file)
+            }
+        }
         waiting?.forEach { $0.resume(files) }
     }
 
@@ -339,7 +344,7 @@ private final class HermexSkipShareIngress: HermexShareIngress, @unchecked Senda
                 return URL(string: uri)
             }
         } else {
-            urls = (payload.uris ?? []).compactMap(URL.init(string:))
+            urls = (payload.uris ?? []).compactMap { URL.init(string: $0) }
         }
         let text = payload.text?.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         guard text?.isEmpty == false || !urls.isEmpty else { return nil }
