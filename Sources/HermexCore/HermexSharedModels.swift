@@ -4,11 +4,56 @@ public struct HermexServerIdentity: Codable, Equatable, Sendable {
     public var baseURL: URL
     public var displayName: String
     public var customHeaders: [String: String]
+    public var initials: String
+    public var headerLogoColorHex: String
 
-    public init(baseURL: URL, displayName: String, customHeaders: [String: String] = [:]) {
+    public init(
+        baseURL: URL,
+        displayName: String,
+        customHeaders: [String: String] = [:],
+        initials: String = "",
+        headerLogoColorHex: String = HermexAppearanceSettings.defaultHeaderLogoColorHex
+    ) {
         self.baseURL = baseURL
         self.displayName = displayName
         self.customHeaders = customHeaders
+        self.initials = HermexAppearanceSettings.normalizedInitials(initials)
+        self.headerLogoColorHex = HermexAppearanceSettings.normalizedHex(headerLogoColorHex)
+            ?? HermexAppearanceSettings.defaultHeaderLogoColorHex
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case baseURL
+        case displayName
+        case customHeaders
+        case initials
+        case headerLogoColorHex
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let baseURL = try container.decode(URL.self, forKey: .baseURL)
+        let displayName = try container.decodeIfPresent(String.self, forKey: .displayName) ?? ""
+        let customHeaders = try container.decodeIfPresent([String: String].self, forKey: .customHeaders) ?? [:]
+        let initials = try container.decodeIfPresent(String.self, forKey: .initials) ?? ""
+        let headerLogoColorHex = try container.decodeIfPresent(String.self, forKey: .headerLogoColorHex)
+            ?? HermexAppearanceSettings.defaultHeaderLogoColorHex
+        self.init(
+            baseURL: baseURL,
+            displayName: displayName,
+            customHeaders: customHeaders,
+            initials: initials,
+            headerLogoColorHex: headerLogoColorHex
+        )
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(baseURL, forKey: .baseURL)
+        try container.encode(displayName, forKey: .displayName)
+        try container.encode(customHeaders, forKey: .customHeaders)
+        try container.encode(initials, forKey: .initials)
+        try container.encode(headerLogoColorHex, forKey: .headerLogoColorHex)
     }
 }
 

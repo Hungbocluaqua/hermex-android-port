@@ -19,6 +19,36 @@ final class HermexAppStateTests: XCTestCase {
         XCTAssertEqual(decoded, state)
     }
 
+    func testLegacyServerIdentityDecodesAppearanceDefaults() throws {
+        let data = Data("""
+        {
+          "baseURL": "https://example.test/",
+          "displayName": "Example",
+          "customHeaders": {}
+        }
+        """.utf8)
+
+        let server = try JSONDecoder().decode(HermexServerIdentity.self, from: data)
+
+        XCTAssertEqual(server.initials, "")
+        XCTAssertEqual(server.headerLogoColorHex, HermexAppearanceSettings.defaultHeaderLogoColorHex)
+    }
+
+    func testAppearanceHelpersNormalizeIdentityAndColor() {
+        XCTAssertEqual(HermexAppearanceSettings.normalizedInitials(" p-x! "), "PX")
+        XCTAssertEqual(
+            HermexAppearanceSettings.displayInitials(
+                displayName: "Hermex Preview",
+                storedInitials: "",
+                fallbackFullName: "Fallback User"
+            ),
+            "HP"
+        )
+        XCTAssertEqual(HermexAppearanceSettings.normalizedHex(" 5b7cff "), "#5B7CFF")
+        XCTAssertTrue(HermexAppearanceSettings.prefersDarkForeground(for: "#FFFFFF"))
+        XCTAssertFalse(HermexAppearanceSettings.prefersDarkForeground(for: "#111111"))
+    }
+
     func testChatStateDefaultsRepresentIdleComposer() {
         let state = HermexChatState()
 

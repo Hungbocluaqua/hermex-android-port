@@ -6,12 +6,16 @@ public struct HermexSettingsScreen: View {
     private let onEvent: (HermexUIEvent) -> Void
     @State private var isEditingServer = false
     @State private var serverDisplayNameDraft: String
+    @State private var serverInitialsDraft: String
+    @State private var serverHeaderLogoColorDraft: String
     @State private var serverCustomHeaderTextDraft: String
 
     public init(state: HermexSettingsState, onEvent: @escaping (HermexUIEvent) -> Void = { _ in }) {
         self.state = state
         self.onEvent = onEvent
         _serverDisplayNameDraft = State(initialValue: state.activeServer?.displayName ?? "")
+        _serverInitialsDraft = State(initialValue: state.activeServer?.initials ?? "")
+        _serverHeaderLogoColorDraft = State(initialValue: state.activeServer?.headerLogoColorHex ?? HermexAppearanceSettings.defaultHeaderLogoColorHex)
         _serverCustomHeaderTextDraft = State(initialValue: Self.headerText(for: state.activeServer))
     }
 
@@ -59,7 +63,7 @@ public struct HermexSettingsScreen: View {
             if let server = state.activeServer {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(alignment: .top, spacing: 12) {
-                        serverIcon(systemImage: "server.rack")
+                        serverAvatar(server)
 
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -221,7 +225,7 @@ public struct HermexSettingsScreen: View {
             onEvent(.selectServer(server))
         } label: {
             HStack(alignment: .top, spacing: 12) {
-                serverIcon(systemImage: isActive(server) ? "checkmark.circle.fill" : "server.rack")
+                serverAvatar(server)
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text(server.displayName)
@@ -324,6 +328,31 @@ public struct HermexSettingsScreen: View {
                                     .stroke(HermexUIColors.hairline, lineWidth: 0.7)
                             }
 
+                        HStack(spacing: 10) {
+                            TextField("Initials", text: $serverInitialsDraft)
+                                .textFieldStyle(.plain)
+                                .foregroundStyle(HermexUIColors.primaryText)
+                                .textCase(.uppercase)
+                                .padding(.horizontal, 14)
+                                .frame(minHeight: 50)
+                                .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(HermexUIColors.hairline, lineWidth: 0.7)
+                                }
+
+                            Text("\(HermexAppearanceSettings.displayInitials(displayName: serverDisplayNameDraft, storedInitials: serverInitialsDraft, fallbackFullName: state.activeServer?.baseURL.host ?? "Hermex"))")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(HermexUIColors.prefersDarkForeground(for: serverHeaderLogoColorDraft) ? Color.black : Color.white)
+                                .frame(width: 42, height: 42)
+                                .background(HermexUIColors.color(for: serverHeaderLogoColorDraft), in: Circle())
+                                .overlay {
+                                    Circle().stroke(HermexUIColors.hairline, lineWidth: 0.7)
+                                }
+                        }
+
+                        headerLogoColorEditor
+
                         Text("Custom headers")
                             .font(.caption.weight(.bold))
                             .textCase(.uppercase)
@@ -351,6 +380,8 @@ public struct HermexSettingsScreen: View {
                             settingsEditorButton("Save", isProminent: true) {
                                 onEvent(.updateActiveServer(
                                     displayName: serverDisplayNameDraft,
+                                    initials: serverInitialsDraft,
+                                    headerLogoColorHex: serverHeaderLogoColorDraft,
                                     customHeaderText: serverCustomHeaderTextDraft
                                 ))
                                 isEditingServer = false
@@ -394,12 +425,22 @@ public struct HermexSettingsScreen: View {
             .background(tint.opacity(0.12), in: Capsule())
     }
 
-    private func serverIcon(systemImage: String) -> some View {
-        Image(systemName: HermexSystemImageName(systemImage))
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(HermexUIColors.primaryText)
+    private func serverAvatar(_ server: HermexServerIdentity) -> some View {
+        let fallbackName = server.baseURL.host ?? server.baseURL.absoluteString
+        let initials = HermexAppearanceSettings.displayInitials(
+            displayName: server.displayName,
+            storedInitials: server.initials,
+            fallbackFullName: fallbackName
+        )
+        let color = HermexUIColors.color(for: server.headerLogoColorHex)
+        return Text(initials)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(HermexUIColors.prefersDarkForeground(for: server.headerLogoColorHex) ? Color.black : Color.white)
             .frame(width: 38, height: 38)
-            .background(HermexUIColors.glassFillStrong, in: Circle())
+            .background(color, in: Circle())
+            .overlay {
+                Circle().stroke(HermexUIColors.hairline, lineWidth: 0.7)
+            }
     }
 
     private func emptyState(_ text: String, systemImage: String) -> some View {
@@ -417,8 +458,60 @@ public struct HermexSettingsScreen: View {
 
     private func beginServerEditing(_ server: HermexServerIdentity) {
         serverDisplayNameDraft = server.displayName
+        serverInitialsDraft = server.initials
+        serverHeaderLogoColorDraft = server.headerLogoColorHex
         serverCustomHeaderTextDraft = Self.headerText(for: server)
         isEditingServer = true
+    }
+
+    private var headerLogoColorEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Header Logo Color")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(HermexUIColors.primaryText)
+                Spacer(minLength: 8)
+                Text(HermexAppearanceSettings.headerLogoColorPresets.first {
+                    $0.hex == HermexAppearanceSettings.normalizedHex(serverHeaderLogoColorDraft)
+                }?.name ?? "Custom")
+                    .font(.caption)
+                    .foregroundStyle(HermexUIColors.secondaryText)
+            }
+
+            HStack(spacing: 10) {
+                ForEach(HermexAppearanceSettings.headerLogoColorPresets) { preset in
+                    Button {
+                        serverHeaderLogoColorDraft = preset.hex
+                    } label: {
+                        Circle()
+                            .fill(HermexUIColors.color(for: preset.hex))
+                            .frame(width: 30, height: 30)
+                            .overlay {
+                                Circle().stroke(
+                                    HermexAppearanceSettings.normalizedHex(serverHeaderLogoColorDraft) == preset.hex
+                                        ? HermexUIColors.primaryText
+                                        : HermexUIColors.hairline,
+                                    lineWidth: HermexAppearanceSettings.normalizedHex(serverHeaderLogoColorDraft) == preset.hex ? 2 : 0.7
+                                )
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(preset.name)
+                }
+            }
+
+            TextField("Hex color", text: $serverHeaderLogoColorDraft)
+                .textFieldStyle(.plain)
+                .foregroundStyle(HermexUIColors.primaryText)
+                .font(.footnote.monospaced())
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(HermexUIColors.glassFillStrong, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .stroke(HermexUIColors.hairline, lineWidth: 0.7)
+                }
+        }
     }
 
     private static func headerText(for server: HermexServerIdentity?) -> String {

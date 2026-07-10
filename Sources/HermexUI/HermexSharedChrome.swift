@@ -20,6 +20,24 @@ enum HermexUIColors {
     static let glassFillStrong = Color.white.opacity(0.12)
     static let hairline = Color.white.opacity(0.16)
     static let faintHairline = Color.white.opacity(0.08)
+
+    static func color(for rawValue: String) -> Color {
+        guard let hex = HermexAppearanceSettings.normalizedHex(rawValue),
+              let value = UInt32(String(hex.dropFirst()), radix: 16)
+        else {
+            return gold
+        }
+
+        return Color(
+            red: Double((value & 0xFF0000) >> 16) / 255.0,
+            green: Double((value & 0x00FF00) >> 8) / 255.0,
+            blue: Double(value & 0x0000FF) / 255.0
+        )
+    }
+
+    static func prefersDarkForeground(for rawValue: String) -> Bool {
+        HermexAppearanceSettings.prefersDarkForeground(for: rawValue)
+    }
 }
 
 func HermexSystemImageName(_ name: String) -> String {
@@ -162,7 +180,11 @@ public struct HermexScreenTitle: View {
 }
 
 public struct HermexLogoMark: View {
-    public init() {}
+    private let accent: Color
+
+    public init(accent: Color = Color(red: 1.0, green: 0.843, blue: 0.0)) {
+        self.accent = accent
+    }
 
     public var body: some View {
         ZStack {
@@ -170,7 +192,7 @@ public struct HermexLogoMark: View {
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .foregroundStyle(HermexUIColors.gold)
+                .foregroundStyle(accent)
             hermexLogoImage("hermes-shading-overlay")
                 .resizable()
                 .scaledToFit()

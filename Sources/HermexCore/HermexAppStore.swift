@@ -6,11 +6,16 @@ import Observation
 private func hermexUpdatedServer(
     _ server: HermexServerIdentity,
     displayName: String,
+    initials: String,
+    headerLogoColorHex: String,
     customHeaderText: String
 ) -> HermexServerIdentity {
     var updated = server
     let trimmedName = displayName.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
     updated.displayName = trimmedName.isEmpty ? (server.baseURL.host ?? "Hermex") : trimmedName
+    updated.initials = HermexAppearanceSettings.normalizedInitials(initials)
+    updated.headerLogoColorHex = HermexAppearanceSettings.normalizedHex(headerLogoColorHex)
+        ?? server.headerLogoColorHex
 
     var headers: [String: String] = [:]
     let normalizedText = customHeaderText.replacingOccurrences(of: "\r\n", with: "\n")
@@ -41,7 +46,7 @@ public enum HermexAppAction: Equatable, Sendable {
     case connectOnboardingDraft(serverURLString: String, displayName: String, password: String, customHeaderText: String)
     case selectServer(HermexServerIdentity)
     case updateShowCliSessions(Bool)
-    case updateActiveServer(displayName: String, customHeaderText: String)
+    case updateActiveServer(displayName: String, initials: String, headerLogoColorHex: String, customHeaderText: String)
     case selectProject(String?)
     case projectCommand(HermexProjectCommand)
     case openSession(String)
@@ -561,8 +566,13 @@ public final class HermexAppStore {
         case .updateShowCliSessions(let enabled):
             settings.showCliSessions = enabled
             settings.settingsErrorMessage = nil
-        case .updateActiveServer(let displayName, let customHeaderText):
-            updatePreviewActiveServer(displayName: displayName, customHeaderText: customHeaderText)
+        case .updateActiveServer(let displayName, let initials, let headerLogoColorHex, let customHeaderText):
+            updatePreviewActiveServer(
+                displayName: displayName,
+                initials: initials,
+                headerLogoColorHex: headerLogoColorHex,
+                customHeaderText: customHeaderText
+            )
         case .selectProject(let projectID):
             sessions.selectedProjectID = projectID
         case .projectCommand(let command):
@@ -775,11 +785,18 @@ public final class HermexAppStore {
         }
     }
 
-    private func updatePreviewActiveServer(displayName: String, customHeaderText: String) {
+    private func updatePreviewActiveServer(
+        displayName: String,
+        initials: String,
+        headerLogoColorHex: String,
+        customHeaderText: String
+    ) {
         guard let active = settings.activeServer else { return }
         let updated = hermexUpdatedServer(
             active,
             displayName: displayName,
+            initials: initials,
+            headerLogoColorHex: headerLogoColorHex,
             customHeaderText: customHeaderText
         )
         upsertPreviewServer(updated)
@@ -1250,8 +1267,13 @@ public final class HermexAppStore {
             await refreshSessions()
         case .updateShowCliSessions(let enabled):
             await updateShowCliSessions(enabled)
-        case .updateActiveServer(let displayName, let customHeaderText):
-            await updateActiveServer(displayName: displayName, customHeaderText: customHeaderText)
+        case .updateActiveServer(let displayName, let initials, let headerLogoColorHex, let customHeaderText):
+            await updateActiveServer(
+                displayName: displayName,
+                initials: initials,
+                headerLogoColorHex: headerLogoColorHex,
+                customHeaderText: customHeaderText
+            )
         case .selectProject(let projectID):
             sessions.selectedProjectID = projectID
         case .projectCommand(let command):
@@ -1450,11 +1472,18 @@ public final class HermexAppStore {
         settings.isSavingShowCliSessions = false
     }
 
-    private func updateActiveServer(displayName: String, customHeaderText: String) async {
+    private func updateActiveServer(
+        displayName: String,
+        initials: String,
+        headerLogoColorHex: String,
+        customHeaderText: String
+    ) async {
         guard let active = settings.activeServer else { return }
         let updated = hermexUpdatedServer(
             active,
             displayName: displayName,
+            initials: initials,
+            headerLogoColorHex: headerLogoColorHex,
             customHeaderText: customHeaderText
         )
         let authenticated: Bool

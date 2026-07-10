@@ -90,7 +90,7 @@ def main() -> int:
     ok &= require("seededAppState.auth = .loggedIn" not in store, "Shared store must not auto-log in or seed sessions on first launch.")
     ok &= require("HERMEX_SKIP_PREVIEW_STORE" not in store, "Skip release builds must not compile the old preview-store path.")
     ok &= require("Self.server(from: appState.auth)" in store, "Preview store must derive active server without changing first-run auth.")
-    ok &= require("HermexLogoMark()" in session_list, "Session list must render the shared HERMEX logo.")
+    ok &= require("HermexLogoMark(" in session_list, "Session list must render the shared HERMEX logo.")
     ok &= require("utilityRail" not in session_list, "Session list must not use the pre-parity side rail layout.")
     ok &= require("LazyVStack(alignment: .leading, spacing: 0)" in session_list, "Session list must use the iOS row rhythm.")
     ok &= require("sessionListTopChromeBottomPadding" in session_list, "Session list must preserve iOS top chrome row spacing.")
@@ -124,8 +124,16 @@ def main() -> int:
     ok &= require("Sign Out" in settings and ".signOut" in settings, "Settings screen must expose sign-out action.")
     ok &= require("Chat Defaults" in settings and "Default Model" in settings and "Default Profile" in settings, "Settings screen must expose chat default settings.")
     ok &= require("CLI Sessions" in settings and ".updateShowCliSessions" in settings, "Settings screen must expose the server-synced CLI session toggle.")
-    ok &= require("Edit Server" in settings and ".updateActiveServer" in settings, "Settings screen must expose active-server identity and custom-header editing.")
+    ok &= require(
+        "Edit Server" in settings
+        and "Initials" in settings
+        and "Header Logo Color" in settings
+        and ".updateActiveServer" in settings,
+        "Settings screen must expose active-server identity, logo-color, and custom-header editing.",
+    )
     ok &= require("hermexUpdatedServer" in store and "isSafeForClient" in store, "Shared store must sanitize edited server headers before rebinding runtime state.")
+    ok &= require("HermexAppearanceSettings" in read("Sources/HermexCore/HermexAppearanceSettings.swift"), "Shared Core must own normalized identity and logo-color contracts.")
+    ok &= require("HermexLogoMark(accent:" in session_list and "settingsColorHex" in session_list, "Session list must consume the active server's logo color.")
     ok &= require("loadServerSettings" in store and "updateServerSettings" in store, "Shared store must route server-synced settings through the live environment.")
     ok &= require("HermexIconCluster" in chat, "Chat top chrome icon cluster is missing.")
     ok &= require("chatHeader" in chat, "Chat screen must use custom iOS-style top chrome.")

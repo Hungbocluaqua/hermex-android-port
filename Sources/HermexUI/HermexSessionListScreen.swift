@@ -17,6 +17,7 @@ public struct HermexSessionListScreen: View {
     }
 
     private let state: HermexSessionListState
+    private let settings: HermexSettingsState
     private let onEvent: (HermexUIEvent) -> Void
     @State private var searchChromeIsExpanded: Bool
     @State private var searchText: String
@@ -26,8 +27,13 @@ public struct HermexSessionListScreen: View {
     @State private var projectEditorError = ""
     @State private var projectPendingDeletionID: String?
 
-    public init(state: HermexSessionListState, onEvent: @escaping (HermexUIEvent) -> Void = { _ in }) {
+    public init(
+        state: HermexSessionListState,
+        settings: HermexSettingsState = HermexSettingsState(),
+        onEvent: @escaping (HermexUIEvent) -> Void = { _ in }
+    ) {
         self.state = state
+        self.settings = settings
         self.onEvent = onEvent
         _searchChromeIsExpanded = State(initialValue: !state.searchQuery.isEmpty)
         _searchText = State(initialValue: state.searchQuery)
@@ -119,7 +125,7 @@ public struct HermexSessionListScreen: View {
 #if SKIP
         HStack(alignment: .center, spacing: 16.0) {
             if !searchChromeIsExpanded {
-                HermexLogoMark()
+                HermexLogoMark(accent: HermexUIColors.color(for: settingsColorHex))
             }
             Spacer(minLength: 12)
             searchChrome
@@ -127,7 +133,7 @@ public struct HermexSessionListScreen: View {
         }
 #else
         HStack(alignment: .center, spacing: searchChromeIsExpanded ? 0.0 : 16.0) {
-            HermexLogoMark()
+            HermexLogoMark(accent: HermexUIColors.color(for: settingsColorHex))
                 .frame(width: searchChromeIsExpanded ? 0.0 : HermexLayoutContract.sessionListLogoWidth, alignment: .leading)
                 .opacity(searchChromeIsExpanded ? 0.0 : 1.0)
                 .clipped()
@@ -230,14 +236,17 @@ public struct HermexSessionListScreen: View {
                 }
             } label: {
                 ZStack {
-                    Image(systemName: HermexSystemImageName("gearshape.fill"))
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(Color.black)
+                    Text(settingsInitials)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(HermexUIColors.prefersDarkForeground(for: settingsColorHex) ? Color.black : Color.white)
                         .frame(
                             width: Self.searchChromeIconVisualSize,
                             height: Self.searchChromeIconVisualSize
                         )
-                        .background(HermexUIColors.gold, in: Circle())
+                        .background(HermexUIColors.color(for: settingsColorHex), in: Circle())
+                        .overlay {
+                            Circle().stroke(HermexUIColors.hairline, lineWidth: 0.7)
+                        }
                         .opacity(searchChromeIsExpanded ? 0.0 : 1.0)
 
                     Image(systemName: HermexSystemImageName("xmark"))
@@ -272,6 +281,19 @@ public struct HermexSessionListScreen: View {
             .font(.subheadline)
             .foregroundStyle(HermexUIColors.primaryText)
             .lineLimit(1)
+    }
+
+    private var settingsColorHex: String {
+        settings.activeServer?.headerLogoColorHex ?? HermexAppearanceSettings.defaultHeaderLogoColorHex
+    }
+
+    private var settingsInitials: String {
+        let server = settings.activeServer
+        return HermexAppearanceSettings.displayInitials(
+            displayName: server?.displayName ?? "",
+            storedInitials: server?.initials ?? "",
+            fallbackFullName: server?.baseURL.host ?? "Hermex"
+        )
     }
 
     private func submitSearch() {

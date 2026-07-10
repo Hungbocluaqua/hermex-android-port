@@ -133,8 +133,18 @@ final class HermexUICompileTests: XCTestCase {
         XCTAssertEqual(HermexUIEvent.connectOnboarding.appAction, .connectOnboarding)
         XCTAssertEqual(HermexUIEvent.updateShowCliSessions(false).appAction, .updateShowCliSessions(false))
         XCTAssertEqual(
-            HermexUIEvent.updateActiveServer(displayName: "Proxy", customHeaderText: "X-Token: abc").appAction,
-            .updateActiveServer(displayName: "Proxy", customHeaderText: "X-Token: abc")
+            HermexUIEvent.updateActiveServer(
+                displayName: "Proxy",
+                initials: "PX",
+                headerLogoColorHex: "#5B7CFF",
+                customHeaderText: "X-Token: abc"
+            ).appAction,
+            .updateActiveServer(
+                displayName: "Proxy",
+                initials: "PX",
+                headerLogoColorHex: "#5B7CFF",
+                customHeaderText: "X-Token: abc"
+            )
         )
         XCTAssertEqual(HermexUIEvent.gitCommand(.stage(path: "README.md")).appAction, .gitCommand(.stage(path: "README.md")))
         XCTAssertEqual(HermexUIEvent.updateGitCommitMessage("Update").appAction, .updateGitCommitMessage("Update"))

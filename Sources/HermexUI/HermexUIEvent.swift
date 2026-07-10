@@ -16,7 +16,7 @@ public enum HermexUIEvent: Equatable, Sendable {
     case connectOnboardingDraft(serverURLString: String, displayName: String, password: String, customHeaderText: String)
     case selectServer(HermexServerIdentity)
     case updateShowCliSessions(Bool)
-    case updateActiveServer(displayName: String, customHeaderText: String)
+    case updateActiveServer(displayName: String, initials: String, headerLogoColorHex: String, customHeaderText: String)
     case searchSessions(String)
     case selectProject(String?)
     case projectCommand(HermexProjectCommand)
@@ -115,8 +115,13 @@ public extension HermexUIEvent {
             return .selectServer(server)
         case .updateShowCliSessions(let enabled):
             return .updateShowCliSessions(enabled)
-        case .updateActiveServer(let displayName, let customHeaderText):
-            return .updateActiveServer(displayName: displayName, customHeaderText: customHeaderText)
+        case .updateActiveServer(let displayName, let initials, let headerLogoColorHex, let customHeaderText):
+            return .updateActiveServer(
+                displayName: displayName,
+                initials: initials,
+                headerLogoColorHex: headerLogoColorHex,
+                customHeaderText: customHeaderText
+            )
         case .selectProject(let projectID):
             return .selectProject(projectID)
         case .projectCommand(let command):

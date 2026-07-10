@@ -53,7 +53,7 @@ public struct HermexRootScreen: View {
             case .onboarding:
                 HermexOnboardingScreen(appState: appState, onboarding: onboarding, settings: settings, onEvent: onEvent)
             case .sessions:
-                HermexSessionListScreen(state: sessions, onEvent: onEvent)
+                HermexSessionListScreen(state: sessions, settings: settings, onEvent: onEvent)
             case .chat:
                 HermexChatScreen(
                     state: chat,

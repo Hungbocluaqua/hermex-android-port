@@ -314,11 +314,15 @@ final class HermexAppStoreTests: XCTestCase {
 
         await store.send(.updateActiveServer(
             displayName: "  Proxy  ",
+            initials: "px!",
+            headerLogoColorHex: "#5b7cff",
             customHeaderText: "X-Token: abc\nOrigin: bad\nBad Header: nope"
         ))
 
         let updated = try XCTUnwrap(store.settings.activeServer)
         XCTAssertEqual(updated.displayName, "Proxy")
+        XCTAssertEqual(updated.initials, "PX")
+        XCTAssertEqual(updated.headerLogoColorHex, "#5B7CFF")
         XCTAssertEqual(updated.customHeaders, ["X-Token": "abc"])
         XCTAssertEqual(store.settings.servers, [updated])
         XCTAssertEqual(store.appState.auth, .loggedIn(server: updated))
