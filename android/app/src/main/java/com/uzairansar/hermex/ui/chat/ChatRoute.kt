@@ -158,6 +158,7 @@ import com.uzairansar.hermex.ui.theme.HermexPillButton
 import com.uzairansar.hermex.ui.theme.HermexSelectorPill
 import com.uzairansar.hermex.ui.theme.LocalHermexHapticsEnabled
 import com.uzairansar.hermex.ui.git.HermexGitDiffContent
+import com.uzairansar.hermex.ui.notifications.AndroidNotificationPermissionPolicy
 import com.uzairansar.hermex.ui.theme.hermexColorFromHex
 import com.uzairansar.hermex.ui.theme.hermexGlass
 import com.uzairansar.hermex.ui.theme.hermexPrimaryActionContainerColor
@@ -459,8 +460,13 @@ fun ChatRoute(
                 if (trigger <= lastHandledTrigger) return@collect
                 lastHandledTrigger = trigger
                 viewModel.refreshCompletedTranscriptIfNeeded()
-                val canPostNotifications = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                val canPostNotifications = AndroidNotificationPermissionPolicy.canPostNotifications(
+                    sdkInt = Build.VERSION.SDK_INT,
+                    permissionGranted = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.POST_NOTIFICATIONS,
+                    ) == PackageManager.PERMISSION_GRANTED,
+                )
                 if (
                     ResponseCompletionNotificationPolicy.shouldSchedule(
                         preferenceEnabled = latestResponseCompletionNotificationsEnabled,

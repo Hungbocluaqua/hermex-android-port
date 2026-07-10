@@ -23,6 +23,7 @@ import com.uzairansar.hermex.data.secure.ServerRegistrySnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -407,6 +408,33 @@ class SettingsViewModel(
         viewModelScope.launch {
             runCatching { localSettingsRepository.setHasRequestedResponseCompletionNotificationPermission(true) }
                 .onSuccess { _state.update { it.copy(hasRequestedResponseCompletionNotificationPermission = true) } }
+        }
+    }
+
+    fun refreshResponseCompletionNotificationPermission(canPostNotifications: Boolean) {
+        viewModelScope.launch {
+            val preferenceEnabled = localSettingsRepository.responseCompletionNotificationsEnabled.first()
+            if (!canPostNotifications && preferenceEnabled) {
+                runCatching { localSettingsRepository.setResponseCompletionNotificationsEnabled(false) }
+                    .onSuccess {
+                        _state.update {
+                            it.copy(
+                                responseCompletionNotificationsEnabled = false,
+                                responseCompletionNotificationStatusMessage = "Android notifications disabled.",
+                            )
+                        }
+                    }
+                    .onFailure { error ->
+                        _state.update { it.copy(error = error.message ?: "Could not update notification alerts.") }
+                    }
+            } else {
+                _state.update {
+                    it.copy(
+                        responseCompletionNotificationsEnabled = preferenceEnabled,
+                        responseCompletionNotificationStatusMessage = null,
+                    )
+                }
+            }
         }
     }
 

@@ -37,6 +37,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,7 +54,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.core.content.ContextCompat
 import com.uzairansar.hermex.data.preferences.displayModelTitle
@@ -70,6 +74,7 @@ import com.uzairansar.hermex.ui.theme.HermexCardShape
 import com.uzairansar.hermex.ui.theme.HermexIconButton
 import com.uzairansar.hermex.ui.theme.HermexPillButton
 import com.uzairansar.hermex.ui.theme.hermexGlass
+import com.uzairansar.hermex.ui.notifications.AndroidNotificationPermissionPolicy
 
 @Composable
 fun SettingsRoute(
@@ -97,6 +102,22 @@ fun SettingsRoute(
     val appInfo = remember(context) { context.currentAndroidAppInfo() }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         viewModel.handleResponseCompletionNotificationPermissionResult(granted)
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner, context, viewModel) {
+        fun refreshNotificationPermission() {
+            viewModel.refreshResponseCompletionNotificationPermission(
+                canPostNotifications = canPostAndroidNotifications(context),
+            )
+        }
+
+        refreshNotificationPermission()
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) refreshNotificationPermission()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Box(
@@ -1419,8 +1440,13 @@ private fun forcedUpdateMessage(outcome: ForcedUpdateCheckOutcome?): String =
     }
 
 private fun canPostAndroidNotifications(context: Context): Boolean =
-    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    AndroidNotificationPermissionPolicy.canPostNotifications(
+        sdkInt = Build.VERSION.SDK_INT,
+        permissionGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED,
+    )
 
 private fun responseCompletionNotificationStatusText(
     state: SettingsUiState,

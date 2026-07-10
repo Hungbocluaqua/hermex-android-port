@@ -13,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.uzairansar.hermex.MainActivity
 import com.uzairansar.hermex.R
+import com.uzairansar.hermex.ui.notifications.AndroidNotificationPermissionPolicy
 
 class StreamStatusNotifier(private val context: Context) {
     private val notificationManager = NotificationManagerCompat.from(context)
@@ -130,8 +131,13 @@ class StreamStatusNotifier(private val context: Context) {
     }
 
     private fun canPostNotifications(): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        AndroidNotificationPermissionPolicy.canPostNotifications(
+            sdkInt = Build.VERSION.SDK_INT,
+            permissionGranted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED,
+        )
 
     private fun notificationId(sessionId: String): Int = "stream:$sessionId".hashCode()
     private fun completionNotificationId(sessionId: String): Int = "complete:$sessionId:${System.currentTimeMillis()}".hashCode()
