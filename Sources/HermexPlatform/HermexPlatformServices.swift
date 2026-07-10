@@ -100,6 +100,10 @@ public protocol HermexAttachmentPicker: Sendable {
     func pickPhotos() async throws -> [URL]
 }
 
+public protocol HermexAttachmentUploader: Sendable {
+    func uploadAttachment(at url: URL, sessionID: String) async throws -> HermexUploadResponse
+}
+
 public protocol HermexVoiceRecorder: Sendable {
     func start() async throws
     func stop() async throws -> URL
@@ -129,6 +133,8 @@ public protocol HermexShareIngress: Sendable {
 public struct HermexPlatformServiceBundle: Sendable {
     public var cache: (any HermexCacheStore)?
     public var shareIngress: (any HermexShareIngress)?
+    public var attachmentPicker: (any HermexAttachmentPicker)?
+    public var attachmentUploader: (any HermexAttachmentUploader)?
     public var voiceRecorder: (any HermexVoiceRecorder)?
     public var audioTranscriber: (any HermexAudioTranscriber)?
     public var speechSynthesizer: (any HermexSpeechSynthesizer)?
@@ -137,6 +143,8 @@ public struct HermexPlatformServiceBundle: Sendable {
     public init(
         cache: (any HermexCacheStore)? = nil,
         shareIngress: (any HermexShareIngress)? = nil,
+        attachmentPicker: (any HermexAttachmentPicker)? = nil,
+        attachmentUploader: (any HermexAttachmentUploader)? = nil,
         voiceRecorder: (any HermexVoiceRecorder)? = nil,
         audioTranscriber: (any HermexAudioTranscriber)? = nil,
         speechSynthesizer: (any HermexSpeechSynthesizer)? = nil,
@@ -144,6 +152,8 @@ public struct HermexPlatformServiceBundle: Sendable {
     ) {
         self.cache = cache
         self.shareIngress = shareIngress
+        self.attachmentPicker = attachmentPicker
+        self.attachmentUploader = attachmentUploader
         self.voiceRecorder = voiceRecorder
         self.audioTranscriber = audioTranscriber
         self.speechSynthesizer = speechSynthesizer

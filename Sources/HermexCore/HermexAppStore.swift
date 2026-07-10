@@ -26,6 +26,10 @@ public enum HermexAppAction: Equatable, Sendable {
     case applySharedDraft(HermexSharedDraft)
     case hydrateCachedSessions([HermexSessionDTO])
     case hydrateCachedMessages(sessionID: String, [HermexChatMessageDTO])
+    case setUploadingAttachment(Bool)
+    case addAttachment(HermexAttachmentDTO)
+    case replaceAttachment(id: String, with: HermexAttachmentDTO)
+    case removeAttachment(String)
     case setVoiceRecording(Bool)
     case refreshComposerConfiguration
     case selectModel(HermexModelOption)
@@ -511,6 +515,18 @@ public final class HermexAppStore {
             appState.route = .chat
             chat.messages = messages
             chat.isViewingCachedData = true
+        case .setUploadingAttachment(let isUploading):
+            chat.composer.isUploadingAttachment = isUploading
+        case .addAttachment(let attachment):
+            chat.composer.attachments.append(attachment)
+        case .replaceAttachment(let id, let attachment):
+            if let index = chat.composer.attachments.firstIndex(where: { $0.id == id }) {
+                chat.composer.attachments[index] = attachment
+            } else {
+                chat.composer.attachments.append(attachment)
+            }
+        case .removeAttachment(let id):
+            chat.composer.attachments.removeAll { $0.id == id }
         case .setVoiceRecording(let isRecording):
             chat.composer.isRecordingVoice = isRecording
         case .refreshComposerConfiguration:
@@ -631,9 +647,15 @@ public final class HermexAppStore {
 
     private func sendPreviewDraft() {
         let draft = chat.composer.draft.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-        guard !draft.isEmpty else { return }
+        let attachments = chat.composer.attachments
+        guard !draft.isEmpty || !attachments.isEmpty else { return }
         chat.composer.draft = ""
-        chat.messages.append(HermexChatMessageDTO(role: "user", content: draft))
+        chat.composer.attachments = []
+        chat.messages.append(HermexChatMessageDTO(
+            role: "user",
+            content: draft.isEmpty ? nil : draft,
+            attachments: attachments
+        ))
         chat.messages.append(HermexChatMessageDTO(
             role: "assistant",
             content: "This Skip Android APK is rendering the shared SwiftUI Hermex interface. Live backend calls are intentionally stubbed in this preview build."
@@ -1144,6 +1166,18 @@ public final class HermexAppStore {
             appState.route = .chat
             chat.messages = messages
             chat.isViewingCachedData = true
+        case .setUploadingAttachment(let isUploading):
+            chat.composer.isUploadingAttachment = isUploading
+        case .addAttachment(let attachment):
+            chat.composer.attachments.append(attachment)
+        case .replaceAttachment(let id, let attachment):
+            if let index = chat.composer.attachments.firstIndex(where: { $0.id == id }) {
+                chat.composer.attachments[index] = attachment
+            } else {
+                chat.composer.attachments.append(attachment)
+            }
+        case .removeAttachment(let id):
+            chat.composer.attachments.removeAll { $0.id == id }
         case .setVoiceRecording(let isRecording):
             chat.composer.isRecordingVoice = isRecording
         case .refreshComposerConfiguration:
@@ -1419,25 +1453,31 @@ public final class HermexAppStore {
 
     private func sendDraft() async {
         let draft = chat.composer.draft.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-        guard !draft.isEmpty else { return }
-
         let existingSessionID = appState.selectedSessionID
         let composer = chat.composer
+        let message = Self.chatMessageText(draft: draft, attachments: composer.attachments)
+        guard !message.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty else { return }
         chat.composer.draft = ""
-        chat.messages.append(HermexChatMessageDTO(role: "user", content: draft, timestamp: Date().timeIntervalSince1970))
+        chat.messages.append(HermexChatMessageDTO(
+            role: "user",
+            content: draft.isEmpty ? nil : draft,
+            timestamp: Date().timeIntervalSince1970,
+            attachments: composer.attachments
+        ))
         chat.stream = HermexStreamState(isStreaming: true, liveToolActivity: "Starting response")
         chat.errorMessage = nil
 
         do {
             let response = try await environment.startChat(
                 existingSessionID,
-                draft,
+                message,
                 composer.selectedWorkspace,
                 composer.selectedModel,
                 composer.selectedModelProvider,
                 composer.selectedProfile,
                 composer.attachments.map(\.jsonValue)
             )
+            chat.composer.attachments = []
             if let sessionID = response.stringValue(forKey: "session_id") ?? response.stringValue(forKey: "sessionId") {
                 appState.selectedSessionID = sessionID
             }
@@ -1457,6 +1497,15 @@ public final class HermexAppStore {
         } else {
             chat.composer.draft += "\n\(trimmed)"
         }
+    }
+
+    private static func chatMessageText(draft: String, attachments: [HermexAttachmentDTO]) -> String {
+        let references = attachments
+            .compactMap { $0.path ?? $0.name }
+            .map { $0.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard !references.isEmpty else { return draft }
+        return "\(draft)\n\n[Attached files: \(references.joined(separator: ", "))]"
     }
 
     private func applySharedDraft(_ draft: HermexSharedDraft) {

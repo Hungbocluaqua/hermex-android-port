@@ -136,6 +136,10 @@ public struct HermexChatScreen: View {
                 transcriptAccessory(title: "Tool calls", text: "\(toolCalls.count) item(s)", systemImage: "hammer")
             }
 
+            if let attachments = message.attachments, !attachments.isEmpty {
+                messageAttachmentStrip(attachments)
+            }
+
             HStack {
                 if message.role == "user" { Spacer(minLength: 52) }
                 Text(message.content ?? message.text ?? "")
@@ -178,6 +182,30 @@ public struct HermexChatScreen: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 9)
         .hermexThinMaterialBackground(in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func messageAttachmentStrip(_ attachments: [HermexAttachmentDTO]) -> some View {
+        HStack(spacing: 7) {
+            ForEach(attachments) { attachment in
+                Button {
+                    if let path = attachment.path ?? attachment.name {
+                        onEvent(.openFile(path))
+                    }
+                } label: {
+                    HermexMappedLabel(
+                        attachment.name ?? attachment.path ?? "Attachment",
+                        systemImage: attachment.isImage == true ? "photo" : "doc"
+                    )
+                    .font(.caption.weight(.medium))
+                    .lineLimit(1)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 7)
+                    .foregroundStyle(HermexUIColors.primaryText)
+                    .hermexThinMaterialBackground(in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
     private var streamingIndicator: some View {
@@ -318,7 +346,10 @@ public struct HermexComposerSurface: View {
                     composerTextInput
 
                     HStack(spacing: HermexLayoutContract.composerControlSpacing) {
-                        Button { onEvent(.attach) } label: {
+                        Menu {
+                            Button("Files") { onEvent(.attach) }
+                            Button("Photos") { onEvent(.attachPhotos) }
+                        } label: {
                             composerControlGlyph("plus", size: HermexLayoutContract.composerPlusButtonSize)
                         }
                         modelControl
@@ -635,13 +666,36 @@ public struct HermexComposerSurface: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 7) {
                 ForEach(state.attachments) { attachment in
-                    HermexMappedLabel(attachment.name ?? attachment.path ?? "Attachment", systemImage: attachment.isImage == true ? "photo" : "doc")
-                        .font(.caption.weight(.medium))
-                        .lineLimit(1)
-                        .padding(.horizontal, 9)
-                        .frame(height: HermexLayoutContract.composerAttachmentStripHeight)
-                        .foregroundStyle(HermexUIColors.primaryText)
-                        .hermexThinMaterialBackground(in: Capsule())
+                    HStack(spacing: 3) {
+                        Button {
+                            if let path = attachment.path ?? attachment.name {
+                                onEvent(.openFile(path))
+                            }
+                        } label: {
+                            HermexMappedLabel(
+                                attachment.name ?? attachment.path ?? "Attachment",
+                                systemImage: attachment.isImage == true ? "photo" : "doc"
+                            )
+                            .font(.caption.weight(.medium))
+                            .lineLimit(1)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            onEvent(.removeAttachment(attachment.id))
+                        } label: {
+                            Image(systemName: HermexSystemImageName("xmark"))
+                                .font(.caption2.weight(.bold))
+                                .frame(width: 22, height: 22)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Remove attachment")
+                    }
+                    .padding(.leading, 9)
+                    .padding(.trailing, 3)
+                    .frame(height: HermexLayoutContract.composerAttachmentStripHeight)
+                    .foregroundStyle(HermexUIColors.primaryText)
+                    .hermexThinMaterialBackground(in: Capsule())
                 }
             }
             .padding(.horizontal, HermexLayoutContract.composerSurfaceHorizontalPadding)

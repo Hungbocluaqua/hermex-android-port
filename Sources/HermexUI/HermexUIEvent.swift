@@ -23,6 +23,8 @@ public enum HermexUIEvent: Equatable, Sendable {
     case sendDraft
     case cancelStream
     case attach
+    case attachPhotos
+    case removeAttachment(String)
     case startVoice
     case stopVoice
     case selectModel
@@ -116,6 +118,8 @@ public extension HermexUIEvent {
             return .sendDraft
         case .cancelStream:
             return .cancelStream
+        case .removeAttachment(let id):
+            return .removeAttachment(id)
         case .chooseModel(let model):
             return .selectModel(model)
         case .chooseWorkspace(let workspace):
@@ -181,6 +185,7 @@ public extension HermexUIEvent {
         case .signOut:
             return .signOut
         case .attach,
+             .attachPhotos,
              .startVoice,
              .stopVoice,
              .selectModel,

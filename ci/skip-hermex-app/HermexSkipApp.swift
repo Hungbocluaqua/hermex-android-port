@@ -4,6 +4,17 @@ import HermexCore
 import HermexPlatform
 import HermexUI
 
+#if SKIP
+import android.media.MediaRecorder
+import android.webkit.MimeTypeMap
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.registerForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
+#endif
+
 private let hermexVisualFixtureName: String? = nil
 private let hermexRuntimeVisualFixturesEnabled = false
 private let hermexRuntimeVisualFixtureFileName = "hermex_visual_fixture.txt"
@@ -64,7 +75,8 @@ public struct HermexSkipAppRootView: View {
         } else {
             HermexStoreRootScreen(
                 store: runtime.store,
-                onUnhandledEvent: runtime.handleUnhandledEvent
+                onUnhandledEvent: runtime.handleUnhandledEvent,
+                onActionCompleted: runtime.handleActionCompleted
             )
             .task {
                 await runtime.bootstrap()
@@ -122,6 +134,228 @@ public final class HermexSkipAppDelegate: Sendable {
     }
 }
 
+#if SKIP
+private final class HermexSkipAttachmentPicker: HermexAttachmentPicker, @unchecked Sendable {
+    private var documentLauncher: ActivityResultLauncher<kotlin.Array<String>>?
+    private var photoLauncher: ActivityResultLauncher<kotlin.Array<String>>?
+    private let documentContinuations: MutableList<Continuation<[URL]>> = mutableListOf<Continuation<[URL]>>()
+    private let photoContinuations: MutableList<Continuation<[URL]>> = mutableListOf<Continuation<[URL]>>()
+
+    init() {
+        guard let activity = UIApplication.shared.androidActivity else { return }
+        documentLauncher = activity.registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris in
+            self.finish(uris, continuations: self.documentContinuations)
+        }
+        photoLauncher = activity.registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris in
+            self.finish(uris, continuations: self.photoContinuations)
+        }
+    }
+
+    func pickDocuments() async throws -> [URL] {
+        guard let launcher = documentLauncher else {
+            throw HermexAPIError.network("Android file picker is unavailable.")
+        }
+        return await suspendCoroutine { continuation in
+            documentContinuations.add(continuation)
+            launcher.launch(arrayOf("*/*"))
+        }
+    }
+
+    func pickPhotos() async throws -> [URL] {
+        guard let launcher = photoLauncher else {
+            throw HermexAPIError.network("Android photo picker is unavailable.")
+        }
+        return await suspendCoroutine { continuation in
+            photoContinuations.add(continuation)
+            launcher.launch(arrayOf("image/*"))
+        }
+    }
+
+    private func finish(
+        _ uris: List<android.net.Uri>,
+        continuations: MutableList<Continuation<[URL]>>
+    ) {
+        var waiting: ArrayList<Continuation<[URL]>>? = nil
+        synchronized(continuations) {
+            waiting = ArrayList(continuations)
+            continuations.clear()
+        }
+        let files = uris.mapNotNull { copyToCache($0) }
+        waiting?.forEach { $0.resume(files) }
+    }
+
+    private func copyToCache(_ uri: android.net.Uri) -> URL? {
+        guard let sourceURL = URL(string: uri.toString()),
+              let data = try? Data(contentsOf: sourceURL)
+        else { return nil }
+
+        let rawName = uri.getLastPathSegment() ?? "attachment"
+        let name = rawName.replacingOccurrences(of: "/", with: "_")
+        let file = java.io.File(
+            ProcessInfo.processInfo.androidContext.getCacheDir(),
+            "hermex-attachment-\(UUID().uuidString)-\(name)"
+        )
+        let destination = URL(fileURLWithPath: file.absolutePath)
+        guard (try? data.write(to: destination)) != nil else { return nil }
+        return destination
+    }
+}
+
+private final class HermexSkipAttachmentUploader: HermexAttachmentUploader, @unchecked Sendable {
+    private let connection: HermexSkipConnection
+
+    init(connection: HermexSkipConnection) {
+        self.connection = connection
+    }
+
+    func uploadAttachment(at url: URL, sessionID: String) async throws -> HermexUploadResponse {
+        let data = try Data(contentsOf: url)
+        let filename = url.lastPathComponent.isEmpty ? "attachment" : url.lastPathComponent
+        let contentType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(url.pathExtension.lowercased())
+            ?? "application/octet-stream"
+        let repository = try await connection.currentChatRepository()
+        return try await repository.upload(
+            sessionID: sessionID,
+            data: data,
+            filename: filename,
+            contentType: contentType
+        )
+    }
+}
+
+private final class HermexSkipVoiceRecorder: HermexVoiceRecorder, @unchecked Sendable {
+    private var recorder: MediaRecorder?
+    private var outputURL: URL?
+
+    func start() async throws {
+        guard await UIApplication.shared.requestPermission("android.permission.RECORD_AUDIO") else {
+            throw HermexAPIError.network("Microphone permission was denied.")
+        }
+        await cancel()
+
+        let file = java.io.File(
+            ProcessInfo.processInfo.androidContext.getCacheDir(),
+            "hermex-voice-\(UUID().uuidString).m4a"
+        )
+        let next = MediaRecorder()
+        next.setAudioSource(MediaRecorder.AudioSource.MIC)
+        next.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+        next.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+        next.setAudioEncodingBitRate(96_000)
+        next.setAudioSamplingRate(44_100)
+        next.setOutputFile(file.absolutePath)
+        next.prepare()
+        next.start()
+        recorder = next
+        outputURL = URL(fileURLWithPath: file.absolutePath)
+    }
+
+    func stop() async throws -> URL {
+        let url = outputURL
+        let current = recorder
+        recorder = nil
+        outputURL = nil
+        if let current {
+            current.stop()
+            current.reset()
+            current.release()
+        }
+        guard let url,
+              FileManager.default.fileExists(atPath: url.path)
+        else {
+            throw HermexAPIError.network("Voice recording was empty.")
+        }
+        return url
+    }
+
+    func cancel() async {
+        let url = outputURL
+        let current = recorder
+        recorder = nil
+        outputURL = nil
+        if let current {
+            current.reset()
+            current.release()
+        }
+        if let url {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+}
+
+private final class HermexSkipAudioTranscriber: HermexAudioTranscriber, @unchecked Sendable {
+    private let connection: HermexSkipConnection
+
+    init(connection: HermexSkipConnection) {
+        self.connection = connection
+    }
+
+    func transcribeAudio(at url: URL) async throws -> HermexTranscribeResponse {
+        let data = try Data(contentsOf: url)
+        let repository = try await connection.currentChatRepository()
+        return try await repository.transcribe(
+            data: data,
+            filename: url.lastPathComponent.isEmpty ? "voice-note.m4a" : url.lastPathComponent,
+            contentType: "audio/mp4"
+        )
+    }
+}
+
+private struct HermexSkipSharedAttachmentPayload: Codable {
+    var uri: String?
+    var displayName: String?
+    var mimeType: String?
+    var cachedPath: String?
+}
+
+private struct HermexSkipSharedDraftPayload: Codable {
+    var text: String?
+    var attachments: [HermexSkipSharedAttachmentPayload]?
+    var uris: [String]?
+}
+
+private final class HermexSkipShareIngress: HermexShareIngress, @unchecked Sendable {
+    private let key = "pending_share_draft"
+
+    func pendingSharedDraft() async throws -> HermexSharedDraft? {
+        let preferences = ProcessInfo.processInfo.androidContext.getSharedPreferences(
+            "hermex_share",
+            android.content.Context.MODE_PRIVATE
+        )
+        guard let encoded = preferences.getString(key, nil),
+              let data = encoded.data(using: String.Encoding.utf8)
+        else { return nil }
+
+        let payload = try JSONDecoder().decode(HermexSkipSharedDraftPayload.self, from: data)
+        let attachmentPayloads = payload.attachments ?? []
+        let urls: [URL]
+        if !attachmentPayloads.isEmpty {
+            urls = attachmentPayloads.compactMap { attachment in
+                if let cachedPath = attachment.cachedPath?.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines),
+                   !cachedPath.isEmpty {
+                    return URL(fileURLWithPath: cachedPath)
+                }
+                guard let uri = attachment.uri else { return nil }
+                return URL(string: uri)
+            }
+        } else {
+            urls = (payload.uris ?? []).compactMap(URL.init(string:))
+        }
+        let text = payload.text?.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard text?.isEmpty == false || !urls.isEmpty else { return nil }
+        return HermexSharedDraft(text: text?.isEmpty == true ? nil : text, attachmentURLs: urls)
+    }
+
+    func clearPendingSharedDraft() async throws {
+        let preferences = ProcessInfo.processInfo.androidContext.getSharedPreferences(
+            "hermex_share",
+            android.content.Context.MODE_PRIVATE
+        )
+        preferences.edit().remove(key).apply()
+    }
+}
+#endif
+
 @MainActor
 private final class HermexSkipRuntime: @unchecked Sendable {
     private let persistence: HermexSkipPersistence
@@ -139,8 +373,16 @@ private final class HermexSkipRuntime: @unchecked Sendable {
         self.persistence = persistence
         self.cookieStore = cookieStore
         self.cacheStore = cacheStore
-        self.connection = HermexSkipConnection(persistence: persistence, cookieStore: cookieStore)
-        self.coordinator = HermexPlatformCoordinator(services: HermexPlatformServiceBundle(cache: cacheStore))
+        let connection = HermexSkipConnection(persistence: persistence, cookieStore: cookieStore)
+        self.connection = connection
+        self.coordinator = HermexPlatformCoordinator(services: HermexPlatformServiceBundle(
+            cache: cacheStore,
+            shareIngress: HermexSkipShareIngress(),
+            attachmentPicker: HermexSkipAttachmentPicker(),
+            attachmentUploader: HermexSkipAttachmentUploader(connection: connection),
+            voiceRecorder: HermexSkipVoiceRecorder(),
+            audioTranscriber: HermexSkipAudioTranscriber(connection: connection)
+        ))
     }
 
     @MainActor
@@ -166,16 +408,33 @@ private final class HermexSkipRuntime: @unchecked Sendable {
 
         await coordinator.hydrateCachedSessions(serverID: serverID, into: store)
         await store.send(.refresh)
+        if store.appState.selectedSessionID != nil {
+            await coordinator.consumePendingShare(into: store)
+        }
     }
 
     @MainActor
-    func handleUnhandledEvent(_ event: HermexUIEvent) {
+    func handleUnhandledEvent(_ event: HermexUIEvent) async {
         switch event {
-        case .attach, .startVoice, .stopVoice:
-            Task { await store.send(.refresh) }
+        case .attach:
+            await coordinator.pickDocumentsAndUpload(into: store)
+        case .attachPhotos:
+            await coordinator.pickPhotosAndUpload(into: store)
+        case .startVoice:
+            await coordinator.startVoiceRecording(in: store)
+        case .stopVoice:
+            await coordinator.stopVoiceRecordingAndTranscribe(into: store)
         default:
             break
         }
+    }
+
+    @MainActor
+    func handleActionCompleted() {
+        guard store.appState.route == .chat,
+              store.appState.selectedSessionID != nil
+        else { return }
+        Task { await coordinator.consumePendingShare(into: store) }
     }
 
     @MainActor

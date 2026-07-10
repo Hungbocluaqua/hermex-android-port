@@ -11,11 +11,13 @@ public struct HermexStoreRootScreen: View {
     @State private var workspace: HermexWorkspaceState
     @State private var git: HermexGitState
     @State private var panels: HermexPanelsState
-    private let onUnhandledEvent: (HermexUIEvent) -> Void
+    private let onUnhandledEvent: @MainActor (HermexUIEvent) async -> Void
+    private let onActionCompleted: @MainActor () -> Void
 
     public init(
         store: HermexAppStore,
-        onUnhandledEvent: @escaping (HermexUIEvent) -> Void = { _ in }
+        onUnhandledEvent: @escaping @MainActor (HermexUIEvent) async -> Void = { _ in },
+        onActionCompleted: @escaping @MainActor () -> Void = {}
     ) {
         self._store = State(initialValue: store)
         self._appState = State(initialValue: store.appState)
@@ -27,6 +29,7 @@ public struct HermexStoreRootScreen: View {
         self._git = State(initialValue: store.git)
         self._panels = State(initialValue: store.panels)
         self.onUnhandledEvent = onUnhandledEvent
+        self.onActionCompleted = onActionCompleted
     }
 
     public var body: some View {
@@ -46,9 +49,13 @@ public struct HermexStoreRootScreen: View {
                 Task { @MainActor in
                     await store.send(action)
                     syncFromStore()
+                    onActionCompleted()
                 }
             } else {
-                onUnhandledEvent(event)
+                Task { @MainActor in
+                    await onUnhandledEvent(event)
+                    syncFromStore()
+                }
             }
         }
         .task(id: appState.route) {

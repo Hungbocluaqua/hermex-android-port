@@ -56,6 +56,42 @@ final class HermexAppStoreTests: XCTestCase {
         XCTAssertTrue(store.chat.stream.isStreaming)
     }
 
+    func testAttachmentOnlyDraftUsesServerAttachmentMarkerAndClearsComposer() async throws {
+        let probe = StoreProbe()
+        let attachment = HermexAttachmentDTO(
+            name: "image.png",
+            path: "/workspace/image.png",
+            mime: "image/png",
+            size: 42,
+            isImage: true
+        )
+        let store = HermexAppStore(
+            appState: HermexAppState(selectedSessionID: "s1", route: .chat),
+            chat: HermexChatState(composer: HermexComposerState(attachments: [attachment])),
+            environment: environment(probe: probe)
+        )
+
+        await store.send(.sendDraft)
+
+        let request = await probe.startedChat
+        XCTAssertEqual(request?.message, "\n\n[Attached files: /workspace/image.png]")
+        XCTAssertNil(store.chat.messages.last?.content)
+        XCTAssertEqual(store.chat.messages.last?.attachments, [attachment])
+        XCTAssertTrue(store.chat.composer.attachments.isEmpty)
+    }
+
+    func testRemoveAttachmentUpdatesComposerState() async throws {
+        let attachment = HermexAttachmentDTO(name: "notes.txt", path: "/workspace/notes.txt")
+        let store = HermexAppStore(
+            chat: HermexChatState(composer: HermexComposerState(attachments: [attachment])),
+            environment: environment(probe: StoreProbe())
+        )
+
+        await store.send(.removeAttachment(attachment.id))
+
+        XCTAssertTrue(store.chat.composer.attachments.isEmpty)
+    }
+
     func testCancelStreamRoutesThroughEnvironment() async throws {
         let probe = StoreProbe()
         let store = HermexAppStore(

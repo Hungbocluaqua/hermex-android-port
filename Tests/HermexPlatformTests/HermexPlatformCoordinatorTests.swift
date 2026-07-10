@@ -20,6 +20,57 @@ final class HermexPlatformCoordinatorTests: XCTestCase {
         XCTAssertTrue(didClear)
     }
 
+    func testPickedAttachmentUploadsIntoComposer() async throws {
+        let fileURL = URL(fileURLWithPath: "/tmp/report.pdf")
+        let picker = AttachmentPickerProbe(documents: [fileURL])
+        let uploader = AttachmentUploaderProbe(response: HermexUploadResponse(
+            filename: "report.pdf",
+            path: "/workspace/report.pdf",
+            mime: "application/pdf",
+            size: 1234,
+            isImage: false
+        ))
+        let store = HermexAppStore(
+            appState: HermexAppState(selectedSessionID: "s1", route: .chat),
+            environment: .testValue
+        )
+        let coordinator = HermexPlatformCoordinator(services: HermexPlatformServiceBundle(
+            attachmentPicker: picker,
+            attachmentUploader: uploader
+        ))
+
+        await coordinator.pickDocumentsAndUpload(into: store)
+
+        XCTAssertEqual(store.chat.composer.attachments.map(\.path), ["/workspace/report.pdf"])
+        XCTAssertFalse(store.chat.composer.isUploadingAttachment)
+        XCTAssertEqual(await uploader.uploadedURLs.map(\.lastPathComponent), ["report.pdf"])
+    }
+
+    func testSharedAttachmentIsReplacedAfterUpload() async throws {
+        let sharedURL = URL(fileURLWithPath: "/tmp/shared-note.txt")
+        let shareIngress = ShareIngressProbe(draft: HermexSharedDraft(attachmentURLs: [sharedURL]))
+        let uploader = AttachmentUploaderProbe(response: HermexUploadResponse(
+            filename: "shared-note.txt",
+            path: "/workspace/shared-note.txt",
+            mime: "text/plain",
+            size: 10,
+            isImage: false
+        ))
+        let store = HermexAppStore(
+            appState: HermexAppState(selectedSessionID: "s1", route: .chat),
+            environment: .testValue
+        )
+        let coordinator = HermexPlatformCoordinator(services: HermexPlatformServiceBundle(
+            shareIngress: shareIngress,
+            attachmentUploader: uploader
+        ))
+
+        await coordinator.consumePendingShare(into: store)
+
+        XCTAssertEqual(store.chat.composer.attachments.map(\.path), ["/workspace/shared-note.txt"])
+        XCTAssertEqual(await uploader.uploadedURLs.map(\.path), [sharedURL.path])
+    }
+
     func testCacheHydrationAndPersistenceRoutesThroughSharedStore() async throws {
         let cache = CacheStoreProbe(
             sessions: [HermexSessionDTO(sessionId: "cached", title: "Cached session", messageCount: 2)],
@@ -237,6 +288,36 @@ private actor VoiceRecorderProbe: HermexVoiceRecorder {
     }
 
     func cancel() async {}
+}
+
+private actor AttachmentPickerProbe: HermexAttachmentPicker {
+    private let documents: [URL]
+
+    init(documents: [URL]) {
+        self.documents = documents
+    }
+
+    func pickDocuments() async throws -> [URL] {
+        documents
+    }
+
+    func pickPhotos() async throws -> [URL] {
+        []
+    }
+}
+
+private actor AttachmentUploaderProbe: HermexAttachmentUploader {
+    private let response: HermexUploadResponse
+    private(set) var uploadedURLs: [URL] = []
+
+    init(response: HermexUploadResponse) {
+        self.response = response
+    }
+
+    func uploadAttachment(at url: URL, sessionID: String) async throws -> HermexUploadResponse {
+        uploadedURLs.append(url)
+        return response
+    }
 }
 
 private actor AudioTranscriberProbe: HermexAudioTranscriber {

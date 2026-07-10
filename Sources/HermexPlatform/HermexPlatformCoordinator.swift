@@ -14,9 +14,42 @@ public struct HermexPlatformCoordinator: Sendable {
         do {
             guard let draft = try await shareIngress.pendingSharedDraft() else { return }
             await store.send(.applySharedDraft(draft))
+            if services.attachmentUploader != nil, !draft.attachmentURLs.isEmpty {
+                await uploadAttachments(
+                    draft.attachmentURLs,
+                    into: store,
+                    replacingLocalAttachments: true
+                )
+            }
             try await shareIngress.clearPendingSharedDraft()
         } catch {
             await store.send(.appendDraftText("Share import failed: \(error)"))
+        }
+    }
+
+    @MainActor
+    public func pickDocumentsAndUpload(into store: HermexAppStore) async {
+        guard let picker = services.attachmentPicker else {
+            await store.send(.appendDraftText("File picker unavailable."))
+            return
+        }
+        do {
+            await uploadAttachments(try await picker.pickDocuments(), into: store)
+        } catch {
+            await store.send(.appendDraftText("File import failed: \(error)"))
+        }
+    }
+
+    @MainActor
+    public func pickPhotosAndUpload(into store: HermexAppStore) async {
+        guard let picker = services.attachmentPicker else {
+            await store.send(.appendDraftText("Photo picker unavailable."))
+            return
+        }
+        do {
+            await uploadAttachments(try await picker.pickPhotos(), into: store)
+        } catch {
+            await store.send(.appendDraftText("Photo import failed: \(error)"))
         }
     }
 
@@ -77,6 +110,10 @@ public struct HermexPlatformCoordinator: Sendable {
             let response = try await transcriber.transcribeAudio(at: url)
             if let transcript = response.transcript, !transcript.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
                 await store.send(.appendDraftText(transcript))
+                if services.attachmentUploader != nil,
+                   store.appState.selectedSessionID != nil {
+                    await uploadAttachments([url], into: store)
+                }
             } else if let error = response.error {
                 await store.send(.appendDraftText("Transcription failed: \(error)"))
             }
@@ -123,6 +160,57 @@ public struct HermexPlatformCoordinator: Sendable {
 
     public func clearStatusNotification(sessionID: String) async {
         await services.statusNotifier?.clear(sessionID: sessionID)
+    }
+
+    @MainActor
+    private func uploadAttachments(
+        _ urls: [URL],
+        into store: HermexAppStore,
+        replacingLocalAttachments: Bool = false
+    ) async {
+        guard !urls.isEmpty else { return }
+        guard let uploader = services.attachmentUploader else {
+            await store.send(.appendDraftText("Attachment upload unavailable."))
+            return
+        }
+        guard let sessionID = store.appState.selectedSessionID else {
+            await store.send(.appendDraftText("The server did not provide a session ID."))
+            return
+        }
+
+        await store.send(.setUploadingAttachment(true))
+        for url in urls {
+            let filename = url.lastPathComponent.isEmpty ? "attachment" : url.lastPathComponent
+            do {
+                let response = try await uploader.uploadAttachment(at: url, sessionID: sessionID)
+                if let error = response.error, !error.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
+                    if replacingLocalAttachments { await store.send(.removeAttachment(url.path)) }
+                    await store.send(.appendDraftText("Attachment upload failed: \(error)"))
+                    continue
+                }
+                guard let path = response.path, !path.isEmpty else {
+                    if replacingLocalAttachments { await store.send(.removeAttachment(url.path)) }
+                    await store.send(.appendDraftText("The server did not return the uploaded file path."))
+                    continue
+                }
+                let attachment = HermexAttachmentDTO(
+                    name: response.filename ?? filename,
+                    path: path,
+                    mime: response.mime,
+                    size: response.size,
+                    isImage: response.isImage
+                )
+                if replacingLocalAttachments {
+                    await store.send(.replaceAttachment(id: url.path, with: attachment))
+                } else {
+                    await store.send(.addAttachment(attachment))
+                }
+            } catch {
+                if replacingLocalAttachments { await store.send(.removeAttachment(url.path)) }
+                await store.send(.appendDraftText("Attachment upload failed: \(error)"))
+            }
+        }
+        await store.send(.setUploadingAttachment(false))
     }
 }
 
