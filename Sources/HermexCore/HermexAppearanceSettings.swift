@@ -15,6 +15,7 @@ public struct HermexColorPreset: Equatable, Sendable, Identifiable {
 public enum HermexAppearanceSettings {
     public static let defaultHeaderLogoColorHex = "#FFD700"
     private static let allowedInitialCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    private static let allowedHexCharacters = "0123456789abcdefABCDEF"
 
     public static let headerLogoColorPresets = [
         HermexColorPreset(name: "Yellow", hex: "#FFD700"),
@@ -31,7 +32,10 @@ public enum HermexAppearanceSettings {
             hex.removeFirst()
         }
 
-        guard hex.count == 6, hex.allSatisfy(\.isHexDigit) else { return nil }
+        guard hex.count == 6 else { return nil }
+        for character in hex {
+            guard allowedHexCharacters.contains(character) else { return nil }
+        }
         return "#\(hex.uppercased())"
     }
 
