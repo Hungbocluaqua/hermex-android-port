@@ -146,7 +146,7 @@ public struct HermexChatScreen: View {
             for: message,
             visibleIndex: visibleIndex
         )
-        VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: 7) {
+        return VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: 7) {
             if let reasoning = message.reasoning, !reasoning.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
                 transcriptAccessory(title: "Thinking", text: reasoning, systemImage: "brain.head.profile")
             }
@@ -227,7 +227,6 @@ public struct HermexChatScreen: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(HermexUIColors.secondaryText)
                 .frame(width: 28, height: 28)
-                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
