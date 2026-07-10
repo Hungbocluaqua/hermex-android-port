@@ -10,7 +10,9 @@ enum HermexMarkdownSegmentParser {
         let normalized = content
             .replacingOccurrences(of: "\r\n", with: "\n")
             .replacingOccurrences(of: "\r", with: "\n")
-        let lines = normalized.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        let lines: [String] = normalized
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map { String($0) }
         var segments: [HermexMarkdownSegment] = []
         var markdown: [String] = []
         var code: [String] = []
@@ -23,10 +25,10 @@ enum HermexMarkdownSegmentParser {
             if !value.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
                 segments.append(.markdown(value))
             }
-            markdown.removeAll(keepingCapacity: true)
+            markdown = []
         }
 
-        for line in lines {
+        lines.forEach { line in
             let trimmedStart = line.trimmingCharacters(in: CharacterSet.whitespaces)
             if let marker = fenceMarker {
                 if trimmedStart.hasPrefix(marker) {
@@ -34,11 +36,11 @@ enum HermexMarkdownSegmentParser {
                     fenceMarker = nil
                     fenceOpening = ""
                     language = nil
-                    code.removeAll(keepingCapacity: true)
+                    code = []
                 } else {
                     code.append(line)
                 }
-                continue
+                return
             }
 
             if trimmedStart.hasPrefix("```") || trimmedStart.hasPrefix("~~~") {
@@ -48,8 +50,8 @@ enum HermexMarkdownSegmentParser {
                 fenceOpening = line
                 let suffix = String(trimmedStart.dropFirst(marker.count))
                     .trimmingCharacters(in: CharacterSet.whitespaces)
-                language = suffix.split(separator: " ", maxSplits: 1).first.map(String.init)
-                code.removeAll(keepingCapacity: true)
+                language = suffix.split(separator: " ", maxSplits: 1).first.map { String($0) }
+                code = []
             } else {
                 markdown.append(line)
             }
@@ -61,92 +63,6 @@ enum HermexMarkdownSegmentParser {
         }
         flushMarkdown()
         return segments.isEmpty ? [.markdown(normalized)] : segments
-    }
-}
-
-private enum HermexInlineMarkdownStyle {
-    case plain
-    case bold
-    case italic
-    case code
-    case link
-}
-
-private struct HermexInlineMarkdownRun {
-    let text: String
-    let style: HermexInlineMarkdownStyle
-}
-
-private enum HermexInlineMarkdownParser {
-    static func runs(in value: String) -> [HermexInlineMarkdownRun] {
-        var runs: [HermexInlineMarkdownRun] = []
-        var plain = ""
-        var remaining = value
-
-        func flushPlain() {
-            guard !plain.isEmpty else { return }
-            runs.append(HermexInlineMarkdownRun(text: plain, style: .plain))
-            plain.removeAll(keepingCapacity: true)
-        }
-
-        while !remaining.isEmpty {
-            if let delimiter = matchingDelimiter(in: remaining),
-               let close = closingDelimiter(delimiter, in: remaining) {
-                flushPlain()
-                let start = remaining.index(remaining.startIndex, offsetBy: delimiter.token.count)
-                let inner = String(remaining[start..<close.lowerBound])
-                if !inner.isEmpty {
-                    runs.append(HermexInlineMarkdownRun(text: inner, style: delimiter.style))
-                    remaining = String(remaining[close.upperBound...])
-                    continue
-                }
-            }
-
-            if let link = linkRun(in: remaining) {
-                flushPlain()
-                runs.append(link.run)
-                remaining = link.remaining
-                continue
-            }
-
-            plain.append(remaining.removeFirst())
-        }
-
-        flushPlain()
-        return runs.isEmpty ? [HermexInlineMarkdownRun(text: value, style: .plain)] : runs
-    }
-
-    private static func matchingDelimiter(in value: String) -> (token: String, style: HermexInlineMarkdownStyle)? {
-        if value.hasPrefix("**") { return ("**", .bold) }
-        if value.hasPrefix("__") { return ("__", .bold) }
-        if value.hasPrefix("`") { return ("`", .code) }
-        if value.hasPrefix("*") { return ("*", .italic) }
-        if value.hasPrefix("_") { return ("_", .italic) }
-        return nil
-    }
-
-    private static func closingDelimiter(
-        _ delimiter: (token: String, style: HermexInlineMarkdownStyle),
-        in value: String
-    ) -> Range<String.Index>? {
-        let start = value.index(value.startIndex, offsetBy: delimiter.token.count)
-        return value.range(of: delimiter.token, range: start..<value.endIndex)
-    }
-
-    private static func linkRun(in value: String) -> (run: HermexInlineMarkdownRun, remaining: String)? {
-        guard value.first == "[",
-              let labelEnd = value.firstIndex(of: "]") else { return nil }
-        let openParen = value.index(after: labelEnd)
-        guard openParen < value.endIndex, value[openParen] == "(",
-              let urlEnd = value[openParen...].firstIndex(of: ")") else { return nil }
-        let labelStart = value.index(after: value.startIndex)
-        let label = String(value[labelStart..<labelEnd])
-        guard !label.isEmpty else { return nil }
-        let next = value.index(after: urlEnd)
-        return (
-            HermexInlineMarkdownRun(text: label, style: .link),
-            String(value[next...])
-        )
     }
 }
 
@@ -233,7 +149,7 @@ private struct HermexMarkdownLine: View {
             }
         } else if value.hasPrefix("- ") || value.hasPrefix("* ") || value.hasPrefix("+ ") {
             HStack(alignment: .top, spacing: 7) {
-                Text(verbatim: "•")
+                Text(verbatim: "-")
                 inlineText(String(value.dropFirst(2)))
             }
         } else if let marker = orderedListMarker(in: value) {
@@ -259,21 +175,7 @@ private struct HermexMarkdownLine: View {
     }
 
     private func inlineText(_ value: String) -> Text {
-        HermexInlineMarkdownParser.runs(in: value).reduce(Text(verbatim: "")) { result, run in
-            let text = Text(verbatim: run.text)
-            switch run.style {
-            case .plain:
-                return result + text
-            case .bold:
-                return result + text.bold()
-            case .italic:
-                return result + text.italic()
-            case .code:
-                return result + text.font(.system(.body, design: .monospaced))
-            case .link:
-                return result + text.underline().foregroundColor(Color.accentColor)
-            }
-        }
+        Text(verbatim: value)
     }
 }
 
