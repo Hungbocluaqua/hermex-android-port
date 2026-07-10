@@ -748,14 +748,14 @@ final class HermexAppStoreTests: XCTestCase {
             clearOfflineCache: { serverID in
                 try await probe.clearOfflineCache(serverID: serverID)
             },
-            saveLocalSettings: { settings in
-                await probe.saveLocalSettings(settings)
-            },
             performProjectCommand: { command in
                 try await probe.performProjectCommand(command)
             },
             updateServerRuntime: { server, authenticated in
                 await probe.updateServerRuntime(server: server, authenticated: authenticated)
+            },
+            saveLocalSettings: { settings in
+                await probe.saveLocalSettings(settings)
             }
         )
     }

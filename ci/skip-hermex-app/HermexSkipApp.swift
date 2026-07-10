@@ -1029,9 +1029,6 @@ private final class HermexSkipRuntime: @unchecked Sendable {
             clearOfflineCache: { serverID in
                 try await cacheStore.clearCachedData(for: serverID)
             },
-            saveLocalSettings: { settings in
-                persistence.saveLocalSettings(settings)
-            },
             performProjectCommand: { (command: HermexProjectCommand) in
                 let sessions = try await connection.currentSessionsRepository()
                 let projects = try await connection.currentProjectRepository()
@@ -1060,6 +1057,9 @@ private final class HermexSkipRuntime: @unchecked Sendable {
             truncateSession: { sessionID, keepCount in
                 let sessions = try await connection.currentSessionsRepository()
                 return try await sessions.truncate(id: sessionID, keepCount: keepCount)
+            },
+            saveLocalSettings: { settings in
+                persistence.saveLocalSettings(settings)
             }
         )
     }

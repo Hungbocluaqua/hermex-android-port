@@ -796,12 +796,12 @@ public struct HermexLocalSettings: Codable, Equatable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.init(
-            appTheme: try container.decodeIfPresent(String.self, forKey: .appTheme) ?? "system",
-            hapticsEnabled: try container.decodeIfPresent(Bool.self, forKey: .hapticsEnabled) ?? true,
-            glassEnabled: try container.decodeIfPresent(Bool.self, forKey: .glassEnabled) ?? true,
-            notificationsEnabled: try container.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? false
-        )
+        let rawTheme = try container.decodeIfPresent(String.self, forKey: .appTheme) ?? "system"
+        let normalizedTheme = rawTheme.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).lowercased()
+        self.appTheme = ["system", "light", "dark"].contains(normalizedTheme) ? normalizedTheme : "system"
+        self.hapticsEnabled = try container.decodeIfPresent(Bool.self, forKey: .hapticsEnabled) ?? true
+        self.glassEnabled = try container.decodeIfPresent(Bool.self, forKey: .glassEnabled) ?? true
+        self.notificationsEnabled = try container.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? false
     }
 
     public init(settings: HermexSettingsState) {
