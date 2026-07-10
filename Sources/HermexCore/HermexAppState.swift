@@ -784,6 +784,9 @@ public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
     public var hapticsEnabled: Bool
     public var glassEnabled: Bool
     public var notificationsEnabled: Bool
+    public var showCliSessions: Bool
+    public var isSavingShowCliSessions: Bool
+    public var settingsErrorMessage: String?
 
     public init(
         activeServer: HermexServerIdentity? = nil,
@@ -793,7 +796,10 @@ public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
         defaultProfile: String? = nil,
         hapticsEnabled: Bool = true,
         glassEnabled: Bool = true,
-        notificationsEnabled: Bool = false
+        notificationsEnabled: Bool = false,
+        showCliSessions: Bool = true,
+        isSavingShowCliSessions: Bool = false,
+        settingsErrorMessage: String? = nil
     ) {
         self.activeServer = activeServer
         self.servers = servers
@@ -803,5 +809,8 @@ public struct HermexSettingsState: HermexStateCodable, Equatable, Sendable {
         self.hapticsEnabled = hapticsEnabled
         self.glassEnabled = glassEnabled
         self.notificationsEnabled = notificationsEnabled
+        self.showCliSessions = showCliSessions
+        self.isSavingShowCliSessions = isSavingShowCliSessions
+        self.settingsErrorMessage = settingsErrorMessage
     }
 }

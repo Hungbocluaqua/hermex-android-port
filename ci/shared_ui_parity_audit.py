@@ -123,6 +123,8 @@ def main() -> int:
     ok &= require("Privacy & Security" in settings and "Passwords" in settings and "Not stored" in settings, "Settings screen must state password storage behavior.")
     ok &= require("Sign Out" in settings and ".signOut" in settings, "Settings screen must expose sign-out action.")
     ok &= require("Chat Defaults" in settings and "Default Model" in settings and "Default Profile" in settings, "Settings screen must expose chat default settings.")
+    ok &= require("CLI Sessions" in settings and ".updateShowCliSessions" in settings, "Settings screen must expose the server-synced CLI session toggle.")
+    ok &= require("loadServerSettings" in store and "updateServerSettings" in store, "Shared store must route server-synced settings through the live environment.")
     ok &= require("HermexIconCluster" in chat, "Chat top chrome icon cluster is missing.")
     ok &= require("chatHeader" in chat, "Chat screen must use custom iOS-style top chrome.")
     ok &= require("TextField(\"Message Hermex\"" not in chat, "Composer must not regress to the pre-parity single-line TextField.")

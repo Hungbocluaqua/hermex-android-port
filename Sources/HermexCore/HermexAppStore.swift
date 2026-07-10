@@ -15,6 +15,7 @@ public enum HermexAppAction: Equatable, Sendable {
     case connectOnboarding
     case connectOnboardingDraft(serverURLString: String, displayName: String, password: String, customHeaderText: String)
     case selectServer(HermexServerIdentity)
+    case updateShowCliSessions(Bool)
     case selectProject(String?)
     case projectCommand(HermexProjectCommand)
     case openSession(String)
@@ -131,6 +132,8 @@ public struct HermexAppEnvironment: Sendable {
     public var writeMemory: @Sendable (_ section: String, _ content: String) async throws -> HermexJSONValue
     public var loadInsights: @Sendable (_ days: Int) async throws -> HermexJSONValue
     public var logout: @Sendable () async throws -> HermexJSONValue
+    public var loadServerSettings: @Sendable () async throws -> HermexJSONValue
+    public var updateServerSettings: @Sendable (_ showCliSessions: Bool) async throws -> HermexJSONValue
     public var updateServerRuntime: @Sendable (_ server: HermexServerIdentity, _ authenticated: Bool) async -> Void
     public var branchSession: @Sendable (_ sessionID: String, _ keepCount: Int?) async throws -> HermexJSONValue
     public var truncateSession: @Sendable (_ sessionID: String, _ keepCount: Int) async throws -> HermexSessionResponse
@@ -180,6 +183,12 @@ public struct HermexAppEnvironment: Sendable {
         writeMemory: @escaping @Sendable (_ section: String, _ content: String) async throws -> HermexJSONValue,
         loadInsights: @escaping @Sendable (_ days: Int) async throws -> HermexJSONValue,
         logout: @escaping @Sendable () async throws -> HermexJSONValue,
+        loadServerSettings: @escaping @Sendable () async throws -> HermexJSONValue = {
+            .dictionary(["error": .string("Server settings are unavailable.")])
+        },
+        updateServerSettings: @escaping @Sendable (_ showCliSessions: Bool) async throws -> HermexJSONValue = { _ in
+            .dictionary(["error": .string("Server settings are unavailable.")])
+        },
         performProjectCommand: @escaping @Sendable (_ command: HermexProjectCommand) async throws -> HermexJSONValue = { _ in
             .dictionary([
                 "ok": .bool(false),
@@ -229,6 +238,8 @@ public struct HermexAppEnvironment: Sendable {
         self.writeMemory = writeMemory
         self.loadInsights = loadInsights
         self.logout = logout
+        self.loadServerSettings = loadServerSettings
+        self.updateServerSettings = updateServerSettings
         self.updateServerRuntime = updateServerRuntime
         self.branchSession = branchSession
         self.truncateSession = truncateSession
@@ -242,6 +253,7 @@ public struct HermexAppEnvironment: Sendable {
         let workspace = HermexWorkspaceRepository(client: client)
         let git = HermexGitRepository(client: client)
         let panels = HermexPanelsRepository(client: client)
+        let settings = HermexSettingsRepository(client: client)
         return HermexAppEnvironment(
             testServerConnection: { _ in
                 try await client.health()
@@ -401,6 +413,12 @@ public struct HermexAppEnvironment: Sendable {
             logout: {
                 try await auth.logout()
             },
+            loadServerSettings: {
+                try await settings.settings()
+            },
+            updateServerSettings: { showCliSessions in
+                try await settings.updateShowCliSessions(showCliSessions)
+            },
             performProjectCommand: { command in
                 switch command {
                 case .moveSession(let sessionID, let projectID):
@@ -514,6 +532,9 @@ public final class HermexAppStore {
             appState.auth = .loggedIn(server: server)
             settings.activeServer = server
             appState.route = .sessions
+        case .updateShowCliSessions(let enabled):
+            settings.showCliSessions = enabled
+            settings.settingsErrorMessage = nil
         case .selectProject(let projectID):
             sessions.selectedProjectID = projectID
         case .projectCommand(let command):
@@ -1137,6 +1158,9 @@ public final class HermexAppStore {
         switch action {
         case .openRoute(let route):
             appState.route = route
+            if route == .settings {
+                await refreshSettings()
+            }
         case .refresh:
             await refreshCurrentRoute()
         case .updateOnboardingServerURL(let value):
@@ -1175,6 +1199,8 @@ public final class HermexAppStore {
             appState.auth = .loggedIn(server: server)
             appState.route = .sessions
             await refreshSessions()
+        case .updateShowCliSessions(let enabled):
+            await updateShowCliSessions(enabled)
         case .selectProject(let projectID):
             sessions.selectedProjectID = projectID
         case .projectCommand(let command):
@@ -1330,6 +1356,8 @@ public final class HermexAppStore {
             if let sessionID = appState.selectedSessionID {
                 await openSession(sessionID)
             }
+        case .settings:
+            await refreshSettings()
         case .workspace:
             await loadWorkspace(path: workspace.currentPath)
         case .git:
@@ -1339,6 +1367,44 @@ public final class HermexAppStore {
         default:
             break
         }
+    }
+
+    private func refreshSettings() async {
+        do {
+            let response = try await environment.loadServerSettings()
+            if let value = Self.showCliSessionsValue(from: response) {
+                settings.showCliSessions = value
+                settings.settingsErrorMessage = nil
+            }
+        } catch {
+            settings.settingsErrorMessage = String(describing: error)
+        }
+    }
+
+    private func updateShowCliSessions(_ enabled: Bool) async {
+        guard !settings.isSavingShowCliSessions else { return }
+        let previous = settings.showCliSessions
+        settings.showCliSessions = enabled
+        settings.isSavingShowCliSessions = true
+        settings.settingsErrorMessage = nil
+        do {
+            let response = try await environment.updateServerSettings(enabled)
+            if let value = Self.showCliSessionsValue(from: response) {
+                settings.showCliSessions = value
+            }
+        } catch {
+            settings.showCliSessions = previous
+            settings.settingsErrorMessage = String(describing: error)
+        }
+        settings.isSavingShowCliSessions = false
+    }
+
+    private static func showCliSessionsValue(from response: HermexJSONValue) -> Bool? {
+        let fields = response.objectValue ?? [:]
+        if let value = fields["show_cli_sessions"]?.boolValue {
+            return value
+        }
+        return fields["settings"]?.objectValue?["show_cli_sessions"]?.boolValue
     }
 
     private func applyOnboardingDraft(

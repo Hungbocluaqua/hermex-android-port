@@ -19,6 +19,7 @@ public struct HermexSettingsScreen: View {
                     serverManagementSection
                     appearanceSection
                     chatSection
+                    sessionsSection
                     securitySection
                     signOutButton
                 }
@@ -120,6 +121,37 @@ public struct HermexSettingsScreen: View {
             settingValueRow(systemImage: "cpu", title: "Default Model", value: state.defaultModel ?? "Server default")
             settingValueRow(systemImage: "person.crop.circle", title: "Default Profile", value: state.defaultProfile ?? "Active profile")
             settingValueRow(systemImage: "bell", title: "Notifications", value: state.notificationsEnabled ? "On" : "Off")
+        }
+    }
+
+    private var sessionsSection: some View {
+        settingsSection("Sessions") {
+            Toggle(
+                "CLI Sessions",
+                isOn: Binding(
+                    get: { state.showCliSessions },
+                    set: { onEvent(.updateShowCliSessions($0)) }
+                )
+            )
+            .tint(.blue)
+            .disabled(state.isSavingShowCliSessions)
+
+            if state.isSavingShowCliSessions {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Saving...")
+                }
+                .font(.caption)
+                .foregroundStyle(HermexUIColors.secondaryText)
+            } else if let errorMessage = state.settingsErrorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(Color.red.opacity(0.9))
+            } else {
+                Text("CLI session visibility is synced with this server, so the WebUI follows it too.")
+                    .font(.caption)
+                    .foregroundStyle(HermexUIColors.secondaryText)
+            }
         }
     }
 

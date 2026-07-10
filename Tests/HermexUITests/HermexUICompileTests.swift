@@ -131,6 +131,7 @@ final class HermexUICompileTests: XCTestCase {
         XCTAssertEqual(HermexUIEvent.updateOnboardingPassword("secret").appAction, .updateOnboardingPassword("secret"))
         XCTAssertEqual(HermexUIEvent.testOnboardingConnection.appAction, .testOnboardingConnection)
         XCTAssertEqual(HermexUIEvent.connectOnboarding.appAction, .connectOnboarding)
+        XCTAssertEqual(HermexUIEvent.updateShowCliSessions(false).appAction, .updateShowCliSessions(false))
         XCTAssertEqual(HermexUIEvent.gitCommand(.stage(path: "README.md")).appAction, .gitCommand(.stage(path: "README.md")))
         XCTAssertEqual(HermexUIEvent.updateGitCommitMessage("Update").appAction, .updateGitCommitMessage("Update"))
         XCTAssertEqual(HermexUIEvent.selectInsightsRange(days: 365).appAction, .selectInsightsRange(days: 365))

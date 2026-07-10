@@ -838,6 +838,14 @@ private final class HermexSkipRuntime: @unchecked Sendable {
                     throw error
                 }
             },
+            loadServerSettings: {
+                let repository = try await connection.currentSettingsRepository()
+                return try await repository.settings()
+            },
+            updateServerSettings: { showCliSessions in
+                let repository = try await connection.currentSettingsRepository()
+                return try await repository.updateShowCliSessions(showCliSessions)
+            },
             performProjectCommand: { (command: HermexProjectCommand) in
                 let sessions = try await connection.currentSessionsRepository()
                 let projects = try await connection.currentProjectRepository()
@@ -972,6 +980,10 @@ private actor HermexSkipConnection {
 
     func currentPanelsRepository() throws -> HermexPanelsRepository {
         HermexPanelsRepository(client: try currentClient())
+    }
+
+    func currentSettingsRepository() throws -> HermexSettingsRepository {
+        HermexSettingsRepository(client: try currentClient())
     }
 
     private func serverID(for server: HermexServerIdentity) -> String {

@@ -299,6 +299,26 @@ final class HermexAppStoreTests: XCTestCase {
         XCTAssertEqual(updates, [StoreProbe.RuntimeUpdate(server: second, authenticated: true)])
     }
 
+    func testServerSettingsLoadAndUpdateCliSessionVisibility() async throws {
+        let probe = StoreProbe()
+        let store = HermexAppStore(
+            appState: HermexAppState(route: .settings),
+            environment: environment(probe: probe)
+        )
+
+        await store.send(.refresh)
+
+        XCTAssertFalse(store.settings.showCliSessions)
+        XCTAssertNil(store.settings.settingsErrorMessage)
+
+        await store.send(.updateShowCliSessions(true))
+
+        XCTAssertTrue(store.settings.showCliSessions)
+        XCTAssertFalse(store.settings.isSavingShowCliSessions)
+        let updates = await probe.updatedCliSessions
+        XCTAssertEqual(updates, [true])
+    }
+
     func testProjectSelectionAndMutationsRouteThroughSharedStore() async throws {
         let probe = StoreProbe()
         let store = HermexAppStore(
@@ -602,6 +622,12 @@ final class HermexAppStoreTests: XCTestCase {
             logout: {
                 try await probe.logout()
             },
+            loadServerSettings: {
+                try await probe.loadServerSettings()
+            },
+            updateServerSettings: { showCliSessions in
+                try await probe.updateServerSettings(showCliSessions: showCliSessions)
+            },
             performProjectCommand: { command in
                 try await probe.performProjectCommand(command)
             },
@@ -656,11 +682,13 @@ private actor StoreProbe {
     private(set) var projectCommands: [HermexProjectCommand] = []
     private(set) var memoryWrites: [MemoryWrite] = []
     private(set) var loadedInsightsDays: [Int] = []
+    private(set) var updatedCliSessions: [Bool] = []
     private(set) var testedServer: HermexServerIdentity?
     private(set) var loginServer: HermexServerIdentity?
     private(set) var loginPassword: String?
     private var taskStatus = "active"
     private var swiftSkillEnabled = true
+    private var showCliSessions = false
     private var memoryValues = [
         "memory": "Project notes",
         "user": "Likes concise answers",
@@ -677,6 +705,16 @@ private actor StoreProbe {
         loginServer = server
         loginPassword = password
         return .dictionary(["ok": .bool(true)])
+    }
+
+    func loadServerSettings() async throws -> HermexJSONValue {
+        .dictionary(["show_cli_sessions": .bool(showCliSessions)])
+    }
+
+    func updateServerSettings(showCliSessions: Bool) async throws -> HermexJSONValue {
+        updatedCliSessions.append(showCliSessions)
+        self.showCliSessions = showCliSessions
+        return .dictionary(["show_cli_sessions": .bool(showCliSessions)])
     }
 
     func loadSessions(includeArchived: Bool, archivedLimit: Int?) async throws -> HermexSessionsResponse {
