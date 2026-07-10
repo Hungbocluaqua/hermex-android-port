@@ -93,7 +93,7 @@ private enum HermexInlineMarkdownParser {
             if let delimiter = matchingDelimiter(in: remaining),
                let close = closingDelimiter(delimiter, in: remaining) {
                 flushPlain()
-                let start = remaining.index(remaining.startIndex, offsetBy: delimiter.count)
+                let start = remaining.index(remaining.startIndex, offsetBy: delimiter.token.count)
                 let inner = String(remaining[start..<close.lowerBound])
                 if !inner.isEmpty {
                     runs.append(HermexInlineMarkdownRun(text: inner, style: delimiter.style))
