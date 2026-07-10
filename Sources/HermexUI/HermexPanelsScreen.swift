@@ -179,25 +179,25 @@ public struct HermexPanelsScreen: View {
                             }
                         }
 
-                        taskEditorField("Name", text: draft.name)
-                        taskEditorTextEditor("Prompt", text: draft.prompt, minHeight: 108)
-                        taskEditorField("Schedule", text: draft.schedule)
+                        taskEditorField("Name", text: taskDraftTextBinding(for: "name"))
+                        taskEditorTextEditor("Prompt", text: taskDraftTextBinding(for: "prompt"), minHeight: 108)
+                        taskEditorField("Schedule", text: taskDraftTextBinding(for: "schedule"))
 
                         Text("Delivery")
                             .font(.caption.weight(.bold))
                             .textCase(.uppercase)
                             .foregroundStyle(HermexUIColors.secondaryText)
-                        taskEditorField("Deliver", text: draft.deliver)
-                        Toggle("Toast Notifications", isOn: draft.toastNotifications)
+                        taskEditorField("Deliver", text: taskDraftTextBinding(for: "deliver"))
+                        Toggle("Toast Notifications", isOn: taskToastNotificationsBinding)
                             .tint(.blue)
 
                         Text("Configuration")
                             .font(.caption.weight(.bold))
                             .textCase(.uppercase)
                             .foregroundStyle(HermexUIColors.secondaryText)
-                        taskEditorTextEditor("Skills", text: draft.skillsText, minHeight: 72)
-                        taskEditorField("Model", text: draft.model)
-                        taskEditorField("Profile", text: draft.profile)
+                        taskEditorTextEditor("Skills", text: taskDraftTextBinding(for: "skillsText"), minHeight: 72)
+                        taskEditorField("Model", text: taskDraftTextBinding(for: "model"))
+                        taskEditorField("Profile", text: taskDraftTextBinding(for: "profile"))
 
                         if let validationMessage = draft.wrappedValue.validationMessage {
                             Text(validationMessage)
@@ -537,6 +537,65 @@ public struct HermexPanelsScreen: View {
         )
     }
 
+    private func taskDraftTextBinding(for field: String) -> Binding<String> {
+        Binding(
+            get: {
+                let draft = state.taskDraft ?? HermexTaskDraft()
+                switch field {
+                case "name":
+                    return draft.name
+                case "prompt":
+                    return draft.prompt
+                case "schedule":
+                    return draft.schedule
+                case "deliver":
+                    return draft.deliver
+                case "skillsText":
+                    return draft.skillsText
+                case "model":
+                    return draft.model
+                case "profile":
+                    return draft.profile
+                default:
+                    return ""
+                }
+            },
+            set: { value in
+                var draft = state.taskDraft ?? HermexTaskDraft()
+                switch field {
+                case "name":
+                    draft.name = value
+                case "prompt":
+                    draft.prompt = value
+                case "schedule":
+                    draft.schedule = value
+                case "deliver":
+                    draft.deliver = value
+                case "skillsText":
+                    draft.skillsText = value
+                case "model":
+                    draft.model = value
+                case "profile":
+                    draft.profile = value
+                default:
+                    return
+                }
+                onEvent(.updateTaskDraft(draft))
+            }
+        )
+    }
+
+    private var taskToastNotificationsBinding: Binding<Bool> {
+        Binding(
+            get: { state.taskDraft?.toastNotifications ?? false },
+            set: { value in
+                var draft = state.taskDraft ?? HermexTaskDraft()
+                draft.toastNotifications = value
+                onEvent(.updateTaskDraft(draft))
+            }
+        )
+    }
+
     private var deleteConfirmationBinding: Binding<Bool> {
         Binding(
             get: { state.pendingTaskDeletionID != nil },
@@ -549,8 +608,8 @@ public struct HermexPanelsScreen: View {
     }
 
     private var taskOutputItems: [[String: HermexJSONValue]] {
-        guard let output = state.taskOutput?.objectValue,
-              case .array(let values) = output["outputs"]
+        guard let output = state.taskOutput?.objectValue else { return [] }
+        guard case .array(let values) = output["outputs"]
         else { return [] }
         return values.compactMap { $0.objectValue }
     }
@@ -675,7 +734,7 @@ public struct HermexPanelsScreen: View {
         }
         .buttonStyle(.plain)
         .disabled(disabled)
-        .opacity(disabled ? 0.55 : 1)
+        .opacity(disabled ? 0.55 : 1.0)
     }
 
     private func statusBadge(_ status: String) -> some View {
