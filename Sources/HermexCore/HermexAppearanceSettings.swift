@@ -80,7 +80,7 @@ public enum HermexAppearanceSettings {
                     current = ""
                 }
             } else {
-                current.append(character)
+                current.append(contentsOf: String(character))
             }
         }
         if !current.isEmpty { words.append(current) }
@@ -109,17 +109,50 @@ public enum HermexAppearanceSettings {
         return false
     }
 
-    private static func rgbComponents(for rawValue: String) -> (red: Double, green: Double, blue: Double)? {
-        guard let hex = normalizedHex(rawValue),
-              let value = UInt32(String(hex.dropFirst()), radix: 16)
-        else {
+    public static func rgbComponents(for rawValue: String) -> (red: Double, green: Double, blue: Double)? {
+        guard let hex = normalizedHex(rawValue) else {
             return rgbComponents(for: defaultHeaderLogoColorHex)
         }
 
+        var digits: [Int] = []
+        var skippedPrefix = false
+        for character in hex {
+            if !skippedPrefix {
+                skippedPrefix = true
+                continue
+            }
+            if let digit = hexDigitValue(character) {
+                digits.append(digit)
+            }
+        }
+        guard digits.count == 6 else { return rgbComponents(for: defaultHeaderLogoColorHex) }
+
         return (
-            Double((value / 65536) % 256) / 255.0,
-            Double((value / 256) % 256) / 255.0,
-            Double(value % 256) / 255.0
+            Double((digits[0] * 16) + digits[1]) / 255.0,
+            Double((digits[2] * 16) + digits[3]) / 255.0,
+            Double((digits[4] * 16) + digits[5]) / 255.0
         )
+    }
+
+    private static func hexDigitValue(_ character: Character) -> Int? {
+        switch character {
+        case "0": return 0
+        case "1": return 1
+        case "2": return 2
+        case "3": return 3
+        case "4": return 4
+        case "5": return 5
+        case "6": return 6
+        case "7": return 7
+        case "8": return 8
+        case "9": return 9
+        case "a", "A": return 10
+        case "b", "B": return 11
+        case "c", "C": return 12
+        case "d", "D": return 13
+        case "e", "E": return 14
+        case "f", "F": return 15
+        default: return nil
+        }
     }
 }

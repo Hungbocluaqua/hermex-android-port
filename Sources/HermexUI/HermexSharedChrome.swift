@@ -22,16 +22,14 @@ enum HermexUIColors {
     static let faintHairline = Color.white.opacity(0.08)
 
     static func color(for rawValue: String) -> Color {
-        guard let hex = HermexAppearanceSettings.normalizedHex(rawValue),
-              let value = UInt32(String(hex.dropFirst()), radix: 16)
-        else {
+        guard let components = HermexAppearanceSettings.rgbComponents(for: rawValue) else {
             return gold
         }
 
         return Color(
-            red: Double((value & 0xFF0000) >> 16) / 255.0,
-            green: Double((value & 0x00FF00) >> 8) / 255.0,
-            blue: Double(value & 0x0000FF) / 255.0
+            red: components.red,
+            green: components.green,
+            blue: components.blue
         )
     }
 
