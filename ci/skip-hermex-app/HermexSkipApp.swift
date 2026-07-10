@@ -122,7 +122,8 @@ public final class HermexSkipAppDelegate: Sendable {
     }
 }
 
-private final class HermexSkipRuntime {
+@MainActor
+private final class HermexSkipRuntime: @unchecked Sendable {
     private let persistence: HermexSkipPersistence
     private let cookieStore: HermexSkipCookieStore
     private let cacheStore: HermexSkipCacheStore
