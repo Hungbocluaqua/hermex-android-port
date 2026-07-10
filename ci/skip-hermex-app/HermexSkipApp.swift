@@ -375,6 +375,7 @@ private final class HermexSkipRuntime: @unchecked Sendable {
         self.cacheStore = cacheStore
         let connection = HermexSkipConnection(persistence: persistence, cookieStore: cookieStore)
         self.connection = connection
+#if SKIP
         self.coordinator = HermexPlatformCoordinator(services: HermexPlatformServiceBundle(
             cache: cacheStore,
             shareIngress: HermexSkipShareIngress(),
@@ -383,6 +384,9 @@ private final class HermexSkipRuntime: @unchecked Sendable {
             voiceRecorder: HermexSkipVoiceRecorder(),
             audioTranscriber: HermexSkipAudioTranscriber(connection: connection)
         ))
+#else
+        self.coordinator = HermexPlatformCoordinator(services: HermexPlatformServiceBundle(cache: cacheStore))
+#endif
     }
 
     @MainActor
