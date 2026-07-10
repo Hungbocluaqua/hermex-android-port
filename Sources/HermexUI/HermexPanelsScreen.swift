@@ -608,10 +608,17 @@ public struct HermexPanelsScreen: View {
     }
 
     private var taskOutputItems: [[String: HermexJSONValue]] {
-        guard let output = state.taskOutput?.objectValue else { return [] }
-        guard case .array(let values) = output["outputs"]
-        else { return [] }
-        return values.compactMap { $0.objectValue }
+        if let fields = state.taskOutput?.objectValue {
+            if let outputs = fields["outputs"] {
+                switch outputs {
+                case .array(let values):
+                    return values.compactMap { $0.objectValue }
+                default:
+                    return []
+                }
+            }
+        }
+        return []
     }
 
     private var taskOutputError: String? {
