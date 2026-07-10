@@ -29,12 +29,12 @@ public enum HermexAppearanceSettings {
     public static func normalizedHex(_ rawValue: String) -> String? {
         var hex = rawValue.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         if hex.hasPrefix("#") {
-            hex.removeFirst()
+            hex = String(hex.dropFirst())
         }
 
         guard hex.count == 6 else { return nil }
         for character in hex {
-            guard allowedHexCharacters.contains(character) else { return nil }
+            guard isAllowedHexCharacter(character) else { return nil }
         }
         return "#\(hex.uppercased())"
     }
@@ -48,7 +48,7 @@ public enum HermexAppearanceSettings {
     public static func normalizedInitials(_ rawValue: String) -> String {
         var result = ""
         for character in rawValue {
-            guard allowedInitialCharacters.contains(character) else { continue }
+            guard isAllowedInitialCharacter(character) else { continue }
             result.append(contentsOf: String(character).uppercased())
             if result.count == 3 { break }
         }
@@ -95,6 +95,20 @@ public enum HermexAppearanceSettings {
         return result
     }
 
+    private static func isAllowedInitialCharacter(_ character: Character) -> Bool {
+        for allowedCharacter in allowedInitialCharacters {
+            if allowedCharacter == character { return true }
+        }
+        return false
+    }
+
+    private static func isAllowedHexCharacter(_ character: Character) -> Bool {
+        for allowedCharacter in allowedHexCharacters {
+            if allowedCharacter == character { return true }
+        }
+        return false
+    }
+
     private static func rgbComponents(for rawValue: String) -> (red: Double, green: Double, blue: Double)? {
         guard let hex = normalizedHex(rawValue),
               let value = UInt32(String(hex.dropFirst()), radix: 16)
@@ -103,9 +117,9 @@ public enum HermexAppearanceSettings {
         }
 
         return (
-            Double((value & 0xFF0000) >> 16) / 255.0,
-            Double((value & 0x00FF00) >> 8) / 255.0,
-            Double(value & 0x0000FF) / 255.0
+            Double((value / 65536) % 256) / 255.0,
+            Double((value / 256) % 256) / 255.0,
+            Double(value % 256) / 255.0
         )
     }
 }
