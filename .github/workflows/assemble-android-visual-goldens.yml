@@ -1,0 +1,58 @@
+name: Assemble Android Visual Goldens
+
+on:
+  workflow_dispatch:
+    inputs:
+      sources:
+        description: "JSON array of Android screenshot run/artifact pairs"
+        required: true
+        type: string
+      artifact_name:
+        description: "Artifact name consumed by Visual Golden Compare"
+        required: true
+        default: hermex-android-visual-goldens
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  assemble:
+    name: Assemble Android Screenshot Inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Install visual comparison dependencies
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/hermex-visual-venv"
+          "$RUNNER_TEMP/hermex-visual-venv/bin/python" -m pip install -r ci/visual-goldens/requirements.txt
+
+      - name: Download and assemble screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VISUAL_SOURCES: ${{ inputs.sources }}
+        run: |
+          set -euo pipefail
+          python3 ci/assemble_visual_artifact.py \
+            --repo "${{ github.repository }}" \
+            --sources "$VISUAL_SOURCES" \
+            --output-root "$RUNNER_TEMP/hermex-android-visual-goldens"
+
+      - name: Validate screenshot inventory
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/hermex-visual-venv/bin/python" ci/visual-goldens/validate_screenshot_inventory.py \
+            --label Android \
+            --root "$RUNNER_TEMP/hermex-android-visual-goldens"
+
+      - name: Upload Android screenshot artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ inputs.artifact_name }}
+          if-no-files-found: error
+          path: ${{ runner.temp }}/hermex-android-visual-goldens/**
