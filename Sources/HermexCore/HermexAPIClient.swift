@@ -65,9 +65,7 @@ public struct HermexAPIClient: @unchecked Sendable {
         encoder.keyEncodingStrategy = JSONEncoder.KeyEncodingStrategy.convertToSnakeCase
         self.encoder = encoder
 
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = JSONDecoder.KeyDecodingStrategy.convertFromSnakeCase
-        self.decoder = decoder
+        self.decoder = JSONDecoder()
     }
 
     public func health() async throws -> HermexJSONValue {
@@ -521,10 +519,22 @@ public struct HermexAPIClient: @unchecked Sendable {
     }
 
     public func insights(days: Int) async throws -> HermexJSONValue {
-        try await sendJSON(endpoint: HermexEndpoints.insights(days: days), method: "GET")
+        let data = try await sendData(endpoint: HermexEndpoints.insights(days: days), method: "GET")
+        do {
+            return try decoder.decode(HermexInsightsResponse.self, from: data).jsonValue
+        } catch {
+            throw HermexAPIError.decoding(String(describing: error))
+        }
     }
 
-    public func crons() async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.crons, method: "GET") }
+    public func crons() async throws -> HermexJSONValue {
+        let data = try await sendData(endpoint: HermexEndpoints.crons, method: "GET")
+        do {
+            return try decoder.decode(HermexCronsResponse.self, from: data).jsonValue
+        } catch {
+            throw HermexAPIError.decoding(String(describing: error))
+        }
+    }
     public func createCron(
         prompt: String,
         schedule: String,
@@ -603,9 +613,23 @@ public struct HermexAPIClient: @unchecked Sendable {
     public func cronOutput(jobID: String, limit: Int? = 5) async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.cronOutput(jobID: jobID, limit: limit), method: "GET") }
     public func cronHistory(jobID: String, offset: Int? = nil, limit: Int? = 50) async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.cronHistory(jobID: jobID, offset: offset, limit: limit), method: "GET") }
     public func cronDeliveryOptions() async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.cronDeliveryOptions, method: "GET") }
-    public func skills() async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.skills, method: "GET") }
+    public func skills() async throws -> HermexJSONValue {
+        let data = try await sendData(endpoint: HermexEndpoints.skills, method: "GET")
+        do {
+            return try decoder.decode(HermexSkillsResponse.self, from: data).jsonValue
+        } catch {
+            throw HermexAPIError.decoding(String(describing: error))
+        }
+    }
     public func skillContent(name: String, file: String? = nil) async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.skillContent(name: name, file: file), method: "GET") }
-    public func memory() async throws -> HermexJSONValue { try await sendJSON(endpoint: HermexEndpoints.memory, method: "GET") }
+    public func memory() async throws -> HermexJSONValue {
+        let data = try await sendData(endpoint: HermexEndpoints.memory, method: "GET")
+        do {
+            return try decoder.decode(HermexMemoryResponse.self, from: data).jsonValue
+        } catch {
+            throw HermexAPIError.decoding(String(describing: error))
+        }
+    }
 
     public func toggleSkill(name: String, enabled: Bool) async throws -> HermexJSONValue {
         try await sendJSON(endpoint: HermexEndpoints.toggleSkill, method: "POST", body: HermexJSONObjectBody(["name": .string(name), "enabled": .bool(enabled)]))

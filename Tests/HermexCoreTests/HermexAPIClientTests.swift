@@ -111,6 +111,30 @@ final class HermexAPIClientTests: XCTestCase {
         XCTAssertEqual(try jsonObject(from: deleteRequest)["job_id"] as? String, "job-1")
     }
 
+    func testSessionDecodesServerSnakeCaseIdentifiersAndNestedMessages() async throws {
+        let transport = RecordingTransport(json: #"{"session":{"session_id":"20260710_234324_33916c","title":"Planning","message_count":2,"messages":[{"message_id":"m1","role":"user","content":"Hello"},{"message_id":"m2","role":"assistant","content":"Hi"}]}}"#)
+        let client = try makeClient(transport: transport)
+
+        let response = try await client.session(id: "20260710_234324_33916c", expandRenderable: true)
+
+        XCTAssertEqual(response.session?.sessionId, "20260710_234324_33916c")
+        XCTAssertEqual(response.session?.messageCount, 2)
+        XCTAssertEqual(response.session?.messages?.map(\.messageId), ["m1", "m2"])
+        XCTAssertEqual(queryItems(for: try XCTUnwrap(transport.requests.first))["session_id"], "20260710_234324_33916c")
+    }
+
+    func testSkillsUsesTypedServerPayloadInsteadOfRecursiveJSONDecoder() async throws {
+        let transport = RecordingTransport(json: #"{"skills":[{"name":"review","description":"Review code","category":"Engineering","disabled":false}]}"#)
+        let client = try makeClient(transport: transport)
+
+        let response = try await client.skills()
+        let mapped = HermexPanelsState.skills(from: response)
+
+        XCTAssertEqual(mapped.skills.first?.name, "review")
+        XCTAssertEqual(mapped.skills.first?.description, "Review code")
+        XCTAssertEqual(mapped.skills.first?.isEnabled, true)
+    }
+
     func testTtsUsesAudioAcceptHeader() async throws {
         let transport = RecordingTransport(data: Data([0x01, 0x02]), statusCode: 200)
         let client = try makeClient(transport: transport)

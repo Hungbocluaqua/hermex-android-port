@@ -471,3 +471,280 @@ private extension Array where Element == HermexModelOption {
         }
     }
 }
+
+public struct HermexSkillsResponse: Codable, Equatable, Sendable {
+    public var skills: [HermexAPISkillDTO]?
+    public var error: String?
+
+    public var jsonValue: HermexJSONValue {
+        hermexJSONDictionary([
+            "skills": .array((skills ?? []).map { $0.jsonValue }),
+            "error": error.map { .string($0) }
+        ])
+    }
+}
+
+public struct HermexAPISkillDTO: Codable, Equatable, Sendable {
+    public var name: String?
+    public var description: String?
+    public var category: String?
+    public var disabled: Bool?
+    public var enabled: Bool?
+    public var path: String?
+    public var tags: [String]?
+    public var relatedSkills: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case description
+        case category
+        case disabled
+        case enabled
+        case path
+        case tags
+        case relatedSkills = "related_skills"
+    }
+
+    public var jsonValue: HermexJSONValue {
+        hermexJSONDictionary([
+            "name": name.map { .string($0) },
+            "description": description.map { .string($0) },
+            "category": category.map { .string($0) },
+            "disabled": disabled.map { .bool($0) },
+            "enabled": enabled.map { .bool($0) },
+            "path": path.map { .string($0) },
+            "tags": tags.map { .array($0.map { .string($0) }) },
+            "related_skills": relatedSkills.map { .array($0.map { .string($0) }) }
+        ])
+    }
+}
+
+public struct HermexMemoryResponse: Codable, Equatable, Sendable {
+    public var memory: String?
+    public var user: String?
+    public var soul: String?
+    public var projectContext: String?
+    public var error: String?
+
+    enum CodingKeys: String, CodingKey {
+        case memory
+        case user
+        case soul
+        case projectContext = "project_context"
+        case error
+    }
+
+    public var jsonValue: HermexJSONValue {
+        hermexJSONDictionary([
+            "memory": memory.map { .string($0) },
+            "user": user.map { .string($0) },
+            "soul": soul.map { .string($0) },
+            "project_context": projectContext.map { .string($0) },
+            "error": error.map { .string($0) }
+        ])
+    }
+}
+
+public struct HermexCronsResponse: Codable, Equatable, Sendable {
+    public var jobs: [HermexAPICronDTO]?
+    public var error: String?
+
+    public var jsonValue: HermexJSONValue {
+        hermexJSONDictionary([
+            "jobs": .array((jobs ?? []).map { $0.jsonValue }),
+            "error": error.map { .string($0) }
+        ])
+    }
+}
+
+public struct HermexAPICronDTO: Codable, Equatable, Sendable {
+    public var id: String?
+    public var name: String?
+    public var prompt: String?
+    public var skills: [String]?
+    public var model: String?
+    public var schedule: String?
+    public var enabled: Bool?
+    public var state: String?
+    public var lastStatus: String?
+    public var deliver: String?
+    public var profile: String?
+    public var toastNotifications: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case prompt
+        case skills
+        case model
+        case schedule
+        case enabled
+        case state
+        case lastStatus = "last_status"
+        case deliver
+        case profile
+        case toastNotifications = "toast_notifications"
+    }
+
+    public var jsonValue: HermexJSONValue {
+        hermexJSONDictionary([
+            "id": id.map { .string($0) },
+            "name": name.map { .string($0) },
+            "prompt": prompt.map { .string($0) },
+            "skills": skills.map { .array($0.map { .string($0) }) },
+            "model": model.map { .string($0) },
+            "schedule": schedule.map { .string($0) },
+            "enabled": enabled.map { .bool($0) },
+            "state": state.map { .string($0) },
+            "last_status": lastStatus.map { .string($0) },
+            "deliver": deliver.map { .string($0) },
+            "profile": profile.map { .string($0) },
+            "toast_notifications": toastNotifications.map { .bool($0) }
+        ])
+    }
+}
+
+public struct HermexInsightsResponse: Codable, Equatable, Sendable {
+    public var periodDays: Int?
+    public var totalSessions: Int?
+    public var totalMessages: Int?
+    public var totalInputTokens: Int?
+    public var totalOutputTokens: Int?
+    public var totalCacheReadTokens: Int?
+    public var totalCacheHitPercent: Double?
+    public var totalTokens: Int?
+    public var totalCost: Double?
+    public var models: [HermexInsightModelDTO]?
+    public var dailyTokens: [HermexInsightDailyDTO]?
+    public var activityByDay: [HermexInsightDayDTO]?
+    public var activityByHour: [HermexInsightHourDTO]?
+    public var error: String?
+
+    enum CodingKeys: String, CodingKey {
+        case periodDays = "period_days"
+        case totalSessions = "total_sessions"
+        case totalMessages = "total_messages"
+        case totalInputTokens = "total_input_tokens"
+        case totalOutputTokens = "total_output_tokens"
+        case totalCacheReadTokens = "total_cache_read_tokens"
+        case totalCacheHitPercent = "total_cache_hit_percent"
+        case totalTokens = "total_tokens"
+        case totalCost = "total_cost"
+        case models
+        case dailyTokens = "daily_tokens"
+        case activityByDay = "activity_by_day"
+        case activityByHour = "activity_by_hour"
+        case error
+    }
+
+    public var jsonValue: HermexJSONValue {
+        hermexJSONDictionary([
+            "period_days": periodDays.map { .number(Double($0)) },
+            "total_sessions": totalSessions.map { .number(Double($0)) },
+            "total_messages": totalMessages.map { .number(Double($0)) },
+            "total_input_tokens": totalInputTokens.map { .number(Double($0)) },
+            "total_output_tokens": totalOutputTokens.map { .number(Double($0)) },
+            "total_cache_read_tokens": totalCacheReadTokens.map { .number(Double($0)) },
+            "total_cache_hit_percent": totalCacheHitPercent.map { .number($0) },
+            "total_tokens": totalTokens.map { .number(Double($0)) },
+            "total_cost": totalCost.map { .number($0) },
+            "models": .array((models ?? []).map { $0.jsonValue }),
+            "daily_tokens": .array((dailyTokens ?? []).map { $0.jsonValue }),
+            "activity_by_day": .array((activityByDay ?? []).map { $0.jsonValue }),
+            "activity_by_hour": .array((activityByHour ?? []).map { $0.jsonValue }),
+            "error": error.map { .string($0) }
+        ])
+    }
+}
+
+public struct HermexInsightModelDTO: Codable, Equatable, Sendable {
+    public var model: String?
+    public var sessions: Int?
+    public var inputTokens: Int?
+    public var outputTokens: Int?
+    public var cacheReadTokens: Int?
+    public var cacheHitPercent: Double?
+    public var totalTokens: Int?
+    public var cost: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case model
+        case sessions
+        case inputTokens = "input_tokens"
+        case outputTokens = "output_tokens"
+        case cacheReadTokens = "cache_read_tokens"
+        case cacheHitPercent = "cache_hit_percent"
+        case totalTokens = "total_tokens"
+        case cost
+    }
+
+    public var jsonValue: HermexJSONValue {
+        hermexJSONDictionary([
+            "model": model.map { .string($0) },
+            "sessions": sessions.map { .number(Double($0)) },
+            "input_tokens": inputTokens.map { .number(Double($0)) },
+            "output_tokens": outputTokens.map { .number(Double($0)) },
+            "cache_read_tokens": cacheReadTokens.map { .number(Double($0)) },
+            "cache_hit_percent": cacheHitPercent.map { .number($0) },
+            "total_tokens": totalTokens.map { .number(Double($0)) },
+            "cost": cost.map { .number($0) }
+        ])
+    }
+}
+
+public struct HermexInsightDailyDTO: Codable, Equatable, Sendable {
+    public var date: String?
+    public var inputTokens: Int?
+    public var outputTokens: Int?
+    public var cacheReadTokens: Int?
+    public var sessions: Int?
+    public var cost: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case date
+        case inputTokens = "input_tokens"
+        case outputTokens = "output_tokens"
+        case cacheReadTokens = "cache_read_tokens"
+        case sessions
+        case cost
+    }
+
+    public var jsonValue: HermexJSONValue {
+        hermexJSONDictionary([
+            "date": date.map { .string($0) },
+            "input_tokens": inputTokens.map { .number(Double($0)) },
+            "output_tokens": outputTokens.map { .number(Double($0)) },
+            "cache_read_tokens": cacheReadTokens.map { .number(Double($0)) },
+            "sessions": sessions.map { .number(Double($0)) },
+            "cost": cost.map { .number($0) }
+        ])
+    }
+}
+
+public struct HermexInsightDayDTO: Codable, Equatable, Sendable {
+    public var day: String?
+    public var sessions: Int?
+
+    public var jsonValue: HermexJSONValue {
+        hermexJSONDictionary([
+            "day": day.map { .string($0) },
+            "sessions": sessions.map { .number(Double($0)) }
+        ])
+    }
+}
+
+public struct HermexInsightHourDTO: Codable, Equatable, Sendable {
+    public var hour: Int?
+    public var sessions: Int?
+
+    public var jsonValue: HermexJSONValue {
+        hermexJSONDictionary([
+            "hour": hour.map { .number(Double($0)) },
+            "sessions": sessions.map { .number(Double($0)) }
+        ])
+    }
+}
+
+private func hermexJSONDictionary(_ fields: [String: HermexJSONValue?]) -> HermexJSONValue {
+    .dictionary(fields.compactMapValues { $0 })
+}

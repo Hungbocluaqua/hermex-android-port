@@ -76,6 +76,24 @@ final class HermexDTOTests: XCTestCase {
         XCTAssertEqual(fields["memory"]?.stringValue, "Remember this")
     }
 
+    func testTypedServerPanelPayloadsMapRealResponseShapes() throws {
+        let decoder = JSONDecoder()
+        let crons = try decoder.decode(HermexCronsResponse.self, from: Data(#"{"jobs":[{"id":"job-1","name":"Weekly research","prompt":"Prepare a digest","skills":["arxiv"],"model":"gpt-5","schedule":"0 9 * * 1","enabled":true,"state":"idle","deliver":"origin","profile":"default","toast_notifications":true}]}"#.utf8))
+        let memory = try decoder.decode(HermexMemoryResponse.self, from: Data(#"{"memory":"Remember","user":"Concise","soul":"Helpful","project_context":"Hermex"}"#.utf8))
+        let insights = try decoder.decode(HermexInsightsResponse.self, from: Data(#"{"period_days":30,"total_sessions":22,"total_messages":500,"total_tokens":12345,"total_cost":1.25,"models":[{"model":"gpt-5","sessions":20,"total_tokens":12000,"cost":1.2}],"daily_tokens":[{"date":"2026-07-10","input_tokens":100,"output_tokens":50,"sessions":2,"cost":0.1}],"activity_by_day":[{"day":"Friday","sessions":4}],"activity_by_hour":[{"hour":21,"sessions":3}]}"#.utf8))
+
+        let taskState = HermexPanelsState.tasks(from: crons.jsonValue)
+        let memoryState = HermexPanelsState.memory(from: memory.jsonValue)
+        let insightFields = try XCTUnwrap(insights.jsonValue.objectValue)
+
+        XCTAssertEqual(taskState.tasks.first?.id, "job-1")
+        XCTAssertEqual(taskState.tasks.first?.skills, ["arxiv"])
+        XCTAssertEqual(memoryState.memory.map(\.section), ["memory", "user", "soul", "project_context"])
+        XCTAssertEqual(insightFields["total_sessions"]?.intValue, 22)
+        XCTAssertEqual(insightFields.arrayValue("models").count, 1)
+        XCTAssertEqual(insightFields.arrayValue("daily_tokens").count, 1)
+    }
+
     func testModelsResponseDecodesLooseJsonArrays() throws {
         let data = Data("""
         {

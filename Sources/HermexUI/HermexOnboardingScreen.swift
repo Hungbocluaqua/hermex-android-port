@@ -96,6 +96,7 @@ public struct HermexOnboardingScreen: View {
                 customHeaderText = newValue
             }
         }
+#if !SKIP
         .onChange(of: serverURLString) { _, newValue in
             onEvent(.updateOnboardingServerURL(newValue))
         }
@@ -108,6 +109,7 @@ public struct HermexOnboardingScreen: View {
         .onChange(of: customHeaderText) { _, newValue in
             onEvent(.updateOnboardingCustomHeaders(newValue))
         }
+#endif
         .onChange(of: currentPage) { oldPage, newPage in
             if oldPage == 2,
                newPage > oldPage,
