@@ -506,6 +506,14 @@ launch_app() {
   fi
 }
 
+restart_app() {
+  log "Restarting Hermex process before capture retry"
+  adb_shell_bounded 10 am force-stop "$PACKAGE_ID"
+  dismiss_system_dialogs
+  sleep 1
+  launch_app
+}
+
 write_visual_fixture_selection() {
   local app_dir="/data/data/$PACKAGE_ID"
   local fallback_app_dir="/data/user/0/$PACKAGE_ID"
@@ -542,8 +550,7 @@ wait_for_app_focus() {
       fi
     fi
     if (( attempt == 5 || attempt == 10 || attempt == 20 )); then
-      dismiss_system_dialogs
-      launch_app
+      restart_app
     fi
     sleep 1
   done
@@ -590,8 +597,7 @@ capture_verified_screenshot() {
     if (( attempt > 1 )); then
       log "Retrying screenshot capture after emulator frame/focus guard failure (attempt $attempt/$CAPTURE_ATTEMPTS)"
       if [[ "$relaunch_before_retry" == "1" ]]; then
-        dismiss_system_dialogs
-        launch_app
+        restart_app
         relaunch_before_retry=0
       fi
       sleep "$CAPTURE_RETRY_SECONDS"

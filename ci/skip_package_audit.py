@@ -200,6 +200,7 @@ def main() -> int:
     ok &= require(
         "--preserve-app-state" in capture_script
         and "PRESERVE_APP_STATE" in capture_script
+        and "restart_app" in capture_script
         and "am force-stop" in capture_script,
         "Android visual capture must support restarting fixture screens without clearing app state.",
     )
