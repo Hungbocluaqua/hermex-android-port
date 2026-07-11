@@ -22,7 +22,11 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install visual comparison dependencies
-        run: python3 -m pip install -r ci/visual-goldens/requirements.txt
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/hermex-visual-venv"
+          "$RUNNER_TEMP/hermex-visual-venv/bin/python" -m pip install -r ci/visual-goldens/requirements.txt
+          echo "HERMEX_VISUAL_PYTHON=$RUNNER_TEMP/hermex-visual-venv/bin/python" >> "$GITHUB_ENV"
 
       - name: Install XcodeGen
         run: brew install xcodegen || brew upgrade xcodegen
@@ -42,7 +46,7 @@ jobs:
       - name: Capture complete iOS fixture inventory
         run: |
           set -euo pipefail
-          python3 ci/capture_ios_visual_goldens.py \
+          "$HERMEX_VISUAL_PYTHON" ci/capture_ios_visual_goldens.py \
             --project ci/ios-visual-fixtures/HermexVisualFixtures.xcodeproj \
             --derived-data "$RUNNER_TEMP/hermex-ios-derived-data" \
             --output-root "$RUNNER_TEMP/hermex-ios-visual-goldens"
@@ -50,7 +54,7 @@ jobs:
       - name: Validate screenshot inventory
         run: |
           set -euo pipefail
-          python3 ci/visual-goldens/validate_screenshot_inventory.py \
+          "$HERMEX_VISUAL_PYTHON" ci/visual-goldens/validate_screenshot_inventory.py \
             --label iOS \
             --root "$RUNNER_TEMP/hermex-ios-visual-goldens"
 
