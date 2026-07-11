@@ -60,7 +60,6 @@ public struct HermexOnboardingScreen: View {
             VStack(spacing: 0) {
                 pageContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(Rectangle())
                     .simultaneousGesture(
                         DragGesture(minimumDistance: 32)
                             .onEnded { value in
@@ -759,7 +758,6 @@ public struct HermexOnboardingScreen: View {
         .padding(.horizontal, 13)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .simultaneousGesture(
             TapGesture().onEnded {
                 onTap?()
