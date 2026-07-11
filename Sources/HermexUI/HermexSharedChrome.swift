@@ -295,6 +295,9 @@ public struct HermexLogoMark: View {
     }
 
     public var body: some View {
+#if SKIP
+        HermexSkipWordmark()
+#else
         ZStack {
             hermexLogoImage("hermes-fill-mask")
                 .renderingMode(.template)
@@ -311,6 +314,7 @@ public struct HermexLogoMark: View {
                 .resizable()
                 .scaledToFit()
         }
+#endif
         .aspectRatio(HermexLayoutContract.hermexLogoAspectRatio, contentMode: .fit)
         .frame(width: HermexLayoutContract.sessionListLogoWidth)
         .accessibilityLabel("HERMEX")
@@ -337,9 +341,13 @@ public struct HermexAppIconMark: View {
     }
 
     public var body: some View {
+#if SKIP
+        HermexSkipAppIconArtwork()
+#else
         appIconImage
             .resizable()
             .scaledToFit()
+#endif
             .frame(width: size, height: size)
             .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
             .overlay {
@@ -362,6 +370,44 @@ public struct HermexAppIconMark: View {
 #endif
     }
 }
+
+#if SKIP
+private struct HermexSkipWordmark: View {
+    var body: some View {
+        Text("HERMEX")
+            .font(.system(size: 27, weight: .black, design: .monospaced))
+            .foregroundStyle(
+                LinearGradient(
+                    colors: [HermexUIColors.gold, Color(red: 1.0, green: 0.58, blue: 0.05)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .shadow(color: HermexUIColors.gold.opacity(0.32), radius: 5, y: 2)
+            .minimumScaleFactor(0.72)
+    }
+}
+
+private struct HermexSkipAppIconArtwork: View {
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color.black)
+
+            Text("H")
+                .font(.system(size: 92, weight: .black, design: .rounded))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [HermexUIColors.gold, Color(red: 1.0, green: 0.52, blue: 0.03)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .shadow(color: HermexUIColors.gold.opacity(0.45), radius: 7, y: 2)
+        }
+    }
+}
+#endif
 
 public struct HermexGlassPanel<Content: View>: View {
     private let content: Content
