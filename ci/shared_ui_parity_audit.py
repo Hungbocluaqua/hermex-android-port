@@ -35,6 +35,7 @@ def main() -> int:
     store = read("Sources/HermexCore/HermexAppStore.swift")
     mapping = read("Sources/HermexCore/HermexStateMapping.swift")
     package = read("Package.swift")
+    logo_catalog = ROOT / "Sources" / "HermexUI" / "Resources" / "Logo" / "HermexLogo.xcassets"
 
     ok = True
     ok &= require("NavigationStack" not in root, "HermexRootScreen must not add platform navigation chrome.")
@@ -61,11 +62,14 @@ def main() -> int:
         "Onboarding must preserve the iOS focused-field keyboard action bar."
     )
     ok &= require(
-        'onboardingField(systemImage: "link"' in onboarding
-        and 'onboardingField(systemImage: "key.fill"' in onboarding
+        'systemImage: "link",' in onboarding
+        and 'systemImage: "key.fill",' in onboarding
         and "HermexSystemImageName(systemImage)" in onboarding,
         "Onboarding field icons must use Skip-safe HermexSystemImageName mapping."
     )
+    ok &= require("simultaneousGesture" in onboarding and "handleSwipe" in onboarding, "Shared onboarding must support horizontal pager swipes.")
+    ok &= require("PresentationRoot already applies imePadding" in onboarding and "self.overlay(alignment: .bottom)" not in onboarding, "Skip onboarding must keep keyboard actions in IME-safe layout flow.")
+    ok &= require(logo_catalog.is_dir() and (logo_catalog / "Contents.json").is_file(), "Shared Hermex logo assets must be packaged as an xcassets catalog for Skip.")
     ok &= require(
         "connectionButtonLabel(title: title, systemImage: systemImage)" in onboarding
         and "#if SKIP\n        Text(title)" in onboarding,
@@ -113,8 +117,8 @@ def main() -> int:
     )
     ok &= require("HermexSystemImageName(\"square.and.pencil\")" in session_list, "Skip Android must not render a warning placeholder for the floating Chat icon.")
     ok &= require("func HermexSystemImageName" in chrome, "Shared chrome must expose Skip-safe system image mapping.")
-    ok &= require('case "folder", "folder.fill":\n        return "folder"' in chrome or 'case "folder":\n        return "folder"' in chrome, "Skip icon map must keep folder icons distinct.")
-    ok &= require('case "waveform", "mic", "mic.fill":\n        return "mic"' in chrome or 'case "waveform":\n        return "mic"' in chrome, "Skip icon map must keep voice icons distinct.")
+    ok &= require('case "folder", "folder.fill":\n        return "list.bullet"' in chrome, "Skip icon map must use a supported folder fallback.")
+    ok &= require('case "waveform", "mic", "mic.fill":\n        return "phone"' in chrome, "Skip icon map must use a supported voice fallback.")
     ok &= require("composerFallbackInset" in read("Sources/HermexUI/HermexUILayoutContracts.swift"), "Composer must reserve a Skip-safe fallback inset.")
     ok &= require("minimumHeight" in read("Sources/HermexUI/HermexUILayoutContracts.swift"), "Measured composer inset must enforce a minimum height.")
     ok &= require("activeServerSection" in settings and "serverManagementSection" in settings, "Settings screen must expose iOS-style active server and server management cards.")

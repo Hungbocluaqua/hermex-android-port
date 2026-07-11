@@ -53,55 +53,56 @@ extension EnvironmentValues {
 
 func HermexSystemImageName(_ name: String) -> String {
 #if SKIP
-    // Map iOS SF Symbols to Material-ish Skip names. Prefer icons that remain
-    // visually distinct so utility rails and chat chrome do not collapse to one glyph.
+    // Map iOS SF Symbols to the subset SkipUI resolves to Compose vectors.
     switch name {
     case "square.and.pencil", "pencil", "edit":
-        return "edit"
+        return "pencil"
     case "plus", "plus.circle", "plus.circle.fill":
         return "plus"
     case "folder", "folder.fill":
-        return "folder"
+        return "list.bullet"
     case "arrow.triangle.branch", "arrow.triangle.merge":
-        return "arrow.triangle.branch"
+        return "arrow.forward"
     case "arrow.clockwise", "arrow.counterclockwise", "arrow.triangle.2.circlepath":
-        return "arrow.clockwise"
+        return "arrow.clockwise.circle"
     case "waveform", "mic", "mic.fill":
-        return "mic"
-    case "arrow.up", "paperplane", "paperplane.fill":
-        return "arrow.up"
-    case "stop.fill", "stop", "xmark", "xmark.circle", "xmark.circle.fill":
+        return "phone"
+    case "arrow.up", "arrow.up.right":
+        return "arrow.forward"
+    case "paperplane", "paperplane.fill":
+        return "paperplane"
+    case "stop.fill", "stop", "pause.fill", "xmark", "xmark.circle", "xmark.circle.fill":
         return "xmark"
     case "person.crop.circle", "person.crop.circle.badge.gearshape", "person":
         return "person.crop.circle"
     case "exclamationmark.triangle", "exclamationmark.triangle.fill":
         return "exclamationmark.triangle"
     case "hammer", "hammer.fill", "wrench", "wrench.and.screwdriver":
-        return "hammer"
+        return "wrench"
     case "brain.head.profile", "brain", "brain.fill":
-        return "brain"
+        return "info.circle"
     case "chart.bar", "chart.bar.fill", "chart.xyaxis.line":
-        return "chart.bar"
+        return "list.bullet"
     case "calendar.badge.clock", "calendar", "clock":
         return "calendar"
     case "link", "globe":
-        return "link"
+        return "arrow.forward.square"
     case "key.horizontal", "key.fill", "key":
-        return "key"
+        return "lock"
     case "slider.horizontal.3":
-        return "slider.horizontal.3"
+        return "gearshape"
     case "network", "wifi":
-        return "wifi"
+        return "location"
     case "checkmark.circle.fill", "checkmark.circle", "checkmark":
         return "checkmark.circle"
     case "server.rack", "server":
-        return "server.rack"
+        return "list.bullet"
     case "externaldrive.badge.checkmark", "externaldrive":
-        return "externaldrive"
+        return "list.bullet"
     case "rectangle.portrait.and.arrow.right":
-        return "rectangle.portrait.and.arrow.right"
+        return "arrow.forward.square"
     case "point.3.connected.trianglepath.dotted", "point.3.connected.trianglepath":
-        return "point.3.connected.trianglepath"
+        return "arrow.forward"
     case "chevron.left", "chevron.backward":
         return "chevron.left"
     case "chevron.right", "chevron.forward":
@@ -110,36 +111,40 @@ func HermexSystemImageName(_ name: String) -> String {
         return "chevron.down"
     case "chevron.up":
         return "chevron.up"
-    case "ellipsis":
+    case "ellipsis", "ellipsis.circle":
         return "ellipsis"
     case "magnifyingglass":
         return "magnifyingglass"
     case "gearshape", "gearshape.fill":
         return "gearshape"
     case "paperclip":
-        return "paperclip"
+        return "plus"
     case "sparkles", "sparkle":
-        return "sparkles"
+        return "star.fill"
     case "photo", "photo.fill":
-        return "photo"
+        return "square.and.arrow.up"
     case "doc", "doc.text", "doc.badge.gearshape":
-        return "doc"
+        return "list.bullet"
     case "checkmark.shield", "checkmark.seal":
         return "checkmark.circle"
     case "questionmark.bubble", "questionmark.circle":
-        return "questionmark.circle"
+        return "info.circle"
     case "circle.lefthalf.filled":
-        return "circle.lefthalf.filled"
+        return "gearshape"
     case "hand.tap":
-        return "hand.tap"
+        return "hand.thumbsup"
     case "cpu":
-        return "cpu"
+        return "wrench"
     case "bell", "bell.fill":
         return "bell"
     case "lock", "lock.fill", "lock.shield.fill":
         return "lock"
     case "pin", "pin.fill":
-        return "pin"
+        return "location"
+    case "play", "play.fill":
+        return "play"
+    case "trash", "trash.fill":
+        return "trash"
     default:
         return name
     }

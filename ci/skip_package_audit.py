@@ -54,6 +54,7 @@ def main() -> int:
         ok &= require(content == "mode: transpiled", f"{relative} must set `mode: transpiled`.")
 
     for asset in [
+        "HermesAppIcon.png",
         "hermes-fill-mask.png",
         "hermes-shading-overlay.png",
         "hermes-highlight.png",
@@ -63,6 +64,17 @@ def main() -> int:
             (ROOT / "Sources" / "HermexUI" / "Resources" / "Logo" / asset).is_file(),
             f"Shared Hermex logo asset is missing: {asset}.",
         )
+
+    logo_catalog = ROOT / "Sources" / "HermexUI" / "Resources" / "Logo" / "HermexLogo.xcassets"
+    ok &= require((logo_catalog / "Contents.json").is_file(), "Shared Hermex logo catalog is missing its Contents.json.")
+    for asset in [
+        "HermesAppIcon.imageset/Contents.json",
+        "hermes-fill-mask.imageset/Contents.json",
+        "hermes-shading-overlay.imageset/Contents.json",
+        "hermes-highlight.imageset/Contents.json",
+        "hermes-outline-shadow.imageset/Contents.json",
+    ]:
+        ok &= require((logo_catalog / asset).is_file(), f"Shared Hermex image set is missing: {asset}.")
 
     launcher = (ROOT / "ci" / "skip-hermex-app" / "HermexSkipApp.swift").read_text(encoding="utf-8")
     ok &= require("HermexStoreRootScreen" in launcher, "Skip launcher must render HermexStoreRootScreen.")

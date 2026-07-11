@@ -60,6 +60,13 @@ public struct HermexOnboardingScreen: View {
             VStack(spacing: 0) {
                 pageContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 32)
+                            .onEnded { value in
+                                handleSwipe(value.translation)
+                            }
+                    )
 
                 bottomBar
             }
@@ -334,7 +341,11 @@ public struct HermexOnboardingScreen: View {
     private var connectionForm: some View {
         HermexGlassPanel {
             VStack(spacing: 12) {
-                onboardingField(systemImage: "link", title: "Server URL") {
+                onboardingField(
+                    systemImage: "link",
+                    title: "Server URL",
+                    onTap: { focusedField = .serverURL }
+                ) {
                     ZStack(alignment: .leading) {
                         if serverURLString.isEmpty {
                             Text(verbatim: "http://100.64.0.1:8787")
@@ -345,6 +356,7 @@ public struct HermexOnboardingScreen: View {
                         TextField("", text: $serverURLString)
                             .font(.body.weight(.medium))
                             .foregroundStyle(Color.white)
+                            .frame(minHeight: 44, alignment: .leading)
                             .hermexURLInputTraits()
                             .submitLabel(.go)
                             .tint(Color(red: 1.0, green: 0.74, blue: 0.10))
@@ -355,7 +367,11 @@ public struct HermexOnboardingScreen: View {
                     }
                 }
 
-                onboardingField(systemImage: "key.fill", title: "Password") {
+                onboardingField(
+                    systemImage: "key.fill",
+                    title: "Password",
+                    onTap: { focusedField = .password }
+                ) {
                     ZStack(alignment: .leading) {
                         if password.isEmpty {
                             Text("Server password")
@@ -365,6 +381,7 @@ public struct HermexOnboardingScreen: View {
                         SecureField("", text: $password)
                             .font(.body.weight(.medium))
                             .foregroundStyle(Color.white)
+                            .frame(minHeight: 44, alignment: .leading)
                             .textContentType(.password)
                             .submitLabel(.go)
                             .focused($focusedField, equals: HermexOnboardingConnectField.password)
@@ -418,9 +435,15 @@ public struct HermexOnboardingScreen: View {
             pageIndicator
 
             if currentPage == Self.connectPageIndex {
+#if SKIP
+                // PresentationRoot already applies imePadding, so keep the actions in
+                // normal layout flow while the Android keyboard is visible.
+                connectActionButtons
+#else
                 if !isEditingConnectionField {
                     connectActionButtons
                 }
+#endif
             } else {
                 Button {
                     handlePrimaryAction()
@@ -715,6 +738,7 @@ public struct HermexOnboardingScreen: View {
     private func onboardingField<Content: View>(
         systemImage: String,
         title: String,
+        onTap: (() -> Void)? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
         HStack(spacing: 12) {
@@ -735,6 +759,12 @@ public struct HermexOnboardingScreen: View {
         .padding(.horizontal, 13)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                onTap?()
+            }
+        )
         .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -748,6 +778,21 @@ public struct HermexOnboardingScreen: View {
             return
         }
         advance()
+    }
+
+    private func handleSwipe(_ translation: CGSize) {
+        guard focusedField == nil else { return }
+
+        let horizontalDistance = abs(translation.width)
+        let verticalDistance = abs(translation.height)
+        guard horizontalDistance >= 56, horizontalDistance > verticalDistance * 1.2 else { return }
+
+        if translation.width < 0 {
+            guard currentPage < Self.connectPageIndex else { return }
+            handlePrimaryAction()
+        } else if currentPage > 0 {
+            currentPage -= 1
+        }
     }
 
     private func advance() {
@@ -853,13 +898,9 @@ private extension View {
         @ViewBuilder inset: () -> Inset
     ) -> some View {
 #if SKIP
-        // Skip does not support safeAreaInset yet; pin connect actions as an overlay.
-        self.overlay(alignment: .bottom) {
-            if isVisible {
-                inset()
-                    .background(Color.black.opacity(0.92))
-            }
-        }
+        // PresentationRoot reserves the IME area for every screen. An overlay here
+        // can cover the focused field and cause the Android form to jump.
+        self
 #else
         self.safeAreaInset(edge: .bottom, spacing: 0) {
             if isVisible {
