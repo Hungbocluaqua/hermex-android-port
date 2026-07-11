@@ -139,7 +139,7 @@ public struct HermexOnboardingScreen: View {
                     )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
+            .hermexContentShapeRectangle()
             .offset(x: horizontalDragOffset * 0.18)
             .simultaneousGesture(
                 DragGesture(minimumDistance: 18)
