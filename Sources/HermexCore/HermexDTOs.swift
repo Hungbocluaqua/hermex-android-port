@@ -478,7 +478,7 @@ public struct HermexSkillsResponse: Codable, Equatable, Sendable {
 
     public var jsonValue: HermexJSONValue {
         hermexJSONDictionary([
-            "skills": .array((skills ?? []).map { $0.jsonValue }),
+            "skills": HermexJSONValue.array((skills ?? []).map { $0.jsonValue }),
             "error": error.map { .string($0) }
         ])
     }
@@ -551,7 +551,7 @@ public struct HermexCronsResponse: Codable, Equatable, Sendable {
 
     public var jsonValue: HermexJSONValue {
         hermexJSONDictionary([
-            "jobs": .array((jobs ?? []).map { $0.jsonValue }),
+            "jobs": HermexJSONValue.array((jobs ?? []).map { $0.jsonValue }),
             "error": error.map { .string($0) }
         ])
     }
@@ -648,10 +648,10 @@ public struct HermexInsightsResponse: Codable, Equatable, Sendable {
             "total_cache_hit_percent": totalCacheHitPercent.map { .number($0) },
             "total_tokens": totalTokens.map { .number(Double($0)) },
             "total_cost": totalCost.map { .number($0) },
-            "models": .array((models ?? []).map { $0.jsonValue }),
-            "daily_tokens": .array((dailyTokens ?? []).map { $0.jsonValue }),
-            "activity_by_day": .array((activityByDay ?? []).map { $0.jsonValue }),
-            "activity_by_hour": .array((activityByHour ?? []).map { $0.jsonValue }),
+            "models": HermexJSONValue.array((models ?? []).map { $0.jsonValue }),
+            "daily_tokens": HermexJSONValue.array((dailyTokens ?? []).map { $0.jsonValue }),
+            "activity_by_day": HermexJSONValue.array((activityByDay ?? []).map { $0.jsonValue }),
+            "activity_by_hour": HermexJSONValue.array((activityByHour ?? []).map { $0.jsonValue }),
             "error": error.map { .string($0) }
         ])
     }
