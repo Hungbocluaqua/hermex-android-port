@@ -2,6 +2,20 @@ import Foundation
 import SwiftUI
 import HermexCore
 
+private final class HermexOnboardingDraftBuffer {
+    var serverURLString: String
+    var displayName: String
+    var password: String
+    var customHeaderText: String
+
+    init(onboarding: HermexOnboardingState) {
+        self.serverURLString = onboarding.serverURLString
+        self.displayName = onboarding.displayName
+        self.password = onboarding.password
+        self.customHeaderText = onboarding.customHeaderText
+    }
+}
+
 public struct HermexStoreRootScreen: View {
     @State private var store: HermexAppStore
     @State private var appState: HermexAppState
@@ -12,6 +26,7 @@ public struct HermexStoreRootScreen: View {
     @State private var workspace: HermexWorkspaceState
     @State private var git: HermexGitState
     @State private var panels: HermexPanelsState
+    @State private var onboardingDraft: HermexOnboardingDraftBuffer
     private let loadAttachmentData: @Sendable (_ sessionID: String, _ path: String) async -> Data?
     private let playAttachment: @Sendable (_ sessionID: String, _ path: String, _ filename: String) async -> Bool
     private let stopAttachmentPlayback: @Sendable () async -> Void
@@ -35,6 +50,7 @@ public struct HermexStoreRootScreen: View {
         self._workspace = State(initialValue: store.workspace)
         self._git = State(initialValue: store.git)
         self._panels = State(initialValue: store.panels)
+        self._onboardingDraft = State(initialValue: HermexOnboardingDraftBuffer(onboarding: store.onboarding))
         self.loadAttachmentData = loadAttachmentData
         self.playAttachment = playAttachment
         self.stopAttachmentPlayback = stopAttachmentPlayback
@@ -54,10 +70,22 @@ public struct HermexStoreRootScreen: View {
             workspace: workspace,
             git: git,
             panels: panels,
-            onboardingServerURLBinding: $onboarding.serverURLString,
-            onboardingDisplayNameBinding: $onboarding.displayName,
-            onboardingPasswordBinding: $onboarding.password,
-            onboardingCustomHeaderBinding: $onboarding.customHeaderText,
+            onboardingServerURLBinding: Binding(
+                get: { onboardingDraft.serverURLString },
+                set: { onboardingDraft.serverURLString = $0 }
+            ),
+            onboardingDisplayNameBinding: Binding(
+                get: { onboardingDraft.displayName },
+                set: { onboardingDraft.displayName = $0 }
+            ),
+            onboardingPasswordBinding: Binding(
+                get: { onboardingDraft.password },
+                set: { onboardingDraft.password = $0 }
+            ),
+            onboardingCustomHeaderBinding: Binding(
+                get: { onboardingDraft.customHeaderText },
+                set: { onboardingDraft.customHeaderText = $0 }
+            ),
             loadAttachmentData: loadAttachmentData,
             playAttachment: playAttachment,
             stopAttachmentPlayback: stopAttachmentPlayback

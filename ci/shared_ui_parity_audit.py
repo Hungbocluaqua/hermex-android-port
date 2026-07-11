@@ -92,9 +92,10 @@ def main() -> int:
         "Onboarding connection buttons must use shared asset-backed icons."
     )
     ok &= require(
-        "onboardingServerURLBinding: $onboarding.serverURLString" in store_root
-        and "onboardingPasswordBinding: $onboarding.password" in store_root,
-        "Store root must own Android onboarding draft bindings so Skip does not lose typed input."
+        "HermexOnboardingDraftBuffer" in store_root
+        and "onboardingServerURLBinding: Binding(" in store_root
+        and "onboardingPasswordBinding: Binding(" in store_root,
+        "Store root must own a non-observed Android draft buffer so Skip does not remount typed input."
     )
     ok &= require("TextEditor(" in onboarding and "Custom headers" in onboarding, "Onboarding must expose custom header entry.")
     ok &= require(".testOnboardingConnection" in onboarding and ".connectOnboarding" in onboarding, "Onboarding must route connection test and login.")
