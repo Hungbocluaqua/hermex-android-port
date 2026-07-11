@@ -57,6 +57,8 @@ func HermexSystemImageName(_ name: String) -> String {
     switch name {
     case "square.and.pencil", "pencil", "edit":
         return "pencil"
+    case "bubble.left.and.bubble.right", "message", "message.fill":
+        return "info.circle"
     case "plus", "plus.circle", "plus.circle.fill":
         return "plus"
     case "folder", "folder.fill":
@@ -100,6 +102,8 @@ func HermexSystemImageName(_ name: String) -> String {
     case "externaldrive.badge.checkmark", "externaldrive":
         return "list.bullet"
     case "rectangle.portrait.and.arrow.right":
+        return "arrow.forward.square"
+    case "terminal", "terminal.fill":
         return "arrow.forward.square"
     case "point.3.connected.trianglepath.dotted", "point.3.connected.trianglepath":
         return "arrow.forward"
@@ -228,12 +232,17 @@ struct HermexAssetIcon: View {
 
 @ViewBuilder
 func HermexIconView(_ systemImage: String, size: CGFloat = 20) -> some View {
+#if SKIP
+    Image(systemName: HermexSystemImageName(systemImage))
+        .font(.system(size: size * 0.82, weight: .semibold))
+#else
     if let assetName = hermexAssetName(for: systemImage) {
         HermexAssetIcon(name: assetName, size: size)
     } else {
         Image(systemName: HermexSystemImageName(systemImage))
             .font(.system(size: size * 0.82, weight: .semibold))
     }
+#endif
 }
 
 public struct HermexMappedLabel: View {
@@ -309,7 +318,11 @@ public struct HermexLogoMark: View {
 
     private func hermexLogoImage(_ name: String) -> Image {
 #if SWIFT_PACKAGE
+#if SKIP
+        return Image(name + ".png", bundle: .module)
+#else
         return Image(name, bundle: .module)
+#endif
 #else
         return Image(name)
 #endif
@@ -339,7 +352,11 @@ public struct HermexAppIconMark: View {
 
     private var appIconImage: Image {
 #if SWIFT_PACKAGE
+#if SKIP
+        return Image("HermesAppIcon.png", bundle: .module)
+#else
         return Image("HermesAppIcon", bundle: .module)
+#endif
 #else
         return Image("HermesAppIcon")
 #endif
