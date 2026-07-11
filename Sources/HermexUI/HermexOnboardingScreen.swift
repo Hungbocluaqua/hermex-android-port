@@ -24,6 +24,8 @@ public struct HermexOnboardingScreen: View {
     @State private var displayName: String
     @State private var password: String
     @State private var customHeaderText: String
+    @State private var pageTransitionDirection = 1
+    @GestureState private var horizontalDragOffset: CGFloat = 0
     @FocusState private var focusedField: HermexOnboardingConnectField?
 
     public init(
@@ -58,24 +60,7 @@ public struct HermexOnboardingScreen: View {
     public var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                TabView(selection: $currentPage) {
-                    welcomePage
-                        .tag(0)
-                    featuresPage
-                        .tag(1)
-                    agentPromptPage
-                        .tag(2)
-                    tailscalePage
-                        .tag(3)
-                    connectPage
-                        .tag(Self.connectPageIndex)
-                }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-#if SKIP
-                    .tabViewStyle(bridgedStyle: 2, bridgedDisplayMode: 2)
-#elseif canImport(UIKit)
-                    .tabViewStyle(.page(indexDisplayMode: .never))
-#endif
+                onboardingPager
 
                 bottomBar
             }
@@ -136,6 +121,61 @@ public struct HermexOnboardingScreen: View {
             if newPage != Self.connectPageIndex {
                 focusedField = nil
             }
+        }
+    }
+
+    private var onboardingPager: some View {
+        GeometryReader { proxy in
+            ZStack {
+                pageView(for: currentPage)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .id(currentPage)
+                    .transition(
+                        .asymmetric(
+                            insertion: .move(edge: pageTransitionDirection > 0 ? .trailing : .leading),
+                            removal: .move(edge: pageTransitionDirection > 0 ? .leading : .trailing)
+                        )
+                        .combined(with: .opacity)
+                    )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .offset(x: horizontalDragOffset * 0.18)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 18)
+                    .updating($horizontalDragOffset) { value, state, _ in
+                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                        state = value.translation.width
+                    }
+                    .onEnded { value in
+                        let horizontal = value.translation.width
+                        let vertical = value.translation.height
+                        let threshold = max(56, proxy.size.width * 0.16)
+                        guard abs(horizontal) >= threshold, abs(horizontal) > abs(vertical) * 1.15 else { return }
+
+                        if horizontal < 0 {
+                            moveToPage(currentPage + 1)
+                        } else {
+                            moveToPage(currentPage - 1)
+                        }
+                    }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func pageView(for page: Int) -> some View {
+        switch page {
+        case 0:
+            welcomePage
+        case 1:
+            featuresPage
+        case 2:
+            agentPromptPage
+        case 3:
+            tailscalePage
+        default:
+            connectPage
         }
     }
 
@@ -507,7 +547,7 @@ public struct HermexOnboardingScreen: View {
 
                 if currentPage < Self.connectPageIndex {
                     Button("Already have a server?") {
-                        currentPage = Self.connectPageIndex
+                        moveToPage(Self.connectPageIndex)
                     }
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(Color.white.opacity(0.55))
@@ -850,12 +890,19 @@ public struct HermexOnboardingScreen: View {
 
     private func advance() {
         if currentPage < Self.connectPageIndex {
-            currentPage += 1
-            if currentPage != Self.connectPageIndex {
-                focusedField = nil
-            }
+            moveToPage(currentPage + 1)
         } else {
             submitConnection()
+        }
+    }
+
+    private func moveToPage(_ requestedPage: Int) {
+        let page = min(max(requestedPage, 0), Self.connectPageIndex)
+        guard page != currentPage else { return }
+
+        pageTransitionDirection = page > currentPage ? 1 : -1
+        withAnimation(.easeInOut(duration: 0.28)) {
+            currentPage = page
         }
     }
 

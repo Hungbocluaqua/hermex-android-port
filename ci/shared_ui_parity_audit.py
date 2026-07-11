@@ -68,9 +68,11 @@ def main() -> int:
         "Onboarding field icons must use Skip-safe HermexSystemImageName mapping."
     )
     ok &= require(
-        "TabView(selection: $currentPage)" in onboarding
-        and "tabViewStyle(.page(indexDisplayMode: .never))" in onboarding,
-        "Shared onboarding must use a native horizontal page pager for swipe parity."
+        "private var onboardingPager" in onboarding
+        and "DragGesture(minimumDistance: 18)" in onboarding
+        and "moveToPage(currentPage + 1)" in onboarding
+        and "moveToPage(currentPage - 1)" in onboarding,
+        "Shared onboarding must use a full-surface horizontal drag pager for swipe parity."
     )
     ok &= require("PresentationRoot already applies imePadding" in onboarding and "self.overlay(alignment: .bottom)" not in onboarding, "Skip onboarding must keep keyboard actions in IME-safe layout flow.")
     ok &= require(logo_catalog.is_dir() and (logo_catalog / "Contents.json").is_file(), "Shared Hermex logo assets must be packaged as an xcassets catalog for Skip.")
