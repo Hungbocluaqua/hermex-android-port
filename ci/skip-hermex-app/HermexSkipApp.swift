@@ -99,12 +99,23 @@ public struct HermexSkipAppRootView: View {
     }
 }
 
-public final class HermexSkipAppAppDelegate: Sendable {
+public final class HermexSkipAppAppDelegate: @unchecked Sendable {
     public static let shared = HermexSkipAppAppDelegate()
+
+#if SKIP
+    private var attachmentPicker: HermexSkipAttachmentPicker?
+#endif
 
     private init() {}
 
-    public func onInit() {}
+    public func onInit() {
+#if SKIP
+        if attachmentPicker == nil {
+            attachmentPicker = HermexSkipAttachmentPicker()
+        }
+        attachmentPicker?.register()
+#endif
+    }
     public func onLaunch() {
         Task { @MainActor in HermexSkipRuntime.notifyResume() }
     }
@@ -118,9 +129,18 @@ public final class HermexSkipAppAppDelegate: Sendable {
         Task { @MainActor in HermexSkipRuntime.notifyPause() }
     }
     public func onDestroy() {
+#if SKIP
+        attachmentPicker = nil
+#endif
         Task { @MainActor in HermexSkipRuntime.notifyDestroy() }
     }
     public func onLowMemory() {}
+
+#if SKIP
+    fileprivate func attachmentPickerForRuntime() -> HermexAttachmentPicker {
+        attachmentPicker ?? HermexSkipAttachmentPicker()
+    }
+#endif
 }
 
 public typealias HermexSkipRootView = HermexSkipAppRootView
@@ -165,13 +185,19 @@ private final class HermexSkipAttachmentPicker: HermexAttachmentPicker, @uncheck
     private let documentContinuations: MutableList<Continuation<[URL]>> = mutableListOf<Continuation<[URL]>>()
     private let photoContinuations: MutableList<Continuation<[URL]>> = mutableListOf<Continuation<[URL]>>()
 
-    init() {
+    init() {}
+
+    func register() {
         guard let activity = UIApplication.shared.androidActivity else { return }
-        documentLauncher = activity.registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris in
-            self.finish(uris, continuations: self.documentContinuations)
+        if documentLauncher == nil {
+            documentLauncher = activity.registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris in
+                self.finish(uris, continuations: self.documentContinuations)
+            }
         }
-        photoLauncher = activity.registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris in
-            self.finish(uris, continuations: self.photoContinuations)
+        if photoLauncher == nil {
+            photoLauncher = activity.registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris in
+                self.finish(uris, continuations: self.photoContinuations)
+            }
         }
     }
 
@@ -569,7 +595,7 @@ private final class HermexSkipRuntime: @unchecked Sendable {
         self.coordinator = HermexPlatformCoordinator(services: HermexPlatformServiceBundle(
             cache: cacheStore,
             shareIngress: HermexSkipShareIngress(),
-            attachmentPicker: HermexSkipAttachmentPicker(),
+            attachmentPicker: HermexSkipAppAppDelegate.shared.attachmentPickerForRuntime(),
             attachmentUploader: HermexSkipAttachmentUploader(connection: connection),
             attachmentDataLoader: HermexSkipAttachmentDataLoader(connection: connection),
             attachmentAudioPlayer: HermexSkipAttachmentAudioPlayer(),
