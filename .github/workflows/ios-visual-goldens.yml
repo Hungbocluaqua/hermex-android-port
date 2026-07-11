@@ -1,0 +1,62 @@
+name: iOS Visual Goldens
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_name:
+        description: "Artifact name consumed by Visual Golden Compare"
+        required: true
+        default: hermex-ios-visual-goldens
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    name: Capture iOS Fixture Goldens
+    runs-on: macos-26
+    timeout-minutes: 180
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Install visual comparison dependencies
+        run: python3 -m pip install -r ci/visual-goldens/requirements.txt
+
+      - name: Install XcodeGen
+        run: brew install xcodegen || brew upgrade xcodegen
+
+      - name: Generate fixture app project
+        working-directory: ci/ios-visual-fixtures
+        run: xcodegen generate
+
+      - name: Resolve fixture app packages
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -resolvePackageDependencies \
+            -project ci/ios-visual-fixtures/HermexVisualFixtures.xcodeproj \
+            -scheme HermexVisualFixtures
+
+      - name: Capture complete iOS fixture inventory
+        run: |
+          set -euo pipefail
+          python3 ci/capture_ios_visual_goldens.py \
+            --project ci/ios-visual-fixtures/HermexVisualFixtures.xcodeproj \
+            --derived-data "$RUNNER_TEMP/hermex-ios-derived-data" \
+            --output-root "$RUNNER_TEMP/hermex-ios-visual-goldens"
+
+      - name: Validate screenshot inventory
+        run: |
+          set -euo pipefail
+          python3 ci/visual-goldens/validate_screenshot_inventory.py \
+            --label iOS \
+            --root "$RUNNER_TEMP/hermex-ios-visual-goldens"
+
+      - name: Upload iOS screenshot artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ inputs.artifact_name }}
+          if-no-files-found: error
+          path: ${{ runner.temp }}/hermex-ios-visual-goldens/**
