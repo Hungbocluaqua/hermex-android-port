@@ -109,7 +109,12 @@ patch_android_release_rules() {
   fi
 
   local rule_file found=0
-  while IFS= read -r -d '' rule_file; do
+  for rule_file in \
+    "$GRADLE_DIR/app/proguard-rules.pro" \
+    "$GRADLE_DIR/HermexSkipApp/proguard-rules.pro" \
+    "$APP_DIR/Android/app/proguard-rules.pro" \
+    "$APP_DIR/.build/Android/app/proguard-rules.pro"; do
+    [[ -f "$rule_file" ]] || continue
     found=1
     if ! grep -Fq -- "-dontwarn com.google.errorprone.annotations.Immutable" "$rule_file"; then
       cat >> "$rule_file" <<'EOF'
@@ -119,10 +124,7 @@ patch_android_release_rules() {
 EOF
       echo "Added release R8 rule to $rule_file"
     fi
-  done < <(
-    find "$GRADLE_DIR" "$APP_DIR/.build/Android" "$APP_DIR/.build/plugins/outputs" \
-      -type f -name 'proguard-rules.pro' -print0 2>/dev/null
-  )
+  done
 
   if [[ "$found" != "1" ]]; then
     echo "Could not locate generated proguard-rules.pro files for the release R8 rule." >&2
