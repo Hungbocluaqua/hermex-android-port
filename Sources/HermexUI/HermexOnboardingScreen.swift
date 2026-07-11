@@ -25,7 +25,7 @@ public struct HermexOnboardingScreen: View {
     @State private var password: String
     @State private var customHeaderText: String
     @State private var pageTransitionDirection = 1
-    @GestureState private var horizontalDragOffset: CGFloat = 0
+    @State private var horizontalDragOffset: CGFloat = 0
     @FocusState private var focusedField: HermexOnboardingConnectField?
 
     public init(
@@ -143,13 +143,14 @@ public struct HermexOnboardingScreen: View {
             .offset(x: horizontalDragOffset * 0.18)
             .simultaneousGesture(
                 DragGesture(minimumDistance: 18)
-                    .updating($horizontalDragOffset) { value, state, _ in
+                    .onChanged { value in
                         guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                        state = value.translation.width
+                        horizontalDragOffset = value.translation.width
                     }
                     .onEnded { value in
                         let horizontal = value.translation.width
                         let vertical = value.translation.height
+                        horizontalDragOffset = 0
                         let threshold = max(56, proxy.size.width * 0.16)
                         guard abs(horizontal) >= threshold, abs(horizontal) > abs(vertical) * 1.15 else { return }
 
