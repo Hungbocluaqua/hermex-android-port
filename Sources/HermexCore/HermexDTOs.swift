@@ -479,7 +479,7 @@ public struct HermexSkillsResponse: Codable, Equatable, Sendable {
     public var jsonValue: HermexJSONValue {
         hermexJSONDictionary([
             "skills": HermexJSONValue.array((skills ?? []).map { $0.jsonValue }),
-            "error": error.map { .string($0) }
+            "error": hermexJSONString(error)
         ])
     }
 }
@@ -507,14 +507,14 @@ public struct HermexAPISkillDTO: Codable, Equatable, Sendable {
 
     public var jsonValue: HermexJSONValue {
         hermexJSONDictionary([
-            "name": name.map { .string($0) },
-            "description": description.map { .string($0) },
-            "category": category.map { .string($0) },
-            "disabled": disabled.map { .bool($0) },
-            "enabled": enabled.map { .bool($0) },
-            "path": path.map { .string($0) },
-            "tags": tags.map { .array($0.map { .string($0) }) },
-            "related_skills": relatedSkills.map { .array($0.map { .string($0) }) }
+            "name": hermexJSONString(name),
+            "description": hermexJSONString(description),
+            "category": hermexJSONString(category),
+            "disabled": hermexJSONBool(disabled),
+            "enabled": hermexJSONBool(enabled),
+            "path": hermexJSONString(path),
+            "tags": hermexJSONStrings(tags),
+            "related_skills": hermexJSONStrings(relatedSkills)
         ])
     }
 }
@@ -536,11 +536,11 @@ public struct HermexMemoryResponse: Codable, Equatable, Sendable {
 
     public var jsonValue: HermexJSONValue {
         hermexJSONDictionary([
-            "memory": memory.map { .string($0) },
-            "user": user.map { .string($0) },
-            "soul": soul.map { .string($0) },
-            "project_context": projectContext.map { .string($0) },
-            "error": error.map { .string($0) }
+            "memory": hermexJSONString(memory),
+            "user": hermexJSONString(user),
+            "soul": hermexJSONString(soul),
+            "project_context": hermexJSONString(projectContext),
+            "error": hermexJSONString(error)
         ])
     }
 }
@@ -552,7 +552,7 @@ public struct HermexCronsResponse: Codable, Equatable, Sendable {
     public var jsonValue: HermexJSONValue {
         hermexJSONDictionary([
             "jobs": HermexJSONValue.array((jobs ?? []).map { $0.jsonValue }),
-            "error": error.map { .string($0) }
+            "error": hermexJSONString(error)
         ])
     }
 }
@@ -588,18 +588,18 @@ public struct HermexAPICronDTO: Codable, Equatable, Sendable {
 
     public var jsonValue: HermexJSONValue {
         hermexJSONDictionary([
-            "id": id.map { .string($0) },
-            "name": name.map { .string($0) },
-            "prompt": prompt.map { .string($0) },
-            "skills": skills.map { .array($0.map { .string($0) }) },
-            "model": model.map { .string($0) },
-            "schedule": schedule.map { .string($0) },
-            "enabled": enabled.map { .bool($0) },
-            "state": state.map { .string($0) },
-            "last_status": lastStatus.map { .string($0) },
-            "deliver": deliver.map { .string($0) },
-            "profile": profile.map { .string($0) },
-            "toast_notifications": toastNotifications.map { .bool($0) }
+            "id": hermexJSONString(id),
+            "name": hermexJSONString(name),
+            "prompt": hermexJSONString(prompt),
+            "skills": hermexJSONStrings(skills),
+            "model": hermexJSONString(model),
+            "schedule": hermexJSONString(schedule),
+            "enabled": hermexJSONBool(enabled),
+            "state": hermexJSONString(state),
+            "last_status": hermexJSONString(lastStatus),
+            "deliver": hermexJSONString(deliver),
+            "profile": hermexJSONString(profile),
+            "toast_notifications": hermexJSONBool(toastNotifications)
         ])
     }
 }
@@ -639,20 +639,20 @@ public struct HermexInsightsResponse: Codable, Equatable, Sendable {
 
     public var jsonValue: HermexJSONValue {
         hermexJSONDictionary([
-            "period_days": periodDays.map { .number(Double($0)) },
-            "total_sessions": totalSessions.map { .number(Double($0)) },
-            "total_messages": totalMessages.map { .number(Double($0)) },
-            "total_input_tokens": totalInputTokens.map { .number(Double($0)) },
-            "total_output_tokens": totalOutputTokens.map { .number(Double($0)) },
-            "total_cache_read_tokens": totalCacheReadTokens.map { .number(Double($0)) },
-            "total_cache_hit_percent": totalCacheHitPercent.map { .number($0) },
-            "total_tokens": totalTokens.map { .number(Double($0)) },
-            "total_cost": totalCost.map { .number($0) },
+            "period_days": hermexJSONInt(periodDays),
+            "total_sessions": hermexJSONInt(totalSessions),
+            "total_messages": hermexJSONInt(totalMessages),
+            "total_input_tokens": hermexJSONInt(totalInputTokens),
+            "total_output_tokens": hermexJSONInt(totalOutputTokens),
+            "total_cache_read_tokens": hermexJSONInt(totalCacheReadTokens),
+            "total_cache_hit_percent": hermexJSONDouble(totalCacheHitPercent),
+            "total_tokens": hermexJSONInt(totalTokens),
+            "total_cost": hermexJSONDouble(totalCost),
             "models": HermexJSONValue.array((models ?? []).map { $0.jsonValue }),
             "daily_tokens": HermexJSONValue.array((dailyTokens ?? []).map { $0.jsonValue }),
             "activity_by_day": HermexJSONValue.array((activityByDay ?? []).map { $0.jsonValue }),
             "activity_by_hour": HermexJSONValue.array((activityByHour ?? []).map { $0.jsonValue }),
-            "error": error.map { .string($0) }
+            "error": hermexJSONString(error)
         ])
     }
 }
@@ -680,14 +680,14 @@ public struct HermexInsightModelDTO: Codable, Equatable, Sendable {
 
     public var jsonValue: HermexJSONValue {
         hermexJSONDictionary([
-            "model": model.map { .string($0) },
-            "sessions": sessions.map { .number(Double($0)) },
-            "input_tokens": inputTokens.map { .number(Double($0)) },
-            "output_tokens": outputTokens.map { .number(Double($0)) },
-            "cache_read_tokens": cacheReadTokens.map { .number(Double($0)) },
-            "cache_hit_percent": cacheHitPercent.map { .number($0) },
-            "total_tokens": totalTokens.map { .number(Double($0)) },
-            "cost": cost.map { .number($0) }
+            "model": hermexJSONString(model),
+            "sessions": hermexJSONInt(sessions),
+            "input_tokens": hermexJSONInt(inputTokens),
+            "output_tokens": hermexJSONInt(outputTokens),
+            "cache_read_tokens": hermexJSONInt(cacheReadTokens),
+            "cache_hit_percent": hermexJSONDouble(cacheHitPercent),
+            "total_tokens": hermexJSONInt(totalTokens),
+            "cost": hermexJSONDouble(cost)
         ])
     }
 }
@@ -711,12 +711,12 @@ public struct HermexInsightDailyDTO: Codable, Equatable, Sendable {
 
     public var jsonValue: HermexJSONValue {
         hermexJSONDictionary([
-            "date": date.map { .string($0) },
-            "input_tokens": inputTokens.map { .number(Double($0)) },
-            "output_tokens": outputTokens.map { .number(Double($0)) },
-            "cache_read_tokens": cacheReadTokens.map { .number(Double($0)) },
-            "sessions": sessions.map { .number(Double($0)) },
-            "cost": cost.map { .number($0) }
+            "date": hermexJSONString(date),
+            "input_tokens": hermexJSONInt(inputTokens),
+            "output_tokens": hermexJSONInt(outputTokens),
+            "cache_read_tokens": hermexJSONInt(cacheReadTokens),
+            "sessions": hermexJSONInt(sessions),
+            "cost": hermexJSONDouble(cost)
         ])
     }
 }
@@ -727,8 +727,8 @@ public struct HermexInsightDayDTO: Codable, Equatable, Sendable {
 
     public var jsonValue: HermexJSONValue {
         hermexJSONDictionary([
-            "day": day.map { .string($0) },
-            "sessions": sessions.map { .number(Double($0)) }
+            "day": hermexJSONString(day),
+            "sessions": hermexJSONInt(sessions)
         ])
     }
 }
@@ -739,12 +739,37 @@ public struct HermexInsightHourDTO: Codable, Equatable, Sendable {
 
     public var jsonValue: HermexJSONValue {
         hermexJSONDictionary([
-            "hour": hour.map { .number(Double($0)) },
-            "sessions": sessions.map { .number(Double($0)) }
+            "hour": hermexJSONInt(hour),
+            "sessions": hermexJSONInt(sessions)
         ])
     }
 }
 
 private func hermexJSONDictionary(_ fields: [String: HermexJSONValue?]) -> HermexJSONValue {
-    .dictionary(fields.compactMapValues { $0 })
+    HermexJSONValue.dictionary(fields.compactMapValues { $0 })
+}
+
+private func hermexJSONString(_ value: String?) -> HermexJSONValue? {
+    guard let value else { return nil }
+    return HermexJSONValue.string(value)
+}
+
+private func hermexJSONBool(_ value: Bool?) -> HermexJSONValue? {
+    guard let value else { return nil }
+    return HermexJSONValue.bool(value)
+}
+
+private func hermexJSONInt(_ value: Int?) -> HermexJSONValue? {
+    guard let value else { return nil }
+    return HermexJSONValue.number(Double(value))
+}
+
+private func hermexJSONDouble(_ value: Double?) -> HermexJSONValue? {
+    guard let value else { return nil }
+    return HermexJSONValue.number(value)
+}
+
+private func hermexJSONStrings(_ values: [String]?) -> HermexJSONValue? {
+    guard let values else { return nil }
+    return HermexJSONValue.array(values.map { HermexJSONValue.string($0) })
 }
