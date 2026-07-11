@@ -13,6 +13,10 @@ public struct HermexRootScreen: View {
     private let git: HermexGitState
     private let panels: HermexPanelsState
     private let prefersKeyboardVisible: Bool
+    private let onboardingServerURLBinding: Binding<String>?
+    private let onboardingDisplayNameBinding: Binding<String>?
+    private let onboardingPasswordBinding: Binding<String>?
+    private let onboardingCustomHeaderBinding: Binding<String>?
     private let loadAttachmentData: @Sendable (_ sessionID: String, _ path: String) async -> Data?
     private let playAttachment: @Sendable (_ sessionID: String, _ path: String, _ filename: String) async -> Bool
     private let stopAttachmentPlayback: @Sendable () async -> Void
@@ -28,6 +32,10 @@ public struct HermexRootScreen: View {
         git: HermexGitState = HermexGitState(),
         panels: HermexPanelsState = HermexPanelsState(),
         prefersKeyboardVisible: Bool = false,
+        onboardingServerURLBinding: Binding<String>? = nil,
+        onboardingDisplayNameBinding: Binding<String>? = nil,
+        onboardingPasswordBinding: Binding<String>? = nil,
+        onboardingCustomHeaderBinding: Binding<String>? = nil,
         loadAttachmentData: @escaping @Sendable (_ sessionID: String, _ path: String) async -> Data? = { _, _ in nil },
         playAttachment: @escaping @Sendable (_ sessionID: String, _ path: String, _ filename: String) async -> Bool = { _, _, _ in false },
         stopAttachmentPlayback: @escaping @Sendable () async -> Void = {},
@@ -42,6 +50,10 @@ public struct HermexRootScreen: View {
         self.git = git
         self.panels = panels
         self.prefersKeyboardVisible = prefersKeyboardVisible
+        self.onboardingServerURLBinding = onboardingServerURLBinding
+        self.onboardingDisplayNameBinding = onboardingDisplayNameBinding
+        self.onboardingPasswordBinding = onboardingPasswordBinding
+        self.onboardingCustomHeaderBinding = onboardingCustomHeaderBinding
         self.loadAttachmentData = loadAttachmentData
         self.playAttachment = playAttachment
         self.stopAttachmentPlayback = stopAttachmentPlayback
@@ -52,7 +64,16 @@ public struct HermexRootScreen: View {
         Group {
             switch appState.route {
             case .onboarding:
-                HermexOnboardingScreen(appState: appState, onboarding: onboarding, settings: settings, onEvent: onEvent)
+                HermexOnboardingScreen(
+                    appState: appState,
+                    onboarding: onboarding,
+                    settings: settings,
+                    serverURLDraftBinding: onboardingServerURLBinding,
+                    displayNameDraftBinding: onboardingDisplayNameBinding,
+                    passwordDraftBinding: onboardingPasswordBinding,
+                    customHeaderDraftBinding: onboardingCustomHeaderBinding,
+                    onEvent: onEvent
+                )
             case .sessions:
                 HermexSessionListScreen(state: sessions, settings: settings, onEvent: onEvent)
             case .chat:

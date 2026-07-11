@@ -39,7 +39,7 @@ def main() -> int:
 
     ok = True
     ok &= require("NavigationStack" not in root, "HermexRootScreen must not add platform navigation chrome.")
-    ok &= require("HermexOnboardingScreen(appState: appState, onboarding: onboarding" in root, "Root screen must pass shared onboarding state.")
+    ok &= require("HermexOnboardingScreen(" in root and "onboarding: onboarding" in root, "Root screen must pass shared onboarding state.")
     store_root = read("Sources/HermexUI/HermexStoreRootScreen.swift")
     ok &= require("syncFromStore()" in store_root and "@State private var appState" in store_root, "Store root must mirror store snapshots into @State for Skip redraws.")
     ok &= require("HermexVisualFixtureRootScreen" in fixture_root, "HermexUI must expose a renderable visual fixture root.")
@@ -50,8 +50,8 @@ def main() -> int:
     ok &= require("TextField(" in onboarding and "SecureField(" in onboarding, "Onboarding must expose server/password inputs.")
     ok &= require("HermexAppIconMark" in onboarding and "HermesAppIcon" in chrome, "Onboarding must render the shared Hermex app icon.")
     ok &= require(
-        'text: $serverURLString' in onboarding and 'text: $password' in onboarding and "testOnboardingConnectionDraft" in onboarding,
-        "Onboarding fields must use direct editable state bindings and submit typed drafts on Android."
+        "text: mutableServerURLDraft" in onboarding and "text: mutablePasswordDraft" in onboarding and "testOnboardingConnectionDraft" in onboarding,
+        "Onboarding fields must use persistent editable bindings and submit typed drafts on Android."
     )
     ok &= require(
         "submitConnection()" in onboarding and ".onSubmit" in onboarding,
@@ -92,8 +92,9 @@ def main() -> int:
         "Onboarding connection buttons must use shared asset-backed icons."
     )
     ok &= require(
-        "onEvent(.updateOnboardingServerURL(newValue))" in onboarding and "onEvent(.updateOnboardingPassword(newValue))" in onboarding,
-        "Onboarding text changes must mirror into shared store state so Skip Android does not lose typed input."
+        "onboardingServerURLBinding: $onboarding.serverURLString" in store_root
+        and "onboardingPasswordBinding: $onboarding.password" in store_root,
+        "Store root must own Android onboarding draft bindings so Skip does not lose typed input."
     )
     ok &= require("TextEditor(" in onboarding and "Custom headers" in onboarding, "Onboarding must expose custom header entry.")
     ok &= require(".testOnboardingConnection" in onboarding and ".connectOnboarding" in onboarding, "Onboarding must route connection test and login.")

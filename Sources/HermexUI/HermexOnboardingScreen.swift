@@ -14,6 +14,10 @@ public struct HermexOnboardingScreen: View {
     private let onboarding: HermexOnboardingState
     private let settings: HermexSettingsState
     private let onEvent: (HermexUIEvent) -> Void
+    private let serverURLDraftBinding: Binding<String>?
+    private let displayNameDraftBinding: Binding<String>?
+    private let passwordDraftBinding: Binding<String>?
+    private let customHeaderDraftBinding: Binding<String>?
 
     @State private var currentPage: Int
     @State private var hasCopiedAgentPrompt = false
@@ -32,12 +36,20 @@ public struct HermexOnboardingScreen: View {
         appState: HermexAppState,
         onboarding: HermexOnboardingState = HermexOnboardingState(),
         settings: HermexSettingsState = HermexSettingsState(),
+        serverURLDraftBinding: Binding<String>? = nil,
+        displayNameDraftBinding: Binding<String>? = nil,
+        passwordDraftBinding: Binding<String>? = nil,
+        customHeaderDraftBinding: Binding<String>? = nil,
         onEvent: @escaping (HermexUIEvent) -> Void = { _ in }
     ) {
         self.appState = appState
         self.onboarding = onboarding
         self.settings = settings
         self.onEvent = onEvent
+        self.serverURLDraftBinding = serverURLDraftBinding
+        self.displayNameDraftBinding = displayNameDraftBinding
+        self.passwordDraftBinding = passwordDraftBinding
+        self.customHeaderDraftBinding = customHeaderDraftBinding
 
         let hasSavedServer = !onboarding.serverURLString
             .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
@@ -50,8 +62,18 @@ public struct HermexOnboardingScreen: View {
     }
 
     private var canSubmitConnection: Bool {
-        !serverURLString.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty
+        !serverURLDraft.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty
     }
+
+    private var serverURLDraft: String { serverURLDraftBinding?.wrappedValue ?? serverURLString }
+    private var displayNameDraft: String { displayNameDraftBinding?.wrappedValue ?? displayName }
+    private var passwordDraft: String { passwordDraftBinding?.wrappedValue ?? password }
+    private var customHeaderDraft: String { customHeaderDraftBinding?.wrappedValue ?? customHeaderText }
+
+    private var mutableServerURLDraft: Binding<String> { serverURLDraftBinding ?? $serverURLString }
+    private var mutableDisplayNameDraft: Binding<String> { displayNameDraftBinding ?? $displayName }
+    private var mutablePasswordDraft: Binding<String> { passwordDraftBinding ?? $password }
+    private var mutableCustomHeaderDraft: Binding<String> { customHeaderDraftBinding ?? $customHeaderText }
 
     private var isEditingConnectionField: Bool {
         currentPage == Self.connectPageIndex && focusedField != nil
@@ -82,18 +104,18 @@ public struct HermexOnboardingScreen: View {
             Text("Copy the agent setup prompt on your desktop before continuing so Hermes Web UI and Tailscale are configured correctly.")
         }
         .onChange(of: onboarding.serverURLString) { _, newValue in
-            if newValue != serverURLString {
-                serverURLString = newValue
+            if newValue != serverURLDraft {
+                mutableServerURLDraft.wrappedValue = newValue
             }
         }
         .onChange(of: onboarding.displayName) { _, newValue in
-            if newValue != displayName {
-                displayName = newValue
+            if newValue != displayNameDraft {
+                mutableDisplayNameDraft.wrappedValue = newValue
             }
         }
         .onChange(of: onboarding.customHeaderText) { _, newValue in
-            if newValue != customHeaderText {
-                customHeaderText = newValue
+            if newValue != customHeaderDraft {
+                mutableCustomHeaderDraft.wrappedValue = newValue
             }
         }
 #if !SKIP
@@ -411,9 +433,9 @@ public struct HermexOnboardingScreen: View {
                         HStack(spacing: 8) {
                             ForEach(settings.servers, id: \.baseURL) { server in
                                 Button {
-                                    serverURLString = server.baseURL.absoluteString
-                                    displayName = server.displayName
-                                    customHeaderText = server.customHeaders
+                                    mutableServerURLDraft.wrappedValue = server.baseURL.absoluteString
+                                    mutableDisplayNameDraft.wrappedValue = server.displayName
+                                    mutableCustomHeaderDraft.wrappedValue = server.customHeaders
                                         .map { "\($0.key): \($0.value)" }
                                         .sorted()
                                         .joined(separator: "\n")
@@ -442,13 +464,13 @@ public struct HermexOnboardingScreen: View {
                     onTap: { focusedField = .serverURL }
                 ) {
                     ZStack(alignment: .leading) {
-                        if serverURLString.isEmpty {
+                        if serverURLDraft.isEmpty {
                             Text(verbatim: "http://100.64.0.1:8787")
                                 .foregroundStyle(Color.white.opacity(0.38))
                                 .allowsHitTesting(false)
                         }
 
-                        TextField("", text: $serverURLString)
+                        TextField("", text: mutableServerURLDraft)
                             .font(.body.weight(.medium))
                             .foregroundStyle(Color.white)
                             .frame(minHeight: 44, alignment: .leading)
@@ -470,12 +492,12 @@ public struct HermexOnboardingScreen: View {
                     onTap: { focusedField = .password }
                 ) {
                     ZStack(alignment: .leading) {
-                        if password.isEmpty {
+                        if passwordDraft.isEmpty {
                             Text("Server password")
                                 .foregroundStyle(Color.white.opacity(0.38))
                                 .allowsHitTesting(false)
                         }
-                        SecureField("", text: $password)
+                        SecureField("", text: mutablePasswordDraft)
                             .font(.body.weight(.medium))
                             .foregroundStyle(Color.white)
                             .frame(minHeight: 44, alignment: .leading)
@@ -498,7 +520,7 @@ public struct HermexOnboardingScreen: View {
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(Color.white.opacity(0.5))
 
-                            TextEditor(text: $customHeaderText)
+                            TextEditor(text: mutableCustomHeaderDraft)
                                 .font(.footnote.monospaced())
                                 .foregroundStyle(Color.white)
                                 .frame(minHeight: 74)
@@ -602,10 +624,10 @@ public struct HermexOnboardingScreen: View {
                     isDisabled: onboarding.isTestingConnection || onboarding.isSigningIn || !canSubmitConnection
                 ) {
                     onEvent(.testOnboardingConnectionDraft(
-                        serverURLString: serverURLString,
-                        displayName: displayName,
-                        password: password,
-                        customHeaderText: customHeaderText
+                        serverURLString: serverURLDraft,
+                        displayName: displayNameDraft,
+                        password: passwordDraft,
+                        customHeaderText: customHeaderDraft
                     ))
                 }
                 .frame(width: buttonWidth)
@@ -631,10 +653,10 @@ public struct HermexOnboardingScreen: View {
                 isDisabled: onboarding.isTestingConnection || onboarding.isSigningIn || !canSubmitConnection
             ) {
                 onEvent(.testOnboardingConnectionDraft(
-                    serverURLString: serverURLString,
-                    displayName: displayName,
-                    password: password,
-                    customHeaderText: customHeaderText
+                    serverURLString: serverURLDraft,
+                    displayName: displayNameDraft,
+                    password: passwordDraft,
+                    customHeaderText: customHeaderDraft
                 ))
             }
 
@@ -932,10 +954,10 @@ public struct HermexOnboardingScreen: View {
     private func submitConnection() {
         guard canSubmitConnection else { return }
         onEvent(.connectOnboardingDraft(
-            serverURLString: serverURLString,
-            displayName: displayName,
-            password: password,
-            customHeaderText: customHeaderText
+            serverURLString: serverURLDraft,
+            displayName: displayNameDraft,
+            password: passwordDraft,
+            customHeaderText: customHeaderDraft
         ))
     }
 

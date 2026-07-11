@@ -54,6 +54,10 @@ public struct HermexStoreRootScreen: View {
             workspace: workspace,
             git: git,
             panels: panels,
+            onboardingServerURLBinding: $onboarding.serverURLString,
+            onboardingDisplayNameBinding: $onboarding.displayName,
+            onboardingPasswordBinding: $onboarding.password,
+            onboardingCustomHeaderBinding: $onboarding.customHeaderText,
             loadAttachmentData: loadAttachmentData,
             playAttachment: playAttachment,
             stopAttachmentPlayback: stopAttachmentPlayback
