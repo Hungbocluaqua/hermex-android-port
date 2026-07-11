@@ -71,7 +71,11 @@ public struct HermexOnboardingScreen: View {
                         .tag(Self.connectPageIndex)
                 }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+#if SKIP
+                    .tabViewStyle(bridgedStyle: 2, bridgedDisplayMode: 2)
+#elseif canImport(UIKit)
                     .tabViewStyle(.page(indexDisplayMode: .never))
+#endif
 
                 bottomBar
             }
