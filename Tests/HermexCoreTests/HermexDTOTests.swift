@@ -39,6 +39,43 @@ final class HermexDTOTests: XCTestCase {
         XCTAssertEqual(response.messages?.first?.toolCalls?.count, 1)
     }
 
+    func testSessionResponsePreservesMessagesNestedInsideSession() throws {
+        let data = Data("""
+        {
+          "session": {
+            "session_id": "abc",
+            "title": "Planning",
+            "messages": [
+              {"message_id": "m1", "role": "user", "content": "Hello"},
+              {"message_id": "m2", "role": "assistant", "content": "Hi"}
+            ]
+          }
+        }
+        """.utf8)
+
+        let response = try JSONDecoder().decode(HermexSessionResponse.self, from: data)
+
+        XCTAssertEqual(response.session?.messages?.count, 2)
+        XCTAssertEqual(response.session?.messages?.last?.content, "Hi")
+    }
+
+    func testJSONValueDecodesObjectBackedServerPanels() throws {
+        let data = Data("""
+        {
+          "skills": [
+            {"name": "review", "description": "Review code", "disabled": false}
+          ],
+          "memory": "Remember this"
+        }
+        """.utf8)
+
+        let value = try JSONDecoder().decode(HermexJSONValue.self, from: data)
+        let fields = try XCTUnwrap(value.objectValue)
+
+        XCTAssertEqual(fields.arrayValue("skills").count, 1)
+        XCTAssertEqual(fields["memory"]?.stringValue, "Remember this")
+    }
+
     func testModelsResponseDecodesLooseJsonArrays() throws {
         let data = Data("""
         {

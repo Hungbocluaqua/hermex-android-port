@@ -3,8 +3,8 @@ import SwiftUI
 public enum HermexLayoutContract {
     public static let hermexLogoAspectRatio: CGFloat = 643.0 / 185.0
     public static let sessionListLogoWidth: CGFloat = 160
-    public static let topChromeCircleSize: CGFloat = 58
-    public static let topChromeCompactCircleSize: CGFloat = 46
+    public static let topChromeCircleSize: CGFloat = 44
+    public static let topChromeCompactCircleSize: CGFloat = 40
     public static let topChromeClusterSpacing: CGFloat = 0
     public static let sessionListUtilityIconSlotWidth: CGFloat = 28
     public static let sessionListUtilityIconSize: CGFloat = 21
@@ -16,7 +16,7 @@ public enum HermexLayoutContract {
     public static let chatToolbarActionSlotSize: CGFloat = 44
     public static let chatTopBarHorizontalPadding: CGFloat = 18
     public static let chatTopBarVerticalPadding: CGFloat = 10
-    public static let chatTopBarHeight: CGFloat = 76
+    public static let chatTopBarHeight: CGFloat = 62
     public static let chatTranscriptHorizontalPadding: CGFloat = 14
     public static let chatTranscriptTopPadding: CGFloat = 8
     public static let chatTranscriptMessageSpacing: CGFloat = 10

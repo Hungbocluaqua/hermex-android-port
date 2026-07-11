@@ -68,10 +68,10 @@ public struct HermexPanelsScreen: View {
     }
 
     private var selectedPanelCard: some View {
-        HermexGlassPanel(cornerRadius: 18) {
-            VStack(alignment: .leading, spacing: 18) {
+        HermexGlassPanel(cornerRadius: 14) {
+            VStack(alignment: .leading, spacing: 14) {
                 Text(state.selectedPanel.rawValue.capitalized)
-                    .font(.title.weight(.bold))
+                    .font(.title3.weight(.bold))
                     .foregroundStyle(HermexUIColors.primaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -94,7 +94,7 @@ public struct HermexPanelsScreen: View {
                     insightsPanel
                 }
             }
-            .padding(16)
+            .padding(14)
             .foregroundStyle(HermexUIColors.primaryText)
         }
     }

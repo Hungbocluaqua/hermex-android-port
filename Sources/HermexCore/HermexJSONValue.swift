@@ -18,10 +18,10 @@ public enum HermexJSONValue: Codable, Equatable, Sendable {
             self = .number(value)
         } else if let value = try? container.decode(String.self) {
             self = .string(value)
-        } else if let value = try? container.decode([HermexJSONValue].self) {
-            self = .array(value)
         } else if let value = try? container.decode([String: HermexJSONValue].self) {
             self = .dictionary(value)
+        } else if let value = try? container.decode([HermexJSONValue].self) {
+            self = .array(value)
         } else {
             self = .null
         }

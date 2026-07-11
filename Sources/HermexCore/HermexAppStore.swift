@@ -1882,7 +1882,7 @@ public final class HermexAppStore {
         do {
             let response = try await environment.loadSession(sessionID)
             chat.session = response.session
-            chat.messages = response.messages ?? []
+            chat.messages = response.messages ?? response.session?.messages ?? []
         } catch {
             chat.errorMessage = String(describing: error)
         }

@@ -38,6 +38,7 @@ public struct HermexSessionDTO: Codable, Identifiable, Equatable, Sendable {
     public var branch: String?
     public var model: String?
     public var modelProvider: String?
+    public var messages: [HermexChatMessageDTO]?
 
     public var id: String { sessionId ?? title ?? "session" }
 
@@ -54,7 +55,8 @@ public struct HermexSessionDTO: Codable, Identifiable, Equatable, Sendable {
         archived: Bool? = nil,
         branch: String? = nil,
         model: String? = nil,
-        modelProvider: String? = nil
+        modelProvider: String? = nil,
+        messages: [HermexChatMessageDTO]? = nil
     ) {
         self.sessionId = sessionId
         self.title = title
@@ -69,6 +71,7 @@ public struct HermexSessionDTO: Codable, Identifiable, Equatable, Sendable {
         self.branch = branch
         self.model = model
         self.modelProvider = modelProvider
+        self.messages = messages
     }
 
     enum CodingKeys: String, CodingKey {
@@ -85,6 +88,7 @@ public struct HermexSessionDTO: Codable, Identifiable, Equatable, Sendable {
         case branch
         case model
         case modelProvider = "model_provider"
+        case messages
     }
 }
 

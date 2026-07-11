@@ -875,8 +875,13 @@ private actor StoreProbe {
     func loadSession(sessionID: String) async throws -> HermexSessionResponse {
         loadedSessionIDs.append(sessionID)
         return HermexSessionResponse(
-            session: HermexSessionDTO(sessionId: sessionID, title: "Workspace", messageCount: 1, workspace: "Home"),
-            messages: [HermexChatMessageDTO(role: "assistant", content: "Hello")]
+            session: HermexSessionDTO(
+                sessionId: sessionID,
+                title: "Workspace",
+                messageCount: 1,
+                workspace: "Home",
+                messages: [HermexChatMessageDTO(role: "assistant", content: "Hello")]
+            )
         )
     }
 
