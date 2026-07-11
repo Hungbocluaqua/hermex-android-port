@@ -151,7 +151,7 @@ public struct HermexOnboardingScreen: View {
                         let horizontal = value.translation.width
                         let vertical = value.translation.height
                         horizontalDragOffset = 0
-                        let threshold = max(56, proxy.size.width * 0.16)
+                        let threshold = max(CGFloat(56), proxy.size.width * 0.16)
                         guard abs(horizontal) >= threshold, abs(horizontal) > abs(vertical) * 1.15 else { return }
 
                         if horizontal < 0 {
