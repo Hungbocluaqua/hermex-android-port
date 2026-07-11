@@ -17,6 +17,8 @@ jobs:
     name: Capture iOS Fixture Goldens
     runs-on: macos-26
     timeout-minutes: 180
+    env:
+      SKIP_ZERO: "1"
     steps:
       - name: Check out
         uses: actions/checkout@v7
