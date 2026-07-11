@@ -277,8 +277,7 @@ public struct HermexSettingsScreen: View {
                 onEvent(.requestClearOfflineCache)
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: HermexSystemImageName("externaldrive"))
-                        .font(.subheadline.weight(.semibold))
+                    HermexIconView("externaldrive", size: 18)
                     Text(state.isClearingCache == true ? "Clearing..." : "Clear Offline Cache")
                         .font(.subheadline.weight(.semibold))
                     Spacer(minLength: 8)
@@ -306,8 +305,7 @@ public struct HermexSettingsScreen: View {
             onEvent(.signOut)
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: HermexSystemImageName("rectangle.portrait.and.arrow.right"))
-                    .font(.headline.weight(.semibold))
+                HermexIconView("rectangle.portrait.and.arrow.right", size: 19)
                 Text("Sign Out")
                     .font(.headline.weight(.semibold))
                 Spacer()
@@ -353,8 +351,7 @@ public struct HermexSettingsScreen: View {
                 if isActive(server) {
                     statusPill("Active", tint: .blue)
                 } else {
-                    Image(systemName: HermexSystemImageName("chevron.right"))
-                        .font(.caption.weight(.bold))
+                    HermexIconView("chevron.right", size: 16)
                         .foregroundStyle(HermexUIColors.secondaryText)
                 }
             }
@@ -387,8 +384,7 @@ public struct HermexSettingsScreen: View {
 
     private func settingValueRow(systemImage: String, title: String, value: String) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: HermexSystemImageName(systemImage))
-                .font(.subheadline.weight(.semibold))
+            HermexIconView(systemImage, size: 18)
                 .foregroundStyle(HermexUIColors.primaryText)
                 .frame(width: 24)
 

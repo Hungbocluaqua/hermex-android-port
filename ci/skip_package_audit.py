@@ -65,7 +65,7 @@ def main() -> int:
             f"Shared Hermex logo asset is missing: {asset}.",
         )
 
-    logo_catalog = ROOT / "Sources" / "HermexUI" / "Resources" / "Logo" / "HermexLogo.xcassets"
+    logo_catalog = ROOT / "Sources" / "HermexUI" / "Resources" / "HermexLogo.xcassets"
     ok &= require((logo_catalog / "Contents.json").is_file(), "Shared Hermex logo catalog is missing its Contents.json.")
     for asset in [
         "HermesAppIcon.imageset/Contents.json",
@@ -75,6 +75,9 @@ def main() -> int:
         "hermes-outline-shadow.imageset/Contents.json",
     ]:
         ok &= require((logo_catalog / asset).is_file(), f"Shared Hermex image set is missing: {asset}.")
+
+    icon_catalog = ROOT / "Sources" / "HermexUI" / "Resources" / "HermexIcons.xcassets"
+    ok &= require(icon_catalog.is_dir() and (icon_catalog / "Contents.json").is_file(), "Shared Hermex icon catalog is missing its top-level Contents.json.")
 
     launcher = (ROOT / "ci" / "skip-hermex-app" / "HermexSkipApp.swift").read_text(encoding="utf-8")
     ok &= require("HermexStoreRootScreen" in launcher, "Skip launcher must render HermexStoreRootScreen.")

@@ -35,7 +35,7 @@ def main() -> int:
     store = read("Sources/HermexCore/HermexAppStore.swift")
     mapping = read("Sources/HermexCore/HermexStateMapping.swift")
     package = read("Package.swift")
-    logo_catalog = ROOT / "Sources" / "HermexUI" / "Resources" / "Logo" / "HermexLogo.xcassets"
+    logo_catalog = ROOT / "Sources" / "HermexUI" / "Resources" / "HermexLogo.xcassets"
 
     ok = True
     ok &= require("NavigationStack" not in root, "HermexRootScreen must not add platform navigation chrome.")
@@ -67,13 +67,17 @@ def main() -> int:
         and "HermexSystemImageName(systemImage)" in onboarding,
         "Onboarding field icons must use Skip-safe HermexSystemImageName mapping."
     )
-    ok &= require("simultaneousGesture" in onboarding and "handleSwipe" in onboarding, "Shared onboarding must support horizontal pager swipes.")
+    ok &= require(
+        "TabView(selection: $currentPage)" in onboarding
+        and "tabViewStyle(.page(indexDisplayMode: .never))" in onboarding,
+        "Shared onboarding must use a native horizontal page pager for swipe parity."
+    )
     ok &= require("PresentationRoot already applies imePadding" in onboarding and "self.overlay(alignment: .bottom)" not in onboarding, "Skip onboarding must keep keyboard actions in IME-safe layout flow.")
     ok &= require(logo_catalog.is_dir() and (logo_catalog / "Contents.json").is_file(), "Shared Hermex logo assets must be packaged as an xcassets catalog for Skip.")
     ok &= require(
         "connectionButtonLabel(title: title, systemImage: systemImage)" in onboarding
-        and "#if SKIP\n        Text(title)" in onboarding,
-        "Onboarding connection buttons must avoid unsupported Skip system images."
+        and "HermexIconView(systemImage, size: 18)" in onboarding,
+        "Onboarding connection buttons must use shared asset-backed icons."
     )
     ok &= require(
         "onEvent(.updateOnboardingServerURL(newValue))" in onboarding and "onEvent(.updateOnboardingPassword(newValue))" in onboarding,
@@ -119,6 +123,26 @@ def main() -> int:
     ok &= require("func HermexSystemImageName" in chrome, "Shared chrome must expose Skip-safe system image mapping.")
     ok &= require('case "folder", "folder.fill":\n        return "list.bullet"' in chrome, "Skip icon map must use a supported folder fallback.")
     ok &= require('case "waveform", "mic", "mic.fill":\n        return "phone"' in chrome, "Skip icon map must use a supported voice fallback.")
+    icons_catalog = ROOT / "Sources" / "HermexUI" / "Resources" / "HermexIcons.xcassets"
+    ok &= require(icons_catalog.is_dir() and (icons_catalog / "Contents.json").is_file(), "Shared Hermex icon assets must be packaged as an xcassets catalog for Skip.")
+    for asset in [
+        "HermexChatBubbles.imageset/Contents.json",
+        "HermexCheckCircle.imageset/Contents.json",
+        "HermexGlobe.imageset/Contents.json",
+        "HermexKey.imageset/Contents.json",
+        "HermexLink.imageset/Contents.json",
+        "HermexMic.imageset/Contents.json",
+        "HermexSliders.imageset/Contents.json",
+        "HermexTerminal.imageset/Contents.json",
+        "LucideBrain.imageset/Contents.json",
+        "LucideCalendarClock.imageset/Contents.json",
+        "LucideChartColumnIncreasing.imageset/Contents.json",
+        "LucideFolder.imageset/Contents.json",
+        "LucideHammer.imageset/Contents.json",
+        "LucideUserRound.imageset/Contents.json",
+        "LucideUserRoundCog.imageset/Contents.json",
+    ]:
+        ok &= require((icons_catalog / asset).is_file(), f"Shared Hermex icon image set is missing: {asset}.")
     ok &= require("composerFallbackInset" in read("Sources/HermexUI/HermexUILayoutContracts.swift"), "Composer must reserve a Skip-safe fallback inset.")
     ok &= require("minimumHeight" in read("Sources/HermexUI/HermexUILayoutContracts.swift"), "Measured composer inset must enforce a minimum height.")
     ok &= require("activeServerSection" in settings and "serverManagementSection" in settings, "Settings screen must expose iOS-style active server and server management cards.")

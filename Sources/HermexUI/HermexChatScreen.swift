@@ -975,15 +975,16 @@ public struct HermexComposerSurface: View {
     }
 
     private func composerControlGlyph(_ systemImage: String, size: CGFloat) -> some View {
-        Image(systemName: HermexSystemImageName(systemImage))
-            .font(.system(size: size == HermexLayoutContract.composerPlusButtonSize ? 24.0 : 17.0, weight: .semibold))
+        HermexIconView(
+            systemImage,
+            size: size == HermexLayoutContract.composerPlusButtonSize ? 24.0 : 17.0
+        )
             .frame(width: size, height: size)
             .frame(width: HermexLayoutContract.chatToolbarActionSlotSize, height: HermexLayoutContract.chatToolbarActionSlotSize)
     }
 
     private var composerActionGlyph: some View {
-        Image(systemName: HermexSystemImageName(stream.isStreaming ? "stop.fill" : "arrow.up"))
-            .font(.system(size: 15, weight: .semibold))
+        HermexIconView(stream.isStreaming ? "stop.fill" : "arrow.up", size: 15)
             .frame(
                 width: HermexLayoutContract.composerActionButtonSize,
                 height: HermexLayoutContract.composerActionButtonSize
@@ -1047,7 +1048,7 @@ public struct HermexComposerSurface: View {
 
     private var reasoningLabel: some View {
         HStack(spacing: 5) {
-            Image(systemName: HermexSystemImageName("brain"))
+            HermexIconView("brain", size: 17)
             Text(state.selectedReasoningEffort ?? "Reasoning")
                 .lineLimit(1)
             Image(systemName: HermexSystemImageName("chevron.down"))

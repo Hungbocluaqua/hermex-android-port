@@ -58,14 +58,20 @@ public struct HermexOnboardingScreen: View {
     public var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                pageContent
+                TabView(selection: $currentPage) {
+                    welcomePage
+                        .tag(0)
+                    featuresPage
+                        .tag(1)
+                    agentPromptPage
+                        .tag(2)
+                    tailscalePage
+                        .tag(3)
+                    connectPage
+                        .tag(Self.connectPageIndex)
+                }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .simultaneousGesture(
-                        DragGesture(minimumDistance: 32)
-                            .onEnded { value in
-                                handleSwipe(value.translation)
-                            }
-                    )
+                    .tabViewStyle(.page(indexDisplayMode: .never))
 
                 bottomBar
             }
@@ -113,21 +119,19 @@ public struct HermexOnboardingScreen: View {
         .onChange(of: customHeaderText) { _, newValue in
             onEvent(.updateOnboardingCustomHeaders(newValue))
         }
-    }
+        .onChange(of: currentPage) { oldPage, newPage in
+            if oldPage == 2,
+               newPage > oldPage,
+               !hasCopiedAgentPrompt,
+               !hasBypassedCopyReminder {
+                isShowingCopyReminder = true
+                currentPage = oldPage
+                return
+            }
 
-    @ViewBuilder
-    private var pageContent: some View {
-        switch currentPage {
-        case 0:
-            welcomePage
-        case 1:
-            featuresPage
-        case 2:
-            agentPromptPage
-        case 3:
-            tailscalePage
-        default:
-            connectPage
+            if newPage != Self.connectPageIndex {
+                focusedField = nil
+            }
         }
     }
 
@@ -179,8 +183,8 @@ public struct HermexOnboardingScreen: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 8) {
-                    heroBadge("Password protected")
-                    heroBadge("Tailscale ready")
+                    heroBadge(systemImage: "lock.shield.fill", title: "Password protected")
+                    heroBadge(systemImage: "network", title: "Tailscale ready")
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -197,29 +201,41 @@ public struct HermexOnboardingScreen: View {
                     subtitle: featuresSubtitle
                 )
 
-                featureRow(
-                    title: chatFeatureTitle,
-                    subtitle: "Drive conversations from anywhere on your tailnet."
-                )
-                featureRow(
-                    title: "Manage sessions, tasks, and files remotely",
-                    subtitle: "Browse workspaces and stay on top of agent work."
-                )
-                featureRow(
-                    title: "Voice input and mobile-friendly composer controls",
-                    subtitle: "Compose naturally with touch-first controls."
-                )
-                featureRow(
-                    title: "Review approvals and clarifications inline",
-                    subtitle: "Respond to agent prompts without switching apps."
-                )
-                featureRow(
-                    title: "Self-hosted: your machine, your tailnet",
-                    subtitle: "Your Hermes Web UI stays on hardware you control."
-                )
+                VStack(alignment: .leading, spacing: 16) {
+                    featureRow(
+                        systemImage: "bubble.left.and.bubble.right",
+                        tint: Color(red: 1.0, green: 0.74, blue: 0.1),
+                        title: chatFeatureTitle,
+                        subtitle: "Drive conversations from anywhere on your tailnet."
+                    )
+                    featureRow(
+                        systemImage: "calendar.badge.clock",
+                        tint: Color(red: 0.2, green: 0.78, blue: 0.35),
+                        title: "Manage sessions, tasks, and files remotely",
+                        subtitle: "Browse workspaces and stay on top of agent work."
+                    )
+                    featureRow(
+                        systemImage: "waveform",
+                        tint: Color(red: 0.75, green: 0.35, blue: 0.95),
+                        title: "Voice input and mobile-friendly composer controls",
+                        subtitle: "Compose naturally with touch-first controls."
+                    )
+                    featureRow(
+                        systemImage: "checkmark.shield",
+                        tint: Color(red: 0.39, green: 0.82, blue: 1.0),
+                        title: "Review approvals and clarifications inline",
+                        subtitle: "Respond to agent prompts without switching apps."
+                    )
+                    featureRow(
+                        systemImage: "server.rack",
+                        tint: Color(red: 1.0, green: 0.62, blue: 0.14),
+                        title: "Self-hosted: your machine, your tailnet",
+                        subtitle: "Your Hermes Web UI stays on hardware you control."
+                    )
+                }
             }
             .padding(.horizontal, 28)
-            .padding(.top, 44)
+            .padding(.top, 24)
             .padding(.bottom, 24)
         }
     }
@@ -230,7 +246,8 @@ public struct HermexOnboardingScreen: View {
                 stepHeader(
                     number: "1",
                     title: "Set up Hermes Web UI",
-                    description: "Send this prompt to your Hermes Agent. It installs Hermes Web UI, enables password auth, and configures Tailscale access."
+                    description: "Send this prompt to your Hermes Agent. It installs Hermes Web UI, enables password auth, and configures Tailscale access.",
+                    systemImage: "terminal"
                 )
 
                 HermexGlassPanel(cornerRadius: 12) {
@@ -244,9 +261,13 @@ public struct HermexOnboardingScreen: View {
                         Button {
                             hasCopiedAgentPrompt = true
                         } label: {
-                            Text(hasCopiedAgentPrompt ? "Copied" : "I copied the prompt")
-                                .font(.headline.weight(.semibold))
-                                .frame(maxWidth: .infinity)
+                            HStack(spacing: 10) {
+                                HermexIconView(hasCopiedAgentPrompt ? "checkmark.circle.fill" : "doc", size: 20)
+                                Text(hasCopiedAgentPrompt ? "Copied" : "Copy prompt")
+                            }
+                            .font(.headline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
                         }
                         .buttonStyle(.borderedProminent)
                     }
@@ -264,20 +285,37 @@ public struct HermexOnboardingScreen: View {
             VStack(alignment: .leading, spacing: 24) {
                 stepHeader(
                     number: "2",
-                    title: "Install Tailscale on Android",
-                    description: "Install Tailscale on your phone and sign into the same tailnet as your server. Your agent will reply with the exact URL to use on the next screen."
+                    title: tailscaleTitle,
+                    description: tailscaleDescription,
+                    systemImage: tailscaleSystemImage
                 )
 
-                setupStep("1", "Install Tailscale from Google Play.")
+                setupStep("1", tailscaleInstallText)
                 setupStep("2", "Sign in with the same account you used on your server.")
                 setupStep("3", "Keep Tailscale connected while using Hermex.")
 
-                Text("Then paste the Hermex server URL on the next screen.")
-                    .font(.callout.weight(.semibold))
+                Button {
+                    onEvent(.openExternalURL(tailscaleStoreURL))
+                } label: {
+                    HStack(spacing: 10) {
+                        HermexIconView("arrow.up.right", size: 19)
+                        Text(tailscaleStoreButtonTitle)
+                            .font(.subheadline.weight(.semibold))
+                        Spacer(minLength: 0)
+                    }
                     .foregroundStyle(Color(red: 1.0, green: 0.74, blue: 0.1))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 13)
+                    .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    }
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 28)
-            .padding(.top, 48)
+            .padding(.top, 24)
             .padding(.bottom, 24)
         }
     }
@@ -413,9 +451,12 @@ public struct HermexOnboardingScreen: View {
                     },
                     label: {
 #if SKIP
-                        Text("Advanced")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Color.white.opacity(0.85))
+                        HStack(spacing: 10) {
+                            HermexIconView("slider.horizontal.3", size: 19)
+                            Text("Advanced")
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.85))
 #else
                         Label("Advanced", systemImage: HermexSystemImageName("slider.horizontal.3"))
                             .font(.subheadline.weight(.semibold))
@@ -438,9 +479,11 @@ public struct HermexOnboardingScreen: View {
                 // PresentationRoot already applies imePadding, so keep the actions in
                 // normal layout flow while the Android keyboard is visible.
                 connectActionButtons
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
 #else
                 if !isEditingConnectionField {
                     connectActionButtons
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
 #endif
             } else {
@@ -482,6 +525,7 @@ public struct HermexOnboardingScreen: View {
                 endPoint: .bottom
             )
         )
+        .animation(.easeInOut(duration: 0.22), value: currentPage)
     }
 
     private var connectActionButtons: some View {
@@ -579,7 +623,10 @@ public struct HermexOnboardingScreen: View {
     @ViewBuilder
     private func connectionButtonLabel(title: String, systemImage: String) -> some View {
 #if SKIP
-        Text(title)
+        HStack(spacing: 8) {
+            HermexIconView(systemImage, size: 18)
+            Text(title)
+        }
 #else
         Label(title, systemImage: HermexSystemImageName(systemImage))
 #endif
@@ -597,9 +644,10 @@ public struct HermexOnboardingScreen: View {
     private var pageIndicator: some View {
         HStack(spacing: 7) {
             ForEach(0..<Self.pageCount, id: \.self) { index in
-                Circle()
+                Capsule()
                     .fill(index == currentPage ? Color.white : Color.white.opacity(0.24))
-                    .frame(width: index == currentPage ? 8.0 : 6.0, height: index == currentPage ? 8.0 : 6.0)
+                    .frame(width: index == currentPage ? 24.0 : 8.0, height: 8.0)
+                    .animation(.easeInOut(duration: 0.18), value: currentPage)
             }
         }
     }
@@ -661,16 +709,20 @@ public struct HermexOnboardingScreen: View {
         }
     }
 
-    private func heroBadge(_ title: String) -> some View {
-        Text(title)
-            .font(.caption.weight(.medium))
-            .foregroundStyle(Color.white.opacity(0.68))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(Color.white.opacity(0.06), in: Capsule())
-            .overlay {
-                Capsule().stroke(Color.white.opacity(0.08), lineWidth: 1)
-            }
+    private func heroBadge(systemImage: String, title: String) -> some View {
+        HStack(spacing: 6) {
+            HermexIconView(systemImage, size: 13)
+            Text(title)
+                .lineLimit(1)
+        }
+        .font(.caption.weight(.medium))
+        .foregroundStyle(Color.white.opacity(0.68))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(Color.white.opacity(0.06), in: Capsule())
+        .overlay {
+            Capsule().stroke(Color.white.opacity(0.08), lineWidth: 1)
+        }
     }
 
     private func centeredHeader(title: String, subtitle: String) -> some View {
@@ -685,15 +737,14 @@ public struct HermexOnboardingScreen: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func featureRow(title: String, subtitle: String) -> some View {
+    private func featureRow(systemImage: String, tint: Color, title: String, subtitle: String) -> some View {
         HStack(alignment: .top, spacing: 16) {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(red: 1.0, green: 0.74, blue: 0.1).opacity(0.12))
+                .fill(tint.opacity(0.12))
                 .frame(width: 40, height: 40)
                 .overlay {
-                    Circle()
-                        .fill(Color(red: 1.0, green: 0.74, blue: 0.1))
-                        .frame(width: 8, height: 8)
+                    HermexIconView(systemImage, size: 18)
+                        .foregroundStyle(tint)
                 }
 
             VStack(alignment: .leading, spacing: 3) {
@@ -706,18 +757,34 @@ public struct HermexOnboardingScreen: View {
         }
     }
 
-    private func stepHeader(number: String, title: String, description: String) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Step \(number)")
+    private func stepHeader(number: String, title: String, description: String, systemImage: String) -> some View {
+        VStack(spacing: 20) {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.white.opacity(0.06))
+                .frame(width: 80, height: 80)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color(red: 1.0, green: 0.74, blue: 0.1).opacity(0.35), lineWidth: 1)
+                }
+                .overlay {
+                    HermexIconView(systemImage, size: 30)
+                }
+
+            VStack(spacing: 10) {
+                Text("Step \(number)")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(Color(red: 1.0, green: 0.74, blue: 0.1))
                 .textCase(.uppercase)
-            Text(title)
-                .font(.system(size: 30, weight: .bold))
-            Text(description)
-                .font(.body)
-                .foregroundStyle(Color.white.opacity(0.52))
+                Text(title)
+                    .font(.system(size: 28, weight: .bold))
+                    .multilineTextAlignment(.center)
+                Text(description)
+                    .font(.body)
+                    .foregroundStyle(Color.white.opacity(0.52))
+                    .multilineTextAlignment(.center)
+            }
         }
+        .frame(maxWidth: .infinity)
     }
 
     private func setupStep(_ number: String, _ text: String) -> some View {
@@ -741,8 +808,7 @@ public struct HermexOnboardingScreen: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: HermexSystemImageName(systemImage))
-                .font(.system(size: 15, weight: .semibold))
+            HermexIconView(systemImage, size: 18)
                 .foregroundStyle(Color(red: 1.0, green: 0.74, blue: 0.10))
                 .frame(width: 24)
                 .accessibilityHidden(true)
@@ -776,21 +842,6 @@ public struct HermexOnboardingScreen: View {
             return
         }
         advance()
-    }
-
-    private func handleSwipe(_ translation: CGSize) {
-        guard focusedField == nil else { return }
-
-        let horizontalDistance = abs(translation.width)
-        let verticalDistance = abs(translation.height)
-        guard horizontalDistance >= 56, horizontalDistance > verticalDistance * 1.2 else { return }
-
-        if translation.width < 0 {
-            guard currentPage < Self.connectPageIndex else { return }
-            handlePrimaryAction()
-        } else if currentPage > 0 {
-            currentPage -= 1
-        }
     }
 
     private func advance() {
@@ -838,6 +889,54 @@ public struct HermexOnboardingScreen: View {
 #endif
     }
 
+    private var tailscaleTitle: String {
+#if SKIP
+        "Install Tailscale on Android"
+#else
+        "Install Tailscale on iPhone"
+#endif
+    }
+
+    private var tailscaleDescription: String {
+#if SKIP
+        "Install Tailscale on your Android phone and sign into the same tailnet as your server. Your agent will reply with the exact URL to use on the next screen."
+#else
+        "Install Tailscale on your iPhone and sign into the same tailnet as your server. Your agent will reply with the exact URL to use on the next screen."
+#endif
+    }
+
+    private var tailscaleSystemImage: String {
+#if SKIP
+        "rectangle.portrait.and.arrow.right"
+#else
+        "iphone.and.arrow.forward"
+#endif
+    }
+
+    private var tailscaleInstallText: String {
+#if SKIP
+        "Install Tailscale from Google Play."
+#else
+        "Install Tailscale from the App Store."
+#endif
+    }
+
+    private var tailscaleStoreButtonTitle: String {
+#if SKIP
+        "Get Tailscale on Google Play"
+#else
+        "Get Tailscale on the App Store"
+#endif
+    }
+
+    private var tailscaleStoreURL: String {
+#if SKIP
+        "https://play.google.com/store/apps/details?id=com.tailscale.ipn"
+#else
+        "https://apps.apple.com/app/tailscale/id1470499037"
+#endif
+    }
+
     private var primaryButtonTitle: String {
         if currentPage == 0 {
             return "Get Started"
@@ -862,6 +961,7 @@ public struct HermexOnboardingScreen: View {
         }
     }
 
+#if SKIP
     private static let agentSetupPrompt = """
 Set up Hermes Web UI on this machine for access from my Android phone via Tailscale.
 
@@ -874,6 +974,20 @@ Verify it works: curl http://$(tailscale ip -4):8787/health should return a succ
 Reply with the exact server URL, the password, and any setup steps still needed on my Android phone.
 Do not use Cloudflare. Optimize for Tailscale + Android.
 """
+#else
+    private static let agentSetupPrompt = """
+Set up Hermes Web UI on this machine for access from my iPhone via Tailscale.
+
+Clone and install https://github.com/nesquena/hermes-webui. It is a Node.js web app. Install dependencies and start it on port 8787.
+Enable password authentication by setting the HERMES_WEBUI_PASSWORD environment variable. Generate a secure random password and save it.
+Install Tailscale on this machine. Authenticate to my Tailscale account, then make the WebUI reachable over Tailscale.
+Try tailscale serve --bg 8787 first. If Tailscale Serve is disabled, bind the server to 0.0.0.0 only after confirming password auth is active.
+Set up auto-start so the WebUI survives reboots.
+Verify it works: curl http://$(tailscale ip -4):8787/health should return a success response.
+Reply with the exact server URL, the password, and any setup steps still needed on my iPhone.
+Do not use Cloudflare. Optimize for Tailscale + iPhone.
+"""
+#endif
 }
 
 private extension View {

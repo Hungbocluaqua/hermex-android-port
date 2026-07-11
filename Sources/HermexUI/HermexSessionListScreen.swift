@@ -471,8 +471,7 @@ public struct HermexSessionListScreen: View {
                     projectsAreExpanded.toggle()
                 } label: {
                     HStack(spacing: 18) {
-                        Image(systemName: HermexSystemImageName("folder"))
-                            .font(.system(size: HermexLayoutContract.sessionListUtilityIconSize, weight: .semibold))
+                        HermexIconView("folder", size: HermexLayoutContract.sessionListUtilityIconSize)
                             .frame(width: HermexLayoutContract.sessionListUtilityIconSlotWidth)
 
                         Text("Projects")
@@ -600,8 +599,7 @@ public struct HermexSessionListScreen: View {
             onEvent(event)
         } label: {
             HStack(spacing: 18) {
-                Image(systemName: HermexSystemImageName(systemImage))
-                    .font(.system(size: HermexLayoutContract.sessionListUtilityIconSize, weight: .semibold))
+                HermexIconView(systemImage, size: HermexLayoutContract.sessionListUtilityIconSize)
                     .frame(width: HermexLayoutContract.sessionListUtilityIconSlotWidth)
                     .foregroundStyle(HermexUIColors.primaryText)
                     .accessibilityHidden(true)
@@ -625,8 +623,7 @@ public struct HermexSessionListScreen: View {
             onEvent(event)
         } label: {
             HStack(alignment: .center, spacing: 18) {
-                Image(systemName: HermexSystemImageName(icon))
-                    .font(.system(size: HermexLayoutContract.sessionListUtilityIconSize, weight: .semibold))
+                HermexIconView(icon, size: HermexLayoutContract.sessionListUtilityIconSize)
                     .frame(width: HermexLayoutContract.sessionListUtilityIconSlotWidth)
                     .accessibilityHidden(true)
 

@@ -145,12 +145,95 @@ func HermexSystemImageName(_ name: String) -> String {
         return "play"
     case "trash", "trash.fill":
         return "trash"
+    case "wifi.slash":
+        return "location"
     default:
         return name
     }
 #else
     return name
 #endif
+}
+
+private func hermexAssetName(for systemImage: String) -> String? {
+#if SKIP
+    switch systemImage {
+    case "bubble.left.and.bubble.right", "message", "message.fill":
+        return "HermexChatBubbles"
+    case "brain", "brain.fill", "brain.head.profile":
+        return "LucideBrain"
+    case "calendar.badge.clock":
+        return "LucideCalendarClock"
+    case "chart.bar", "chart.bar.fill", "chart.xyaxis.line":
+        return "LucideChartColumnIncreasing"
+    case "folder", "folder.fill":
+        return "LucideFolder"
+    case "hammer", "hammer.fill":
+        return "LucideHammer"
+    case "person":
+        return "LucideUserRound"
+    case "person.crop.circle.badge.gearshape":
+        return "LucideUserRoundCog"
+    case "waveform":
+        return "HermexWaveform"
+    case "checkmark.shield", "checkmark.seal", "checkmark.circle", "checkmark.circle.fill":
+        return "HermexCheckCircle"
+    case "link":
+        return "HermexLink"
+    case "key", "key.fill", "key.horizontal":
+        return "HermexKey"
+    case "slider.horizontal.3":
+        return "HermexSliders"
+    case "globe", "network", "wifi":
+        return "HermexGlobe"
+    case "mic", "mic.fill":
+        return "HermexMic"
+    case "terminal", "terminal.fill":
+        return "HermexTerminal"
+    case "rectangle.portrait.and.arrow.right":
+        return "HermexLogIn"
+    default:
+        return nil
+    }
+#else
+    return nil
+#endif
+}
+
+private func hermexPackageImage(_ name: String) -> Image {
+#if SWIFT_PACKAGE
+    return Image(name, bundle: .module)
+#else
+    return Image(name)
+#endif
+}
+
+struct HermexAssetIcon: View {
+    private let name: String
+    private let size: CGFloat
+
+    init(name: String, size: CGFloat = 20) {
+        self.name = name
+        self.size = size
+    }
+
+    var body: some View {
+        hermexPackageImage(name)
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+    }
+}
+
+@ViewBuilder
+func HermexIconView(_ systemImage: String, size: CGFloat = 20) -> some View {
+    if let assetName = hermexAssetName(for: systemImage) {
+        HermexAssetIcon(name: assetName, size: size)
+    } else {
+        Image(systemName: HermexSystemImageName(systemImage))
+            .font(.system(size: size * 0.82, weight: .semibold))
+    }
 }
 
 public struct HermexMappedLabel: View {
@@ -166,7 +249,7 @@ public struct HermexMappedLabel: View {
         Label {
             Text(title)
         } icon: {
-            Image(systemName: HermexSystemImageName(systemImage))
+            HermexIconView(systemImage, size: 18)
         }
     }
 }
@@ -282,6 +365,23 @@ public struct HermexGlassPanel<Content: View>: View {
                 in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             )
             .overlay {
+                if glassEnabled {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.055),
+                                    Color.clear,
+                                    Color.black.opacity(0.08)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .allowsHitTesting(false)
+                }
+            }
+            .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(HermexUIColors.hairline, lineWidth: 0.6)
             }
@@ -318,8 +418,7 @@ public struct HermexCircleIconButton: View {
 
     public var body: some View {
         Button(action: action) {
-            Image(systemName: HermexSystemImageName(systemImage))
-                .font(.system(size: size * 0.34, weight: .semibold))
+            HermexIconView(systemImage, size: size * 0.34)
                 .frame(width: size, height: size)
                 .foregroundStyle(isFilled ? Color.black : HermexUIColors.primaryText)
                 .background(isFilled ? HermexUIColors.gold : buttonFill, in: Circle())
@@ -372,7 +471,7 @@ public struct HermexPillLabel: View {
     public var body: some View {
         HStack(spacing: 6) {
             if let systemImage {
-                Image(systemName: HermexSystemImageName(systemImage))
+                HermexIconView(systemImage, size: 17)
             }
             Text(title)
                 .lineLimit(1)
