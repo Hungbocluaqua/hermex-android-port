@@ -126,7 +126,7 @@ public struct HermexOnboardingScreen: View {
 
     private var onboardingPager: some View {
         GeometryReader { proxy in
-            ZStack {
+            let pager = ZStack {
                 pageView(for: currentPage)
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .id(currentPage)
@@ -141,27 +141,38 @@ public struct HermexOnboardingScreen: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .hermexContentShapeRectangle()
             .offset(x: horizontalDragOffset * 0.18)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 18)
-                    .onChanged { value in
-                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                        horizontalDragOffset = value.translation.width
-                    }
-                    .onEnded { value in
-                        let horizontal = value.translation.width
-                        let vertical = value.translation.height
-                        horizontalDragOffset = 0
-                        let threshold = max(CGFloat(56), proxy.size.width * 0.16)
-                        guard abs(horizontal) >= threshold, abs(horizontal) > abs(vertical) * 1.15 else { return }
 
-                        if horizontal < 0 {
-                            moveToPage(currentPage + 1)
-                        } else {
-                            moveToPage(currentPage - 1)
-                        }
-                    }
-            )
+#if SKIP
+            if currentPage == Self.connectPageIndex {
+                pager
+            } else {
+                pager.simultaneousGesture(onboardingDragGesture(pageWidth: proxy.size.width))
+            }
+#else
+            pager.simultaneousGesture(onboardingDragGesture(pageWidth: proxy.size.width))
+#endif
         }
+    }
+
+    private func onboardingDragGesture(pageWidth: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 18)
+            .onChanged { value in
+                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                horizontalDragOffset = value.translation.width
+            }
+            .onEnded { value in
+                let horizontal = value.translation.width
+                let vertical = value.translation.height
+                horizontalDragOffset = 0
+                let threshold = max(CGFloat(56), pageWidth * 0.16)
+                guard abs(horizontal) >= threshold, abs(horizontal) > abs(vertical) * 1.15 else { return }
+
+                if horizontal < 0 {
+                    moveToPage(currentPage + 1)
+                } else {
+                    moveToPage(currentPage - 1)
+                }
+            }
     }
 
     @ViewBuilder
@@ -442,7 +453,10 @@ public struct HermexOnboardingScreen: View {
                             .hermexURLInputTraits()
                             .submitLabel(.go)
                             .tint(Color(red: 1.0, green: 0.74, blue: 0.10))
-                            .focused($focusedField, equals: HermexOnboardingConnectField.serverURL)
+                            .hermexOnboardingFocused(
+                                $focusedField,
+                                equals: HermexOnboardingConnectField.serverURL
+                            )
                             .onSubmit {
                                 submitConnection()
                             }
@@ -466,7 +480,10 @@ public struct HermexOnboardingScreen: View {
                             .frame(minHeight: 44, alignment: .leading)
                             .textContentType(.password)
                             .submitLabel(.go)
-                            .focused($focusedField, equals: HermexOnboardingConnectField.password)
+                            .hermexOnboardingFocused(
+                                $focusedField,
+                                equals: HermexOnboardingConnectField.password
+                            )
                             .onSubmit {
                                 submitConnection()
                             }
@@ -869,11 +886,7 @@ public struct HermexOnboardingScreen: View {
         .padding(.horizontal, 13)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .simultaneousGesture(
-            TapGesture().onEnded {
-                onTap?()
-            }
-        )
+        .hermexOnboardingTapToFocus(onTap)
         .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -1043,6 +1056,35 @@ Do not use Cloudflare. Optimize for Tailscale + iPhone.
 }
 
 private extension View {
+    @ViewBuilder
+    func hermexOnboardingFocused(
+        _ binding: FocusState<HermexOnboardingConnectField?>.Binding,
+        equals field: HermexOnboardingConnectField
+    ) -> some View {
+#if SKIP
+        // Skip's FocusState bridge can repeatedly relinquish and reacquire native
+        // Android focus during IME resize. Let the native text input own focus.
+        self
+#else
+        self.focused(binding, equals: field)
+#endif
+    }
+
+    @ViewBuilder
+    func hermexOnboardingTapToFocus(_ action: (() -> Void)?) -> some View {
+#if SKIP
+        // A parent tap recognizer competes with the native Android text field and
+        // can make the IME alternate between shown and hidden states.
+        self
+#else
+        self.simultaneousGesture(
+            TapGesture().onEnded {
+                action?()
+            }
+        )
+#endif
+    }
+
     @ViewBuilder
     func hermexURLInputTraits() -> some View {
 #if canImport(UIKit)

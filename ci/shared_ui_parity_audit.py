@@ -62,6 +62,12 @@ def main() -> int:
         "Onboarding must preserve the iOS focused-field keyboard action bar."
     )
     ok &= require(
+        ".hermexOnboardingFocused(" in onboarding
+        and "Let the native text input own focus" in onboarding
+        and ".hermexOnboardingTapToFocus(onTap)" in onboarding,
+        "Skip onboarding fields must leave Android IME focus under native text-input ownership."
+    )
+    ok &= require(
         'systemImage: "link",' in onboarding
         and 'systemImage: "key.fill",' in onboarding
         and "HermexSystemImageName(systemImage)" in onboarding,
@@ -73,6 +79,11 @@ def main() -> int:
         and "moveToPage(currentPage + 1)" in onboarding
         and "moveToPage(currentPage - 1)" in onboarding,
         "Shared onboarding must use a full-surface horizontal drag pager for swipe parity."
+    )
+    ok &= require(
+        "if currentPage == Self.connectPageIndex" in onboarding
+        and "pager.simultaneousGesture(onboardingDragGesture" in onboarding,
+        "Skip onboarding must remove the pager drag recognizer from the native Android connection form."
     )
     ok &= require("PresentationRoot already applies imePadding" in onboarding and "self.overlay(alignment: .bottom)" not in onboarding, "Skip onboarding must keep keyboard actions in IME-safe layout flow.")
     ok &= require(logo_catalog.is_dir() and (logo_catalog / "Contents.json").is_file(), "Shared Hermex logo assets must be packaged as an xcassets catalog for Skip.")
