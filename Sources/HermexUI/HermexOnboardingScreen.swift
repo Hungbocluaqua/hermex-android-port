@@ -453,10 +453,9 @@ public struct HermexOnboardingScreen: View {
                             .hermexURLInputTraits()
                             .submitLabel(.go)
                             .tint(Color(red: 1.0, green: 0.74, blue: 0.10))
-                            .hermexOnboardingFocused(
-                                $focusedField,
-                                equals: HermexOnboardingConnectField.serverURL
-                            )
+#if !SKIP
+                            .focused($focusedField, equals: HermexOnboardingConnectField.serverURL)
+#endif
                             .onSubmit {
                                 submitConnection()
                             }
@@ -480,10 +479,9 @@ public struct HermexOnboardingScreen: View {
                             .frame(minHeight: 44, alignment: .leading)
                             .textContentType(.password)
                             .submitLabel(.go)
-                            .hermexOnboardingFocused(
-                                $focusedField,
-                                equals: HermexOnboardingConnectField.password
-                            )
+#if !SKIP
+                            .focused($focusedField, equals: HermexOnboardingConnectField.password)
+#endif
                             .onSubmit {
                                 submitConnection()
                             }
@@ -869,7 +867,7 @@ public struct HermexOnboardingScreen: View {
         onTap: (() -> Void)? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        HStack(spacing: 12) {
+        let field = HStack(spacing: 12) {
             HermexIconView(systemImage, size: 18)
                 .foregroundStyle(Color(red: 1.0, green: 0.74, blue: 0.10))
                 .frame(width: 24)
@@ -886,12 +884,21 @@ public struct HermexOnboardingScreen: View {
         .padding(.horizontal, 13)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .hermexOnboardingTapToFocus(onTap)
         .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         }
+
+#if SKIP
+        field
+#else
+        field.simultaneousGesture(
+            TapGesture().onEnded {
+                onTap?()
+            }
+        )
+#endif
     }
 
     private func handlePrimaryAction() {
@@ -1056,35 +1063,6 @@ Do not use Cloudflare. Optimize for Tailscale + iPhone.
 }
 
 private extension View {
-    @ViewBuilder
-    func hermexOnboardingFocused(
-        _ binding: FocusState<HermexOnboardingConnectField?>.Binding,
-        equals field: HermexOnboardingConnectField
-    ) -> some View {
-#if SKIP
-        // Skip's FocusState bridge can repeatedly relinquish and reacquire native
-        // Android focus during IME resize. Let the native text input own focus.
-        self
-#else
-        self.focused(binding, equals: field)
-#endif
-    }
-
-    @ViewBuilder
-    func hermexOnboardingTapToFocus(_ action: (() -> Void)?) -> some View {
-#if SKIP
-        // A parent tap recognizer competes with the native Android text field and
-        // can make the IME alternate between shown and hidden states.
-        self
-#else
-        self.simultaneousGesture(
-            TapGesture().onEnded {
-                action?()
-            }
-        )
-#endif
-    }
-
     @ViewBuilder
     func hermexURLInputTraits() -> some View {
 #if canImport(UIKit)

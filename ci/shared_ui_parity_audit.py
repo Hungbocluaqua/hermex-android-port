@@ -62,9 +62,8 @@ def main() -> int:
         "Onboarding must preserve the iOS focused-field keyboard action bar."
     )
     ok &= require(
-        ".hermexOnboardingFocused(" in onboarding
-        and "Let the native text input own focus" in onboarding
-        and ".hermexOnboardingTapToFocus(onTap)" in onboarding,
+        "#if !SKIP\n                            .focused($focusedField" in onboarding
+        and "#if SKIP\n        field\n#else\n        field.simultaneousGesture(" in onboarding,
         "Skip onboarding fields must leave Android IME focus under native text-input ownership."
     )
     ok &= require(
