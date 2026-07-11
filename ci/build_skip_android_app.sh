@@ -103,6 +103,35 @@ if [[ -z "$GRADLE_SETTINGS" ]]; then
 fi
 GRADLE_DIR="$(dirname "$GRADLE_SETTINGS")"
 
+patch_android_release_rules() {
+  if [[ "$ANDROID_VARIANT" != "release" ]]; then
+    return 0
+  fi
+
+  local rule_file found=0
+  while IFS= read -r -d '' rule_file; do
+    found=1
+    if ! grep -Fq -- "-dontwarn com.google.errorprone.annotations.Immutable" "$rule_file"; then
+      cat >> "$rule_file" <<'EOF'
+
+# Google Tink references this compile-time annotation; no runtime class is required.
+-dontwarn com.google.errorprone.annotations.Immutable
+EOF
+      echo "Added release R8 rule to $rule_file"
+    fi
+  done < <(
+    find "$GRADLE_DIR" "$APP_DIR/.build/Android" "$APP_DIR/.build/plugins/outputs" \
+      -type f -name 'proguard-rules.pro' -print0 2>/dev/null
+  )
+
+  if [[ "$found" != "1" ]]; then
+    echo "Could not locate generated proguard-rules.pro files for the release R8 rule." >&2
+    return 1
+  fi
+}
+
+patch_android_release_rules
+
 patch_android_branding() {
   local search_roots=("$APP_DIR" "$GRADLE_DIR")
   [[ -d "$APP_DIR/.build/Android" ]] && search_roots+=("$APP_DIR/.build/Android")

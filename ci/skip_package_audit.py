@@ -118,6 +118,11 @@ def main() -> int:
     ok &= require("skip init --transpiled-app" in export_script, "Skip app export must generate a transpiled app shell.")
     ok &= require("swift build --target" in export_script, "Skip app export must run the Skip-enabled Swift build.")
     ok &= require("assembleDebug" in export_script, "Skip app export must build the generated Android Gradle project.")
+    ok &= require(
+        "patch_android_release_rules" in export_script
+        and "com.google.errorprone.annotations.Immutable" in export_script,
+        "Skip release builds must suppress the compile-time Tink annotation missing-class failure in R8.",
+    )
     ok &= require("HERMEX_VISUAL_FIXTURE_NAME" in export_script and "--visual-fixture-name" in export_script, "Skip app export must forward named fixture builds for visual diff capture.")
     ok &= require(
         "HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES" in export_script
