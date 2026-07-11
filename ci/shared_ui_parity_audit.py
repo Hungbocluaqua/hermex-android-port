@@ -63,7 +63,7 @@ def main() -> int:
     )
     ok &= require(
         "#if !SKIP\n                            .focused($focusedField" in onboarding
-        and "#if SKIP\n        field\n#else\n        field.simultaneousGesture(" in onboarding,
+        and "#if SKIP\n        return field\n#else\n        return field.simultaneousGesture(" in onboarding,
         "Skip onboarding fields must leave Android IME focus under native text-input ownership."
     )
     ok &= require(

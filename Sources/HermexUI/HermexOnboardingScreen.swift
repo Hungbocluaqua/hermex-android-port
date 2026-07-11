@@ -891,9 +891,9 @@ public struct HermexOnboardingScreen: View {
         }
 
 #if SKIP
-        field
+        return field
 #else
-        field.simultaneousGesture(
+        return field.simultaneousGesture(
             TapGesture().onEnded {
                 onTap?()
             }
