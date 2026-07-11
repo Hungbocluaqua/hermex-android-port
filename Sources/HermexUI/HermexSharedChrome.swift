@@ -297,6 +297,9 @@ public struct HermexLogoMark: View {
     public var body: some View {
 #if SKIP
         HermexSkipWordmark()
+            .aspectRatio(HermexLayoutContract.hermexLogoAspectRatio, contentMode: .fit)
+            .frame(width: HermexLayoutContract.sessionListLogoWidth)
+            .accessibilityLabel("HERMEX")
 #else
         ZStack {
             hermexLogoImage("hermes-fill-mask")
@@ -314,10 +317,10 @@ public struct HermexLogoMark: View {
                 .resizable()
                 .scaledToFit()
         }
+            .aspectRatio(HermexLayoutContract.hermexLogoAspectRatio, contentMode: .fit)
+            .frame(width: HermexLayoutContract.sessionListLogoWidth)
+            .accessibilityLabel("HERMEX")
 #endif
-        .aspectRatio(HermexLayoutContract.hermexLogoAspectRatio, contentMode: .fit)
-        .frame(width: HermexLayoutContract.sessionListLogoWidth)
-        .accessibilityLabel("HERMEX")
     }
 
     private func hermexLogoImage(_ name: String) -> Image {
@@ -343,11 +346,6 @@ public struct HermexAppIconMark: View {
     public var body: some View {
 #if SKIP
         HermexSkipAppIconArtwork()
-#else
-        appIconImage
-            .resizable()
-            .scaledToFit()
-#endif
             .frame(width: size, height: size)
             .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
             .overlay {
@@ -356,6 +354,19 @@ public struct HermexAppIconMark: View {
             }
             .shadow(color: HermexUIColors.gold.opacity(0.34), radius: 24, y: 10)
             .accessibilityLabel("Hermex")
+#else
+        appIconImage
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                    .stroke(Color.white.opacity(0.22), lineWidth: 1)
+            }
+            .shadow(color: HermexUIColors.gold.opacity(0.34), radius: 24, y: 10)
+            .accessibilityLabel("Hermex")
+#endif
     }
 
     private var appIconImage: Image {
