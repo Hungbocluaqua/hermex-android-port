@@ -39,6 +39,11 @@ on:
         required: false
         default: "hermex-skip-visual-apk"
         type: string
+      capture_attempts:
+        description: "Maximum screenshot retries per fixture when hosted emulator dialogs appear"
+        required: false
+        default: "8"
+        type: string
 
 permissions:
   contents: read
@@ -57,6 +62,7 @@ jobs:
       HERMEX_VISUAL_REUSE_CONNECTED_EMULATOR: ${{ vars.HERMEX_VISUAL_REUSE_CONNECTED_EMULATOR || '0' }}
       HERMEX_VISUAL_EMULATOR_SNAPSHOT: ${{ vars.HERMEX_VISUAL_EMULATOR_SNAPSHOT || '0' }}
       HERMEX_VISUAL_EMULATOR_WIPE_DATA: ${{ vars.HERMEX_VISUAL_EMULATOR_WIPE_DATA || '1' }}
+      HERMEX_VISUAL_CAPTURE_ATTEMPTS: ${{ inputs.capture_attempts || '8' }}
     steps:
       - name: Check out
         uses: actions/checkout@v7
@@ -333,7 +339,7 @@ jobs:
           adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
 
       - name: Capture Android screenshots
-        timeout-minutes: 25
+        timeout-minutes: 45
         run: |
           set -euo pipefail
           bash ci/capture_skip_android_fixture_matrix.sh \
