@@ -17,6 +17,7 @@ CAPTURE_ATTEMPTS="${HERMEX_VISUAL_CAPTURE_ATTEMPTS:-8}"
 CAPTURE_RETRY_SECONDS="${HERMEX_VISUAL_CAPTURE_RETRY_SECONDS:-5}"
 REUSE_APK=0
 SKIP_INSTALL=0
+PRESERVE_APP_STATE=0
 WIDTH=""
 HEIGHT=""
 SELF_TEST=0
@@ -43,7 +44,8 @@ Options:
   --apk-dir DIR        Temporary Skip APK build output directory
   --package-id ID      Android package id
   --reuse-apk          Install an existing APK from --apk-dir instead of rebuilding
-  --skip-install       Reuse the already installed app and only clear fixture state
+  --skip-install       Reuse the already installed app package without reinstalling
+  --preserve-app-state Reuse app data while restarting the process for the next fixture
   --width PX           Override emulator screenshot width
   --height PX          Override emulator screenshot height
   --settle-seconds N   Seconds to wait after launch before screenshot
@@ -84,6 +86,12 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --skip-install)
+      SKIP_INSTALL=1
+      REUSE_APK=1
+      shift
+      ;;
+    --preserve-app-state)
+      PRESERVE_APP_STATE=1
       SKIP_INSTALL=1
       REUSE_APK=1
       shift
@@ -684,8 +692,13 @@ if [[ "$SKIP_INSTALL" != "1" ]]; then
   log "Installing Hermex APK"
   "$ADB" install -r "$APK_PATH" >/dev/null
 fi
-log "Clearing Hermex app data"
-"$ADB" shell pm clear "$PACKAGE_ID" >/dev/null 2>&1 || true
+if [[ "$PRESERVE_APP_STATE" == "1" ]]; then
+  log "Preserving Hermex app state and restarting the process"
+  adb_shell_bounded 10 am force-stop "$PACKAGE_ID"
+else
+  log "Clearing Hermex app data"
+  "$ADB" shell pm clear "$PACKAGE_ID" >/dev/null 2>&1 || true
+fi
 write_visual_fixture_selection
 dismiss_system_dialogs
 unlock_device_for_capture

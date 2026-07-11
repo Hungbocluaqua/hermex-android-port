@@ -197,11 +197,17 @@ def main() -> int:
     ok &= require("write_visual_fixture_selection" in capture_script and "hermex_visual_fixture.txt" in capture_script, "Android visual capture must select fixture screens at runtime.")
     ok &= require("HERMEX_ENABLE_RUNTIME_VISUAL_FIXTURES=1" in capture_script, "Android visual capture must opt visual APKs into runtime fixture selection.")
     ok &= require("--skip-install" in capture_script and "SKIP_INSTALL" in capture_script, "Android visual capture must support reusing one installed APK across multiple screens.")
+    ok &= require(
+        "--preserve-app-state" in capture_script
+        and "PRESERVE_APP_STATE" in capture_script
+        and "am force-stop" in capture_script,
+        "Android visual capture must support restarting fixture screens without clearing app state.",
+    )
 
     capture_matrix_script = (ROOT / "ci" / "capture_skip_android_fixture_matrix.sh").read_text(encoding="utf-8")
     ok &= require("capture_skip_android_fixture.sh" in capture_matrix_script, "Android fixture matrix capture must reuse the single-screen capture helper.")
     ok &= require("unset HERMEX_VISUAL_FIXTURE_NAME" in capture_matrix_script, "Android fixture matrix capture must build one reusable runtime-selected APK.")
-    ok &= require("--skip-install" in capture_matrix_script, "Android fixture matrix capture must avoid reinstalling after the first screen.")
+    ok &= require("--preserve-app-state" in capture_matrix_script, "Android fixture matrix capture must preserve app state after the first screen.")
 
     store = (ROOT / "Sources" / "HermexCore" / "HermexAppStore.swift").read_text(encoding="utf-8")
     ok &= require("isFreshInstallOnboarding" in store, "HermexAppStore must keep preview sessions out of fresh onboarding.")

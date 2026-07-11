@@ -161,7 +161,7 @@ for screen in "${SCREENS[@]}"; do
     --reuse-apk
   )
   if [[ "$first_screen" != "1" ]]; then
-    args+=(--skip-install)
+    args+=(--preserve-app-state)
   fi
   bash "$ROOT/ci/capture_skip_android_fixture.sh" "${args[@]}"
   first_screen=0
