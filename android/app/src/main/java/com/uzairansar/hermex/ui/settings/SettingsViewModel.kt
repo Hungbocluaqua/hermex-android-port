@@ -15,6 +15,7 @@ import com.uzairansar.hermex.data.preferences.AppThemeMode
 import com.uzairansar.hermex.data.preferences.ChatDisplaySettings
 import com.uzairansar.hermex.data.preferences.LocalSettingsRepository
 import com.uzairansar.hermex.data.preferences.SessionRowDisplaySettings
+import com.uzairansar.hermex.data.preferences.SessionIdentitySettings
 import com.uzairansar.hermex.data.preferences.StreamingSendBehavior
 import com.uzairansar.hermex.data.repository.AuthRepository
 import com.uzairansar.hermex.data.repository.CacheMaintenanceRepository
@@ -34,6 +35,8 @@ data class SettingsUiState(
     val themeMode: AppThemeMode = AppThemeMode.System,
     val tintPrimaryActionsWithThemeColor: Boolean = false,
     val hapticsEnabled: Boolean = true,
+    val sessionIdentitySettings: SessionIdentitySettings = SessionIdentitySettings(),
+    val headerLogoColorHex: String = "#FFD700",
     val streamingSendBehavior: StreamingSendBehavior = StreamingSendBehavior.Steer,
     val chatDisplaySettings: ChatDisplaySettings = ChatDisplaySettings(),
     val sessionRowDisplaySettings: SessionRowDisplaySettings = SessionRowDisplaySettings(),
@@ -108,7 +111,19 @@ class SettingsViewModel(
     private val cacheMaintenanceRepository: CacheMaintenanceRepository?,
     private val panelsRepository: PanelsRepository?,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(SettingsUiState(serverSnapshot = authRepository.servers.value))
+    private val initialServerSnapshot = authRepository.servers.value
+    private val initialActiveAccount = initialServerSnapshot.servers.firstOrNull {
+        it.id == initialServerSnapshot.activeServerId
+    }
+    private val _state = MutableStateFlow(
+        SettingsUiState(
+            serverSnapshot = initialServerSnapshot,
+            sessionIdentitySettings = initialActiveAccount?.let {
+                SessionIdentitySettings(displayName = it.displayName, initials = it.initials)
+            } ?: SessionIdentitySettings(),
+            headerLogoColorHex = initialActiveAccount?.headerLogoColorHex ?: DefaultServerHeaderColorHex,
+        ),
+    )
     val state: StateFlow<SettingsUiState> = _state
 
     init {
@@ -154,13 +169,26 @@ class SettingsViewModel(
         }
         viewModelScope.launch {
             authRepository.servers.collectLatest { snapshot ->
+                val activeAccount = snapshot.servers.firstOrNull { it.id == snapshot.activeServerId }
                 _state.update {
                     it.copy(
                         serverSnapshot = snapshot,
+                        sessionIdentitySettings = activeAccount?.let { account ->
+                            SessionIdentitySettings(
+                                displayName = account.displayName,
+                                initials = account.initials,
+                            )
+                        } ?: it.sessionIdentitySettings,
+                        headerLogoColorHex = activeAccount?.headerLogoColorHex ?: it.headerLogoColorHex,
                         customHeadersByServer = snapshot.servers.associate { account ->
                             account.id to authRepository.customHeaders(account.id)
                         },
                     )
+                }
+                activeAccount?.let { account ->
+                    localSettingsRepository.setSessionIdentityDisplayName(account.displayName)
+                    localSettingsRepository.setSessionIdentityInitials(account.initials)
+                    localSettingsRepository.setHeaderLogoColorHex(account.headerLogoColorHex)
                 }
             }
         }
@@ -200,6 +228,80 @@ class SettingsViewModel(
                 .onSuccess { _state.update { it.copy(hapticsEnabled = enabled, notice = "Interaction updated.", error = null) } }
                 .onFailure { error -> _state.update { it.copy(error = error.message ?: "Could not update haptic feedback.") } }
         }
+    }
+
+    fun setSessionIdentityDisplayName(displayName: String) {
+        val limited = displayName.take(80)
+        _state.update {
+            it.copy(sessionIdentitySettings = it.sessionIdentitySettings.copy(displayName = limited))
+        }
+        val targetAccount = currentActiveServerAccount()
+        val targetInitials = _state.value.sessionIdentitySettings.initials
+        val targetColor = _state.value.headerLogoColorHex
+        viewModelScope.launch {
+            runCatching {
+                localSettingsRepository.setSessionIdentityDisplayName(limited)
+                updateServerIdentity(targetAccount, limited, targetInitials, targetColor)
+            }
+                .onFailure { error -> _state.update { it.copy(error = error.message ?: "Could not update session identity.") } }
+        }
+    }
+
+    fun setSessionIdentityInitials(initials: String) {
+        val normalized = normalizedInitials(initials)
+        _state.update {
+            it.copy(sessionIdentitySettings = it.sessionIdentitySettings.copy(initials = normalized))
+        }
+        val targetAccount = currentActiveServerAccount()
+        val targetDisplayName = _state.value.sessionIdentitySettings.displayName
+        val targetColor = _state.value.headerLogoColorHex
+        viewModelScope.launch {
+            runCatching {
+                localSettingsRepository.setSessionIdentityInitials(normalized)
+                updateServerIdentity(targetAccount, targetDisplayName, normalized, targetColor)
+            }
+                .onFailure { error -> _state.update { it.copy(error = error.message ?: "Could not update session identity.") } }
+        }
+    }
+
+    fun setHeaderLogoColorHex(colorHex: String) {
+        val normalized = normalizedHeaderColorHex(colorHex)
+        _state.update { it.copy(headerLogoColorHex = normalized) }
+        val targetAccount = currentActiveServerAccount()
+        val targetIdentity = _state.value.sessionIdentitySettings
+        viewModelScope.launch {
+            runCatching {
+                localSettingsRepository.setHeaderLogoColorHex(normalized)
+                updateServerIdentity(
+                    targetAccount,
+                    targetIdentity.displayName,
+                    targetIdentity.initials,
+                    normalized,
+                )
+            }
+                .onSuccess { _state.update { it.copy(notice = "Appearance updated.", error = null) } }
+                .onFailure { error -> _state.update { it.copy(error = error.message ?: "Could not update appearance.") } }
+        }
+    }
+
+    private fun currentActiveServerAccount(): ServerAccount? {
+        val snapshot = _state.value.serverSnapshot
+        return snapshot.servers.firstOrNull { it.id == snapshot.activeServerId }
+    }
+
+    private fun updateServerIdentity(
+        account: ServerAccount?,
+        displayName: String,
+        initials: String,
+        headerLogoColorHex: String,
+    ) {
+        account ?: return
+        authRepository.updateServerIdentity(
+            account = account,
+            displayName = displayName,
+            initials = initials,
+            headerLogoColorHex = headerLogoColorHex,
+        )
     }
 
     fun loadModels() {
@@ -1134,15 +1236,15 @@ class SettingsViewModel(
 
 }
 
-const val DefaultServerHeaderColorHex = "#7DD3FC"
+const val DefaultServerHeaderColorHex = "#FFD700"
 
 val ServerHeaderColorPresets = listOf(
     DefaultServerHeaderColorHex,
     "#5B7CFF",
-    "#34C759",
-    "#FF3B30",
-    "#FF9500",
     "#AF52DE",
+    "#FF3B30",
+    "#34C759",
+    "#FFFFFF",
 )
 
 fun normalizedInitials(value: String): String =

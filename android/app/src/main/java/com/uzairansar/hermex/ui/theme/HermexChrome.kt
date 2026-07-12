@@ -91,7 +91,7 @@ internal val LightHermexSurfaceTokens = HermexSurfaceTokens(
     raised = Color(0xFFFAFAFC),
     floating = Color(0xFFFFFFFF),
     glassTint = Color(0x8AFFFFFF),
-    glassBorder = Color(0x1F000000),
+    glassBorder = Color(0x16000000),
     glassShadow = Color(0x24000000),
     fallbackScrimAlpha = 0.86f,
 )
@@ -102,7 +102,7 @@ internal val DarkHermexSurfaceTokens = HermexSurfaceTokens(
     raised = Color(0xFF111214),
     floating = Color(0xFF17191C),
     glassTint = Color(0x16FFFFFF),
-    glassBorder = Color(0x2BFFFFFF),
+    glassBorder = Color(0x18FFFFFF),
     glassShadow = Color(0xB3000000),
     fallbackScrimAlpha = 0.80f,
 )
@@ -300,7 +300,6 @@ fun HermexPillButton(
     }
     val filledContainer = filledContainerColor ?: MaterialTheme.colorScheme.primary
     val filledContent = filledContentColor ?: MaterialTheme.colorScheme.onPrimary
-    val outlinedContainer = outlinedContainerColor ?: MaterialTheme.colorScheme.surface.copy(alpha = 0.62f)
     val outlinedContent = outlinedContentColor ?: MaterialTheme.colorScheme.onSurface
 
     if (filled) {
@@ -319,14 +318,26 @@ fun HermexPillButton(
             Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
         }
     } else {
+        val outlinedModifier = if (outlinedContainerColor == null) {
+            modifier.hermexGlass(
+                shape = HermexPillShape,
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Raised,
+            )
+        } else {
+            modifier
+                .clip(HermexPillShape)
+                .background(outlinedContainerColor)
+                .hermexHairline(HermexPillShape)
+        }
         OutlinedButton(
             onClick = hapticClick,
             enabled = enabled,
-            modifier = modifier.defaultMinSize(minHeight = 0.dp),
+            modifier = outlinedModifier.defaultMinSize(minHeight = 0.dp),
             shape = HermexPillShape,
-            border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
+            border = null,
             colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = outlinedContainer,
+                containerColor = Color.Transparent,
                 contentColor = outlinedContent,
             ),
             contentPadding = contentPadding,
@@ -363,9 +374,11 @@ fun HermexSelectorPill(
         .semantics { contentDescription = label }
         .clip(shape)
     val styledModifier = if (glassed) {
-        baseModifier
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.58f))
-            .hermexHairline(shape)
+        baseModifier.hermexGlass(
+            shape = shape,
+            castsShadow = false,
+            surfaceLevel = HermexSurfaceLevel.Raised,
+        )
     } else {
         baseModifier
     }
@@ -439,18 +452,31 @@ fun HermexIconButton(
     }
     val iconResource = hermexIconResource(label, symbol)
     val displaySymbol = normalizedHermexIconSymbol(label, symbol)
+    val baseModifier = modifier
+        .defaultMinSize(minWidth = 44.dp, minHeight = 44.dp)
+        .semantics { contentDescription = label }
+    val styledModifier = when {
+        filled -> baseModifier
+            .clip(CircleShape)
+            .background(container)
+        tonalContainerColor == Color.Transparent -> baseModifier.clip(CircleShape)
+        tonalContainerColor != null -> baseModifier
+            .clip(CircleShape)
+            .background(container)
+            .hermexHairline(CircleShape)
+        else -> baseModifier.hermexGlass(
+            shape = CircleShape,
+            castsShadow = false,
+            surfaceLevel = HermexSurfaceLevel.Raised,
+        )
+    }
     TextButton(
         onClick = {
             if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
             onClick()
         },
         enabled = enabled,
-        modifier = modifier
-            .defaultMinSize(minWidth = 44.dp, minHeight = 44.dp)
-            .semantics { contentDescription = label }
-            .clip(CircleShape)
-            .background(container)
-            .hermexHairline(CircleShape),
+        modifier = styledModifier,
         shape = CircleShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = content),
@@ -498,7 +524,7 @@ private fun normalizedHermexIconSymbol(label: String, symbol: String): String =
         "Stop" -> "\u25a0"
         "Voice" -> "\u266a"
         "Files" -> "\u2302"
-        "Settings" -> "\u2699"
+        "Settings" -> if (symbol.looksLikeInitials()) symbol.uppercase() else "\u2699"
         "Clear" -> "\u00d7"
         "Up" -> "\u2191"
         "Panels" -> "\u22ef"

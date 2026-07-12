@@ -15,7 +15,7 @@ data class ServerAccount(
     val urlString: String,
     val displayName: String,
     val initials: String,
-    val headerLogoColorHex: String = "#7DD3FC",
+    val headerLogoColorHex: String = "#FFD700",
     val customHeadersRef: String? = id,
     val createdAtEpochMillis: Long = System.currentTimeMillis(),
     val updatedAtEpochMillis: Long = createdAtEpochMillis,

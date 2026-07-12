@@ -37,6 +37,11 @@ data class SessionRowDisplaySettings(
     val showCronSessions: Boolean = true,
 )
 
+data class SessionIdentitySettings(
+    val displayName: String = "Mobile User",
+    val initials: String = "MU",
+)
+
 class LocalSettingsRepository(context: Context) {
     private val dataStore = context.applicationContext.localSettingsDataStore
 
@@ -54,6 +59,17 @@ class LocalSettingsRepository(context: Context) {
 
     val hapticsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[HAPTICS_ENABLED] ?: true
+    }
+
+    val sessionIdentitySettings: Flow<SessionIdentitySettings> = dataStore.data.map { preferences ->
+        SessionIdentitySettings(
+            displayName = preferences[SESSION_IDENTITY_DISPLAY_NAME] ?: "Mobile User",
+            initials = preferences[SESSION_IDENTITY_INITIALS] ?: "MU",
+        )
+    }
+
+    val headerLogoColorHex: Flow<String> = dataStore.data.map { preferences ->
+        preferences[HEADER_LOGO_COLOR_HEX] ?: "#FFD700"
     }
 
     val chatDisplaySettings: Flow<ChatDisplaySettings> = dataStore.data.map { preferences ->
@@ -115,6 +131,28 @@ class LocalSettingsRepository(context: Context) {
     suspend fun setHapticsEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[HAPTICS_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setSessionIdentityDisplayName(displayName: String) {
+        dataStore.edit { preferences ->
+            preferences[SESSION_IDENTITY_DISPLAY_NAME] = displayName.take(80)
+        }
+    }
+
+    suspend fun setSessionIdentityInitials(initials: String) {
+        val normalized = initials
+            .filter { it.isLetterOrDigit() }
+            .take(3)
+            .uppercase(Locale.US)
+        dataStore.edit { preferences ->
+            preferences[SESSION_IDENTITY_INITIALS] = normalized
+        }
+    }
+
+    suspend fun setHeaderLogoColorHex(colorHex: String) {
+        dataStore.edit { preferences ->
+            preferences[HEADER_LOGO_COLOR_HEX] = colorHex
         }
     }
 
@@ -267,6 +305,9 @@ class LocalSettingsRepository(context: Context) {
         val STREAMING_SEND_BEHAVIOR = stringPreferencesKey("streamingSendBehavior")
         val TINTS_PRIMARY_ACTIONS_WITH_THEME_COLOR = booleanPreferencesKey("appearance.tintsPrimaryActionsWithThemeColor")
         val HAPTICS_ENABLED = booleanPreferencesKey("appHaptics.isEnabled")
+        val SESSION_IDENTITY_DISPLAY_NAME = stringPreferencesKey("sessionIdentity.displayName")
+        val SESSION_IDENTITY_INITIALS = stringPreferencesKey("sessionIdentity.initials")
+        val HEADER_LOGO_COLOR_HEX = stringPreferencesKey("appearance.headerLogoColorHex")
         val SHOW_THINKING_AND_TOOL_CARDS = booleanPreferencesKey("chatTranscript.showsThinkingAndToolCards")
         val THINKING_CARDS_START_EXPANDED = booleanPreferencesKey("chatTranscript.thinkingCardsStartExpanded")
         val TOOL_CARDS_START_EXPANDED = booleanPreferencesKey("chatTranscript.toolCardsStartExpanded")

@@ -42,6 +42,23 @@ fun HermexApp(
     val hapticsEnabled by container.localSettingsRepository.hapticsEnabled.collectAsStateWithLifecycle(
         initialValue = true,
     )
+    val localHeaderLogoColorHex by container.localSettingsRepository.headerLogoColorHex.collectAsStateWithLifecycle(
+        initialValue = "#FFD700",
+    )
+    val activeAccount = (authState as? AuthState.LoggedIn)?.account
+    val headerLogoColorHex = activeAccount?.headerLogoColorHex ?: localHeaderLogoColorHex
+
+    LaunchedEffect(
+        activeAccount?.id,
+        activeAccount?.displayName,
+        activeAccount?.initials,
+        activeAccount?.headerLogoColorHex,
+    ) {
+        activeAccount ?: return@LaunchedEffect
+        container.localSettingsRepository.setSessionIdentityDisplayName(activeAccount.displayName)
+        container.localSettingsRepository.setSessionIdentityInitials(activeAccount.initials)
+        container.localSettingsRepository.setHeaderLogoColorHex(activeAccount.headerLogoColorHex)
+    }
 
     LaunchedEffect(navController, shortcutIntents) {
         shortcutIntents.collect { intent ->
@@ -74,7 +91,7 @@ fun HermexApp(
                     )
                 }
                 composable(
-                    route = "sessions?shortcutAction={shortcutAction}&shortcutNonce={shortcutNonce}&shortcutProfile={shortcutProfile}",
+                    route = "sessions?shortcutAction={shortcutAction}&shortcutNonce={shortcutNonce}&shortcutProfile={shortcutProfile}&showArchived={showArchived}",
                     arguments = listOf(
                         navArgument("shortcutAction") {
                             type = NavType.StringType
@@ -91,6 +108,10 @@ fun HermexApp(
                             nullable = true
                             defaultValue = null
                         },
+                        navArgument("showArchived") {
+                            type = NavType.BoolType
+                            defaultValue = false
+                        },
                     ),
                     deepLinks = listOf(
                         navDeepLink { uriPattern = ShortcutDestination.SessionsUri },
@@ -104,6 +125,7 @@ fun HermexApp(
                         shortcutAction = shortcutAction,
                         shortcutNonce = entry.arguments?.getString("shortcutNonce"),
                         shortcutProfile = entry.arguments?.getString("shortcutProfile"),
+                        initialArchived = entry.arguments?.getBoolean("showArchived") == true,
                         onOpenChat = { sessionId -> navController.navigate("chat/$sessionId") },
                         onOpenVoiceChat = { sessionId -> navController.navigate("chat/$sessionId?autoStartVoice=true") },
                         onOpenSharedDraft = { sessionId -> navController.navigate("chat/$sessionId?consumeShare=true") },
@@ -132,7 +154,6 @@ fun HermexApp(
                     ),
                 ) { entry ->
                     val server = (authState as? AuthState.LoggedIn)?.server
-                    val account = (authState as? AuthState.LoggedIn)?.account
                     if (server == null) {
                         OnboardingRoute(container.authRepository) {}
                     } else {
@@ -141,7 +162,7 @@ fun HermexApp(
                             repository = container.chatRepository(server),
                             gitRepository = container.gitRepository(server),
                             localSettingsRepository = container.localSettingsRepository,
-                            activeHeaderColorHex = account?.headerLogoColorHex,
+                            activeHeaderColorHex = headerLogoColorHex,
                             sharedDraftStore = container.sharedDraftStore,
                             consumeSharedDraft = entry.arguments?.getBoolean("consumeShare") == true,
                             autoStartVoice = entry.arguments?.getBoolean("autoStartVoice") == true,
@@ -214,6 +235,7 @@ fun HermexApp(
                         panelsRepository = server?.let { container.panelsRepository(it) },
                         authState = authState,
                         onBack = { navController.popBackStack() },
+                        onOpenArchivedSessions = { navController.navigate("sessions?showArchived=true") },
                         onSignedOut = {
                             navController.navigate("onboarding") {
                                 popUpTo("sessions") { inclusive = true }

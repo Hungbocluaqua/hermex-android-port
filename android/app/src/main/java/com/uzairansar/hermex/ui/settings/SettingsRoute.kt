@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -30,13 +32,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,16 +54,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.widthIn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.Lifecycle
@@ -67,6 +77,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.core.content.ContextCompat
+import com.uzairansar.hermex.R
 import com.uzairansar.hermex.data.preferences.displayModelTitle
 import com.uzairansar.hermex.data.preferences.modelIdentifier
 import com.uzairansar.hermex.data.preferences.AppThemeMode
@@ -82,6 +93,8 @@ import com.uzairansar.hermex.ui.theme.HermexGlassShape
 import com.uzairansar.hermex.ui.theme.HermexIconButton
 import com.uzairansar.hermex.ui.theme.HermexPillButton
 import com.uzairansar.hermex.ui.theme.HermexSurfaceLevel
+import com.uzairansar.hermex.ui.theme.HermesHeaderLogo
+import com.uzairansar.hermex.ui.theme.hermexColorFromHex
 import com.uzairansar.hermex.ui.theme.hermexGlass
 import com.uzairansar.hermex.ui.notifications.AndroidNotificationPermissionPolicy
 
@@ -93,6 +106,7 @@ fun SettingsRoute(
     panelsRepository: PanelsRepository?,
     authState: AuthState,
     onBack: () -> Unit,
+    onOpenArchivedSessions: () -> Unit = {},
     onSignedOut: () -> Unit,
 ) {
     val activeServerKey = (authState as? AuthState.LoggedIn)?.server?.toString() ?: "disconnected"
@@ -151,56 +165,66 @@ fun SettingsRoute(
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().testTag("settings_list"),
+        Column(Modifier.fillMaxSize()) {
+            SettingsHeader(onBack)
+            LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .navigationBarsPadding()
+                .testTag("settings_list"),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                top = 18.dp,
-                bottom = 28.dp,
+                top = 12.dp,
+                bottom = 36.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            item {
-                SettingsHeader(onBack)
-            }
             item {
                 SettingsSection(title = "Identity") {
                     IdentitySummary(
-                        displayName = loggedIn?.account?.displayName ?: "Hermex",
-                        initials = loggedIn?.account?.initials ?: "HX",
-                        headerColorHex = loggedIn?.account?.headerLogoColorHex ?: "#7DD3FC",
+                        displayName = state.sessionIdentitySettings.displayName,
+                        initials = state.sessionIdentitySettings.initials,
+                        headerColorHex = state.headerLogoColorHex,
+                        onDisplayNameChange = viewModel::setSessionIdentityDisplayName,
+                        onInitialsChange = viewModel::setSessionIdentityInitials,
+                    )
+                }
+            }
+            item {
+                SettingsSection(title = "Archived Sessions") {
+                    SettingsAccessoryRow(
+                        label = "Archived Sessions",
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_archive_box,
+                        onClick = onOpenArchivedSessions,
                     )
                 }
             }
             item {
                 SettingsSection(title = "Appearance") {
-                    SettingsInfoRow("Theme", state.themeMode.label)
-                    Spacer(Modifier.height(9.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        AppThemeMode.entries.forEach { mode ->
-                            HermexPillButton(
-                                label = if (state.themeMode == mode) "Current: ${mode.label}" else mode.label,
-                                onClick = { viewModel.setThemeMode(mode) },
-                                filled = state.themeMode == mode,
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(10.dp))
+                    SettingsPickerRow(
+                        label = "Theme",
+                        value = state.themeMode.label,
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_half_filled_theme_circle,
+                        onClick = {
+                            val nextIndex = (AppThemeMode.entries.indexOf(state.themeMode) + 1) % AppThemeMode.entries.size
+                            viewModel.setThemeMode(AppThemeMode.entries[nextIndex])
+                        },
+                    )
+                    SettingsDivider()
+                    HeaderLogoColorSettings(
+                        selectedHex = state.headerLogoColorHex,
+                        onSelected = viewModel::setHeaderLogoColorHex,
+                    )
+                    SettingsDivider()
                     SettingsToggleRow(
                         label = "Tint New Chat & Send",
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_paintbrush,
                         value = state.tintPrimaryActionsWithThemeColor,
                         onValueChange = viewModel::setTintPrimaryActionsWithThemeColor,
                     )
-                    Text(
-                        "Apply your header color to these primary buttons.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
-                    Spacer(Modifier.height(14.dp))
+                    SettingsFootnote("Apply your header color to these primary buttons.")
+                    SettingsDivider()
                     AppIconSettingsPicker(
                         selected = selectedAppIcon,
                         isExpanded = isAppIconPickerExpanded,
@@ -224,54 +248,108 @@ fun SettingsRoute(
                 }
             }
             item {
+                SettingsSection(title = "Interaction") {
+                    SettingsToggleRow(
+                        label = "Haptic Feedback",
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_haptic_phone,
+                        value = state.hapticsEnabled,
+                        onValueChange = viewModel::setHapticsEnabled,
+                    )
+                    SettingsDivider()
+                    SettingsToggleRow(
+                        label = "Response Complete Alerts",
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_bell,
+                        value = state.responseCompletionNotificationsEnabled,
+                        onValueChange = { enabled ->
+                            if (!enabled) {
+                                viewModel.setResponseCompletionNotificationsEnabled(false, "Android notifications disabled.")
+                            } else if (canPostAndroidNotifications(context)) {
+                                viewModel.setResponseCompletionNotificationsEnabled(true, "Android notifications allowed.")
+                            } else {
+                                viewModel.markResponseCompletionNotificationPermissionRequested()
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        },
+                    )
+                    responseCompletionNotificationStatusText(state, context)?.let { SettingsFootnote(it) }
+                    SettingsDivider()
+                    SettingsPickerRow(
+                        label = "Send While Responding",
+                        value = state.streamingSendBehavior.settingsDescription,
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_message_arrow,
+                        onClick = {
+                            val entries = StreamingSendBehavior.entries
+                            val nextIndex = (entries.indexOf(state.streamingSendBehavior) + 1) % entries.size
+                            viewModel.setStreamingSendBehavior(entries[nextIndex])
+                        },
+                    )
+                }
+            }
+            item {
                 SettingsSection(title = "Chat") {
                     SettingsToggleRow(
                         label = "Thinking and Tool Cards",
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_lucide_brain,
                         value = state.chatDisplaySettings.showThinkingAndToolCards,
                         onValueChange = viewModel::setShowThinkingAndToolCards,
                     )
+                    SettingsDivider()
                     SettingsToggleRow(
                         label = "Expand Thinking by Default",
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_expand_vertical,
                         value = state.chatDisplaySettings.thinkingCardsStartExpanded,
                         enabled = state.chatDisplaySettings.showThinkingAndToolCards,
                         onValueChange = viewModel::setThinkingCardsStartExpanded,
                     )
+                    SettingsDivider()
                     SettingsToggleRow(
                         label = "Expand Tools by Default",
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_tools_wrench,
                         value = state.chatDisplaySettings.toolCardsStartExpanded,
                         enabled = state.chatDisplaySettings.showThinkingAndToolCards,
                         onValueChange = viewModel::setToolCardsStartExpanded,
                     )
+                    SettingsFootnote("Thinking and Tool cards start expanded instead of collapsed. Tapping a card still toggles it.")
+                    SettingsDivider()
                     SettingsToggleRow(
                         label = "Streamed Text Animation",
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_sparkles,
                         value = state.chatDisplaySettings.streamedTextAnimationEnabled,
                         onValueChange = viewModel::setStreamedTextAnimationEnabled,
                     )
-                    SettingsToggleRow(
-                        label = "Status Notification Excerpts",
-                        value = state.chatDisplaySettings.showsStatusNotificationResponseExcerpts,
-                        onValueChange = viewModel::setShowsStatusNotificationResponseExcerpts,
-                    )
+                    SettingsFootnote("Fades words in as a response streams. Turn off to show text instantly.")
+                    SettingsDivider()
                     SettingsToggleRow(
                         label = "Response Timestamps",
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_clock,
                         value = state.chatDisplaySettings.showsAssistantTurnTimestamps,
                         onValueChange = viewModel::setShowsAssistantTurnTimestamps,
                     )
+                    SettingsFootnote("Adds a small marker and time above each response.")
+                    SettingsDivider()
                     SettingsToggleRow(
                         label = "Wrap Code Block Lines",
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_wrap_line,
                         value = state.chatDisplaySettings.wrapsCodeBlockLines,
                         onValueChange = viewModel::setWrapsCodeBlockLines,
                     )
-                    SettingsToggleRow(
-                        label = "Hide Attachment Paths",
-                        value = state.chatDisplaySettings.hidesAttachmentPaths,
-                        onValueChange = viewModel::setHidesAttachmentPaths,
-                    )
+                    SettingsFootnote("Wraps long code lines to fit the screen instead of scrolling sideways.")
+                    SettingsDivider()
                     SettingsToggleRow(
                         label = "Right-to-Left Chat Layout",
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_align_right,
                         value = state.chatDisplaySettings.rtlChatLayoutEnabled,
                         onValueChange = viewModel::setRtlChatLayoutEnabled,
                     )
+                    SettingsFootnote("Lays out messages and the composer right-to-left while code and tool output stay left-to-right.")
+                    SettingsDivider()
+                    SettingsToggleRow(
+                        label = "Hide Attachment Paths",
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_eye_slash,
+                        value = state.chatDisplaySettings.hidesAttachmentPaths,
+                        onValueChange = viewModel::setHidesAttachmentPaths,
+                    )
+                    SettingsFootnote("Hides appended file paths while keeping attachment previews and server delivery intact.")
                 }
             }
             item {
@@ -355,53 +433,6 @@ fun SettingsRoute(
                             )
                         }
                     }
-                }
-            }
-            item {
-                SettingsSection(title = "Interaction") {
-                    SettingsToggleRow(
-                        label = "Haptic Feedback",
-                        value = state.hapticsEnabled,
-                        onValueChange = viewModel::setHapticsEnabled,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    SettingsToggleRow(
-                        label = "Response Complete Alerts",
-                        value = state.responseCompletionNotificationsEnabled,
-                        onValueChange = { enabled ->
-                            if (!enabled) {
-                                viewModel.setResponseCompletionNotificationsEnabled(false, "Android notifications disabled.")
-                            } else if (canPostAndroidNotifications(context)) {
-                                viewModel.setResponseCompletionNotificationsEnabled(true, "Android notifications allowed.")
-                            } else {
-                                viewModel.markResponseCompletionNotificationPermissionRequested()
-                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            }
-                        },
-                    )
-                    responseCompletionNotificationStatusText(state, context)?.let { status ->
-                        Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    DetailLine("Send While Responding", state.streamingSendBehavior.settingsDescription)
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        StreamingSendBehavior.entries.forEach { behavior ->
-                            HermexPillButton(
-                                label = behavior.title,
-                                onClick = { viewModel.setStreamingSendBehavior(behavior) },
-                                filled = state.streamingSendBehavior == behavior,
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    SettingsInfoRow("Share Intake", "Android share sheet target")
-                    SettingsInfoRow("Voice Notes", "Microphone recording and /api/transcribe")
-                    SettingsInfoRow("Status Notifications", "Android notification while a stream is active")
-                    SettingsInfoRow("Shortcuts", "Home screen widget and deep links")
                 }
             }
             item {
@@ -499,6 +530,7 @@ fun SettingsRoute(
                 }
             }
         }
+        }
         SettingsDialogs(state, viewModel, onSignedOut)
     }
 }
@@ -509,11 +541,7 @@ private fun SettingsHeader(onBack: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .hermexGlass(
-                shape = HermexCardShape,
-                surfaceLevel = HermexSurfaceLevel.Floating,
-            )
-            .padding(horizontal = 4.dp, vertical = 3.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         HermexIconButton(
             label = "Back",
@@ -525,7 +553,7 @@ private fun SettingsHeader(onBack: () -> Unit) {
             "Settings",
             modifier = Modifier.align(Alignment.Center),
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -541,19 +569,19 @@ private fun SettingsSection(
         Text(
             text = title.uppercase(),
             modifier = Modifier.padding(start = 8.dp, bottom = 7.dp),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.secondary,
         )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .hermexGlass(
-                    shape = HermexCardShape,
+                    shape = RoundedCornerShape(18.dp),
                     castsShadow = false,
-                    surfaceLevel = HermexSurfaceLevel.Base,
+                    surfaceLevel = HermexSurfaceLevel.Raised,
                 )
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             content = content,
         )
     }
@@ -620,29 +648,327 @@ private fun IdentitySummary(
     displayName: String,
     initials: String,
     headerColorHex: String,
+    onDisplayNameChange: (String) -> Unit,
+    onInitialsChange: (String) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ServerAvatar(
             initials = displayInitials(displayName, initials, displayName),
             colorHex = headerColorHex,
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(56.dp),
         )
         Column(Modifier.weight(1f)) {
-            Text("Sessions Avatar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text("Sessions Avatar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text(
-                "Used throughout this server's sessions.",
-                style = MaterialTheme.typography.bodySmall,
+                "Stored on this device only.",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.secondary,
             )
         }
     }
-    SettingsInfoRow("Display Name", displayName)
-    SettingsInfoRow("Initials", initials.ifBlank { "HX" })
-    SettingsInfoRow("Header Color", headerColorHex)
+    SettingsDivider()
+    EditableIdentityRow(
+        label = "Display Name",
+        value = displayName,
+        onValueChange = onDisplayNameChange,
+    )
+    SettingsDivider()
+    EditableIdentityRow(
+        label = "Initials",
+        value = initials,
+        onValueChange = { onInitialsChange(it.take(3)) },
+    )
+}
+
+@Composable
+private fun EditableIdentityRow(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(54.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+        )
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                color = MaterialTheme.colorScheme.secondary,
+                textAlign = TextAlign.End,
+            ),
+            modifier = Modifier
+                .widthIn(min = 110.dp, max = 230.dp)
+                .testTag("identity_${label.lowercase().replace(' ', '_')}"),
+        )
+    }
+}
+
+@Composable
+private fun SettingsDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(vertical = 6.dp),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
+    )
+}
+
+@Composable
+private fun SettingsFootnote(text: String) {
+    Text(
+        text,
+        modifier = Modifier.padding(top = 2.dp, bottom = 5.dp),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.secondary,
+    )
+}
+
+@Composable
+private fun SettingsLeadingIcon(
+    iconRes: Int,
+    modifier: Modifier = Modifier,
+) {
+    Image(
+        painter = painterResource(iconRes),
+        contentDescription = null,
+        modifier = modifier.size(24.dp),
+        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary),
+    )
+}
+
+@Composable
+private fun SettingsAccessoryRow(
+    label: String,
+    iconRes: Int,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(54.dp)
+            .clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SettingsLeadingIcon(iconRes)
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Image(
+            painter = painterResource(R.drawable.ic_hermex_chevron_right),
+            contentDescription = null,
+            modifier = Modifier.size(17.dp),
+            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary.copy(alpha = 0.65f)),
+        )
+    }
+}
+
+@Composable
+private fun SettingsPickerRow(
+    label: String,
+    value: String,
+    iconRes: Int,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 54.dp)
+            .clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SettingsLeadingIcon(iconRes)
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            value,
+            modifier = Modifier.widthIn(max = 150.dp),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.End,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Image(
+            painter = painterResource(R.drawable.ic_hermex_chevron_down),
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
+        )
+    }
+}
+
+private val HeaderLogoColorPresets = listOf(
+    "Yellow" to "#FFD700",
+    "Blue" to "#5B7CFF",
+    "Purple" to "#AF52DE",
+    "Red" to "#FF3B30",
+    "Green" to "#34C759",
+    "White" to "#FFFFFF",
+)
+
+@Composable
+private fun HeaderLogoColorSettings(
+    selectedHex: String,
+    onSelected: (String) -> Unit,
+) {
+    var customDialogVisible by remember { mutableStateOf(false) }
+    var customHexDraft by remember(selectedHex) { mutableStateOf(selectedHex) }
+    val selectedName = HeaderLogoColorPresets.firstOrNull { it.second.equals(selectedHex, ignoreCase = true) }?.first ?: "Custom"
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Header Logo Color", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(selectedName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(78.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF0B0B0C)),
+        contentAlignment = Alignment.Center,
+    ) {
+        HermesHeaderLogo(
+            modifier = Modifier.widthIn(max = 250.dp).fillMaxWidth(0.72f),
+            tint = hermexColorFromHex(selectedHex) ?: Color(0xFFFFD700),
+        )
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        HeaderLogoColorPresets.forEach { (name, hex) ->
+            val isSelected = hex.equals(selectedHex, ignoreCase = true)
+            val color = hermexColorFromHex(hex) ?: Color.White
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(color)
+                    .border(
+                        width = if (isSelected) 2.dp else 0.dp,
+                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                        shape = CircleShape,
+                    )
+                    .semantics {
+                        contentDescription = "$name header logo color"
+                        this.selected = isSelected
+                    }
+                    .clickable { onSelected(hex) },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isSelected) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_hermex_check),
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                        colorFilter = ColorFilter.tint(
+                            if (color.luminanceValue() > 0.62f) Color.Black else Color.White,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .semantics { contentDescription = "Custom header logo color" }
+            .clickable {
+                customHexDraft = selectedHex
+                customDialogVisible = true
+            },
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Custom", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(hermexColorFromHex(selectedHex) ?: Color(0xFFFFD700))
+                .border(2.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f), CircleShape),
+        )
+    }
+    if (customDialogVisible) {
+        val normalized = normalizeCustomHeaderHex(customHexDraft)
+        AlertDialog(
+            onDismissRequest = { customDialogVisible = false },
+            title = { Text("Custom Header Color") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    OutlinedTextField(
+                        value = customHexDraft,
+                        onValueChange = { customHexDraft = it.take(7) },
+                        label = { Text("Hex color") },
+                        placeholder = { Text("#FFD700") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("header_custom_color_input"),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                hermexColorFromHex(normalized)
+                                    ?: hermexColorFromHex(selectedHex)
+                                    ?: Color(0xFFFFD700),
+                            ),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onSelected(requireNotNull(normalized))
+                        customDialogVisible = false
+                    },
+                    enabled = normalized != null,
+                ) {
+                    Text("Apply")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { customDialogVisible = false }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+private fun normalizeCustomHeaderHex(value: String): String? {
+    val raw = value.trim().removePrefix("#").uppercase()
+    return raw.takeIf { it.matches(Regex("[0-9A-F]{6}")) }?.let { "#$it" }
 }
 
 @Composable
@@ -792,6 +1118,7 @@ private fun SettingsPickerSummaryRow(
 @Composable
 private fun SettingsToggleRow(
     label: String,
+    iconRes: Int? = null,
     value: Boolean,
     enabled: Boolean = true,
     switchTestTag: String? = null,
@@ -801,16 +1128,29 @@ private fun SettingsToggleRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled) { onValueChange(!value) }
-            .padding(vertical = 5.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .heightIn(min = 54.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        iconRes?.let { SettingsLeadingIcon(it) }
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+        )
         Switch(
             checked = value,
             onCheckedChange = onValueChange,
             enabled = enabled,
             modifier = switchTestTag?.let { Modifier.testTag(it) } ?: Modifier,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color(0xFF34C759),
+                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                uncheckedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            ),
         )
     }
 }

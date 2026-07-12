@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -32,6 +33,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,6 +52,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -110,7 +115,12 @@ fun PanelsRoute(
     val headerSubtitle = focusedSection?.let { "Server Panels" } ?: "Insights, tasks, skills, and memory"
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 14.dp)) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+        ) {
             PanelsHeader(
                 title = headerTitle,
                 subtitle = headerSubtitle,
@@ -142,7 +152,7 @@ fun PanelsRoute(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                     if (focusedSection.shouldShowPanel("insights")) {
                         item {
@@ -401,12 +411,7 @@ private fun PanelsHeader(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(bottom = 14.dp)
-            .hermexGlass(
-                shape = HermexCardShape,
-                surfaceLevel = HermexSurfaceLevel.Floating,
-            )
-            .padding(horizontal = 4.dp, vertical = 3.dp),
+            .padding(bottom = 18.dp),
     ) {
         HermexIconButton(
             label = "Back",
@@ -484,7 +489,7 @@ private fun PanelHeaderIconAction(
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier
-            .size(40.dp)
+            .size(44.dp)
             .defaultMinSize(minWidth = 0.dp, minHeight = 0.dp),
         shape = androidx.compose.foundation.shape.CircleShape,
         contentPadding = PaddingValues(0.dp),
@@ -516,12 +521,23 @@ private fun RunningTasksCard(count: Int) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
     ) {
-        Text(
-            "Running now",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = PanelPrimaryText,
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_hermex_lightning_bolt),
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                colorFilter = ColorFilter.tint(Color(0xFF0A84FF)),
+            )
+            Text(
+                "Running now",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = PanelPrimaryText,
+            )
+        }
         Text(
             count.toString(),
             style = MaterialTheme.typography.titleLarge,
@@ -576,7 +592,7 @@ private fun FocusedTaskCard(
     onOutput: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .hermexGlass(
@@ -587,17 +603,27 @@ private fun FocusedTaskCard(
             .clickable(enabled = !isMutating, onClick = onDetails)
             .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
-        CronRow(
-            job = job,
-            runningElapsed = runningElapsed,
-            isMutating = isMutating,
-            showInlineActions = false,
-            onDetails = onDetails,
-            onEdit = onEdit,
-            onRun = onRun,
-            onPauseResume = onPauseResume,
-            onOutput = onOutput,
-            onDelete = onDelete,
+        Column(Modifier.padding(end = 22.dp)) {
+            CronRow(
+                job = job,
+                runningElapsed = runningElapsed,
+                isMutating = isMutating,
+                showInlineActions = false,
+                onDetails = onDetails,
+                onEdit = onEdit,
+                onRun = onRun,
+                onPauseResume = onPauseResume,
+                onOutput = onOutput,
+                onDelete = onDelete,
+            )
+        }
+        Image(
+            painter = painterResource(R.drawable.ic_hermex_chevron_right),
+            contentDescription = null,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .size(17.dp),
+            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary.copy(alpha = 0.65f)),
         )
     }
 }
@@ -1005,8 +1031,7 @@ private fun elapsedText(elapsed: Double): String =
 
 private val cronDateFormatter: DateTimeFormatter =
     DateTimeFormatter
-        .ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
-        .withLocale(Locale.getDefault())
+        .ofPattern("d MMM yyyy 'at' HH:mm", Locale.ENGLISH)
         .withZone(ZoneId.systemDefault())
 
 @Composable
@@ -1339,12 +1364,12 @@ private fun SkillCategorySection(
     onToggle: (SkillSummary) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
             group.category.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.secondary,
             modifier = Modifier.padding(horizontal = 4.dp),
@@ -1366,6 +1391,7 @@ private fun SkillCategorySection(
                 Spacer(
                     Modifier
                         .fillMaxWidth()
+                        .padding(start = 58.dp)
                         .height(0.5.dp)
                         .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f)),
                 )
@@ -1410,14 +1436,14 @@ private fun SkillRow(
                 skill.skillDisplayName,
                 fontWeight = FontWeight.SemiBold,
                 color = PanelPrimaryText,
-                style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             skill.description?.trim()?.takeIf { it.isNotEmpty() }?.let { description ->
                 Text(
                     description,
-                    style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.secondary,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
@@ -1449,26 +1475,28 @@ private fun SkillRow(
             }
         }
         if (compact) {
-            Column(
-                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_hermex_chevron_down),
-                    contentDescription = null,
+            onToggle?.let { toggle ->
+                Switch(
+                    checked = skill.disabled != true,
+                    onCheckedChange = { toggle() },
+                    enabled = !isMutating && !isToggling,
                     modifier = Modifier
-                        .size(17.dp)
-                        .graphicsLayer(rotationZ = -90f),
-                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary),
+                        .padding(top = 2.dp)
+                        .semantics { contentDescription = "${skill.skillDisplayName} enabled" }
+                        .graphicsLayer(scaleX = 0.8f, scaleY = 0.8f),
+                    colors = SwitchDefaults.colors(
+                        checkedTrackColor = Color(0xFF34C759),
+                    ),
                 )
-                onToggle?.let { toggle ->
-                    Checkbox(
-                        checked = skill.disabled != true,
-                        onCheckedChange = { toggle() },
-                        enabled = !isMutating && !isToggling,
-                    )
-                }
             }
+            Image(
+                painter = painterResource(R.drawable.ic_hermex_chevron_right),
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(top = 12.dp)
+                    .size(14.dp),
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary.copy(alpha = 0.65f)),
+            )
         }
     }
 }

@@ -6,9 +6,11 @@ import android.content.ClipboardManager
 import android.content.Intent
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -90,7 +93,7 @@ import java.time.Duration
 import java.time.Instant
 import kotlin.math.roundToLong
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SessionListRoute(
     authState: AuthState,
@@ -98,6 +101,7 @@ fun SessionListRoute(
     shortcutAction: String? = null,
     shortcutNonce: String? = null,
     shortcutProfile: String? = null,
+    initialArchived: Boolean = false,
     onOpenChat: (String) -> Unit,
     onOpenVoiceChat: (String) -> Unit,
     onOpenSharedDraft: (String) -> Unit,
@@ -123,6 +127,7 @@ fun SessionListRoute(
         }
     })
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val headerLogoColorHex = loggedIn.account.headerLogoColorHex
     val shortcutKey = listOfNotNull(shortcutAction, shortcutNonce).joinToString(":")
     var shortcutConsumed by rememberSaveable(shortcutKey) { mutableStateOf(false) }
     var expandedActionsFor by rememberSaveable { mutableStateOf<String?>(null) }
@@ -131,11 +136,17 @@ fun SessionListRoute(
     var searchExpanded by rememberSaveable { mutableStateOf(false) }
     var isCreatingProject by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
-    val primaryActionTintColor = remember(state.tintPrimaryActionsWithThemeColor, loggedIn.account.headerLogoColorHex, state.isMutating) {
+    val primaryActionTintColor = remember(state.tintPrimaryActionsWithThemeColor, headerLogoColorHex, state.isMutating) {
         if (primaryActionTintApplies(state.tintPrimaryActionsWithThemeColor, !state.isMutating)) {
-            hermexColorFromHex(loggedIn.account.headerLogoColorHex)
+            hermexColorFromHex(headerLogoColorHex)
         } else {
             null
+        }
+    }
+
+    LaunchedEffect(initialArchived) {
+        if (initialArchived && !state.showArchived) {
+            viewModel.toggleArchived()
         }
     }
     val copySessionTitle: (SessionSummary) -> Unit = { session ->
@@ -183,7 +194,8 @@ fun SessionListRoute(
             ) {
                 item {
                     SessionsHeader(
-                        accountName = loggedIn.account.displayName,
+                        avatarInitials = loggedIn.account.initials.ifBlank { "MU" },
+                        avatarColorHex = headerLogoColorHex,
                         query = state.searchQuery,
                         searchExpanded = searchExpanded,
                         onSearchExpandedChange = { searchExpanded = it },
@@ -238,6 +250,16 @@ fun SessionListRoute(
                 item {
                     StatusStack(state = state)
                 }
+                if (!state.showArchived && !searchExpanded) {
+                    item {
+                        Text(
+                            "Sessions",
+                            modifier = Modifier.padding(start = 8.dp, top = 22.dp, bottom = 10.dp),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
                 if (state.isLoading) {
                     item {
                         Box(Modifier.fillMaxWidth().padding(top = 30.dp), contentAlignment = Alignment.Center) {
@@ -278,31 +300,20 @@ fun SessionListRoute(
                         )
                     }
                 }
-                if (
-                    !state.showArchived &&
-                    !searchExpanded &&
-                    !state.isViewingCachedData &&
-                    (state.archivedCount ?: 0) > 0
-                ) {
-                    item {
-                        ArchivedEntryRow(
-                            count = state.archivedCount,
-                            onOpen = viewModel::toggleArchived,
-                        )
-                    }
-                }
             }
         }
 
-        NewChatFloatingButton(
-            onClick = { viewModel.createSession(onCreated = onOpenChat) },
-            enabled = !state.isMutating,
-            tintColor = primaryActionTintColor,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .navigationBarsPadding()
-                .padding(end = 24.dp, bottom = 22.dp),
-        )
+        if (!searchExpanded) {
+            NewChatFloatingButton(
+                onClick = { viewModel.createSession(onCreated = onOpenChat) },
+                enabled = !state.isMutating,
+                tintColor = primaryActionTintColor,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(end = 24.dp, bottom = 22.dp),
+            )
+        }
     }
 
     SessionDialogs(state, viewModel, onOpenChat)
@@ -355,7 +366,8 @@ fun SessionListRoute(
 
 @Composable
 private fun SessionsHeader(
-    accountName: String,
+    avatarInitials: String,
+    avatarColorHex: String,
     query: String,
     searchExpanded: Boolean,
     onSearchExpandedChange: (Boolean) -> Unit,
@@ -376,12 +388,14 @@ private fun SessionsHeader(
                 modifier = Modifier
                     .width(160.dp)
                     .height(46.dp),
+                tint = hermexColorFromHex(avatarColorHex) ?: HermexColors.HeaderGold,
             )
             Spacer(Modifier.weight(1f))
         }
         SessionSearchChrome(
             query = query,
-            accountName = accountName,
+            avatarInitials = avatarInitials,
+            avatarColorHex = avatarColorHex,
             expanded = searchExpanded,
             onExpandedChange = onSearchExpandedChange,
             onQueryChange = onQueryChange,
@@ -396,7 +410,8 @@ private fun SessionsHeader(
 @Composable
 private fun SessionSearchChrome(
     query: String,
-    accountName: String,
+    avatarInitials: String,
+    avatarColorHex: String,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     onQueryChange: (String) -> Unit,
@@ -452,7 +467,7 @@ private fun SessionSearchChrome(
         }
         HermexIconButton(
             label = if (expanded) "Close search" else "Settings",
-            symbol = if (expanded) "x" else accountInitials(accountName),
+            symbol = if (expanded) "x" else avatarInitials,
             onClick = {
                 if (expanded) {
                     onClear()
@@ -462,7 +477,7 @@ private fun SessionSearchChrome(
                 }
             },
             filled = !expanded,
-            filledContainerColor = HermexColors.HeaderGold,
+            filledContainerColor = hermexColorFromHex(avatarColorHex) ?: HermexColors.HeaderGold,
             filledContentColor = Color.Black,
             tonalContainerColor = Color.Transparent,
         )
@@ -491,7 +506,12 @@ private fun NewChatFloatingButton(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("✎", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Image(
+                painter = painterResource(R.drawable.ic_hermex_square_and_pencil),
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+                colorFilter = ColorFilter.tint(hermexPrimaryActionContentColor(enabled, tintColor)),
+            )
             Text("Chat", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         }
     }
@@ -504,7 +524,7 @@ private fun UtilityRows(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 12.dp),
+            .padding(top = 8.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         UtilityRow("Tasks", R.drawable.ic_lucide_calendar_clock, "tasks", onOpenPanel)
@@ -533,7 +553,7 @@ private fun ActiveProfileSection(
                 .clip(HermexCardShape)
                 .clickable(onClick = onToggleExpanded)
                 .heightIn(min = 44.dp)
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -541,21 +561,18 @@ private fun ActiveProfileSection(
                 iconRes = R.drawable.ic_lucide_user_round_cog,
                 tint = if (state.profileError == null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.tertiary,
             )
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "Active Profile",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    state.activeProfileDisplayText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(if (expanded) "v" else ">", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+            Text(
+                "Active Profile",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Image(
+                painter = painterResource(if (expanded) R.drawable.ic_hermex_chevron_down else R.drawable.ic_hermex_chevron_right),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary),
+            )
         }
 
         if (expanded) {
@@ -639,14 +656,14 @@ private fun UtilityRow(
             .clip(HermexCardShape)
             .clickable { onOpenPanel(destination) }
             .heightIn(min = 44.dp)
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SidebarUtilityIcon(iconRes = iconRes)
         Text(
             title,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f),
         )
@@ -733,42 +750,6 @@ private fun ArchivedModeRow(
 }
 
 @Composable
-private fun ArchivedEntryRow(
-    count: Int?,
-    onOpen: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onOpen)
-            .padding(horizontal = 12.dp, vertical = 11.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("Archive", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
-        Text(
-            "Archived Sessions",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.secondary,
-            modifier = Modifier.weight(1f),
-        )
-        count?.let {
-            Text(
-                it.toString(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-            )
-        }
-        Text(">", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
-    }
-}
-
-@Composable
 private fun ProjectSection(
     projects: List<ProjectSummary>,
     sessions: List<SessionSummary>,
@@ -792,7 +773,7 @@ private fun ProjectSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -808,11 +789,16 @@ private fun ProjectSection(
                 SidebarUtilityIcon(iconRes = R.drawable.ic_lucide_folder)
                 Text(
                     "Projects",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
-                Text(if (expanded) "v" else ">", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                Image(
+                    painter = painterResource(if (expanded) R.drawable.ic_hermex_chevron_down else R.drawable.ic_hermex_chevron_right),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary),
+                )
             }
             if (expanded) {
                 HermexIconButton(
@@ -1093,9 +1079,6 @@ private fun StatusStack(state: SessionListUiState) {
         state.notice?.let { StatusLine(it, MaterialTheme.colorScheme.tertiary) }
         state.searchError?.let { StatusLine(it, MaterialTheme.colorScheme.error) }
         state.error?.let { StatusLine(it, MaterialTheme.colorScheme.error) }
-        state.archivedCount?.takeIf { it > 0 && !state.showArchived }?.let {
-            StatusLine("$it archived session(s)", MaterialTheme.colorScheme.secondary)
-        }
     }
 }
 
@@ -1124,6 +1107,7 @@ private fun EmptySessionsRow() {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SessionRow(
     session: SessionSummary,
@@ -1154,8 +1138,13 @@ private fun SessionRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = rowMinimumHeight)
-                .clickable(onClick = onOpen)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .testTag("session_row_${session.stableId}")
+                .combinedClickable(
+                    onClick = onOpen,
+                    onLongClickLabel = "Session actions",
+                    onLongClick = { if (!isMutating) onToggleActions() },
+                )
+                .padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -1172,8 +1161,8 @@ private fun SessionRow(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = session.displayTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
@@ -1188,7 +1177,7 @@ private fun SessionRow(
                     }
                     session.relativeDate?.let {
                         Spacer(Modifier.width(8.dp))
-                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, maxLines = 1)
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary, maxLines = 1)
                     }
                 }
                 if (metadata != null || session.isActiveStreaming || isViewingCachedData) {
@@ -1201,7 +1190,7 @@ private fun SessionRow(
                         metadata?.let {
                             Text(
                                 text = it,
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.secondary,
                                 maxLines = 1,
                                 overflow = TextOverflow.MiddleEllipsis,
@@ -1210,13 +1199,6 @@ private fun SessionRow(
                     }
                 }
             }
-            HermexIconButton(
-                label = "Session actions",
-                symbol = "...",
-                onClick = onToggleActions,
-                enabled = !isMutating,
-                modifier = Modifier.size(34.dp),
-            )
         }
         if (actionsExpanded) {
             Row(
@@ -1248,13 +1230,8 @@ private fun SessionRow(
                 }
             }
         }
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(0.6.dp)
-                .background(MaterialTheme.colorScheme.outlineVariant),
-        )
     }
+
 }
 
 @Composable
@@ -1459,15 +1436,20 @@ private fun SessionSummary.sessionRowMetadataLabel(
     showsWorkspace: Boolean,
 ): String? = listOfNotNull(
         messageCount?.takeIf { showsMessageCount && it >= 0 }?.let(::messageCountLabel),
-        workspace?.takeIf { showsWorkspace && it.isNotBlank() }?.substringAfterLast('\\')?.substringAfterLast('/'),
-    ).joinToString(" • ").ifBlank { null }
+        workspace?.takeIf { showsWorkspace && it.isNotBlank() }?.sessionWorkspaceDisplayName(),
+    ).joinToString(" \u2022 ").ifBlank { null }
 
 private val SessionSummary.metadataLabel: String?
     get() = listOfNotNull(
         messageCount?.takeIf { it >= 0 }?.let(::messageCountLabel),
-        workspace?.takeIf { it.isNotBlank() }?.substringAfterLast('\\')?.substringAfterLast('/'),
+        workspace?.takeIf { it.isNotBlank() }?.sessionWorkspaceDisplayName(),
         model?.takeIf { it.isNotBlank() },
-    ).joinToString(" · ").ifBlank { "No metadata" }
+    ).joinToString(" \u00b7 ").ifBlank { "No metadata" }
+
+private fun String.sessionWorkspaceDisplayName(): String {
+    val normalized = trim()
+    return if ('\\' in normalized) normalized else normalized.substringAfterLast('/')
+}
 
 private fun messageCountLabel(count: Int): String =
     "$count ${if (count == 1) "message" else "messages"}"
@@ -1480,10 +1462,13 @@ private val SessionSummary.relativeDate: String?
         val seconds = Duration.between(then, Instant.now()).seconds.coerceAtLeast(0)
         return when {
             seconds < 60 -> "now"
-            seconds < 3_600 -> "${seconds / 60}m ago"
-            seconds < 86_400 -> "${seconds / 3_600}h ago"
-            seconds < 604_800 -> "${seconds / 86_400}d ago"
-            else -> "${seconds / 604_800}w ago"
+            seconds < 3_600 -> "${seconds / 60} min ago"
+            seconds < 86_400 -> "${seconds / 3_600} hr ago"
+            seconds < 604_800 -> {
+                val days = seconds / 86_400
+                "$days ${if (days == 1L) "day" else "days"} ago"
+            }
+            else -> "${seconds / 604_800} wk ago"
         }
     }
 

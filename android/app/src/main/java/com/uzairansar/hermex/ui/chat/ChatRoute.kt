@@ -32,15 +32,18 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -50,9 +53,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -75,24 +80,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -278,7 +283,6 @@ fun ChatRoute(
     val context = LocalContext.current
     val hapticView = LocalView.current
     val hapticsEnabled = LocalHermexHapticsEnabled.current
-    val density = LocalDensity.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var appIsActive by remember(lifecycleOwner) {
         mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
@@ -338,8 +342,33 @@ fun ChatRoute(
     var showsClearConversationConfirmation by remember { mutableStateOf(false) }
     var turnDiffPresentation by remember { mutableStateOf<TurnDiffPresentation?>(null) }
     var autoVoiceConsumed by remember(sessionId, autoStartVoice) { mutableStateOf(false) }
-    var composerHeight by remember { mutableStateOf(0.dp) }
-    val transcriptBottomInset = composerHeight + 28.dp
+    val transcriptListState = rememberLazyListState()
+    var followsTranscriptBottom by remember(sessionId) { mutableStateOf(true) }
+
+    LaunchedEffect(transcriptListState) {
+        snapshotFlow {
+            val layout = transcriptListState.layoutInfo
+            val lastVisible = layout.visibleItemsInfo.lastOrNull()?.index ?: -1
+            transcriptListState.isScrollInProgress to
+                (layout.totalItemsCount == 0 || lastVisible >= layout.totalItemsCount - 2)
+        }.collect { (isScrolling, isNearBottom) ->
+            if (isScrolling) followsTranscriptBottom = isNearBottom
+        }
+    }
+
+    LaunchedEffect(
+        state.messages.size,
+        state.messages.lastOrNull()?.displayText?.length,
+        state.liveReasoning,
+        state.liveToolActivity,
+        state.responseCompletionTrigger,
+        state.isLoading,
+    ) {
+        if (!followsTranscriptBottom) return@LaunchedEffect
+        delay(32)
+        val lastItem = transcriptListState.layoutInfo.totalItemsCount - 1
+        if (lastItem >= 0) transcriptListState.animateScrollToItem(lastItem)
+    }
 
     LaunchedEffect(state.showsReasoningControl) {
         if (!state.showsReasoningControl) {
@@ -517,36 +546,24 @@ fun ChatRoute(
         }
     }
 
-    Box(
+    Column(
         modifier = Modifier.fillMaxSize(),
     ) {
-        Column(
-            Modifier.fillMaxSize(),
+        ChatTopBar(
+            title = state.headerTitle,
+            subtitle = state.headerSubtitle,
+            hasRepository = gitState.hasRepository,
+            onBack = onBack,
+            onOpenWorkspace = onOpenWorkspace,
+            onOpenGit = onOpenGit,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
         ) {
-            ChatTopBar(
-                title = state.headerTitle,
-                subtitle = state.headerSubtitle,
-                isLoading = state.isLoading,
-                onBack = onBack,
-                onOpenWorkspace = onOpenWorkspace,
-                onOpenGit = onOpenGit,
-                onRefresh = viewModel::load,
-                onClearConversation = { showsClearConversationConfirmation = true },
-                canClearConversation = !state.isLoading && !state.isViewingCachedData && !state.isRunningSessionAction,
-            )
-            ChatGitActionStrip(
-                state = gitState,
-                writesDisabled = state.isStreaming || state.isViewingCachedData || state.isRunningSessionAction,
-                fetchDisabled = state.isViewingCachedData,
-                onChanges = onOpenGit,
-                onCommit = { gitViewModel?.quickCommit(push = false) },
-                onCommitAndPush = { gitViewModel?.quickCommit(push = true) },
-                onFetch = { gitViewModel?.fetch() },
-                onPull = { gitViewModel?.pull() },
-                onPush = { gitViewModel?.push() },
-                onClear = { gitViewModel?.clearMessages() },
-            )
             CompositionLocalProvider(LocalLayoutDirection provides chatLayoutDirection) {
+                Column(Modifier.fillMaxSize()) {
                 ChatStatusStack(
                 state = state,
                 onApprovalChoice = viewModel::respondApproval,
@@ -584,12 +601,14 @@ fun ChatRoute(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
+                        .testTag("chat_transcript")
                         .hermexHazeSource(key = "chat-transcript"),
+                    state = transcriptListState,
                     contentPadding = PaddingValues(
                         start = 14.dp,
                         end = 14.dp,
                         top = 8.dp,
-                        bottom = transcriptBottomInset,
+                        bottom = 12.dp,
                     ),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -722,26 +741,15 @@ fun ChatRoute(
             }
             }
         }
+        }
 
         Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .onSizeChanged { size ->
-                    composerHeight = with(density) { size.height.toDp() }
-                }
                 .imePadding()
                 .navigationBarsPadding()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Transparent,
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.72f),
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.96f),
-                        ),
-                    ),
-                )
-                .padding(top = 30.dp),
+                .background(MaterialTheme.colorScheme.background)
+                .padding(top = 4.dp),
         ) {
             CompositionLocalProvider(LocalLayoutDirection provides chatLayoutDirection) {
                 ComposerSurface(
@@ -771,9 +779,6 @@ fun ChatRoute(
                     onRemoveAttachment = viewModel::removeAttachment,
                     loadAttachmentImage = viewModel::attachmentImageData,
                     loadAttachmentFile = viewModel::attachmentTextFile,
-                    onUndo = viewModel::undoLastExchange,
-                    onRetry = viewModel::retryLastTurn,
-                    onCompress = viewModel::compressContext,
                 )
             }
         }
@@ -1203,35 +1208,35 @@ private fun AttachmentInfoRow(
 private fun ChatTopBar(
     title: String,
     subtitle: String?,
-    isLoading: Boolean,
+    hasRepository: Boolean,
     onBack: () -> Unit,
     onOpenWorkspace: () -> Unit,
     onOpenGit: () -> Unit,
-    onRefresh: () -> Unit,
-    onClearConversation: () -> Unit,
-    canClearConversation: Boolean,
 ) {
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 10.dp, vertical = 8.dp)
-            .hermexGlass(
-                shape = RoundedCornerShape(24.dp),
-                surfaceLevel = HermexSurfaceLevel.Floating,
-            )
-            .padding(horizontal = 4.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .testTag("chat_top_bar"),
     ) {
-        HermexIconButton("Back", "\u2039", onBack)
+        HermexIconButton(
+            label = "Back",
+            symbol = "\u2039",
+            onClick = onBack,
+            modifier = Modifier.align(Alignment.CenterStart),
+        )
         Column(
             modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 12.dp),
+                .align(Alignment.Center)
+                .fillMaxWidth()
+                .padding(horizontal = if (hasRepository) 108.dp else 64.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1242,95 +1247,38 @@ private fun ChatTopBar(
                     color = MaterialTheme.colorScheme.secondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
             }
         }
-        Row(
-            modifier = Modifier.hermexGlass(shape = CircleShape, castsShadow = false).padding(horizontal = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(0.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            HermexIconButton("Files", "\u2302", onOpenWorkspace)
-            HermexIconButton("Git", "\u2387", onOpenGit)
-            HermexIconButton("Refresh", "\u21bb", onRefresh, enabled = !isLoading)
-            HermexIconButton("Clear conversation", "\u232B", onClearConversation, enabled = canClearConversation)
-        }
-    }
-}
-
-@Composable
-private fun ChatGitActionStrip(
-    state: ChatGitUiState,
-    writesDisabled: Boolean,
-    fetchDisabled: Boolean,
-    onChanges: () -> Unit,
-    onCommit: () -> Unit,
-    onCommitAndPush: () -> Unit,
-    onFetch: () -> Unit,
-    onPull: () -> Unit,
-    onPush: () -> Unit,
-    onClear: () -> Unit,
-) {
-    if (!state.hasRepository) return
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = buildString {
-                    append(state.branch?.takeIf { it.isNotBlank() } ?: "Git")
-                    append("  ")
-                    append("+${state.totalAdditions} -${state.totalDeletions}  ${state.changedCount}")
-                },
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary,
+        if (hasRepository) {
+            Row(
                 modifier = Modifier
+                    .align(Alignment.CenterEnd)
                     .hermexGlass(shape = CircleShape, castsShadow = false)
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
-            )
-            if (state.phase != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier
-                        .hermexGlass(shape = CircleShape, castsShadow = false)
-                        .padding(horizontal = 10.dp, vertical = 7.dp),
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
-                    Text(state.phase.title, style = MaterialTheme.typography.labelSmall)
-                }
+                    .padding(2.dp),
+            ) {
+                HermexIconButton(
+                    label = "Files",
+                    symbol = "\u2302",
+                    onClick = onOpenWorkspace,
+                    tonalContainerColor = Color.Transparent,
+                    modifier = Modifier.size(44.dp),
+                )
+                HermexIconButton(
+                    label = "Git",
+                    symbol = "Git",
+                    onClick = onOpenGit,
+                    tonalContainerColor = Color.Transparent,
+                    modifier = Modifier.size(44.dp),
+                )
             }
-            HermexPillButton("Changes", onChanges, enabled = !state.isLoading)
-            HermexPillButton("Commit", onCommit, enabled = !writesDisabled && !state.isMutating && state.hasChanges)
-            HermexPillButton("Commit & Push", onCommitAndPush, enabled = !writesDisabled && !state.isMutating && state.hasChanges, filled = true)
-            HermexPillButton("Fetch", onFetch, enabled = !fetchDisabled && !state.isMutating)
-            HermexPillButton("Pull", onPull, enabled = !writesDisabled && !state.isMutating)
-            HermexPillButton("Push", onPush, enabled = !writesDisabled && !state.isMutating)
-        }
-        state.notice?.let {
-            Text(
-                it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.clickable(onClick = onClear),
-            )
-        }
-        state.error?.let {
-            Text(
-                it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.clickable(onClick = onClear),
+        } else {
+            HermexIconButton(
+                label = "Files",
+                symbol = "\u2302",
+                onClick = onOpenWorkspace,
+                modifier = Modifier.align(Alignment.CenterEnd),
             )
         }
     }
@@ -1715,6 +1663,7 @@ private fun SlashAutocompleteSurface(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ComposerSurface(
     state: ChatUiState,
@@ -1735,11 +1684,9 @@ private fun ComposerSurface(
     onRemoveAttachment: (UploadResponse) -> Unit,
     loadAttachmentImage: suspend (String) -> ByteArray?,
     loadAttachmentFile: suspend (String) -> FileResponse?,
-    onUndo: () -> Unit,
-    onRetry: () -> Unit,
-    onCompress: () -> Unit,
 ) {
     var previewAttachment by remember { mutableStateOf<UploadResponse?>(null) }
+    val isImeVisible = WindowInsets.isImeVisible
     val slashAutocompleteContext = remember(
         state.modelOptions,
         state.profileOptions,
@@ -1769,7 +1716,8 @@ private fun ComposerSurface(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .testTag("chat_composer"),
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         when {
@@ -1802,34 +1750,45 @@ private fun ComposerSurface(
                     loadAttachmentImage = loadAttachmentImage,
                 )
             }
-            OutlinedTextField(
+            BasicTextField(
                 value = state.draft,
                 onValueChange = onDraftChange,
-                placeholder = { Text(if (state.isViewingCachedData) "Reconnect to send messages." else "Message Hermex") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 2.dp)
+                    .heightIn(min = 52.dp, max = 132.dp)
+                    .padding(horizontal = 18.dp, vertical = 14.dp)
                     .semantics { contentDescription = "Message" },
-                minLines = 1,
-                maxLines = 5,
                 enabled = !state.isViewingCachedData,
-                shape = HermexCardShape,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    disabledBorderColor = Color.Transparent,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    disabledContainerColor = Color.Transparent,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = if (state.isViewingCachedData) {
+                        MaterialTheme.colorScheme.secondary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
                 ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                decorationBox = { innerTextField ->
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.TopStart,
+                    ) {
+                        if (state.draft.isEmpty()) {
+                            Text(
+                                if (state.isViewingCachedData) "Reconnect to send messages." else "Ask anything... /commands",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
+                        }
+                        innerTextField()
+                    }
+                },
             )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 10.dp)
                     .padding(top = 2.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 HermexIconButton(
@@ -1837,14 +1796,15 @@ private fun ComposerSurface(
                     symbol = "+",
                     onClick = onAttach,
                     enabled = !state.isUploadingAttachment && !state.isStreaming && !state.isViewingCachedData,
+                    modifier = Modifier.size(40.dp),
                 )
                 HermexSelectorPill(
                     label = state.selectedModel?.label ?: state.selectedModel?.name ?: state.selectedModel?.id ?: "Model",
                     onClick = onOpenModelPicker,
                     enabled = state.modelOptions.isNotEmpty() && !state.isStreaming && !state.isViewingCachedData && !state.isRunningSessionAction,
-                    maxWidth = 132.dp,
+                    modifier = Modifier.weight(1f),
                     glassed = false,
-                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 14.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp),
                 )
                 if (state.showsReasoningControl) {
                     HermexSelectorPill(
@@ -1852,13 +1812,12 @@ private fun ComposerSurface(
                         onClick = onOpenReasoningPicker,
                         enabled = state.reasoningOptions.isNotEmpty() && !state.isStreaming && !state.isViewingCachedData && !state.isRunningSessionAction,
                         leadingIcon = com.uzairansar.hermex.R.drawable.ic_lucide_brain,
-                        minWidth = 104.dp,
-                        maxWidth = 104.dp,
+                        minWidth = 84.dp,
+                        maxWidth = 100.dp,
                         glassed = false,
-                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 14.dp),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 10.dp),
                     )
                 }
-                Spacer(Modifier.width(4.dp))
                 HermexIconButton(
                     label = "Voice",
                     symbol = when {
@@ -1868,10 +1827,8 @@ private fun ComposerSurface(
                     },
                     onClick = onVoice,
                     enabled = !state.isStreaming && !state.isViewingCachedData && !state.isTranscribingVoiceNote && !state.isRunningSessionAction,
+                    modifier = Modifier.size(40.dp),
                 )
-                if (state.isRecordingVoiceNote) {
-                    HermexPillButton("Cancel voice", onCancelVoice)
-                }
                 HermexIconButton(
                     label = if (state.isStreaming) "Stop" else "Send",
                     symbol = if (state.isStreaming) "■" else "↑",
@@ -1886,11 +1843,19 @@ private fun ComposerSurface(
                         if (state.isStreaming) true else state.draft.isNotBlank() && !state.isViewingCachedData && !state.isRunningSessionAction,
                         primaryActionTintColor,
                     ),
+                    modifier = Modifier.size(40.dp),
                 )
-                if (state.isStreaming && state.draft.trimStart().startsWith("/queue", ignoreCase = true)) {
-                    HermexPillButton("Queue", onSend, enabled = !state.isRunningSessionAction, filled = true)
-                }
-                if (state.isStreaming && state.draft.isNotBlank()) {
+            }
+            if (state.isStreaming && state.draft.isNotBlank()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                ) {
+                    if (state.draft.trimStart().startsWith("/queue", ignoreCase = true)) {
+                        HermexPillButton("Queue", onSend, enabled = !state.isRunningSessionAction, filled = true)
+                    }
                     HermexPillButton(
                         streamingSendBehavior.actionLabel,
                         onStreamingSend,
@@ -1900,19 +1865,12 @@ private fun ComposerSurface(
                 }
             }
         }
-        ComposerSecondaryBar(
-            state = state,
-            onOpenWorkspacePicker = onOpenWorkspacePicker,
-            onOpenProfilePicker = onOpenProfilePicker,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            val sessionActionEnabled = !state.isStreaming && !state.isViewingCachedData && !state.isRunningSessionAction
-            HermexPillButton("Undo", onClick = onUndo, enabled = sessionActionEnabled)
-            HermexPillButton("Retry", onClick = onRetry, enabled = sessionActionEnabled)
-            HermexPillButton("Compress", onClick = onCompress, enabled = sessionActionEnabled)
+        if (!isImeVisible) {
+            ComposerSecondaryBar(
+                state = state,
+                onOpenWorkspacePicker = onOpenWorkspacePicker,
+                onOpenProfilePicker = onOpenProfilePicker,
+            )
         }
     }
     previewAttachment?.let { attachment ->
@@ -3918,9 +3876,11 @@ private fun MarkerMessageCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.68f))
-            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f), RoundedCornerShape(10.dp))
+            .hermexGlass(
+                shape = RoundedCornerShape(10.dp),
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Raised,
+            )
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(if (expanded) 8.dp else 0.dp),
     ) {
@@ -3997,9 +3957,11 @@ private fun ReasoningAccessoryCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.68f))
-            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f), RoundedCornerShape(10.dp))
+            .hermexGlass(
+                shape = RoundedCornerShape(10.dp),
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Raised,
+            )
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(if (expanded) 8.dp else 0.dp),
     ) {
@@ -4064,9 +4026,11 @@ private fun LiveToolActivityCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.68f))
-            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f), RoundedCornerShape(10.dp))
+            .hermexGlass(
+                shape = RoundedCornerShape(10.dp),
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Raised,
+            )
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(if (expanded) 8.dp else 0.dp),
     ) {
@@ -4176,9 +4140,11 @@ private fun GitTurnChangesCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.68f))
-            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f), RoundedCornerShape(10.dp))
+            .hermexGlass(
+                shape = RoundedCornerShape(10.dp),
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Raised,
+            )
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(if (expanded) 8.dp else 0.dp),
     ) {
@@ -4427,9 +4393,11 @@ private fun ToolActivityCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.68f))
-            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f), RoundedCornerShape(10.dp))
+            .hermexGlass(
+                shape = RoundedCornerShape(10.dp),
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Raised,
+            )
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(if (expanded) 8.dp else 0.dp),
     ) {
@@ -4493,9 +4461,11 @@ private fun ToolCallCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(9.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.46f))
-            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f), RoundedCornerShape(9.dp))
+            .hermexGlass(
+                shape = RoundedCornerShape(9.dp),
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Base,
+            )
             .padding(horizontal = 9.dp, vertical = if (expanded) 8.dp else 7.dp),
         verticalArrangement = Arrangement.spacedBy(if (expanded) 8.dp else 0.dp),
     ) {
