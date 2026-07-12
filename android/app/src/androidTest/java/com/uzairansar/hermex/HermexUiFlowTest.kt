@@ -171,7 +171,9 @@ class HermexUiFlowTest {
             server.dispatcher = object : Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse {
                     return when (request.url.encodedPath) {
-                        "/api/projects" -> json("""{"projects":[{"project_id":"proj-1","name":"Mobile"},{"project_id":"proj-3","name":"Purple"}]}""")
+                        "/api/projects" -> json(
+                            """{"projects":[{"project_id":"proj-1","name":"Mobile","color":"#7DD3FCFF"},{"project_id":"proj-3","name":"Purple","color":"not-a-color"}]}""",
+                        )
                         "/api/profiles" -> json(
                             """
                             {
@@ -331,6 +333,7 @@ class HermexUiFlowTest {
         composeRule.onNodeWithText("Purple").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Add project").assertIsDisplayed()
         composeRule.onNodeWithTag("session_row_s1").performTouchInput { swipeLeft() }
+        composeRule.onNodeWithTag("session_row_s1").assertIsDisplayed()
         assertTrue(composeRule.onAllNodesWithText("Delete").fetchSemanticsNodes().isNotEmpty())
         assertTrue(composeRule.onAllNodesWithText("Archive").fetchSemanticsNodes().isNotEmpty())
         composeRule.onNodeWithText("Tasks").performClick()

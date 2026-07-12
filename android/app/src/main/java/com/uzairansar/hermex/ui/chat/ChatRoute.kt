@@ -89,6 +89,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -790,6 +791,24 @@ fun ChatRoute(
                     )
                 }
             }
+            if (!isTranscriptAtBottom) {
+                HermexIconButton(
+                    label = "Go to latest message",
+                    symbol = "↓",
+                    onClick = {
+                        followsTranscriptBottom = true
+                        val lastItem = transcriptListState.layoutInfo.totalItemsCount - 1
+                        if (lastItem >= 0) {
+                            speechScope.launch { transcriptListState.animateScrollToItem(lastItem) }
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 174.dp)
+                        .size(48.dp)
+                        .testTag("chat_scroll_to_bottom"),
+                )
+            }
         }
         ChatTopBar(
             title = state.headerTitle,
@@ -1235,9 +1254,10 @@ private fun ChatTopBar(
             .fillMaxWidth()
             .statusBarsPadding()
             .hermexGlass(
-                shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
+                shape = RectangleShape,
                 castsShadow = false,
                 surfaceLevel = HermexSurfaceLevel.Floating,
+                tintEnabled = false,
             )
             .padding(horizontal = 14.dp, vertical = 8.dp)
             .testTag("chat_top_bar"),

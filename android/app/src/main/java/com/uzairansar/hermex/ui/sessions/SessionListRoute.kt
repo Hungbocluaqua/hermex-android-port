@@ -4,13 +4,18 @@ import android.content.Context
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.graphics.Color as AndroidColor
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,11 +46,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,7 +62,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -1247,7 +1251,6 @@ private fun SessionRow(
 
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SessionSwipeContainer(
     enabled: Boolean,
@@ -1257,17 +1260,16 @@ private fun SessionSwipeContainer(
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val state = rememberSwipeToDismissBoxState(
-        confirmValueChange = { it != SwipeToDismissBoxValue.StartToEnd },
-        positionalThreshold = { distance -> distance * 0.32f },
-    )
-    SwipeToDismissBox(
-        state = state,
-        enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = enabled,
-        backgroundContent = {
-            Row(
-                modifier = Modifier.fillMaxSize(),
+    val revealWidthPx = with(LocalDensity.current) { 168.dp.toPx() }
+    val offset = remember { Animatable(0f) }
+
+    LaunchedEffect(enabled) {
+        if (!enabled) offset.snapTo(0f)
+    }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Row(
+                modifier = Modifier.matchParentSize(),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -1276,7 +1278,7 @@ private fun SessionSwipeContainer(
                     symbol = "⌫",
                     color = Color(0xFFFF3B30),
                     onClick = {
-                        scope.launch { state.reset() }
+                        scope.launch { offset.animateTo(0f) }
                         onDelete()
                     },
                 )
@@ -1285,14 +1287,32 @@ private fun SessionSwipeContainer(
                     symbol = "▣",
                     color = Color(0xFFFF9500),
                     onClick = {
-                        scope.launch { state.reset() }
+                        scope.launch { offset.animateTo(0f) }
                         onArchive()
                     },
                 )
             }
-        },
-        content = { content() },
-    )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { translationX = offset.value }
+                .draggable(
+                    enabled = enabled,
+                    orientation = Orientation.Horizontal,
+                    state = rememberDraggableState { delta ->
+                        scope.launch {
+                            offset.snapTo((offset.value + delta).coerceIn(-revealWidthPx, 0f))
+                        }
+                    },
+                    onDragStopped = {
+                        val target = if (offset.value <= -revealWidthPx * 0.35f) -revealWidthPx else 0f
+                        offset.animateTo(target)
+                    },
+                ),
+        ) {
+            content()
+        }
+    }
 }
 
 @Composable
@@ -1474,14 +1494,11 @@ private val ProjectSummary.stableColorSeed: Int
     get() = (projectId ?: displayName).fold(0) { acc, char -> acc + char.code }
 
 private fun String?.hexColorOrNull(): Color? {
-    val raw = this?.trim()?.removePrefix("#") ?: return null
-    val rgb = raw.toLongOrNull(16) ?: return null
-    return when (raw.length) {
-        6 -> Color((0xFF000000L or rgb).toULong())
-        8 -> Color(rgb.toULong())
-        else -> null
-    }
+    val raw = this?.trim()?.takeIf { it.matches(Regex("^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$")) } ?: return null
+    return runCatching { Color(AndroidColor.parseColor(raw.withLeadingHash())) }.getOrNull()
 }
+
+private fun String.withLeadingHash(): String = if (startsWith('#')) this else "#$this"
 
 private val ProfileSummary.displayTitle: String
     get() = displayName?.takeIf { it.isNotBlank() }

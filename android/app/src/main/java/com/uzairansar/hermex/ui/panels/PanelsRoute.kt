@@ -444,13 +444,28 @@ private fun FocusedInsightsPanel(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             AnalyticsTimeframe.entries.forEach { timeframe ->
-                HermexPillButton(
-                    label = timeframe.title,
-                    onClick = { onTimeframeSelected(timeframe) },
-                    filled = timeframe == selectedTimeframe,
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
-                )
+                val selected = timeframe == selectedTimeframe
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(HermexPillShape)
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.22f)
+                            else Color.Transparent,
+                        )
+                        .clickable { onTimeframeSelected(timeframe) }
+                        .padding(horizontal = 4.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        timeframe.title,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (selected) PanelPrimaryText else PanelSecondaryText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
         PanelSectionLabel((insights?.periodTitle(selectedTimeframe) ?: selectedTimeframe.title).uppercase())
@@ -461,14 +476,14 @@ private fun FocusedInsightsPanel(
                 .padding(horizontal = 18.dp),
         ) {
             listOf(
-                "Sessions" to formattedTokens(insights?.totalSessions ?: local.sessionCount),
-                "Messages" to formattedTokens(insights?.totalMessages ?: local.totalMessages),
-                "Input Tokens" to formattedTokens(insights?.totalInputTokens ?: local.totalInputTokens),
-                "Output Tokens" to formattedTokens(insights?.totalOutputTokens ?: local.totalOutputTokens),
-                "Total Tokens" to formattedTokens(insights?.totalTokens ?: local.totalTokens),
-                "Estimated Cost" to formattedCost(insights?.totalCost ?: local.estimatedCost),
+                AnalyticsMetric("Sessions", formattedTokens(insights?.totalSessions ?: local.sessionCount), "S", Color(0xFF0A84FF)),
+                AnalyticsMetric("Messages", formattedTokens(insights?.totalMessages ?: local.totalMessages), "M", Color(0xFF32D7F4)),
+                AnalyticsMetric("Input Tokens", formattedTokens(insights?.totalInputTokens ?: local.totalInputTokens), "↓", Color(0xFF30D158)),
+                AnalyticsMetric("Output Tokens", formattedTokens(insights?.totalOutputTokens ?: local.totalOutputTokens), "↑", Color(0xFFFF9F0A)),
+                AnalyticsMetric("Total Tokens", formattedTokens(insights?.totalTokens ?: local.totalTokens), "Σ", Color(0xFFBF5AF2)),
+                AnalyticsMetric("Estimated Cost", formattedCost(insights?.totalCost ?: local.estimatedCost), "$", Color(0xFF5E5CE6)),
             ).forEachIndexed { index, metric ->
-                FocusedAnalyticsMetricRow(metric.first, metric.second)
+                FocusedAnalyticsMetricRow(metric)
                 if (index < 5) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f))
             }
         }
@@ -524,14 +539,33 @@ private fun FocusedInsightsPanel(
 
 }
 
+private data class AnalyticsMetric(
+    val title: String,
+    val value: String,
+    val symbol: String,
+    val tint: Color,
+)
+
 @Composable
-private fun FocusedAnalyticsMetricRow(title: String, value: String) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 15.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+private fun FocusedAnalyticsMetricRow(metric: AnalyticsMetric) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 17.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, color = PanelSecondaryText, fontWeight = FontWeight.SemiBold)
-        Text(value, style = MaterialTheme.typography.headlineSmall, color = PanelPrimaryText, fontWeight = FontWeight.Bold)
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(metric.tint.copy(alpha = 0.16f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(metric.symbol, color = metric.tint, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(metric.title, style = MaterialTheme.typography.titleMedium, color = PanelSecondaryText, fontWeight = FontWeight.SemiBold)
+            Text(metric.value, style = MaterialTheme.typography.headlineSmall, color = PanelPrimaryText, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
@@ -889,7 +923,7 @@ private fun String.panelTitle(): String =
         "tasks" -> "Tasks"
         "skills" -> "Skills"
         "memory" -> "Memory"
-        "insights" -> "Insights"
+        "insights" -> "Usage Analytics"
         else -> "Server Panels"
     }
 
@@ -1342,16 +1376,16 @@ private fun ModelBreakdownPanelRow(model: InsightsModelBreakdown) {
         model.displayShare?.let { add("$it% share") }
         model.cacheHitPercent?.let { add("${formattedPercent(it)} cache") }
     }
-    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             model.model ?: "Unknown Model",
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
             color = PanelPrimaryText,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Text(details.joinToString("  "), style = MaterialTheme.typography.labelSmall, color = PanelSecondaryText)
+        Text(details.joinToString("  "), style = MaterialTheme.typography.bodySmall, color = PanelSecondaryText)
     }
 }
 
@@ -1363,9 +1397,9 @@ private fun DailyTokenPanelRow(day: InsightsDailyToken) {
         add("${day.sessions ?: 0} sessions")
         day.cost?.takeIf { it > 0.0 }?.let { add(formattedCost(it)) }
     }
-    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(day.date ?: "Unknown Date", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = PanelPrimaryText)
-        Text(details.joinToString("  "), style = MaterialTheme.typography.labelSmall, color = PanelSecondaryText)
+    Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(day.date ?: "Unknown Date", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PanelPrimaryText)
+        Text(details.joinToString("  "), style = MaterialTheme.typography.bodySmall, color = PanelSecondaryText)
     }
 }
 
