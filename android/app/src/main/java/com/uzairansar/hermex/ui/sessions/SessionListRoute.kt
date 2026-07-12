@@ -41,14 +41,18 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -91,6 +95,7 @@ import com.uzairansar.hermex.ui.theme.primaryActionTintApplies
 import java.io.File
 import java.time.Duration
 import java.time.Instant
+import kotlinx.coroutines.launch
 import kotlin.math.roundToLong
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -1134,20 +1139,27 @@ private fun SessionRow(
     Column(
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = rowMinimumHeight)
-                .testTag("session_row_${session.stableId}")
-                .combinedClickable(
-                    onClick = onOpen,
-                    onLongClickLabel = "Session actions",
-                    onLongClick = { if (!isMutating) onToggleActions() },
-                )
-                .padding(horizontal = 8.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        SessionSwipeContainer(
+            enabled = !isMutating,
+            archived = session.archived == true,
+            onArchive = onArchive,
+            onDelete = onDelete,
         ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = rowMinimumHeight)
+                    .background(MaterialTheme.colorScheme.background)
+                    .testTag("session_row_${session.stableId}")
+                    .combinedClickable(
+                        onClick = onOpen,
+                        onLongClickLabel = "Session actions",
+                        onLongClick = { if (!isMutating) onToggleActions() },
+                    )
+                    .padding(horizontal = 8.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
             if (session.isActiveStreaming) {
                 Box(
                     modifier = Modifier
@@ -1199,6 +1211,7 @@ private fun SessionRow(
                     }
                 }
             }
+            }
         }
         if (actionsExpanded) {
             Row(
@@ -1232,6 +1245,79 @@ private fun SessionRow(
         }
     }
 
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SessionSwipeContainer(
+    enabled: Boolean,
+    archived: Boolean,
+    onArchive: () -> Unit,
+    onDelete: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val state = rememberSwipeToDismissBoxState(
+        confirmValueChange = { it != SwipeToDismissBoxValue.StartToEnd },
+        positionalThreshold = { distance -> distance * 0.32f },
+    )
+    SwipeToDismissBox(
+        state = state,
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = enabled,
+        backgroundContent = {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SwipeAction(
+                    label = "Delete",
+                    symbol = "⌫",
+                    color = Color(0xFFFF3B30),
+                    onClick = {
+                        scope.launch { state.reset() }
+                        onDelete()
+                    },
+                )
+                SwipeAction(
+                    label = if (archived) "Restore" else "Archive",
+                    symbol = "▣",
+                    color = Color(0xFFFF9500),
+                    onClick = {
+                        scope.launch { state.reset() }
+                        onArchive()
+                    },
+                )
+            }
+        },
+        content = { content() },
+    )
+}
+
+@Composable
+private fun SwipeAction(
+    label: String,
+    symbol: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(84.dp)
+            .fillMaxSize()
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Box(
+            modifier = Modifier.size(52.dp).clip(CircleShape).background(color),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(symbol, color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+    }
 }
 
 @Composable
@@ -1381,7 +1467,7 @@ private val ProjectSummary.displayColor: Color
         1 -> Color(0xFF007AFF)
         2 -> Color(0xFFFF3B30)
         3 -> Color(0xFFFF9500)
-        else -> Color.Unspecified
+        else -> Color(0xFF5856D6)
     }
 
 private val ProjectSummary.stableColorSeed: Int

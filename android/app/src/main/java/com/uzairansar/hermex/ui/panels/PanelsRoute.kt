@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -28,6 +29,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -156,7 +158,16 @@ fun PanelsRoute(
             ) {
                     if (focusedSection.shouldShowPanel("insights")) {
                         item {
-                            PanelCard("Insights") {
+                            if (focusedSection == "insights") {
+                                FocusedInsightsPanel(
+                                    insights = state.insights,
+                                    selectedTimeframe = state.selectedInsightsTimeframe,
+                                    sessions = state.insightSessions,
+                                    dataSource = state.insightsDataSource,
+                                    fallbackReason = state.insightsFallbackReason,
+                                    onTimeframeSelected = viewModel::selectInsightsTimeframe,
+                                )
+                            } else PanelCard("Insights") {
                                 InsightsPanel(
                                     insights = state.insights,
                                     selectedTimeframe = state.selectedInsightsTimeframe,
@@ -304,7 +315,7 @@ fun PanelsRoute(
                             }
                         }
                     }
-                    if (focusedSection.shouldShowPanel("skills")) {
+                    if (focusedSection != "skills" && focusedSection.shouldShowPanel("skills")) {
                         state.selectedSkill?.let { skill ->
                             item {
                                 SkillDetailPanel(
@@ -317,7 +328,13 @@ fun PanelsRoute(
                     }
                     if (focusedSection.shouldShowPanel("memory")) {
                         item {
-                            PanelCard("Memory") {
+                            if (focusedSection == "memory") {
+                                FocusedMemoryPanel(
+                                    memory = state.memory,
+                                    isSaving = state.isMutating,
+                                    onEditSection = viewModel::openMemoryEditor,
+                                )
+                            } else PanelCard("Memory") {
                                 MemoryPanel(
                                     memory = state.memory,
                                     isSaving = state.isMutating,
@@ -394,6 +411,127 @@ fun PanelsRoute(
             onDismiss = viewModel::dismissMemoryEditor,
             onSave = viewModel::saveMemory,
         )
+    }
+
+    if (focusedSection == "skills") {
+        state.selectedSkill?.let { skill ->
+            SkillDetailSheet(
+                skill = skill,
+                isLoadingFile = state.isLoadingSkillFile,
+                onOpenLinkedFile = viewModel::loadSkillLinkedFile,
+                onDismiss = viewModel::dismissSkillDetail,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FocusedInsightsPanel(
+    insights: InsightsResponse?,
+    selectedTimeframe: AnalyticsTimeframe,
+    sessions: List<SessionSummary>,
+    dataSource: InsightsDataSource,
+    fallbackReason: String?,
+    onTimeframeSelected: (AnalyticsTimeframe) -> Unit,
+) {
+    val local = sessions.analyticsFor(selectedTimeframe)
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .hermexGlass(shape = HermexPillShape, castsShadow = false)
+                .padding(5.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            AnalyticsTimeframe.entries.forEach { timeframe ->
+                HermexPillButton(
+                    label = timeframe.title,
+                    onClick = { onTimeframeSelected(timeframe) },
+                    filled = timeframe == selectedTimeframe,
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                )
+            }
+        }
+        PanelSectionLabel((insights?.periodTitle(selectedTimeframe) ?: selectedTimeframe.title).uppercase())
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .hermexGlass(shape = HermexCardShape, castsShadow = false)
+                .padding(horizontal = 18.dp),
+        ) {
+            listOf(
+                "Sessions" to formattedTokens(insights?.totalSessions ?: local.sessionCount),
+                "Messages" to formattedTokens(insights?.totalMessages ?: local.totalMessages),
+                "Input Tokens" to formattedTokens(insights?.totalInputTokens ?: local.totalInputTokens),
+                "Output Tokens" to formattedTokens(insights?.totalOutputTokens ?: local.totalOutputTokens),
+                "Total Tokens" to formattedTokens(insights?.totalTokens ?: local.totalTokens),
+                "Estimated Cost" to formattedCost(insights?.totalCost ?: local.estimatedCost),
+            ).forEachIndexed { index, metric ->
+                FocusedAnalyticsMetricRow(metric.first, metric.second)
+                if (index < 5) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f))
+            }
+        }
+        if (!insights?.models.isNullOrEmpty()) {
+            PanelSectionLabel("Models")
+            Column(
+                modifier = Modifier.fillMaxWidth().hermexGlass(shape = HermexCardShape, castsShadow = false).padding(horizontal = 18.dp),
+            ) {
+                insights.models.orEmpty().take(10).forEachIndexed { index, model ->
+                    ModelBreakdownPanelRow(model)
+                    if (index < insights.models.orEmpty().take(10).lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f))
+                }
+            }
+        }
+        if (!insights?.dailyTokens.isNullOrEmpty()) {
+            PanelSectionLabel("Recent Daily Tokens")
+            Column(
+                modifier = Modifier.fillMaxWidth().hermexGlass(shape = HermexCardShape, castsShadow = false).padding(horizontal = 18.dp),
+            ) {
+                insights.dailyTokens.orEmpty().takeLast(14).forEachIndexed { index, day ->
+                    DailyTokenPanelRow(day)
+                    if (index < insights.dailyTokens.orEmpty().takeLast(14).lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f))
+                }
+            }
+        }
+        val peakDay = insights?.activityByDay.orEmpty().maxByOrNull { it.sessions ?: 0 }
+        val peakHour = insights?.activityByHour.orEmpty().maxByOrNull { it.sessions ?: 0 }
+        if (peakDay != null || peakHour != null) {
+            PanelSectionLabel("Activity")
+            Column(
+                modifier = Modifier.fillMaxWidth().hermexGlass(shape = HermexCardShape, castsShadow = false).padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                peakDay?.let { ActivityPanelRow("Peak Day", it.day ?: "Unknown", "${it.sessions ?: 0} sessions") }
+                peakHour?.let { ActivityPanelRow("Peak Hour", formatHour(it.hour), "${it.sessions ?: 0} sessions") }
+            }
+        }
+        if (dataSource != InsightsDataSource.Server && local.topSessions.isNotEmpty()) {
+            PanelSectionLabel("Top Sessions")
+            Column(
+                modifier = Modifier.fillMaxWidth().hermexGlass(shape = HermexCardShape, castsShadow = false).padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                local.topSessions.take(10).forEach { TopSessionPanelRow(it) }
+            }
+        }
+        Text(
+            insightsSourceDescription(dataSource, insights?.periodDays ?: selectedTimeframe.serverDays, fallbackReason),
+            style = MaterialTheme.typography.labelSmall,
+            color = PanelSecondaryText,
+        )
+    }
+
+}
+
+@Composable
+private fun FocusedAnalyticsMetricRow(title: String, value: String) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 15.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = PanelSecondaryText, fontWeight = FontWeight.SemiBold)
+        Text(value, style = MaterialTheme.typography.headlineSmall, color = PanelPrimaryText, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -855,6 +993,7 @@ private fun TaskDetailSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight(0.96f)
                 .hermexGlass(
                     shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                     castsShadow = false,
@@ -888,6 +1027,13 @@ private fun TaskDetailSheet(
                     }
                 }
                 StatusBadge(job.statusLabel(runningElapsed), job.statusColor(runningElapsed))
+                HermexIconButton(
+                    label = "Close task details",
+                    symbol = "×",
+                    onClick = onDismiss,
+                    tonalContainerColor = Color.Transparent,
+                    modifier = Modifier.size(40.dp),
+                )
             }
 
             Row(
@@ -1551,6 +1697,64 @@ private fun SkillDetailPanel(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SkillDetailSheet(
+    skill: SkillContentResponse,
+    isLoadingFile: Boolean,
+    onOpenLinkedFile: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        dragHandle = null,
+        containerColor = Color.Transparent,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.9f)
+                .hermexGlass(
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    castsShadow = false,
+                    surfaceLevel = HermexSurfaceLevel.Floating,
+                )
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    skill.name ?: "Skill",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                HermexPillButton("Done", onDismiss, filled = true)
+            }
+            Spacer(Modifier.height(14.dp))
+            val content = skill.content?.trim().orEmpty()
+            when {
+                content.isNotEmpty() -> MarkdownText(content)
+                !skill.error.isNullOrBlank() -> Text(skill.error, color = MaterialTheme.colorScheme.error)
+                else -> Text("This skill has no content.", color = PanelSecondaryText)
+            }
+            if (skill.linkedFileNames.isNotEmpty()) {
+                Spacer(Modifier.height(18.dp))
+                PanelSectionLabel("Linked Files")
+                skill.linkedFileNames.forEach { fileName ->
+                    LinkedFileRow(fileName, !isLoadingFile) { onOpenLinkedFile(fileName) }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun LinkedFileRow(
     fileName: String,
@@ -1643,6 +1847,68 @@ private fun MemoryPanel(
         memory?.projectContext?.trim()?.takeIf { it.isNotEmpty() }?.let { context ->
             ProjectContextPanel(memory, context)
         }
+    }
+}
+
+@Composable
+private fun FocusedMemoryPanel(
+    memory: MemoryResponse?,
+    isSaving: Boolean,
+    onEditSection: (String) -> Unit,
+) {
+    val section = memoryPanelSections.first()
+    val content = memory.sectionTextForRoute(section.key)
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Image(
+                painter = painterResource(section.icon),
+                contentDescription = null,
+                modifier = Modifier.size(30.dp),
+                colorFilter = ColorFilter.tint(PanelSecondaryText),
+            )
+            Text(
+                section.title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            memory.modifiedAtForSection(section.key)?.let {
+                Text("Modified ${it.relativeTimeAgoText()}", style = MaterialTheme.typography.bodySmall, color = PanelSecondaryText)
+            }
+            HermexIconButton(
+                label = "Edit My Notes",
+                symbol = "✎",
+                onClick = { onEditSection(section.key) },
+                enabled = !isSaving,
+                tonalContainerColor = Color.Transparent,
+            )
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .hermexGlass(shape = HermexCardShape, castsShadow = false)
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+        ) {
+            Text(
+                content.ifBlank { section.emptyMessage },
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (content.isBlank()) PanelSecondaryText else PanelPrimaryText,
+            )
+        }
+        memoryPanelSections.drop(1).forEach { extraSection ->
+            MemorySectionSummary(
+                section = extraSection,
+                content = memory.sectionTextForRoute(extraSection.key),
+                modifiedAt = memory.modifiedAtForSection(extraSection.key),
+                isSaving = isSaving,
+                onEdit = { onEditSection(extraSection.key) },
+            )
+        }
+        memory?.projectContext?.trim()?.takeIf { it.isNotEmpty() }?.let { ProjectContextPanel(memory, it) }
     }
 }
 

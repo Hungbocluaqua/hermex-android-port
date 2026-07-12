@@ -31,8 +31,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,9 +44,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -94,11 +98,7 @@ fun WorkspaceRoute(
                 .padding(horizontal = 16.dp, vertical = 14.dp),
         ) {
             WorkspaceHeader(
-                currentPath = state.currentPath,
                 onBack = onBack,
-                onUp = viewModel::goUp,
-                onRefresh = viewModel::refresh,
-                canGoUp = state.currentPath != null,
             )
             WorkspaceLocationHeader(
                 currentPath = state.currentPath,
@@ -113,6 +113,7 @@ fun WorkspaceRoute(
                 searchText = state.searchText,
                 onSearchTextChange = viewModel::updateSearchText,
             )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f))
             state.error?.let {
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp))
             }
@@ -181,37 +182,21 @@ private fun WorkspaceEntry.matchesSearch(query: String): Boolean {
 
 @Composable
 private fun WorkspaceHeader(
-    currentPath: String?,
     onBack: () -> Unit,
-    onUp: () -> Unit,
-    onRefresh: () -> Unit,
-    canGoUp: Boolean,
 ) {
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(bottom = 14.dp)
-            .hermexGlass(
-                shape = HermexCardShape,
-                surfaceLevel = HermexSurfaceLevel.Floating,
-            )
-            .padding(horizontal = 4.dp, vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(bottom = 18.dp),
     ) {
-        HermexIconButton("Back", "‹", onBack)
-        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-            Text("Files", style = MaterialTheme.typography.headlineMedium)
-            Text(
-                currentPath ?: "Session workspace",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary,
-                maxLines = 1,
-                overflow = TextOverflow.MiddleEllipsis,
-            )
-        }
-        HermexIconButton("Up", "↑", onUp, enabled = canGoUp)
-        HermexIconButton("Refresh", "↻", onRefresh)
+        HermexIconButton("Back", "‹", onBack, modifier = Modifier.align(Alignment.CenterStart))
+        Text(
+            "Files",
+            modifier = Modifier.align(Alignment.Center),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
@@ -237,12 +222,12 @@ private fun WorkspaceLocationHeader(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Location", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.secondary)
+            Text("Location", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
             Text(
-                currentPath ?: ".",
+                currentPath ?: "Root",
                 modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.labelSmall,
-                fontFamily = FontFamily.Monospace,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.MiddleEllipsis,
             )
@@ -251,8 +236,8 @@ private fun WorkspaceLocationHeader(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            HermexPillButton("Root", onRoot, enabled = currentPath != null)
-            HermexPillButton("Up", onUp, enabled = canGoUp)
+            HermexPillButton("⌂  Root", onRoot, enabled = currentPath != null)
+            HermexPillButton("↑  Up", onUp, enabled = canGoUp)
             roots.forEach { root ->
                 HermexPillButton(root.name ?: root.path ?: "Root", onClick = { onOpenRoot(root) })
             }
@@ -312,9 +297,25 @@ private fun WorkspaceSearchBar(
     OutlinedTextField(
         value = searchText,
         onValueChange = onSearchTextChange,
+        leadingIcon = {
+            Image(
+                painter = painterResource(com.uzairansar.hermex.R.drawable.ic_hermex_search),
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary),
+            )
+        },
         label = { Text("Search files") },
+        placeholder = { Text("Search files") },
         singleLine = true,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+        shape = HermexCardShape,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+            focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+            unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+        ),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
     )
 }
 
@@ -363,14 +364,21 @@ private fun WorkspaceEntryRow(entry: WorkspaceEntry, onClick: () -> Unit) {
 private fun EmptyWorkspace(query: String, currentPath: String?) {
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .hermexGlass(shape = HermexCardShape, castsShadow = false)
-            .padding(16.dp),
+            .fillMaxSize()
+            .padding(bottom = 76.dp),
+        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(if (query.isBlank()) "No Files" else "No Matches", style = MaterialTheme.typography.titleMedium)
+        Image(
+            painter = painterResource(com.uzairansar.hermex.R.drawable.ic_lucide_folder),
+            contentDescription = null,
+            modifier = Modifier.size(68.dp),
+            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary),
+        )
+        Spacer(Modifier.height(18.dp))
+        Text(if (query.isBlank()) "No Files" else "No Matches", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(
-            if (query.isBlank()) currentPath ?: "This session has no workspace entries yet." else "Try a different file name or path.",
+            if (query.isBlank()) "" else "Try a different file name or path.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.secondary,
         )

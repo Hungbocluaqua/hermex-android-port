@@ -19,6 +19,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollTo
@@ -170,7 +171,7 @@ class HermexUiFlowTest {
             server.dispatcher = object : Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse {
                     return when (request.url.encodedPath) {
-                        "/api/projects" -> json("""{"projects":[{"project_id":"proj-1","name":"Mobile"}]}""")
+                        "/api/projects" -> json("""{"projects":[{"project_id":"proj-1","name":"Mobile"},{"project_id":"proj-3","name":"Purple"}]}""")
                         "/api/profiles" -> json(
                             """
                             {
@@ -327,7 +328,11 @@ class HermexUiFlowTest {
         assertTrue(composeRule.onAllNodesWithText("New project").fetchSemanticsNodes().isEmpty())
         composeRule.onNodeWithText("Projects").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Mobile") }
+        composeRule.onNodeWithText("Purple").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Add project").assertIsDisplayed()
+        composeRule.onNodeWithTag("session_row_s1").performTouchInput { swipeLeft() }
+        assertTrue(composeRule.onAllNodesWithText("Delete").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(composeRule.onAllNodesWithText("Archive").fetchSemanticsNodes().isNotEmpty())
         composeRule.onNodeWithText("Tasks").performClick()
         assertEquals("tasks", openedPanel)
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Active Profile") }
@@ -1158,9 +1163,13 @@ class HermexUiFlowTest {
         composeRule.onNodeWithText("review").assertIsDisplayed()
 
         composeRule.onNodeWithText("Review Code").performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("LINKED FILES") }
-        composeRule.onNodeWithText("LINKED FILES").assertIsDisplayed()
+        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Linked Files") }
+        composeRule.onNodeWithText("Linked Files").assertIsDisplayed()
         composeRule.onNodeWithText("README.md").assertIsDisplayed()
+        composeRule.onNodeWithText("Done").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("Done").fetchSemanticsNodes().isEmpty()
+        }
 
         composeRule.onNodeWithText("Search skills...").performTextInput("zzzz")
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("No Results") }
@@ -1312,13 +1321,13 @@ class HermexUiFlowTest {
         assertTrue(hasText("All Time"))
         composeRule.onNodeWithText("Sessions").assertIsDisplayed()
         composeRule.onNodeWithText("Estimated Cost").assertIsDisplayed()
-        composeRule.onNodeWithText("MODELS").assertIsDisplayed()
+        composeRule.onNodeWithText("Models").assertIsDisplayed()
         composeRule.onNodeWithText("gpt-5").assertIsDisplayed()
-        composeRule.onNodeWithText("RECENT DAILY TOKENS").assertIsDisplayed()
-        composeRule.onNodeWithText("ACTIVITY").assertIsDisplayed()
-        composeRule.onNodeWithText("Source: server insights from the last 30 days.").assertIsDisplayed()
+        composeRule.onNodeWithText("Recent Daily Tokens").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Activity").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Source: server insights from the last 30 days.").performScrollTo().assertIsDisplayed()
 
-        composeRule.onNodeWithText("Last 7 Days").performClick()
+        composeRule.onNodeWithText("Last 7 Days").performScrollTo().performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             requestedInsightDays.contains(7) && hasText("Source: server insights from the last 7 days.")
         }
@@ -1331,7 +1340,7 @@ class HermexUiFlowTest {
         composeRule.onNodeWithText("My Notes").assertIsDisplayed()
         composeRule.onNodeWithText("User Profile").assertIsDisplayed()
         composeRule.onNodeWithText("Agent Soul").assertIsDisplayed()
-        composeRule.onNodeWithText("Edit My Notes").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Edit My Notes").assertIsDisplayed()
         composeRule.onNodeWithText("PROJECT CONTEXT").assertIsDisplayed()
         composeRule.onNodeWithText("Read-only").assertIsDisplayed()
     }
@@ -1396,12 +1405,12 @@ class HermexUiFlowTest {
             }
         }
 
-        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("TOP SESSIONS") }
+        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Top Sessions") }
         composeRule.onNodeWithText("Sessions").assertIsDisplayed()
         composeRule.onNodeWithText("Messages").assertIsDisplayed()
-        composeRule.onNodeWithText("TOP SESSIONS").assertIsDisplayed()
+        composeRule.onNodeWithText("Top Sessions").assertIsDisplayed()
         composeRule.onNodeWithText("Heavy Session").assertIsDisplayed()
-        composeRule.onNodeWithText("Small Session").assertIsDisplayed()
+        composeRule.onNodeWithText("Small Session").performScrollTo().assertIsDisplayed()
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Source: local session metadata fallback", substring = true) }
     }
 

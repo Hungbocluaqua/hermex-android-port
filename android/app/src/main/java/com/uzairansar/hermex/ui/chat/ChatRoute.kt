@@ -75,6 +75,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,6 +88,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -344,6 +346,9 @@ fun ChatRoute(
     var autoVoiceConsumed by remember(sessionId, autoStartVoice) { mutableStateOf(false) }
     val transcriptListState = rememberLazyListState()
     var followsTranscriptBottom by remember(sessionId) { mutableStateOf(true) }
+    val isTranscriptAtBottom by remember(sessionId, transcriptListState) {
+        derivedStateOf { !transcriptListState.canScrollForward }
+    }
 
     LaunchedEffect(transcriptListState) {
         snapshotFlow {
@@ -546,21 +551,13 @@ fun ChatRoute(
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier.fillMaxSize(),
     ) {
-        ChatTopBar(
-            title = state.headerTitle,
-            subtitle = state.headerSubtitle,
-            hasRepository = gitState.hasRepository,
-            onBack = onBack,
-            onOpenWorkspace = onOpenWorkspace,
-            onOpenGit = onOpenGit,
-        )
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+                .fillMaxSize()
+                .padding(top = 82.dp),
         ) {
             CompositionLocalProvider(LocalLayoutDirection provides chatLayoutDirection) {
                 Column(Modifier.fillMaxSize()) {
@@ -608,7 +605,7 @@ fun ChatRoute(
                         start = 14.dp,
                         end = 14.dp,
                         top = 8.dp,
-                        bottom = 12.dp,
+                        bottom = 224.dp,
                     ),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -741,47 +738,67 @@ fun ChatRoute(
             }
             }
         }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .imePadding()
-                .navigationBarsPadding()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(top = 4.dp),
-        ) {
-            CompositionLocalProvider(LocalLayoutDirection provides chatLayoutDirection) {
-                ComposerSurface(
-                    state = state,
-                    streamingSendBehavior = streamingSendBehavior,
-                    primaryActionTintColor = primaryActionTintColor,
-                    onDraftChange = viewModel::updateDraft,
-                    onSend = viewModel::send,
-                    onStreamingSend = { viewModel.submitStreamingDraft(streamingSendBehavior) },
-                    onCancel = viewModel::cancel,
-                    onOpenModelPicker = { showsModelPicker = true },
-                    onOpenProfilePicker = { showsProfilePicker = true },
-                    onOpenReasoningPicker = { showsReasoningPicker = true },
-                    onOpenWorkspacePicker = { showsWorkspacePicker = true },
-                    onLoadWorkspaceSuggestions = viewModel::loadWorkspaceSuggestions,
-                    onAttach = { showsAttachmentOptions = true },
-                    onVoice = {
-                        if (state.isRecordingVoiceNote) {
-                            viewModel.stopAndTranscribeVoiceNote(recorder)
-                        } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                            viewModel.startVoiceNote(recorder)
-                        } else {
-                            microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
-                        }
-                    },
-                    onCancelVoice = { viewModel.cancelVoiceNote(recorder) },
-                    onRemoveAttachment = viewModel::removeAttachment,
-                    loadAttachmentImage = viewModel::attachmentImageData,
-                    loadAttachmentFile = viewModel::attachmentTextFile,
-                )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(if (isTranscriptAtBottom) 230.dp else 166.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.46f to MaterialTheme.colorScheme.background.copy(alpha = 0.68f),
+                            1f to MaterialTheme.colorScheme.background,
+                        ),
+                    ),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .imePadding()
+                    .navigationBarsPadding(),
+            ) {
+                CompositionLocalProvider(LocalLayoutDirection provides chatLayoutDirection) {
+                    ComposerSurface(
+                        state = state,
+                        streamingSendBehavior = streamingSendBehavior,
+                        primaryActionTintColor = primaryActionTintColor,
+                        showSecondaryBar = isTranscriptAtBottom,
+                        onDraftChange = viewModel::updateDraft,
+                        onSend = viewModel::send,
+                        onStreamingSend = { viewModel.submitStreamingDraft(streamingSendBehavior) },
+                        onCancel = viewModel::cancel,
+                        onOpenModelPicker = { showsModelPicker = true },
+                        onOpenProfilePicker = { showsProfilePicker = true },
+                        onOpenReasoningPicker = { showsReasoningPicker = true },
+                        onOpenWorkspacePicker = { showsWorkspacePicker = true },
+                        onLoadWorkspaceSuggestions = viewModel::loadWorkspaceSuggestions,
+                        onAttach = { showsAttachmentOptions = true },
+                        onVoice = {
+                            if (state.isRecordingVoiceNote) {
+                                viewModel.stopAndTranscribeVoiceNote(recorder)
+                            } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                viewModel.startVoiceNote(recorder)
+                            } else {
+                                microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        },
+                        onCancelVoice = { viewModel.cancelVoiceNote(recorder) },
+                        onRemoveAttachment = viewModel::removeAttachment,
+                        loadAttachmentImage = viewModel::attachmentImageData,
+                        loadAttachmentFile = viewModel::attachmentTextFile,
+                    )
+                }
             }
         }
+        ChatTopBar(
+            title = state.headerTitle,
+            subtitle = state.headerSubtitle,
+            hasRepository = gitState.hasRepository,
+            onBack = onBack,
+            onOpenWorkspace = onOpenWorkspace,
+            onOpenGit = onOpenGit,
+        )
     }
 
     turnDiffPresentation?.let { presentation ->
@@ -1217,6 +1234,11 @@ private fun ChatTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
+            .hermexGlass(
+                shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Floating,
+            )
             .padding(horizontal = 14.dp, vertical = 8.dp)
             .testTag("chat_top_bar"),
     ) {
@@ -1337,18 +1359,19 @@ private fun ChatStatusStack(
 
 @Composable
 private fun ChatTranscriptLoadingSkeleton() {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .semantics { contentDescription = "Loading messages" }
-            .padding(horizontal = 16.dp)
-            .padding(top = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(bottom = 132.dp)
+            .semantics { contentDescription = "Loading messages" },
+        contentAlignment = Alignment.Center,
     ) {
-        chatSkeletonRows.forEach { row ->
-            ChatTranscriptLoadingSkeletonRow(row)
-        }
-        Spacer(Modifier.height(1.dp))
+        CircularProgressIndicator(
+            modifier = Modifier.size(22.dp),
+            strokeWidth = 2.dp,
+            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.72f),
+            trackColor = Color.Transparent,
+        )
     }
 }
 
@@ -1508,14 +1531,16 @@ private fun ChatTranscriptEmptyState() {
         Image(
             painter = painterResource(com.uzairansar.hermex.R.drawable.ic_hermex_chat_bubbles),
             contentDescription = null,
-            modifier = Modifier.size(34.dp),
-            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary.copy(alpha = 0.74f)),
+            modifier = Modifier.size(52.dp),
+            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary.copy(alpha = 0.86f)),
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(18.dp))
         Text(
             "Send a message to start the conversation.",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.secondary,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
     }
 }
@@ -1669,6 +1694,7 @@ private fun ComposerSurface(
     state: ChatUiState,
     streamingSendBehavior: StreamingSendBehavior,
     primaryActionTintColor: Color?,
+    showSecondaryBar: Boolean,
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
     onStreamingSend: () -> Unit,
@@ -1791,12 +1817,11 @@ private fun ComposerSurface(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                HermexIconButton(
+                ComposerInlineIconButton(
                     label = "Attach",
-                    symbol = "+",
+                    iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_plus,
                     onClick = onAttach,
                     enabled = !state.isUploadingAttachment && !state.isStreaming && !state.isViewingCachedData,
-                    modifier = Modifier.size(40.dp),
                 )
                 HermexSelectorPill(
                     label = state.selectedModel?.label ?: state.selectedModel?.name ?: state.selectedModel?.id ?: "Model",
@@ -1818,16 +1843,11 @@ private fun ComposerSurface(
                         contentPadding = PaddingValues(horizontal = 2.dp, vertical = 10.dp),
                     )
                 }
-                HermexIconButton(
+                ComposerInlineIconButton(
                     label = "Voice",
-                    symbol = when {
-                        state.isTranscribingVoiceNote -> "…"
-                        state.isRecordingVoiceNote -> "■"
-                        else -> "♪"
-                    },
+                    iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_mic,
                     onClick = onVoice,
                     enabled = !state.isStreaming && !state.isViewingCachedData && !state.isTranscribingVoiceNote && !state.isRunningSessionAction,
-                    modifier = Modifier.size(40.dp),
                 )
                 HermexIconButton(
                     label = if (state.isStreaming) "Stop" else "Send",
@@ -1865,7 +1885,7 @@ private fun ComposerSurface(
                 }
             }
         }
-        if (!isImeVisible) {
+        if (!isImeVisible && showSecondaryBar) {
             ComposerSecondaryBar(
                 state = state,
                 onOpenWorkspacePicker = onOpenWorkspacePicker,
@@ -1881,6 +1901,27 @@ private fun ComposerSurface(
             onDismiss = { previewAttachment = null },
         )
     }
+}
+
+@Composable
+private fun ComposerInlineIconButton(
+    label: String,
+    iconRes: Int,
+    onClick: () -> Unit,
+    enabled: Boolean,
+) {
+    Image(
+        painter = painterResource(iconRes),
+        contentDescription = label,
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(9.dp),
+        colorFilter = ColorFilter.tint(
+            MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 0.82f else 0.34f),
+        ),
+    )
 }
 
 @Composable

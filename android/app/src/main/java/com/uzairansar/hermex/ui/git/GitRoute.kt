@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,13 +79,14 @@ fun GitRoute(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
+                    .hermexGlass(shape = androidx.compose.foundation.shape.CircleShape, castsShadow = false)
+                    .padding(4.dp)
                     .padding(bottom = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                HermexPillButton("Fetch", viewModel::fetch, enabled = !state.isMutating)
-                HermexPillButton("Pull", viewModel::pull, enabled = !state.isMutating)
-                HermexPillButton("Push", viewModel::requestPush, enabled = !state.isMutating, filled = true)
+                HermexPillButton("Fetch", viewModel::fetch, enabled = !state.isMutating, modifier = Modifier.weight(1f))
+                HermexPillButton("Pull", viewModel::pull, enabled = !state.isMutating, modifier = Modifier.weight(1f))
+                HermexPillButton("Push", viewModel::requestPush, enabled = !state.isMutating, modifier = Modifier.weight(1f))
             }
             if (state.isLoading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -174,18 +176,13 @@ private fun GitHeader(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(bottom = 14.dp)
-            .hermexGlass(
-                shape = HermexCardShape,
-                surfaceLevel = HermexSurfaceLevel.Floating,
-            )
-            .padding(horizontal = 4.dp, vertical = 3.dp),
+            .padding(bottom = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         HermexIconButton("Back", "‹", onBack)
-        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-            Text("Git", style = MaterialTheme.typography.headlineMedium)
-            Text(branch ?: "Branch unavailable", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+        Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Git", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(branch ?: "Branch unavailable", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, maxLines = 1)
         }
         HermexIconButton("Refresh", "↻", onRefresh)
     }
@@ -201,14 +198,18 @@ private fun StatusLines(notice: String?, error: String?) {
 
 @Composable
 private fun CleanTreeCard() {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .hermexGlass(shape = HermexCardShape, castsShadow = false)
-            .padding(14.dp),
+            .padding(horizontal = 10.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Working tree is clean.", style = MaterialTheme.typography.titleMedium)
-        Text("No changed files in this session workspace.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+        Text("✓", color = Color(0xFF34C759), style = MaterialTheme.typography.titleLarge)
+        Column {
+            Text("Working tree is clean.", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text("No changed files in this session workspace.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+        }
     }
 }
 
@@ -223,8 +224,8 @@ private fun GitSummaryCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .hermexGlass(shape = HermexCardShape, castsShadow = false)
-            .padding(14.dp),
+            .hermexHairline(HermexCardShape)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(

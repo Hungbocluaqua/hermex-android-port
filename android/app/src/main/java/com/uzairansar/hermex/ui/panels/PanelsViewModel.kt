@@ -425,6 +425,17 @@ class PanelsViewModel(
         }
     }
 
+    fun dismissSkillDetail() {
+        _state.update {
+            it.copy(
+                selectedSkillName = null,
+                selectedSkill = null,
+                selectedSkillFileName = null,
+                selectedSkillFileContent = null,
+            )
+        }
+    }
+
     fun loadSkillLinkedFile(fileName: String) {
         val name = _state.value.selectedSkillName ?: _state.value.selectedSkill?.name ?: return
         viewModelScope.launch {
