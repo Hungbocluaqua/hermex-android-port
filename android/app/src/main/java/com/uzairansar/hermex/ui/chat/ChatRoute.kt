@@ -799,7 +799,9 @@ fun ChatRoute(
                         followsTranscriptBottom = true
                         val lastItem = transcriptListState.layoutInfo.totalItemsCount - 1
                         if (lastItem >= 0) {
-                            speechScope.launch { transcriptListState.animateScrollToItem(lastItem) }
+                            speechScope.launch {
+                                transcriptListState.scrollToItem(lastItem, Int.MAX_VALUE)
+                            }
                         }
                     },
                     modifier = Modifier
@@ -1258,6 +1260,7 @@ private fun ChatTopBar(
                 castsShadow = false,
                 surfaceLevel = HermexSurfaceLevel.Floating,
                 tintEnabled = false,
+                drawsBorder = false,
             )
             .padding(horizontal = 14.dp, vertical = 8.dp)
             .testTag("chat_top_bar"),
@@ -1846,7 +1849,8 @@ private fun ComposerSurface(
                 HermexSelectorPill(
                     label = state.selectedModel?.label ?: state.selectedModel?.name ?: state.selectedModel?.id ?: "Model",
                     onClick = onOpenModelPicker,
-                    enabled = state.modelOptions.isNotEmpty() && !state.isStreaming && !state.isViewingCachedData && !state.isRunningSessionAction,
+                    enabled = (state.selectedModel != null || state.modelOptions.isNotEmpty()) &&
+                        !state.isStreaming && !state.isViewingCachedData && !state.isRunningSessionAction,
                     modifier = Modifier.weight(1f),
                     glassed = false,
                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp),

@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasText as hasSemanticsText
@@ -180,7 +181,7 @@ class HermexUiFlowTest {
                               "active": "default",
                               "single_profile_mode": false,
                               "profiles": [
-                                {"name":"default","display_name":"Default","model":"gpt-5","provider":"openai"},
+                                {"name":"default","model":"gpt-5","provider":"openai"},
                                 {"name":"review","display_name":"Review","model":"o4-mini","provider":"openai"}
                               ]
                             }
@@ -299,6 +300,10 @@ class HermexUiFlowTest {
 
         composeRule.onNodeWithContentDescription("HERMEX").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Search sessions").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Search sessions").performClick()
+        composeRule.onNodeWithTag("session_search_field").assertIsFocused()
+        composeRule.onNodeWithContentDescription("Close search").performClick()
+        composeRule.onNodeWithContentDescription("Search sessions").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Settings").assertIsDisplayed()
         composeRule.onNodeWithText("Chat").assertIsDisplayed()
         composeRule.onNodeWithText("Sessions").assertIsDisplayed()
@@ -341,6 +346,8 @@ class HermexUiFlowTest {
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Active Profile") }
         composeRule.onNodeWithText("Active Profile").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Review") }
+        composeRule.onNodeWithText("gpt-5").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Selected profile Default").assertIsDisplayed()
         composeRule.onNodeWithText("Review").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { switchProfileBody.contains("review") }
         assertTrue(switchProfileBody.contains(""""name":"review""""))

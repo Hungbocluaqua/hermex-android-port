@@ -1890,59 +1890,68 @@ private fun FocusedMemoryPanel(
     isSaving: Boolean,
     onEditSection: (String) -> Unit,
 ) {
-    val section = memoryPanelSections.first()
-    val content = memory.sectionTextForRoute(section.key)
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    val populatedSections = memoryPanelSections.filter { memory.sectionTextForRoute(it.key).isNotBlank() }
+    val sections = populatedSections.ifEmpty { listOf(memoryPanelSections.first()) }
+    Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
+        sections.forEach { section ->
+            FocusedMemorySection(
+                section = section,
+                content = memory.sectionTextForRoute(section.key),
+                modifiedAt = memory.modifiedAtForSection(section.key),
+                isSaving = isSaving,
+                onEdit = { onEditSection(section.key) },
+            )
+        }
+        memory?.projectContext?.trim()?.takeIf { it.isNotEmpty() }?.let { ProjectContextPanel(memory, it) }
+    }
+}
+
+@Composable
+private fun FocusedMemorySection(
+    section: MemoryPanelSection,
+    content: String,
+    modifiedAt: Double?,
+    isSaving: Boolean,
+    onEdit: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(
                 painter = painterResource(section.icon),
                 contentDescription = null,
-                modifier = Modifier.size(30.dp),
+                modifier = Modifier.size(25.dp),
                 colorFilter = ColorFilter.tint(PanelSecondaryText),
             )
-            Text(
-                section.title,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            memory.modifiedAtForSection(section.key)?.let {
-                Text("Modified ${it.relativeTimeAgoText()}", style = MaterialTheme.typography.bodySmall, color = PanelSecondaryText)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(section.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                modifiedAt?.let {
+                    Text("Modified ${it.relativeTimeAgoText()}", style = MaterialTheme.typography.bodySmall, color = PanelSecondaryText)
+                }
             }
-            HermexIconButton(
-                label = "Edit My Notes",
-                symbol = "✎",
-                onClick = { onEditSection(section.key) },
+            TextButton(
+                onClick = onEdit,
                 enabled = !isSaving,
-                tonalContainerColor = Color.Transparent,
-            )
+                modifier = Modifier.semantics { contentDescription = "Edit ${section.title}" },
+            ) {
+                Text("✎", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+            }
         }
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .hermexGlass(shape = HermexCardShape, castsShadow = false)
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.76f), HermexCardShape)
                 .padding(horizontal = 18.dp, vertical = 16.dp),
         ) {
-            Text(
-                content.ifBlank { section.emptyMessage },
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (content.isBlank()) PanelSecondaryText else PanelPrimaryText,
-            )
+            if (content.isBlank()) {
+                Text(section.emptyMessage, style = MaterialTheme.typography.bodyLarge, color = PanelSecondaryText)
+            } else {
+                MarkdownText(content, modifier = Modifier.fillMaxWidth())
+            }
         }
-        memoryPanelSections.drop(1).forEach { extraSection ->
-            MemorySectionSummary(
-                section = extraSection,
-                content = memory.sectionTextForRoute(extraSection.key),
-                modifiedAt = memory.modifiedAtForSection(extraSection.key),
-                isSaving = isSaving,
-                onEdit = { onEditSection(extraSection.key) },
-            )
-        }
-        memory?.projectContext?.trim()?.takeIf { it.isNotEmpty() }?.let { ProjectContextPanel(memory, it) }
     }
 }
 

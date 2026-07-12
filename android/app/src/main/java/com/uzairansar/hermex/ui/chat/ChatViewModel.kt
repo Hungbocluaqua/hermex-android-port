@@ -22,7 +22,6 @@ import com.uzairansar.hermex.core.model.PendingClarification
 import com.uzairansar.hermex.core.model.PersonalitySummary
 import com.uzairansar.hermex.core.model.ProfileSummary
 import com.uzairansar.hermex.core.model.ProfilesResponse
-import com.uzairansar.hermex.core.model.ReasoningResponse
 import com.uzairansar.hermex.core.model.SessionStatusResponse
 import com.uzairansar.hermex.core.model.SkillSummary
 import com.uzairansar.hermex.core.model.ToolCallGroup
@@ -65,7 +64,6 @@ private data class QueuedDraft(
 private data class ComposerConfig(
     val models: List<ModelSummary>,
     val profiles: ProfilesResponse,
-    val reasoning: ReasoningResponse,
     val workspaces: WorkspacesResponse,
     val skillSuggestions: List<SlashSkillSuggestion>,
     val agentCommands: List<AgentCommand>,
@@ -199,6 +197,7 @@ class ChatViewModel(
                     applySessionSnapshot(result.value, fromCache = result.fromCache) {
                         it.copy(isLoading = false)
                     }
+                    refreshReasoningForModel(_state.value.selectedModel, reportError = false)
                     reconnectLoadedActiveStream(result.value, fromCache = result.fromCache)
                 }
                 is ResultState.Error -> _state.update { it.copy(isLoading = false, error = result.message) }
@@ -312,8 +311,6 @@ class ChatViewModel(
             runCatching {
                 val models = repository.models()
                 val profiles = repository.profilesResponse()
-                val selectedModel = models.firstOrNull()
-                val reasoning = repository.reasoning(selectedModel)
                 val workspaces = repository.workspaces()
                 val skills = try {
                     repository.skills()
@@ -334,10 +331,9 @@ class ChatViewModel(
                         )
                     },
                 )
-                ComposerConfig(models, profiles, reasoning, workspaces, skillSuggestions, commands)
+                ComposerConfig(models, profiles, workspaces, skillSuggestions, commands)
             }.onSuccess { config ->
                 val workspaceRoots = config.workspaces.normalizedRoots
-                val supportedReasoningEfforts = config.reasoning.normalizedSupportedEfforts
                 val profileOptions = config.profiles.profiles.orEmpty()
                 val activeProfileName = config.profiles.active.nonBlank()
                 _state.update {
@@ -348,9 +344,6 @@ class ChatViewModel(
                         profileOptions = profileOptions,
                         activeProfileName = activeProfileName,
                         isSingleProfileMode = config.profiles.singleProfileMode == true,
-                        reasoningOptions = ReasoningEffortOption.optionsForSupportedEfforts(supportedReasoningEfforts).map { option -> option.id },
-                        supportedReasoningEfforts = supportedReasoningEfforts,
-                        supportsReasoningEffort = config.reasoning.supportsReasoningEffort,
                         workspaceRoots = workspaceRoots,
                         workspaceSuggestions = workspaceRoots.mapNotNull { root -> root.path },
                         skillSuggestions = config.skillSuggestions,
@@ -371,13 +364,13 @@ class ChatViewModel(
                             ?: profileOptions.firstMatchingProfile(activeProfileName)
                             ?: profileOptions.firstOrNull(),
                         sessionProfile = it.sessionProfile ?: activeProfileName,
-                        selectedReasoning = it.selectedReasoning ?: config.reasoning.effort,
                         selectedWorkspacePath = it.selectedWorkspacePath
                             ?: config.workspaces.last.nonBlank()
                             ?: workspaceRoots.firstNotNullOfOrNull { root -> root.path.nonBlank() },
                         isLoadingComposerConfig = false,
                     )
                 }
+                refreshReasoningForModel(_state.value.selectedModel, reportError = false)
             }.onFailure {
                 _state.update { current -> current.copy(isLoadingComposerConfig = false) }
             }
@@ -496,19 +489,28 @@ class ChatViewModel(
         }
     }
 
-    private suspend fun refreshReasoningForModel(model: ModelSummary) {
+    private suspend fun refreshReasoningForModel(model: ModelSummary?, reportError: Boolean = true) {
         runCatching { repository.reasoning(model) }.onSuccess { reasoning ->
+            val currentModel = _state.value.selectedModel
+            if (
+                model?.modelIdentity != currentModel?.modelIdentity ||
+                model?.provider.nonBlank() != currentModel?.provider.nonBlank()
+            ) {
+                return@onSuccess
+            }
             val supportedReasoningEfforts = reasoning.normalizedSupportedEfforts
             _state.update {
                 it.copy(
                     reasoningOptions = ReasoningEffortOption.optionsForSupportedEfforts(supportedReasoningEfforts).map { option -> option.id },
                     supportedReasoningEfforts = supportedReasoningEfforts,
                     supportsReasoningEffort = reasoning.supportsReasoningEffort,
-                    selectedReasoning = reasoning.effort ?: it.selectedReasoning,
+                    selectedReasoning = reasoning.effectiveEffort ?: it.selectedReasoning,
                 )
             }
         }.onFailure { error ->
-            _state.update { it.copy(error = error.message ?: "Could not load reasoning options.") }
+            if (reportError) {
+                _state.update { it.copy(error = error.message ?: "Could not load reasoning options.") }
+            }
         }
     }
 

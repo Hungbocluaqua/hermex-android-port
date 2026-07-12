@@ -6,9 +6,9 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.graphics.Color as AndroidColor
 import androidx.annotation.DrawableRes
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,19 +52,22 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -99,7 +102,6 @@ import com.uzairansar.hermex.ui.theme.primaryActionTintApplies
 import java.io.File
 import java.time.Duration
 import java.time.Instant
-import kotlinx.coroutines.launch
 import kotlin.math.roundToLong
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -151,6 +153,11 @@ fun SessionListRoute(
         } else {
             null
         }
+    }
+
+    BackHandler(enabled = searchExpanded) {
+        viewModel.clearSearch()
+        searchExpanded = false
     }
 
     LaunchedEffect(initialArchived) {
@@ -429,6 +436,14 @@ private fun SessionSearchChrome(
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
     Row(
         modifier = modifier
             .height(48.dp)
@@ -460,7 +475,10 @@ private fun SessionSearchChrome(
                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                        .testTag("session_search_field"),
                 )
             }
             if (query.isNotBlank()) {
@@ -479,6 +497,7 @@ private fun SessionSearchChrome(
             symbol = if (expanded) "x" else avatarInitials,
             onClick = {
                 if (expanded) {
+                    keyboardController?.hide()
                     onClear()
                     onExpandedChange(false)
                 } else {
@@ -574,7 +593,7 @@ private fun ActiveProfileSection(
                 "Active Profile",
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
             )
             Image(
                 painter = painterResource(if (expanded) R.drawable.ic_hermex_chevron_down else R.drawable.ic_hermex_chevron_right),
@@ -619,27 +638,47 @@ private fun ProfileOptionRow(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    val shape = RoundedCornerShape(10.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(HermexCardShape)
+            .padding(start = 42.dp, end = 24.dp)
+            .clip(shape)
+            .then(
+                if (selected) {
+                    Modifier
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f))
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.20f), shape)
+                } else {
+                    Modifier
+                },
+            )
             .clickable(enabled = enabled && !selected, onClick = onClick)
-            .padding(start = 72.dp, end = 12.dp, top = 9.dp, bottom = 9.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .heightIn(min = 56.dp)
+            .padding(start = 18.dp, end = 10.dp, top = 7.dp, bottom = 7.dp)
+            .testTag("profile_option_${profile.name.orEmpty()}"),
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f)) {
+        SidebarUtilityIcon(
+            iconRes = R.drawable.ic_lucide_user_round_cog,
+            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
             Text(
                 profile.displayTitle,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             profile.modelProviderText?.let {
                 Text(
                     it,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.secondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -647,8 +686,26 @@ private fun ProfileOptionRow(
             }
         }
         if (selected) {
-            Text("check", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            SelectedSubrowIndicator(contentDescription = "Selected profile ${profile.displayTitle}")
         }
+    }
+}
+
+@Composable
+private fun SelectedSubrowIndicator(contentDescription: String? = null) {
+    Box(
+        modifier = Modifier
+            .size(18.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary),
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_hermex_check),
+            contentDescription = contentDescription,
+            modifier = Modifier.size(12.dp),
+            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onPrimary),
+        )
     }
 }
 
@@ -799,7 +856,7 @@ private fun ProjectSection(
                 Text(
                     "Projects",
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                 )
                 Image(
@@ -888,6 +945,7 @@ private fun ProjectFilterSubrow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 42.dp, end = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Row(
             modifier = Modifier
@@ -908,7 +966,7 @@ private fun ProjectFilterSubrow(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 44.dp)
+                    .heightIn(min = 52.dp)
                     .clickable(enabled = project.projectId != null, onClick = onSelect)
                     .padding(start = 18.dp),
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
@@ -917,7 +975,8 @@ private fun ProjectFilterSubrow(
                 SidebarUtilityIcon(iconRes = R.drawable.ic_lucide_folder, tint = project.displayColor)
                 Text(
                     project.displayName,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -925,22 +984,13 @@ private fun ProjectFilterSubrow(
                 if (count > 0) {
                     Text(
                         count.toString(),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.secondary,
                     )
                 }
                 if (selected) {
-                    Text(
-                        "✓",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
-                    )
+                    SelectedSubrowIndicator(contentDescription = "Selected project ${project.displayName}")
                 }
             }
             HermexIconButton(
@@ -1259,12 +1309,11 @@ private fun SessionSwipeContainer(
     onDelete: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
     val revealWidthPx = with(LocalDensity.current) { 168.dp.toPx() }
-    val offset = remember { Animatable(0f) }
+    var offsetPx by remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(enabled) {
-        if (!enabled) offset.snapTo(0f)
+        if (!enabled) offsetPx = 0f
     }
 
     Box(modifier = Modifier.fillMaxWidth()) {
@@ -1278,7 +1327,7 @@ private fun SessionSwipeContainer(
                     symbol = "⌫",
                     color = Color(0xFFFF3B30),
                     onClick = {
-                        scope.launch { offset.animateTo(0f) }
+                        offsetPx = 0f
                         onDelete()
                     },
                 )
@@ -1287,7 +1336,7 @@ private fun SessionSwipeContainer(
                     symbol = "▣",
                     color = Color(0xFFFF9500),
                     onClick = {
-                        scope.launch { offset.animateTo(0f) }
+                        offsetPx = 0f
                         onArchive()
                     },
                 )
@@ -1295,18 +1344,15 @@ private fun SessionSwipeContainer(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .graphicsLayer { translationX = offset.value }
+                .graphicsLayer { translationX = offsetPx }
                 .draggable(
                     enabled = enabled,
                     orientation = Orientation.Horizontal,
                     state = rememberDraggableState { delta ->
-                        scope.launch {
-                            offset.snapTo((offset.value + delta).coerceIn(-revealWidthPx, 0f))
-                        }
+                        offsetPx = (offsetPx + delta).coerceIn(-revealWidthPx, 0f)
                     },
                     onDragStopped = {
-                        val target = if (offset.value <= -revealWidthPx * 0.35f) -revealWidthPx else 0f
-                        offset.animateTo(target)
+                        offsetPx = if (offsetPx <= -revealWidthPx * 0.35f) -revealWidthPx else 0f
                     },
                 ),
         ) {
@@ -1502,13 +1548,11 @@ private fun String.withLeadingHash(): String = if (startsWith('#')) this else "#
 
 private val ProfileSummary.displayTitle: String
     get() = displayName?.takeIf { it.isNotBlank() }
-        ?: name?.takeIf { it.isNotBlank() }
+        ?: name?.takeIf { it.isNotBlank() }?.let { if (it == "default") "Default" else it }
         ?: "Profile"
 
 private val ProfileSummary.modelProviderText: String?
-    get() = listOfNotNull(
-        provider?.takeIf { it.isNotBlank() },
-    ).joinToString(" / ").ifBlank { null }
+    get() = model?.trim()?.takeIf { it.isNotBlank() }
 
 private val SessionListUiState.activeProfileDisplayText: String
     get() = profileOptions.firstOrNull { it.name == activeProfileName }?.displayTitle
