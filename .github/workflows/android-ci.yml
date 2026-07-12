@@ -1,0 +1,49 @@
+name: Android CI
+
+on:
+  pull_request:
+    paths:
+      - android/**
+      - ci/endpoint_parity.py
+      - HermesMobile/Networking/Endpoints.swift
+      - .github/workflows/android-ci.yml
+  push:
+    branches:
+      - master
+    paths:
+      - android/**
+      - ci/endpoint_parity.py
+      - HermesMobile/Networking/Endpoints.swift
+      - .github/workflows/android-ci.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Kotlin Build And Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Verify endpoint parity
+        run: python3 ci/endpoint_parity.py
+
+      - name: Test and build
+        working-directory: android
+        run: ./gradlew testDebugUnitTest assembleDebug

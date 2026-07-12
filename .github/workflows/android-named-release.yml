@@ -16,10 +16,6 @@ on:
         required: true
         default: true
         type: boolean
-      confirm_visual_parity:
-        description: "Type visual-parity-passed after the iOS/Android golden screenshots pass"
-        required: true
-        type: string
 
 permissions:
   contents: write
@@ -29,63 +25,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release-guard:
-    name: Release Guard
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Require visual parity confirmation
-        run: |
-          set -euo pipefail
-          if [ "${{ inputs.confirm_visual_parity }}" != "visual-parity-passed" ]; then
-            echo "Refusing to publish: run the Skip visual parity workflow first, then enter visual-parity-passed."
-            exit 1
-          fi
-
-  shared-swift-and-skip:
-    name: Shared Swift And Skip
-    runs-on: macos-26
-    timeout-minutes: 45
-    needs: release-guard
-    steps:
-      - name: Check out
-        uses: actions/checkout@v7
-
-      - name: Build shared Swift package without Skip
-        run: |
-          set -euo pipefail
-          python3 ci/shared_ui_parity_audit.py
-          export SKIP_ZERO=1
-          swift build
-          swift test
-
-      - name: Install Skip
-        run: |
-          set -euo pipefail
-          brew tap skiptools/skip || true
-          brew trust skiptools/skip
-          brew install skip || brew upgrade skip
-
-      - name: Check Skip toolchain
-        run: |
-          set -euo pipefail
-          if ! skip checkup; then
-            cat /tmp/skip-checkup-*.txt 2>/dev/null || true
-            echo "skip checkup reported a hosted-runner diagnostic issue; continuing to the actual Skip build/test gate."
-          fi
-
-      - name: Build and test Skip-enabled package
-        run: |
-          set -euo pipefail
-          swift package resolve
-          swift build --target HermexUI
-          SKIP_ZERO=1 swift test
-
   android-artifacts:
     name: Android Artifacts
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    needs: release-guard
     steps:
       - name: Check out
         uses: actions/checkout@v7
@@ -98,6 +41,9 @@ jobs:
 
       - name: Gradle cache
         uses: gradle/actions/setup-gradle@v5
+
+      - name: Verify endpoint parity
+        run: python3 ci/endpoint_parity.py
 
       - name: Test and build Android artifacts
         working-directory: android
@@ -116,9 +62,7 @@ jobs:
     name: GitHub Release
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs:
-      - shared-swift-and-skip
-      - android-artifacts
+    needs: android-artifacts
     steps:
       - name: Download Android artifacts
         uses: actions/download-artifact@v5
@@ -128,15 +72,13 @@ jobs:
 
       - name: Create release notes
         run: |
-          set -euo pipefail
           cat > release-notes.md <<'EOF'
-          Hermex Android release artifact.
+          Hermex native Android release artifacts.
 
           This release was gated by:
-          - shared Swift package build and tests
-          - Skip-enabled shared package build, followed by shared Swift tests
-          - Android unit tests, debug APK build, and release AAB build
-          - manual confirmation that iOS/Android visual parity goldens passed
+          - iOS/Android endpoint parity
+          - Android unit tests
+          - debug APK and release AAB builds
           EOF
 
       - name: Publish GitHub release

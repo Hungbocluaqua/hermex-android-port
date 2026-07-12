@@ -25,11 +25,11 @@ Your server. Your phone. No middleman.
 
 </div>
 
-Hermex is a native mobile app for driving a self-hosted [hermes-webui](https://github.com/nesquena/hermes-webui) server — a mobile cockpit for an AI agent that lives on a machine **you** control. The iOS app is built with SwiftUI. The Android port currently has a Kotlin/Jetpack Compose fallback under [`android/`](android/README.md), while the release path is moving to a Skip-first shared SwiftUI package so Android can match the iOS UI and behavior. The phone is the control plane, not the compute plane: the agent, its tools, and your data stay on your own hardware.
+Hermex is a native mobile app for driving a self-hosted [hermes-webui](https://github.com/nesquena/hermes-webui) server — a mobile cockpit for an AI agent that lives on a machine **you** control. The iOS app is built with SwiftUI, and the Android app under [`android/`](android/README.md) is built with Kotlin and Jetpack Compose. The phone is the control plane, not the compute plane: the agent, its tools, and your data stay on your own hardware.
 
 - **Free.** No subscriptions, no in-app purchases.
 - **Private.** No analytics, no tracking, no third-party relay — the app talks only to your server.
-- **Native.** Real SwiftUI on iOS, a native Android fallback today, and a Skip-generated Android UI in progress; no WebView wrapper.
+- **Native.** SwiftUI on iOS and Kotlin with Jetpack Compose on Android; no WebView wrapper.
 
 ## Features
 
@@ -61,7 +61,7 @@ Hermex is a client only — it does not ship with, host, or provision a backend.
 
 1. **Run the server.** Install and start `hermes-webui` on macOS, Linux, or Windows/WSL2 (Python 3.11+). Set `HERMES_WEBUI_PASSWORD`.
 2. **Make it reachable from your phone** (see options below).
-3. **Connect.** [Download Hermex for iOS](https://apps.apple.com/app/hermex/id6767006319) or build the Android fallback from [`android/`](android/README.md), enter your server URL (e.g. `https://hermes.yourdomain.com`) and password, and you're in.
+3. **Connect.** [Download Hermex for iOS](https://apps.apple.com/app/hermex/id6767006319) or build the Android app from [`android/`](android/README.md), enter your server URL (e.g. `https://hermes.yourdomain.com`) and password, and you're in.
 
 Self-hosting the server, securing it, and keeping it reachable are your responsibility.
 
@@ -106,11 +106,9 @@ Local validation defaults for XcodeBuildMCP users live in `.xcodebuildmcp/config
 
 ### Android
 
-The Android fallback app lives in [`android/`](android/README.md). It uses Kotlin, Jetpack Compose, Material 3, Room, DataStore, OkHttp, SSE, Android encrypted storage, share intents, voice transcription, status notifications, shortcuts, widgets, and Fastlane-compatible release metadata.
+The Android app lives in [`android/`](android/README.md). It uses Kotlin, Jetpack Compose, Material 3, Room, DataStore, OkHttp, SSE, Android encrypted storage, share intents, voice transcription, status notifications, shortcuts, widgets, and Fastlane-compatible release metadata.
 
-The pixel-parity Android release path is tracked in [`docs/android-skip-port.md`](docs/android-skip-port.md). `Package.swift` defines shared `HermexCore`, `HermexPlatform`, and `HermexUI` Swift targets for Skip. The Android release is not considered fully ported until the macOS Skip workflow builds the shared package, generates the Android app, and the Android screenshots pass the iOS golden diff gate.
-
-Maintainers can publish a named Android GitHub release with the manual `Android Named Release` workflow only after visual parity is confirmed. The workflow refuses to publish unless `confirm_visual_parity` is exactly `visual-parity-passed`.
+Maintainers can validate Android changes with the `Android CI` workflow and publish a named GitHub release with the manual `Android Named Release` workflow.
 
 Common Android validation commands:
 

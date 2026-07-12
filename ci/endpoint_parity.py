@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify iOS, Android, and shared Swift endpoint path sets stay aligned."""
+"""Verify native iOS and Android endpoint path sets stay aligned."""
 
 from __future__ import annotations
 
@@ -19,11 +19,6 @@ def paths_from_ios() -> set[str]:
 def paths_from_android() -> set[str]:
     text = (ROOT / "android" / "app" / "src" / "main" / "java" / "com" / "uzairansar" / "hermex" / "core" / "network" / "Endpoint.kt").read_text(encoding="utf-8")
     return set(re.findall(r'Endpoint\(\s*"(/[^"]+)"', text))
-
-
-def paths_from_shared() -> set[str]:
-    text = (ROOT / "Sources" / "HermexCore" / "HermexEndpoint.swift").read_text(encoding="utf-8")
-    return set(re.findall(r'path:\s*"(/[^"]+)"', text))
 
 
 def report_delta(left_name: str, left: set[str], right_name: str, right: set[str]) -> bool:
@@ -46,13 +41,10 @@ def report_delta(left_name: str, left: set[str], right_name: str, right: set[str
 def main() -> int:
     ios = paths_from_ios()
     android = paths_from_android()
-    shared = paths_from_shared()
 
     ok = True
     ok &= report_delta("iOS", ios, "Android", android)
     ok &= report_delta("Android", android, "iOS", ios)
-    ok &= report_delta("iOS", ios, "HermexCore", shared)
-    ok &= report_delta("HermexCore", shared, "iOS", ios)
 
     if ok:
         print(f"Endpoint parity OK: {len(ios)} paths")
