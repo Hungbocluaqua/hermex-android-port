@@ -35,11 +35,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -88,6 +90,7 @@ import java.time.Duration
 import java.time.Instant
 import kotlin.math.roundToLong
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionListRoute(
     authState: AuthState,
@@ -160,129 +163,133 @@ fun SessionListRoute(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxSize(),
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = 18.dp,
-                bottom = 108.dp,
-            ),
+        PullToRefreshBox(
+            isRefreshing = state.isLoading,
+            onRefresh = viewModel::refreshAll,
+            modifier = Modifier.fillMaxSize(),
         ) {
-            item {
-                SessionsHeader(
-                    accountName = loggedIn.account.displayName,
-                    query = state.searchQuery,
-                    searchExpanded = searchExpanded,
-                    onSearchExpandedChange = { searchExpanded = it },
-                    onQueryChange = viewModel::updateSearchQuery,
-                    onSearch = viewModel::refresh,
-                    onClear = viewModel::clearSearch,
-                    onSettings = onOpenSettings,
-                )
-            }
-            if (state.showArchived) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 18.dp,
+                    bottom = 108.dp,
+                ),
+            ) {
                 item {
-                    ArchivedModeRow(
-                        count = state.visibleSessions.size,
-                        onClose = viewModel::toggleArchived,
+                    SessionsHeader(
+                        accountName = loggedIn.account.displayName,
+                        query = state.searchQuery,
+                        searchExpanded = searchExpanded,
+                        onSearchExpandedChange = { searchExpanded = it },
+                        onQueryChange = viewModel::updateSearchQuery,
+                        onSearch = viewModel::searchNow,
+                        onClear = viewModel::clearSearch,
+                        onSettings = onOpenSettings,
                     )
                 }
-            } else {
-                if (state.searchQuery.isBlank()) {
+                if (state.showArchived) {
                     item {
-                        UtilityRows(onOpenPanel = onOpenPanel)
+                        ArchivedModeRow(
+                            count = state.visibleSessions.size,
+                            onClose = viewModel::toggleArchived,
+                        )
                     }
-                    if (!state.isSingleProfileMode) {
+                } else {
+                    if (!searchExpanded) {
                         item {
-                            ActiveProfileSection(
-                                state = state,
-                                expanded = profilesExpanded,
-                                onToggleExpanded = { profilesExpanded = !profilesExpanded },
-                                onSelectProfile = viewModel::switchProfile,
+                            UtilityRows(onOpenPanel = onOpenPanel)
+                        }
+                        if (!state.isSingleProfileMode) {
+                            item {
+                                ActiveProfileSection(
+                                    state = state,
+                                    expanded = profilesExpanded,
+                                    onToggleExpanded = { profilesExpanded = !profilesExpanded },
+                                    onSelectProfile = viewModel::switchProfile,
+                                )
+                            }
+                        }
+                        item {
+                            ProjectSection(
+                                projects = state.projects,
+                                sessions = state.sessions,
+                                selectedProjectId = state.selectedProjectId,
+                                expanded = projectsExpanded,
+                                isMutating = state.isMutating,
+                                isViewingCachedData = state.isViewingCachedData,
+                                onToggleExpanded = { projectsExpanded = !projectsExpanded },
+                                onSelectProject = viewModel::selectProject,
+                                onAddProject = {
+                                    viewModel.beginCreateProject()
+                                    isCreatingProject = true
+                                },
+                                onRenameProject = viewModel::requestRenameProject,
+                                onDeleteProject = viewModel::requestDeleteProject,
                             )
                         }
                     }
+                }
+                item {
+                    StatusStack(state = state)
+                }
+                if (state.isLoading) {
                     item {
-                        ProjectSection(
+                        Box(Modifier.fillMaxWidth().padding(top = 30.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(strokeWidth = 2.dp)
+                        }
+                    }
+                } else if (state.visibleSessions.isEmpty()) {
+                    item {
+                        EmptySessionsRow()
+                    }
+                } else {
+                    items(state.visibleSessions, key = { it.stableId }) { session ->
+                        SessionRow(
+                            session = session,
                             projects = state.projects,
-                            sessions = state.sessions,
-                            selectedProjectId = state.selectedProjectId,
-                            expanded = projectsExpanded,
                             isMutating = state.isMutating,
                             isViewingCachedData = state.isViewingCachedData,
-                            onToggleExpanded = { projectsExpanded = !projectsExpanded },
-                            onSelectProject = viewModel::selectProject,
-                            onAddProject = {
-                                viewModel.updateNewProjectName("")
-                                isCreatingProject = true
+                            showsMessageCount = state.sessionRowDisplaySettings.showMessageCount,
+                            showsWorkspace = state.sessionRowDisplaySettings.showWorkspace,
+                            actionsExpanded = expandedActionsFor == session.stableId,
+                            onOpen = { session.sessionId?.let(onOpenChat) },
+                            onToggleActions = {
+                                expandedActionsFor = if (expandedActionsFor == session.stableId) null else session.stableId
                             },
-                            onRenameProject = viewModel::requestRenameProject,
-                            onDeleteProject = viewModel::requestDeleteProject,
+                            onPin = { viewModel.togglePin(session) },
+                            onArchive = { viewModel.toggleArchive(session) },
+                            onCopyTitle = { copySessionTitle(session) },
+                            onRename = { viewModel.requestRename(session) },
+                            onDelete = { viewModel.requestDelete(session) },
+                            onBranch = { viewModel.requestBranch(session) },
+                            onDuplicate = { viewModel.duplicate(session, onOpenChat) },
+                            onMove = { projectId -> viewModel.move(session, projectId) },
+                            onExport = { format ->
+                                viewModel.exportSession(session, format) { file ->
+                                    shareSessionExport(context, file)
+                                }
+                            },
                         )
                     }
                 }
-            }
-            item {
-                StatusStack(state = state)
-            }
-            if (state.isLoading) {
-                item {
-                    Box(Modifier.fillMaxWidth().padding(top = 30.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(strokeWidth = 2.dp)
+                if (
+                    !state.showArchived &&
+                    !searchExpanded &&
+                    !state.isViewingCachedData &&
+                    (state.archivedCount ?: 0) > 0
+                ) {
+                    item {
+                        ArchivedEntryRow(
+                            count = state.archivedCount,
+                            onOpen = viewModel::toggleArchived,
+                        )
                     }
-                }
-            } else if (state.visibleSessions.isEmpty()) {
-                item {
-                    EmptySessionsRow()
-                }
-            } else {
-                items(state.visibleSessions, key = { it.stableId }) { session ->
-                    SessionRow(
-                        session = session,
-                        projects = state.projects,
-                        isMutating = state.isMutating,
-                        isViewingCachedData = state.isViewingCachedData,
-                        showsMessageCount = state.sessionRowDisplaySettings.showMessageCount,
-                        showsWorkspace = state.sessionRowDisplaySettings.showWorkspace,
-                        actionsExpanded = expandedActionsFor == session.stableId,
-                        onOpen = { session.sessionId?.let(onOpenChat) },
-                        onToggleActions = {
-                            expandedActionsFor = if (expandedActionsFor == session.stableId) null else session.stableId
-                        },
-                        onPin = { viewModel.togglePin(session) },
-                        onArchive = { viewModel.toggleArchive(session) },
-                        onCopyTitle = { copySessionTitle(session) },
-                        onRename = { viewModel.requestRename(session) },
-                        onDelete = { viewModel.requestDelete(session) },
-                        onBranch = { viewModel.requestBranch(session) },
-                        onDuplicate = { viewModel.duplicate(session, onOpenChat) },
-                        onMove = { projectId -> viewModel.move(session, projectId) },
-                        onExport = { format ->
-                            viewModel.exportSession(session, format) { file ->
-                                shareSessionExport(context, file)
-                            }
-                        },
-                    )
-                }
-            }
-            if (
-                !state.showArchived &&
-                state.searchQuery.isBlank() &&
-                !state.isViewingCachedData &&
-                (state.archivedCount ?: 0) > 0
-            ) {
-                item {
-                    ArchivedEntryRow(
-                        count = state.archivedCount,
-                        onOpen = viewModel::toggleArchived,
-                    )
                 }
             }
         }
@@ -303,16 +310,23 @@ fun SessionListRoute(
         AlertDialog(
             onDismissRequest = {
                 isCreatingProject = false
-                viewModel.updateNewProjectName("")
+                viewModel.dismissCreateProject()
             },
             title = { Text("New Project") },
             text = {
-                OutlinedTextField(
-                    value = state.newProjectName,
-                    onValueChange = viewModel::updateNewProjectName,
-                    label = { Text("Project name") },
-                    singleLine = true,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    OutlinedTextField(
+                        value = state.newProjectName,
+                        onValueChange = viewModel::updateNewProjectName,
+                        label = { Text("Project name") },
+                        singleLine = true,
+                    )
+                    ProjectColorPicker(
+                        selectedColorHex = state.newProjectColor,
+                        onColorSelected = viewModel::updateNewProjectColor,
+                        enabled = !state.isMutating,
+                    )
+                }
             },
             confirmButton = {
                 TextButton(
@@ -329,7 +343,7 @@ fun SessionListRoute(
                 TextButton(
                     onClick = {
                         isCreatingProject = false
-                        viewModel.updateNewProjectName("")
+                        viewModel.dismissCreateProject()
                     },
                 ) {
                     Text("Cancel")
@@ -959,10 +973,125 @@ private fun ProjectFilterSubrow(
 }
 
 @Composable
+private fun ProjectColorPicker(
+    selectedColorHex: String?,
+    onColorSelected: (String?) -> Unit,
+    enabled: Boolean,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Color",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            Box(
+                modifier = Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(selectedColorHex.hexColorOrNull() ?: MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.55f), CircleShape),
+            )
+            Text(
+                selectedColorHex ?: "Default",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ProjectColorSwatch(
+                name = "Default",
+                hex = null,
+                selected = selectedColorHex == null,
+                enabled = enabled,
+                onClick = { onColorSelected(null) },
+            )
+            ProjectColorPalette.forEach { option ->
+                ProjectColorSwatch(
+                    name = option.name,
+                    hex = option.hex,
+                    selected = selectedColorHex.equals(option.hex, ignoreCase = true),
+                    enabled = enabled,
+                    onClick = { onColorSelected(option.hex) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProjectColorSwatch(
+    name: String,
+    hex: String?,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val swatchColor = hex.hexColorOrNull() ?: MaterialTheme.colorScheme.surfaceVariant
+    Column(
+        modifier = Modifier
+            .width(52.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(swatchColor)
+                .border(
+                    width = if (selected) 3.dp else 1.dp,
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                    shape = CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (hex == null) {
+                Text(
+                    "-",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Text(
+            name,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
 private fun StatusStack(state: SessionListUiState) {
     Column(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (state.isSearchingRemoteSessions) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                StatusLine("Searching sessions", MaterialTheme.colorScheme.secondary)
+            }
+        }
         if (state.isViewingCachedData) StatusLine("Offline cache", MaterialTheme.colorScheme.tertiary)
         state.notice?.let { StatusLine(it, MaterialTheme.colorScheme.tertiary) }
+        state.searchError?.let { StatusLine(it, MaterialTheme.colorScheme.error) }
         state.error?.let { StatusLine(it, MaterialTheme.colorScheme.error) }
         state.archivedCount?.takeIf { it > 0 && !state.showArchived }?.let {
             StatusLine("$it archived session(s)", MaterialTheme.colorScheme.secondary)
@@ -1019,9 +1148,7 @@ private fun SessionRow(
     val metadata = session.sessionRowMetadataLabel(showsMessageCount, showsWorkspace)
     val rowMinimumHeight = if (metadata != null || session.isActiveStreaming || isViewingCachedData) 54.dp else 46.dp
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier
@@ -1230,12 +1357,19 @@ private fun SessionDialogs(
             onDismissRequest = viewModel::dismissRenameProject,
             title = { Text("Rename Project") },
             text = {
-                OutlinedTextField(
-                    value = state.renameProjectDraft,
-                    onValueChange = viewModel::updateRenameProjectDraft,
-                    label = { Text("Project name") },
-                    singleLine = true,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    OutlinedTextField(
+                        value = state.renameProjectDraft,
+                        onValueChange = viewModel::updateRenameProjectDraft,
+                        label = { Text("Project name") },
+                        singleLine = true,
+                    )
+                    ProjectColorPicker(
+                        selectedColorHex = state.renameProjectColor,
+                        onColorSelected = viewModel::updateRenameProjectColor,
+                        enabled = !state.isMutating,
+                    )
+                }
             },
             confirmButton = {
                 TextButton(onClick = viewModel::confirmRenameProject, enabled = !state.isMutating && state.renameProjectDraft.isNotBlank()) { Text("Rename") }

@@ -12,17 +12,43 @@ import com.uzairansar.hermex.data.preferences.SessionRowDisplaySettings
 import com.uzairansar.hermex.data.repository.PanelsRepository
 import com.uzairansar.hermex.data.repository.ResultState
 import com.uzairansar.hermex.data.repository.SessionRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+internal data class ProjectColorOption(
+    val name: String,
+    val hex: String,
+)
+
+internal val ProjectColorPalette = listOf(
+    ProjectColorOption(name = "Sky", hex = "#7cb9ff"),
+    ProjectColorOption(name = "Gold", hex = "#f5c542"),
+    ProjectColorOption(name = "Red", hex = "#e94560"),
+    ProjectColorOption(name = "Green", hex = "#50c878"),
+    ProjectColorOption(name = "Violet", hex = "#c084fc"),
+    ProjectColorOption(name = "Orange", hex = "#fb923c"),
+    ProjectColorOption(name = "Cyan", hex = "#67e8f9"),
+    ProjectColorOption(name = "Pink", hex = "#f472b6"),
+)
+
+internal fun defaultProjectColorHex(existingProjectCount: Int): String =
+    ProjectColorPalette[existingProjectCount.coerceAtLeast(0) % ProjectColorPalette.size].hex
+
 data class SessionListUiState(
     val sessions: List<SessionSummary> = emptyList(),
     val projects: List<ProjectSummary> = emptyList(),
     val selectedProjectId: String? = null,
     val searchQuery: String = "",
+    val remoteSearchQuery: String? = null,
+    val remoteContentSearchSessionIds: List<String> = emptyList(),
+    val isSearchingRemoteSessions: Boolean = false,
+    val searchError: String? = null,
     val showArchived: Boolean = false,
     val showCliSessions: Boolean = true,
     val sessionRowDisplaySettings: SessionRowDisplaySettings = SessionRowDisplaySettings(),
@@ -40,8 +66,10 @@ data class SessionListUiState(
     val branchSession: SessionSummary? = null,
     val branchTitleDraft: String = "",
     val newProjectName: String = "",
+    val newProjectColor: String? = null,
     val renameProject: ProjectSummary? = null,
     val renameProjectDraft: String = "",
+    val renameProjectColor: String? = null,
     val deleteProject: ProjectSummary? = null,
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
@@ -58,9 +86,24 @@ data class SessionListUiState(
             }
             val sourceFiltered = archiveFiltered.filter { showCliSessions || it.isCliSession != true }
                 .filter { sessionRowDisplaySettings.showCronSessions || !it.isCronSession }
-            return selectedProjectId?.let { projectId ->
+            val projectFiltered = selectedProjectId?.let { projectId ->
                 sourceFiltered.filter { it.projectId == projectId }
             } ?: sourceFiltered
+            val query = searchQuery.normalizedSearchQuery()
+            val localMatches = projectFiltered
+                .filter { query.isEmpty() || it.searchableText.contains(query) }
+                .sortedForSessionList()
+
+            if (query.isEmpty() || remoteSearchQuery != query) return localMatches
+
+            val localMatchIds = localMatches.mapNotNullTo(mutableSetOf()) { it.sessionId }
+            val sessionsById = projectFiltered.mapNotNull { session ->
+                session.sessionId?.takeIf { it.isNotBlank() }?.let { it to session }
+            }.toMap()
+            val remoteMatches = remoteContentSearchSessionIds.mapNotNull { sessionId ->
+                if (sessionId in localMatchIds) null else sessionsById[sessionId]
+            }
+            return localMatches + remoteMatches.sortedForSessionList()
         }
 }
 
@@ -72,6 +115,8 @@ class SessionListViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(SessionListUiState(isLoading = true))
     val state: StateFlow<SessionListUiState> = _state
+    private var refreshJob: Job? = null
+    private var remoteSearchJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -94,8 +139,10 @@ class SessionListViewModel(
     }
 
     fun refresh(clearNotice: Boolean = true) {
-        viewModelScope.launch {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             val snapshot = _state.value
+            val requestedArchivedMode = snapshot.showArchived
             _state.update {
                 it.copy(
                     isLoading = true,
@@ -103,50 +150,102 @@ class SessionListViewModel(
                     notice = if (clearNotice) null else it.notice,
                 )
             }
-            runCatching { repository.loadProjects() }
-                .onSuccess { projects -> _state.update { it.copy(projects = projects) } }
-            val query = snapshot.searchQuery.trim()
-            if (query.isNotEmpty()) {
-                runCatching { repository.searchSessions(query) }
-                    .onSuccess { page ->
-                        _state.update {
-                            it.copy(
-                                sessions = page.sessions,
-                                archivedCount = page.archivedCount ?: it.archivedCount,
-                                isViewingCachedData = false,
-                                isLoading = false,
-                            )
-                        }
-                    }
-                    .onFailure { error -> _state.update { it.copy(isLoading = false, error = error.message ?: "Could not search sessions.") } }
-            } else {
-                when (val result = repository.loadSessions(includeArchived = snapshot.showArchived)) {
-                    is ResultState.Data -> _state.update {
+            try {
+                val projects = repository.loadProjects()
+                _state.update { it.copy(projects = projects) }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                // Sessions remain usable if project metadata cannot refresh.
+            }
+            val result = repository.loadSessions(includeArchived = requestedArchivedMode)
+            if (_state.value.showArchived != requestedArchivedMode) return@launch
+            when (result) {
+                is ResultState.Data -> {
+                    if (result.fromCache) remoteSearchJob?.cancel()
+                    _state.update {
                         it.copy(
                             sessions = result.value.sessions,
                             archivedCount = result.value.archivedCount,
                             isViewingCachedData = result.fromCache,
+                            remoteContentSearchSessionIds = if (result.fromCache) emptyList() else it.remoteContentSearchSessionIds,
+                            isSearchingRemoteSessions = if (result.fromCache) false else it.isSearchingRemoteSessions,
                             isLoading = false,
                         )
                     }
-                    is ResultState.Error -> _state.update { it.copy(isLoading = false, error = result.message) }
-                    ResultState.Loading -> Unit
+                    if (!result.fromCache) {
+                        scheduleRemoteSearch(
+                            query = _state.value.searchQuery.normalizedSearchQuery(),
+                            delayMillis = 0L,
+                        )
+                    }
                 }
+                is ResultState.Error -> _state.update { it.copy(isLoading = false, error = result.message) }
+                ResultState.Loading -> Unit
             }
         }
     }
 
+    fun refreshAll() {
+        refresh()
+        refreshProfiles()
+    }
+
     fun updateSearchQuery(value: String) {
-        _state.update { it.copy(searchQuery = value, error = null) }
+        val query = value.normalizedSearchQuery()
+        remoteSearchJob?.cancel()
+        _state.update {
+            it.copy(
+                searchQuery = value,
+                remoteSearchQuery = query.takeIf(String::isNotEmpty),
+                remoteContentSearchSessionIds = emptyList(),
+                isSearchingRemoteSessions = false,
+                searchError = null,
+            )
+        }
+        scheduleRemoteSearch(query, REMOTE_SEARCH_DEBOUNCE_MILLIS)
+    }
+
+    fun searchNow() {
+        val query = _state.value.searchQuery.normalizedSearchQuery()
+        remoteSearchJob?.cancel()
+        _state.update {
+            it.copy(
+                remoteSearchQuery = query.takeIf(String::isNotEmpty),
+                remoteContentSearchSessionIds = emptyList(),
+                isSearchingRemoteSessions = false,
+                searchError = null,
+            )
+        }
+        scheduleRemoteSearch(query, delayMillis = 0L)
     }
 
     fun clearSearch() {
-        _state.update { it.copy(searchQuery = "", selectedProjectId = null) }
-        refresh()
+        remoteSearchJob?.cancel()
+        _state.update {
+            it.copy(
+                searchQuery = "",
+                remoteSearchQuery = null,
+                remoteContentSearchSessionIds = emptyList(),
+                isSearchingRemoteSessions = false,
+                searchError = null,
+            )
+        }
     }
 
     fun toggleArchived() {
-        _state.update { it.copy(showArchived = !it.showArchived, selectedProjectId = null, searchQuery = "") }
+        remoteSearchJob?.cancel()
+        _state.update {
+            it.copy(
+                showArchived = !it.showArchived,
+                selectedProjectId = null,
+                searchQuery = "",
+                remoteSearchQuery = null,
+                remoteContentSearchSessionIds = emptyList(),
+                isSearchingRemoteSessions = false,
+                searchError = null,
+            )
+        }
         refresh()
     }
 
@@ -386,46 +485,77 @@ class SessionListViewModel(
         }
     }
 
+    fun beginCreateProject() {
+        _state.update {
+            it.copy(
+                newProjectName = "",
+                newProjectColor = defaultProjectColorHex(it.projects.size),
+                error = null,
+            )
+        }
+    }
+
     fun updateNewProjectName(value: String) {
         _state.update { it.copy(newProjectName = value, error = null) }
     }
 
+    fun updateNewProjectColor(value: String?) {
+        _state.update { it.copy(newProjectColor = value, error = null) }
+    }
+
+    fun dismissCreateProject() {
+        _state.update { it.copy(newProjectName = "", newProjectColor = null) }
+    }
+
     fun createProject() {
-        val name = _state.value.newProjectName.trim()
+        val snapshot = _state.value
+        val name = snapshot.newProjectName.trim()
         if (name.isBlank()) {
             _state.update { it.copy(error = "Enter a project name.") }
             return
         }
         mutate("Project created.") {
-            repository.createProject(name)
-            _state.update { it.copy(newProjectName = "") }
+            repository.createProject(name, snapshot.newProjectColor)
+            _state.update { it.copy(newProjectName = "", newProjectColor = null) }
             null
         }
     }
 
     fun requestRenameProject(project: ProjectSummary) {
-        _state.update { it.copy(renameProject = project, renameProjectDraft = project.name.orEmpty(), error = null) }
+        _state.update {
+            it.copy(
+                renameProject = project,
+                renameProjectDraft = project.name.orEmpty(),
+                renameProjectColor = project.color,
+                error = null,
+            )
+        }
     }
 
     fun updateRenameProjectDraft(value: String) {
         _state.update { it.copy(renameProjectDraft = value, error = null) }
     }
 
+    fun updateRenameProjectColor(value: String?) {
+        _state.update { it.copy(renameProjectColor = value, error = null) }
+    }
+
     fun dismissRenameProject() {
-        _state.update { it.copy(renameProject = null, renameProjectDraft = "") }
+        _state.update { it.copy(renameProject = null, renameProjectDraft = "", renameProjectColor = null) }
     }
 
     fun confirmRenameProject() {
-        val project = _state.value.renameProject ?: return
+        val snapshot = _state.value
+        val project = snapshot.renameProject ?: return
         val id = project.projectId ?: return
-        val name = _state.value.renameProjectDraft.trim()
+        val name = snapshot.renameProjectDraft.trim()
         if (name.isBlank()) {
             _state.update { it.copy(error = "Enter a project name.") }
             return
         }
-        _state.update { it.copy(renameProject = null, renameProjectDraft = "") }
+        _state.update { it.copy(renameProject = null, renameProjectDraft = "", renameProjectColor = null) }
         mutate("Project renamed.") {
-            repository.renameProject(id, name)
+            repository.renameProject(id, name, snapshot.renameProjectColor)
             null
         }
     }
@@ -468,9 +598,83 @@ class SessionListViewModel(
         }
     }
 
+    private fun scheduleRemoteSearch(query: String, delayMillis: Long) {
+        remoteSearchJob?.cancel()
+        if (query.isEmpty()) return
+        val snapshot = _state.value
+        if (snapshot.showArchived || snapshot.isViewingCachedData) return
+
+        remoteSearchJob = viewModelScope.launch {
+            if (delayMillis > 0) delay(delayMillis)
+            if (_state.value.searchQuery.normalizedSearchQuery() != query) return@launch
+
+            _state.update { it.copy(isSearchingRemoteSessions = true) }
+            try {
+                val response = repository.searchSessions(query, content = true, depth = 5)
+                if (_state.value.searchQuery.normalizedSearchQuery() != query) return@launch
+                _state.update {
+                    it.copy(
+                        remoteSearchQuery = query,
+                        remoteContentSearchSessionIds = contentMatchSessionIds(it.sessions, response.sessions),
+                        searchError = null,
+                    )
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                if (_state.value.searchQuery.normalizedSearchQuery() == query) {
+                    _state.update {
+                        it.copy(
+                            remoteContentSearchSessionIds = emptyList(),
+                            searchError = error.message ?: "Could not search sessions.",
+                        )
+                    }
+                }
+            } finally {
+                if (_state.value.searchQuery.normalizedSearchQuery() == query) {
+                    _state.update { it.copy(isSearchingRemoteSessions = false) }
+                }
+            }
+        }
+    }
+
     private fun duplicateTitle(session: SessionSummary): String {
         val baseTitle = session.title?.trim()?.takeIf { it.isNotEmpty() } ?: "Untitled Session"
         return "$baseTitle (copy)"
+    }
+}
+
+private const val REMOTE_SEARCH_DEBOUNCE_MILLIS = 350L
+
+private fun String.normalizedSearchQuery(): String = trim().lowercase()
+
+private val SessionSummary.searchableText: String
+    get() = listOfNotNull(title, workspace, model, modelProvider, profile, sourceLabel)
+        .joinToString(" ")
+        .lowercase()
+
+private val SessionSummary.sessionListTimestamp: Double
+    get() = lastMessageAt ?: updatedAt ?: createdAt ?: 0.0
+
+private fun List<SessionSummary>.sortedForSessionList(): List<SessionSummary> = sortedWith(
+    compareByDescending<SessionSummary> { it.pinned == true }
+        .thenByDescending { it.sessionListTimestamp },
+)
+
+internal fun contentMatchSessionIds(
+    loadedSessions: List<SessionSummary>,
+    searchResults: List<SessionSummary>,
+): List<String> {
+    val loadedIds = loadedSessions.mapNotNullTo(mutableSetOf()) { session ->
+        if (session.archived == true) null else session.sessionId?.takeIf { it.isNotBlank() }
+    }
+    val seen = mutableSetOf<String>()
+    return searchResults.mapNotNull { result ->
+        result.sessionId?.takeIf { sessionId ->
+            result.matchType.equals("content", ignoreCase = true) &&
+                sessionId in loadedIds &&
+                seen.add(sessionId)
+        }
     }
 }
 

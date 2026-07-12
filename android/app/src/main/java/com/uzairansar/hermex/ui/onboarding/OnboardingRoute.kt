@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -81,16 +82,31 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uzairansar.hermex.R
 import com.uzairansar.hermex.data.repository.AuthRepository
 import com.uzairansar.hermex.data.repository.AuthState
+import com.uzairansar.hermex.ui.theme.HermexDarkContent
+import com.uzairansar.hermex.ui.theme.HermexSurfaceLevel
 import com.uzairansar.hermex.ui.theme.LocalHermexHapticsEnabled
+import com.uzairansar.hermex.ui.theme.hermexGlass
+import com.uzairansar.hermex.ui.theme.hermexHazeSource
 import kotlinx.coroutines.launch
 
 private val OnboardingGold = Color(0xFFFFBD1A)
 private val OnboardingGreen = Color(0xFF73EB8F)
 private val OnboardingCoral = Color(0xFFFF7857)
 private val OnboardingShape = RoundedCornerShape(8.dp)
+private const val OnboardingBackdropKey = "onboarding-backdrop"
 
 @Composable
 fun OnboardingRoute(
+    authRepository: AuthRepository,
+    onConnected: () -> Unit,
+) {
+    HermexDarkContent {
+        OnboardingRouteContent(authRepository, onConnected)
+    }
+}
+
+@Composable
+private fun OnboardingRouteContent(
     authRepository: AuthRepository,
     onConnected: () -> Unit,
 ) {
@@ -141,12 +157,20 @@ fun OnboardingRoute(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .imePadding(),
+        modifier = Modifier.fillMaxSize(),
     ) {
-        Column(Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hermexHazeSource(zIndex = 1f, key = OnboardingBackdropKey)
+                .background(Color.Black),
+        )
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .imePadding(),
+        ) {
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.weight(1f),
@@ -315,9 +339,11 @@ private fun HeroBadge(
 ) {
     Row(
         modifier = Modifier
-            .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.06f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
+            .hermexGlass(
+                shape = CircleShape,
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Base,
+            )
             .padding(horizontal = 10.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -478,9 +504,11 @@ private fun OnboardingAgentPromptPage(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color.White.copy(alpha = 0.055f))
-                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                .hermexGlass(
+                    shape = RoundedCornerShape(12.dp),
+                    castsShadow = false,
+                    surfaceLevel = HermexSurfaceLevel.Raised,
+                )
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -559,8 +587,11 @@ private fun OnboardingStepHeader(
         Box(
             modifier = Modifier
                 .size(80.dp)
-                .clip(RoundedCornerShape(22.dp))
-                .background(Color.White.copy(alpha = 0.06f))
+                .hermexGlass(
+                    shape = RoundedCornerShape(22.dp),
+                    castsShadow = false,
+                    surfaceLevel = HermexSurfaceLevel.Base,
+                )
                 .border(1.dp, OnboardingGold.copy(alpha = 0.35f), RoundedCornerShape(22.dp)),
             contentAlignment = Alignment.Center,
         ) {
@@ -772,9 +803,11 @@ private fun OnboardingTextField(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = minHeight)
-            .clip(OnboardingShape)
-            .background(Color.Black.copy(alpha = 0.24f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), OnboardingShape)
+            .hermexGlass(
+                shape = OnboardingShape,
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Raised,
+            )
             .padding(horizontal = 13.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -833,7 +866,11 @@ private fun OnboardingStatusBanner(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OnboardingShape)
+            .hermexGlass(
+                shape = OnboardingShape,
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Raised,
+            )
             .background(tint.copy(alpha = 0.12f))
             .border(1.dp, tint.copy(alpha = 0.18f), OnboardingShape)
             .padding(horizontal = 12.dp, vertical = 11.dp),
@@ -976,21 +1013,33 @@ private fun OnboardingActionButton(
     val view = LocalView.current
     val hapticsEnabled = LocalHermexHapticsEnabled.current
     val enabledContent = contentColor ?: if (primary) Color.Black else Color.White.copy(alpha = 0.84f)
+    val buttonModifier = if (primary) {
+        modifier
+            .fillMaxWidth()
+            .height(50.dp)
+    } else {
+        modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .hermexGlass(
+                shape = OnboardingShape,
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Floating,
+            )
+    }
     Button(
         onClick = {
             if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
             onClick()
         },
         enabled = enabled,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(50.dp)
+        modifier = buttonModifier
             .semantics { contentDescription = label },
         shape = OnboardingShape,
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (primary) OnboardingGold else Color.White.copy(alpha = 0.065f),
+            containerColor = if (primary) OnboardingGold else Color.Transparent,
             contentColor = enabledContent,
-            disabledContainerColor = if (primary) OnboardingGold.copy(alpha = 0.36f) else Color.White.copy(alpha = 0.035f),
+            disabledContainerColor = if (primary) OnboardingGold.copy(alpha = 0.36f) else Color.Transparent,
             disabledContentColor = enabledContent.copy(alpha = 0.4f),
         ),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp),

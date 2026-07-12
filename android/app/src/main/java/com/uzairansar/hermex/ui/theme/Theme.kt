@@ -1,13 +1,18 @@
 package com.uzairansar.hermex.ui.theme
 
+import android.os.Build
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -15,17 +20,19 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.Typography
 import com.uzairansar.hermex.data.preferences.AppThemeMode
+import dev.chrisbanes.haze.rememberHazeState
+
+private const val HermexRootBackdropKey = "hermex-root-backdrop"
 
 private val LightColors = lightColorScheme(
     primary = Color(0xFF007AFF),
     onPrimary = Color(0xFFFFFFFF),
     secondary = Color(0xFF6D6D72),
     tertiary = Color(0xFF34C759),
-    background = Color(0xFFFFFFFF),
+    background = Color(0xF5F4F7FA),
     onBackground = Color(0xFF000000),
-    surface = Color(0xFFFFFFFF),
+    surface = Color(0xFFF8FAFC),
     onSurface = Color(0xFF000000),
     surfaceVariant = Color(0xFFF2F2F7),
     onSurfaceVariant = Color(0xFF3C3C43),
@@ -39,11 +46,11 @@ private val DarkColors = darkColorScheme(
     onPrimary = Color(0xFFFFFFFF),
     secondary = Color(0xFF98989D),
     tertiary = Color(0xFF30D158),
-    background = Color(0xFF000000),
+    background = Color.Black,
     onBackground = Color(0xFFFFFFFF),
-    surface = Color(0xFF1C1C1E),
+    surface = Color(0xFF111214),
     onSurface = Color(0xFFFFFFFF),
-    surfaceVariant = Color(0xFF2C2C2E),
+    surfaceVariant = Color(0xFF1C1C1E),
     onSurfaceVariant = Color(0xFFE5E5EA),
     outline = Color(0x5CEBEBF5),
     outlineVariant = Color(0x3DEBEBF5),
@@ -125,6 +132,20 @@ private val HermexShapes = Shapes(
 )
 
 @Composable
+fun HermexDarkContent(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = DarkColors,
+        typography = HermexTypography,
+        shapes = HermexShapes,
+    ) {
+        CompositionLocalProvider(
+            LocalHermexSurfaceTokens provides DarkHermexSurfaceTokens,
+            content = content,
+        )
+    }
+}
+
+@Composable
 fun HermexTheme(
     themeMode: AppThemeMode = AppThemeMode.System,
     content: @Composable () -> Unit,
@@ -134,16 +155,33 @@ fun HermexTheme(
         AppThemeMode.Light -> false
         AppThemeMode.Dark -> true
     }
+    // Haze's legacy RenderScript path can lag on scrolling screens; Android 12+ uses RenderEffect.
+    val hazeState = rememberHazeState(blurEnabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+    val surfaceTokens = if (darkTheme) DarkHermexSurfaceTokens else LightHermexSurfaceTokens
+
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
         typography = HermexTypography,
         shapes = HermexShapes,
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
-            contentColor = MaterialTheme.colorScheme.onBackground,
-            content = content,
-        )
+        CompositionLocalProvider(
+            LocalHermexHazeState provides hazeState,
+            LocalHermexSurfaceTokens provides surfaceTokens,
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hermexHazeSource(key = HermexRootBackdropKey)
+                        .background(hermexBackgroundColor()),
+                )
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onBackground,
+                    content = content,
+                )
+            }
+        }
     }
 }

@@ -6,47 +6,77 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import androidx.activity.ComponentActivity
+import androidx.lifecycle.lifecycleScope
 import com.uzairansar.hermex.data.share.SharedAttachment
 import com.uzairansar.hermex.data.share.SharedDraftStore
+import com.uzairansar.hermex.data.share.SharedDraftPolicy
+import com.uzairansar.hermex.data.share.copyAcceptedSharedAttachment
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.UUID
 
 class ShareActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val store = SharedDraftStore(this)
-        val text = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
-        val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT).orEmpty()
-        val uris = mutableListOf<Uri>()
-        intent.streamUri()?.let(uris::add)
-        intent.streamUris()?.let(uris::addAll)
-        val attachments = uris.mapNotNull(::cacheSharedAttachment)
-        store.savePendingDraft(
-            text = listOf(subject, text).filter { it.isNotBlank() }.joinToString("\n\n"),
-            attachments = attachments,
-        )
-        startActivity(Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            data = Uri.parse("hermes-agent://share")
-        })
-        finish()
+        lifecycleScope.launch {
+            val store = SharedDraftStore(this@ShareActivity)
+            val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString().orEmpty()
+            val subject = intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.toString().orEmpty()
+            val uris = mutableListOf<Uri>()
+            intent.streamUri()?.let(uris::add)
+            intent.streamUris()?.let(uris::addAll)
+            val saved = withContext(Dispatchers.IO) {
+                val attachments = buildList {
+                    for (uri in uris) {
+                        if (size >= SharedDraftPolicy.MAXIMUM_SHARED_ATTACHMENT_COUNT) break
+                        cacheSharedAttachment(uri)?.let(::add)
+                    }
+                }
+                store.savePendingDraft(
+                    text = SharedDraftPolicy.draftText(subject = subject, text = text),
+                    attachments = attachments,
+                )
+            }
+            if (saved) {
+                startActivity(Intent(this@ShareActivity, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    data = Uri.parse("hermes-agent://share")
+                })
+            }
+            finish()
+        }
     }
 
     private fun cacheSharedAttachment(uri: Uri): SharedAttachment? {
-        val displayName = displayName(uri) ?: uri.lastPathSegment?.substringAfterLast('/') ?: "shared-file"
-        val safeName = displayName.replace(Regex("""[^\w.\- ]"""), "_")
-        val file = File(cacheDir, "shared-${System.currentTimeMillis()}-$safeName")
-        return runCatching {
-            contentResolver.openInputStream(uri).use { input ->
-                requireNotNull(input) { "Could not open shared file." }
-                file.outputStream().use { output -> input.copyTo(output) }
+        val displayName = (
+            runCatching { displayName(uri) }.getOrNull()
+                ?: uri.lastPathSegment?.substringAfterLast('/')
+        )
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: "shared-file"
+        val safeName = displayName
+            .replace(Regex("""[^\w.\- ]"""), "_")
+            .ifBlank { "shared-file" }
+        val file = File(cacheDir, "shared-${UUID.randomUUID()}-$safeName")
+        val copiedBytes = runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                copyAcceptedSharedAttachment(input = input, destination = file)
             }
-            SharedAttachment(
-                uri = uri.toString(),
-                displayName = displayName,
-                mimeType = contentResolver.getType(uri),
-                cachedPath = file.absolutePath,
-            )
-        }.getOrNull()
+        }.getOrNull() ?: return null
+        if (!SharedDraftPolicy.acceptsByteCount(copiedBytes)) {
+            runCatching { file.delete() }
+            return null
+        }
+
+        return SharedAttachment(
+            uri = uri.toString(),
+            displayName = displayName,
+            mimeType = runCatching { contentResolver.getType(uri) }.getOrNull(),
+            cachedPath = file.absolutePath,
+        )
     }
 
     private fun displayName(uri: Uri): String? {

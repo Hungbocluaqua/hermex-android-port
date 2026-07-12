@@ -8,8 +8,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,7 +21,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,11 +31,13 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -59,8 +67,11 @@ import com.uzairansar.hermex.core.model.SkillSummary
 import com.uzairansar.hermex.data.repository.PanelsRepository
 import com.uzairansar.hermex.ui.chat.MarkdownText
 import com.uzairansar.hermex.ui.theme.HermexCardShape
+import com.uzairansar.hermex.ui.theme.HermexGlassShape
 import com.uzairansar.hermex.ui.theme.HermexIconButton
+import com.uzairansar.hermex.ui.theme.HermexPillShape
 import com.uzairansar.hermex.ui.theme.HermexPillButton
+import com.uzairansar.hermex.ui.theme.HermexSurfaceLevel
 import com.uzairansar.hermex.ui.theme.hermexGlass
 import com.uzairansar.hermex.R
 import com.uzairansar.hermex.core.model.CronDateValue
@@ -75,8 +86,11 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 
-private val PanelPrimaryText = Color.White
-private val PanelSecondaryText = Color.White.copy(alpha = 0.62f)
+private val PanelPrimaryText: Color
+    @Composable get() = MaterialTheme.colorScheme.onSurface
+
+private val PanelSecondaryText: Color
+    @Composable get() = MaterialTheme.colorScheme.secondary
 
 @Composable
 fun PanelsRoute(
@@ -95,153 +109,222 @@ fun PanelsRoute(
     val headerTitle = focusedSection?.panelTitle() ?: "Server Panels"
     val headerSubtitle = focusedSection?.let { "Server Panels" } ?: "Insights, tasks, skills, and memory"
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(bottom = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-            ) {
-                HermexIconButton("Back", "‹", onBack)
-                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                    Text(headerTitle, style = MaterialTheme.typography.headlineMedium, color = PanelPrimaryText)
-                    Text(headerSubtitle, style = MaterialTheme.typography.bodySmall, color = PanelSecondaryText)
-                }
-                HermexIconButton("Refresh", "↻", viewModel::refresh)
-            }
+            PanelsHeader(
+                title = headerTitle,
+                subtitle = headerSubtitle,
+                focusedSection = focusedSection,
+                onBack = onBack,
+                onRefresh = viewModel::refresh,
+                onCreateTask = viewModel::openCreateTask,
+                createTaskEnabled = !state.isMutating,
+            )
             state.notice?.let { Text(it, color = PanelSecondaryText, style = MaterialTheme.typography.bodySmall) }
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             if (state.isLoading) {
-                CircularProgressIndicator(strokeWidth = 2.dp)
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (focusedSection.shouldShowPanel("insights")) {
-                    item {
-                        PanelCard("Insights") {
-                            InsightsPanel(
-                                insights = state.insights,
-                                selectedTimeframe = state.selectedInsightsTimeframe,
-                                sessions = state.insightSessions,
-                                dataSource = state.insightsDataSource,
-                                fallbackReason = state.insightsFallbackReason,
-                                onTimeframeSelected = viewModel::selectInsightsTimeframe,
-                            )
-                        }
-                    }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                    Text("Refreshing panels", color = PanelSecondaryText, style = MaterialTheme.typography.bodySmall)
                 }
-                if (focusedSection.shouldShowPanel("tasks")) {
-                    item {
-                        PanelCard("Tasks") {
-                            HermexPillButton("New Task", viewModel::openCreateTask, enabled = !state.isMutating, filled = true)
-                            Spacer(Modifier.height(8.dp))
-                            if (state.crons.isEmpty()) {
-                                Text("No scheduled tasks.")
-                            } else {
-                                state.crons.take(12).forEach { job ->
-                                    CronRow(
-                                        job = job,
-                                        runningElapsed = state.runningCrons.runningElapsedFor(job),
-                                        isMutating = state.isMutating,
-                                        onDetails = { viewModel.openCronDetail(job) },
-                                        onEdit = { viewModel.openEditTask(job) },
-                                        onRun = { viewModel.runCron(job) },
-                                        onPauseResume = { viewModel.pauseOrResumeCron(job) },
-                                        onOutput = { viewModel.openCronDetail(job) },
-                                        onDelete = { viewModel.requestDeleteCron(job) },
-                                    )
-                                }
+            }
+            state.refreshErrors.toSortedMap().forEach { (section, message) ->
+                Text(
+                    "$section: $message",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                    if (focusedSection.shouldShowPanel("insights")) {
+                        item {
+                            PanelCard("Insights") {
+                                InsightsPanel(
+                                    insights = state.insights,
+                                    selectedTimeframe = state.selectedInsightsTimeframe,
+                                    sessions = state.insightSessions,
+                                    dataSource = state.insightsDataSource,
+                                    fallbackReason = state.insightsFallbackReason,
+                                    onTimeframeSelected = viewModel::selectInsightsTimeframe,
+                                )
                             }
                         }
                     }
-                }
-                if (focusedSection.shouldShowPanel("tasks")) {
-                    state.selectedCronOutput?.takeIf { state.selectedCronDetail == null }?.let { output ->
-                        item {
-                            PanelCard("Task Output") {
-                                if (output.outputs.isNullOrEmpty()) {
-                                    Text(output.error ?: "No recent output.")
-                                } else {
-                                    output.outputs.take(3).forEach { item ->
-                                        Text(item.filename ?: "output", fontWeight = FontWeight.SemiBold)
-                                        Text(item.content ?: "", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-                                        Spacer(Modifier.height(8.dp))
+                    if (focusedSection.shouldShowPanel("tasks")) {
+                        if (focusedSection == "tasks") {
+                            item {
+                                RunningTasksCard(
+                                    count = state.crons.count { job ->
+                                        state.runningCrons.runningElapsedFor(job) != null || job.running == true
+                                    },
+                                )
+                            }
+                            item { PanelSectionLabel("Scheduled Jobs") }
+                            if (state.crons.isEmpty()) {
+                                item { PanelEmptyCard("No scheduled tasks.") }
+                            } else {
+                                state.crons.take(12).forEach { job ->
+                                    item {
+                                        FocusedTaskCard(
+                                            job = job,
+                                            runningElapsed = state.runningCrons.runningElapsedFor(job),
+                                            isMutating = state.isMutating,
+                                            onDetails = { viewModel.openCronDetail(job) },
+                                            onEdit = { viewModel.openEditTask(job) },
+                                            onRun = { viewModel.runCron(job) },
+                                            onPauseResume = { viewModel.pauseOrResumeCron(job) },
+                                            onOutput = { viewModel.openCronDetail(job) },
+                                            onDelete = { viewModel.requestDeleteCron(job) },
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            item {
+                                PanelCard("Tasks") {
+                                    HermexPillButton("New Task", viewModel::openCreateTask, enabled = !state.isMutating, filled = true)
+                                    Spacer(Modifier.height(8.dp))
+                                    if (state.crons.isEmpty()) {
+                                        Text("No scheduled tasks.")
+                                    } else {
+                                        state.crons.take(12).forEach { job ->
+                                            CronRow(
+                                                job = job,
+                                                runningElapsed = state.runningCrons.runningElapsedFor(job),
+                                                isMutating = state.isMutating,
+                                                onDetails = { viewModel.openCronDetail(job) },
+                                                onEdit = { viewModel.openEditTask(job) },
+                                                onRun = { viewModel.runCron(job) },
+                                                onPauseResume = { viewModel.pauseOrResumeCron(job) },
+                                                onOutput = { viewModel.openCronDetail(job) },
+                                                onDelete = { viewModel.requestDeleteCron(job) },
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
-                if (focusedSection.shouldShowPanel("skills")) {
-                    item {
-                        PanelCard("Skills") {
-                            OutlinedTextField(
-                                value = state.skillSearchText,
-                                onValueChange = viewModel::updateSkillSearchText,
-                                placeholder = { Text("Search skills...") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            Spacer(Modifier.height(10.dp))
-                            if (state.skills.isEmpty()) {
-                                Text("No Skills", fontWeight = FontWeight.SemiBold)
-                                Text("Skills from the Hermes server will appear here.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                            } else if (state.skillSearchText.isNotBlank() && state.filteredSkillGroups.isEmpty()) {
-                                Text("No Results", fontWeight = FontWeight.SemiBold)
-                                Text(
-                                    "No skills match \"${state.skillSearchText.trim()}\".",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                )
-                            } else {
-                                state.filteredSkillGroups.forEach { group ->
-                                    SkillCategorySection(
-                                        group = group,
-                                        isMutating = state.isMutating,
-                                        togglingSkillNames = state.togglingSkillNames,
-                                        onOpen = viewModel::loadSkill,
-                                        onToggle = viewModel::toggleSkill,
-                                    )
+                    if (focusedSection.shouldShowPanel("tasks")) {
+                        state.selectedCronOutput?.takeIf { state.selectedCronDetail == null }?.let { output ->
+                            item {
+                                PanelCard("Task Output") {
+                                    if (output.outputs.isNullOrEmpty()) {
+                                        Text(output.error ?: "No recent output.")
+                                    } else {
+                                        output.outputs.take(3).forEach { item ->
+                                            Text(item.filename ?: "output", fontWeight = FontWeight.SemiBold)
+                                            Text(item.content ?: "", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+                                            Spacer(Modifier.height(8.dp))
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                if (focusedSection.shouldShowPanel("skills")) {
-                    state.selectedSkill?.let { skill ->
+                    if (focusedSection.shouldShowPanel("skills")) {
+                        if (focusedSection == "skills") {
+                            item {
+                                SkillSearchField(
+                                    value = state.skillSearchText,
+                                    onValueChange = viewModel::updateSkillSearchText,
+                                )
+                            }
+                            when {
+                                state.skills.isEmpty() -> item {
+                                    PanelEmptyCard("Skills from the Hermes server will appear here.", title = "No Skills")
+                                }
+                                state.skillSearchText.isNotBlank() && state.filteredSkillGroups.isEmpty() -> item {
+                                    PanelEmptyCard(
+                                        message = "No skills match \"${state.skillSearchText.trim()}\".",
+                                        title = "No Results",
+                                    )
+                                }
+                                else -> state.filteredSkillGroups.forEach { group ->
+                                    item {
+                                        SkillCategorySection(
+                                            group = group,
+                                            isMutating = state.isMutating,
+                                            togglingSkillNames = state.togglingSkillNames,
+                                            compact = true,
+                                            onOpen = viewModel::loadSkill,
+                                            onToggle = viewModel::toggleSkill,
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            item {
+                                PanelCard("Skills") {
+                                    SkillSearchField(
+                                        value = state.skillSearchText,
+                                        onValueChange = viewModel::updateSkillSearchText,
+                                    )
+                                    Spacer(Modifier.height(10.dp))
+                                    if (state.skills.isEmpty()) {
+                                        Text("No Skills", fontWeight = FontWeight.SemiBold)
+                                        Text("Skills from the Hermes server will appear here.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                                    } else if (state.skillSearchText.isNotBlank() && state.filteredSkillGroups.isEmpty()) {
+                                        Text("No Results", fontWeight = FontWeight.SemiBold)
+                                        Text(
+                                            "No skills match \"${state.skillSearchText.trim()}\".",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                        )
+                                    } else {
+                                        state.filteredSkillGroups.forEach { group ->
+                                            SkillCategorySection(
+                                                group = group,
+                                                isMutating = state.isMutating,
+                                                togglingSkillNames = state.togglingSkillNames,
+                                                onOpen = viewModel::loadSkill,
+                                                onToggle = viewModel::toggleSkill,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (focusedSection.shouldShowPanel("skills")) {
+                        state.selectedSkill?.let { skill ->
+                            item {
+                                SkillDetailPanel(
+                                    skill = skill,
+                                    isLoadingFile = state.isLoadingSkillFile,
+                                    onOpenLinkedFile = viewModel::loadSkillLinkedFile,
+                                )
+                            }
+                        }
+                    }
+                    if (focusedSection.shouldShowPanel("memory")) {
                         item {
-                            SkillDetailPanel(
-                                skill = skill,
-                                isLoadingFile = state.isLoadingSkillFile,
-                                onOpenLinkedFile = viewModel::loadSkillLinkedFile,
-                            )
+                            PanelCard("Memory") {
+                                MemoryPanel(
+                                    memory = state.memory,
+                                    isSaving = state.isMutating,
+                                    onEditSection = viewModel::openMemoryEditor,
+                                )
+                            }
                         }
                     }
-                }
-                if (focusedSection.shouldShowPanel("memory")) {
-                    item {
-                        PanelCard("Memory") {
-                            MemoryPanel(
-                                memory = state.memory,
-                                isSaving = state.isMutating,
-                                onEditSection = viewModel::openMemoryEditor,
-                            )
-                        }
-                    }
-                }
             }
         }
-    }
     }
 
     state.pendingDeleteCron?.let { job ->
         AlertDialog(
+            modifier = Modifier.panelDialogChrome(),
+            shape = HermexGlassShape,
+            containerColor = Color.Transparent,
             onDismissRequest = viewModel::dismissDeleteCron,
             title = { Text("Delete task?") },
             text = { Text("Delete ${job.displayName}? This cannot be undone.") },
@@ -303,6 +386,265 @@ fun PanelsRoute(
         )
     }
 }
+
+@Composable
+private fun PanelsHeader(
+    title: String,
+    subtitle: String,
+    focusedSection: String?,
+    onBack: () -> Unit,
+    onRefresh: () -> Unit,
+    onCreateTask: () -> Unit,
+    createTaskEnabled: Boolean,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(bottom = 14.dp)
+            .hermexGlass(
+                shape = HermexCardShape,
+                surfaceLevel = HermexSurfaceLevel.Floating,
+            )
+            .padding(horizontal = 4.dp, vertical = 3.dp),
+    ) {
+        HermexIconButton(
+            label = "Back",
+            symbol = "<",
+            onClick = onBack,
+            modifier = Modifier.align(androidx.compose.ui.Alignment.CenterStart),
+        )
+        Column(
+            modifier = Modifier
+                .align(androidx.compose.ui.Alignment.Center)
+                .fillMaxWidth()
+                .padding(horizontal = if (focusedSection == "tasks") 104.dp else 64.dp),
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+        ) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = PanelPrimaryText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (focusedSection == null) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = PanelSecondaryText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        if (focusedSection == "tasks") {
+            Row(
+                modifier = Modifier
+                    .align(androidx.compose.ui.Alignment.CenterEnd)
+                    .hermexGlass(
+                        shape = HermexPillShape,
+                        castsShadow = false,
+                        surfaceLevel = HermexSurfaceLevel.Raised,
+                    )
+                    .padding(2.dp),
+            ) {
+                PanelHeaderIconAction(
+                    label = "New Task",
+                    iconRes = R.drawable.ic_hermex_plus,
+                    onClick = onCreateTask,
+                    enabled = createTaskEnabled,
+                )
+                PanelHeaderIconAction(
+                    label = "Refresh",
+                    iconRes = R.drawable.ic_hermex_refresh,
+                    onClick = onRefresh,
+                )
+            }
+        } else {
+            HermexIconButton(
+                label = "Refresh",
+                symbol = "Refresh",
+                onClick = onRefresh,
+                modifier = Modifier.align(androidx.compose.ui.Alignment.CenterEnd),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PanelHeaderIconAction(
+    label: String,
+    iconRes: Int,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    TextButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .size(40.dp)
+            .defaultMinSize(minWidth = 0.dp, minHeight = 0.dp),
+        shape = androidx.compose.foundation.shape.CircleShape,
+        contentPadding = PaddingValues(0.dp),
+        colors = ButtonDefaults.textButtonColors(
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        Image(
+            painter = painterResource(iconRes),
+            contentDescription = label,
+            modifier = Modifier.size(20.dp),
+            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
+        )
+    }
+}
+
+@Composable
+private fun RunningTasksCard(count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .hermexGlass(
+                shape = HermexGlassShape,
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Raised,
+            )
+            .padding(horizontal = 18.dp, vertical = 15.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
+        Text(
+            "Running now",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = PanelPrimaryText,
+        )
+        Text(
+            count.toString(),
+            style = MaterialTheme.typography.titleLarge,
+            color = PanelSecondaryText,
+        )
+    }
+}
+
+@Composable
+private fun PanelSectionLabel(title: String) {
+    Text(
+        title,
+        modifier = Modifier.padding(start = 8.dp, top = 8.dp),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.secondary,
+    )
+}
+
+@Composable
+private fun PanelEmptyCard(
+    message: String,
+    title: String? = null,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .hermexGlass(
+                shape = HermexGlassShape,
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Base,
+            )
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        title?.let {
+            Text(it, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        }
+        Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+    }
+}
+
+@Composable
+private fun FocusedTaskCard(
+    job: CronJob,
+    runningElapsed: Double?,
+    isMutating: Boolean,
+    onDetails: () -> Unit,
+    onEdit: () -> Unit,
+    onRun: () -> Unit,
+    onPauseResume: () -> Unit,
+    onOutput: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .hermexGlass(
+                shape = HermexGlassShape,
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Raised,
+            )
+            .clickable(enabled = !isMutating, onClick = onDetails)
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+    ) {
+        CronRow(
+            job = job,
+            runningElapsed = runningElapsed,
+            isMutating = isMutating,
+            showInlineActions = false,
+            onDetails = onDetails,
+            onEdit = onEdit,
+            onRun = onRun,
+            onPauseResume = onPauseResume,
+            onOutput = onOutput,
+            onDelete = onDelete,
+        )
+    }
+}
+
+@Composable
+private fun SkillSearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = { Text("Search skills...") },
+        leadingIcon = {
+            Image(
+                painter = painterResource(R.drawable.ic_hermex_search),
+                contentDescription = null,
+                modifier = Modifier.size(21.dp),
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
+            )
+        },
+        singleLine = true,
+        shape = HermexPillShape,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent,
+            disabledContainerColor = Color.Transparent,
+            focusedBorderColor = Color.Transparent,
+            unfocusedBorderColor = Color.Transparent,
+            disabledBorderColor = Color.Transparent,
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .hermexGlass(
+                shape = HermexPillShape,
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Raised,
+            ),
+    )
+}
+
+@Composable
+private fun Modifier.panelDialogChrome(): Modifier = hermexGlass(
+    shape = HermexGlassShape,
+    surfaceLevel = HermexSurfaceLevel.Floating,
+    tintEnabled = false,
+)
 
 private data class SkillGroup(
     val category: String,
@@ -392,6 +734,7 @@ private fun CronRow(
     job: CronJob,
     runningElapsed: Double?,
     isMutating: Boolean,
+    showInlineActions: Boolean = true,
     onDetails: () -> Unit,
     onEdit: () -> Unit,
     onRun: () -> Unit,
@@ -414,7 +757,7 @@ private fun CronRow(
                 job.displayName,
                 modifier = Modifier.weight(1f),
                 fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.titleSmall,
+                style = if (showInlineActions) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleLarge,
                 color = PanelPrimaryText,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -427,7 +770,7 @@ private fun CronRow(
         job.prompt?.takeIf { it.isNotBlank() }?.let { prompt ->
             Text(
                 prompt,
-                style = MaterialTheme.typography.bodySmall,
+                style = if (showInlineActions) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.secondary,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
@@ -446,16 +789,18 @@ private fun CronRow(
                 CronJobMetadataRow("Error", error, isError = true)
             }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            HermexPillButton("Details", onDetails, enabled = !isMutating, filled = true)
-            HermexPillButton("Edit", onEdit, enabled = !isMutating)
-            HermexPillButton("Run", onRun, enabled = !isMutating)
-            HermexPillButton(if (job.isPaused) "Resume" else "Pause", onPauseResume, enabled = !isMutating)
-            HermexPillButton("Output", onOutput, enabled = !isMutating)
-            HermexPillButton("Delete", onDelete, enabled = !isMutating)
+        if (showInlineActions) {
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                HermexPillButton("Details", onDetails, enabled = !isMutating, filled = true)
+                HermexPillButton("Edit", onEdit, enabled = !isMutating)
+                HermexPillButton("Run", onRun, enabled = !isMutating)
+                HermexPillButton(if (job.isPaused) "Resume" else "Pause", onPauseResume, enabled = !isMutating)
+                HermexPillButton("Output", onOutput, enabled = !isMutating)
+                HermexPillButton("Delete", onDelete, enabled = !isMutating)
+            }
         }
     }
 }
@@ -478,11 +823,17 @@ private fun TaskDetailSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         dragHandle = null,
-        containerColor = MaterialTheme.colorScheme.background,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = Color.Transparent,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .hermexGlass(
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    castsShadow = false,
+                    surfaceLevel = HermexSurfaceLevel.Floating,
+                )
                 .padding(horizontal = 16.dp, vertical = 14.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -893,6 +1244,9 @@ private fun TaskEditorDialog(
     onSave: () -> Unit,
 ) {
     AlertDialog(
+        modifier = Modifier.panelDialogChrome(),
+        shape = HermexGlassShape,
+        containerColor = Color.Transparent,
         onDismissRequest = onDismiss,
         title = { Text(if (draft.isEditing) "Edit Task" else "New Task") },
         text = {
@@ -980,6 +1334,7 @@ private fun SkillCategorySection(
     group: SkillGroup,
     isMutating: Boolean,
     togglingSkillNames: Set<String>,
+    compact: Boolean = false,
     onOpen: (SkillSummary) -> Unit,
     onToggle: (SkillSummary) -> Unit,
 ) {
@@ -994,11 +1349,12 @@ private fun SkillCategorySection(
             color = MaterialTheme.colorScheme.secondary,
             modifier = Modifier.padding(horizontal = 4.dp),
         )
-        group.skills.forEach { skill ->
+        group.skills.forEachIndexed { index, skill ->
             SkillRow(
                 skill = skill,
                 isMutating = isMutating,
                 isToggling = skill.toggleSkillName?.let { it in togglingSkillNames } == true,
+                compact = compact,
                 onOpen = { onOpen(skill) },
                 onToggle = if (skill.canToggleSkill) {
                     { onToggle(skill) }
@@ -1006,6 +1362,14 @@ private fun SkillCategorySection(
                     null
                 },
             )
+            if (compact && index != group.skills.lastIndex) {
+                Spacer(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f)),
+                )
+            }
         }
     }
 }
@@ -1015,6 +1379,7 @@ private fun SkillRow(
     skill: SkillSummary,
     isMutating: Boolean,
     isToggling: Boolean,
+    compact: Boolean,
     onOpen: () -> Unit,
     onToggle: (() -> Unit)?,
 ) {
@@ -1023,7 +1388,7 @@ private fun SkillRow(
             .fillMaxWidth()
             .clickable(enabled = !isMutating, onClick = onOpen)
             .alpha(if (skill.disabled == true) 0.55f else 1f)
-            .padding(vertical = 10.dp),
+            .padding(vertical = if (compact) 11.dp else 10.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = androidx.compose.ui.Alignment.Top,
     ) {
@@ -1041,11 +1406,18 @@ private fun SkillRow(
             )
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(skill.skillDisplayName, fontWeight = FontWeight.SemiBold, color = PanelPrimaryText, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                skill.skillDisplayName,
+                fontWeight = FontWeight.SemiBold,
+                color = PanelPrimaryText,
+                style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
             skill.description?.trim()?.takeIf { it.isNotEmpty() }?.let { description ->
                 Text(
                     description,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
@@ -1063,12 +1435,36 @@ private fun SkillRow(
                     tags.forEach { tag -> TextChip(tag) }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                HermexPillButton("Open", onOpen, enabled = !isMutating)
-                onToggle?.let {
-                    HermexPillButton(
-                        label = if (skill.disabled == true) "Enable" else "Disable",
-                        onClick = it,
+            if (!compact) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HermexPillButton("Open", onOpen, enabled = !isMutating)
+                    onToggle?.let {
+                        HermexPillButton(
+                            label = if (skill.disabled == true) "Enable" else "Disable",
+                            onClick = it,
+                            enabled = !isMutating && !isToggling,
+                        )
+                    }
+                }
+            }
+        }
+        if (compact) {
+            Column(
+                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_hermex_chevron_down),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(17.dp)
+                        .graphicsLayer(rotationZ = -90f),
+                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary),
+                )
+                onToggle?.let { toggle ->
+                    Checkbox(
+                        checked = skill.disabled != true,
+                        onCheckedChange = { toggle() },
                         enabled = !isMutating && !isToggling,
                     )
                 }
@@ -1162,6 +1558,9 @@ private fun SkillLinkedFileDialog(
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
+        modifier = Modifier.panelDialogChrome(),
+        shape = HermexGlassShape,
+        containerColor = Color.Transparent,
         onDismissRequest = onDismiss,
         title = { Text(fileName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         text = {
@@ -1279,11 +1678,17 @@ private fun MemoryEditSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         dragHandle = null,
-        containerColor = MaterialTheme.colorScheme.background,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = Color.Transparent,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .hermexGlass(
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    castsShadow = false,
+                    surfaceLevel = HermexSurfaceLevel.Floating,
+                )
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -1353,7 +1758,11 @@ private fun PanelCard(title: String, content: @Composable () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
-            .hermexGlass(shape = HermexCardShape, castsShadow = false)
+            .hermexGlass(
+                shape = HermexCardShape,
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Base,
+            )
             .padding(12.dp),
     ) {
         CompositionLocalProvider(LocalContentColor provides PanelPrimaryText) {

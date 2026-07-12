@@ -1,8 +1,15 @@
 package com.uzairansar.hermex.ui.workspace
 
+import android.Manifest
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.os.Build
+import android.provider.MediaStore
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,7 +35,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -43,14 +53,19 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.core.content.FileProvider
+import androidx.core.content.ContextCompat
 import com.uzairansar.hermex.core.model.WorkspaceEntry
 import com.uzairansar.hermex.core.model.WorkspaceRoot
 import com.uzairansar.hermex.data.repository.WorkspaceRepository
 import com.uzairansar.hermex.ui.theme.HermexCardShape
 import com.uzairansar.hermex.ui.theme.HermexIconButton
 import com.uzairansar.hermex.ui.theme.HermexPillButton
+import com.uzairansar.hermex.ui.theme.HermexSurfaceLevel
 import com.uzairansar.hermex.ui.theme.hermexGlass
 import com.uzairansar.hermex.ui.theme.hermexHairline
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @Composable
@@ -69,9 +84,7 @@ fun WorkspaceRoute(
     val context = LocalContext.current
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxSize(),
     ) {
         Column(
             modifier = Modifier
@@ -176,7 +189,12 @@ private fun WorkspaceHeader(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(bottom = 14.dp),
+            .padding(bottom = 14.dp)
+            .hermexGlass(
+                shape = HermexCardShape,
+                surfaceLevel = HermexSurfaceLevel.Floating,
+            )
+            .padding(horizontal = 4.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         HermexIconButton("Back", "‹", onBack)
@@ -258,15 +276,16 @@ private fun WorkspaceLocationHeader(
     }
 }
 
-private data class WorkspaceBreadcrumb(
+internal data class WorkspaceBreadcrumb(
     val title: String,
     val path: String?,
 )
 
-private fun String?.workspaceBreadcrumbs(): List<WorkspaceBreadcrumb> {
+internal fun String?.workspaceBreadcrumbs(): List<WorkspaceBreadcrumb> {
     val source = this.orEmpty()
     val raw = source.trim().trim('/', '\\')
     if (raw.isBlank()) return listOf(WorkspaceBreadcrumb("Root", null))
+    val isUnixAbsolute = source.trimStart().startsWith('/')
     val separator = if (source.contains('\\') && !source.contains('/')) "\\" else "/"
     val parts = raw.split('/', '\\').filter { it.isNotBlank() }
     if (parts.isEmpty()) return listOf(WorkspaceBreadcrumb("Root", null))
@@ -274,7 +293,10 @@ private fun String?.workspaceBreadcrumbs(): List<WorkspaceBreadcrumb> {
     parts.forEachIndexed { index, part ->
         crumbs += WorkspaceBreadcrumb(
             title = part,
-            path = parts.take(index + 1).joinToString(separator),
+            path = parts
+                .take(index + 1)
+                .joinToString(separator)
+                .let { joined -> if (isUnixAbsolute) "/$joined" else joined },
         )
     }
     return crumbs
@@ -364,6 +386,10 @@ private fun FilePreview(
     onClose: () -> Unit,
     onShare: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var isSavingImage by remember(binaryPreview?.path) { mutableStateOf(false) }
+    var saveImageMessage by remember(binaryPreview?.path) { mutableStateOf<String?>(null) }
     val displayPath = title ?: binaryPreview?.path ?: "Preview"
     val metadata = remember(content, textSizeBytes, textLineCount, binaryPreview) {
         previewMetadata(
@@ -373,6 +399,23 @@ private fun FilePreview(
             binaryPreview = binaryPreview,
         )
     }
+    val saveImage: () -> Unit = {
+        val image = binaryPreview
+        if (image?.isImage != true) {
+            saveImageMessage = "This file is not an image."
+        } else {
+            scope.launch {
+                isSavingImage = true
+                saveImageMessage = withContext(Dispatchers.IO) {
+                    saveWorkspaceImageToGallery(context, image)
+                }
+                isSavingImage = false
+            }
+        }
+    }
+    val legacyStoragePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) saveImage() else saveImageMessage = "Photos permission is required to save this image."
+    }
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -381,9 +424,37 @@ private fun FilePreview(
         ) {
             Text(title ?: "Preview", style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.MiddleEllipsis, modifier = Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (binaryPreview?.isImage == true) {
+                    HermexPillButton(
+                        if (isSavingImage) "Saving" else "Save",
+                        onClick = {
+                            if (
+                                Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                                ) != PackageManager.PERMISSION_GRANTED
+                            ) {
+                                legacyStoragePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            } else {
+                                saveImage()
+                            }
+                        },
+                        enabled = !isLoading && !isSavingImage,
+                        filled = true,
+                    )
+                }
                 HermexPillButton("Share", onShare, enabled = !isLoading && (content != null || binaryPreview != null))
                 HermexPillButton("Close", onClose)
             }
+        }
+        saveImageMessage?.let { message ->
+            Text(
+                message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
         }
         if (isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -512,6 +583,59 @@ private fun fileSizeText(bytes: Long): String =
         bytes < 1_000_000_000 -> String.format(java.util.Locale.US, "%.1f MB", bytes / 1_000_000.0)
         else -> String.format(java.util.Locale.US, "%.1f GB", bytes / 1_000_000_000.0)
     }
+
+private fun saveWorkspaceImageToGallery(
+    context: Context,
+    preview: BinaryPreview,
+): String {
+    val resolver = context.contentResolver
+    val fileName = preview.galleryFileName()
+    val values = ContentValues().apply {
+        put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+        put(MediaStore.MediaColumns.MIME_TYPE, preview.mimeType)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/Hermex")
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+    }
+    val uri = runCatching {
+        resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+    }.getOrNull() ?: return "Could not save image."
+
+    return try {
+        resolver.openOutputStream(uri)?.use { output -> output.write(preview.bytes) }
+            ?: error("Could not open gallery item.")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            values.clear()
+            values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+        }
+        "Image saved to gallery."
+    } catch (error: Throwable) {
+        runCatching { resolver.delete(uri, null, null) }
+        "Could not save image: ${error.localizedMessage ?: "Unknown error."}"
+    }
+}
+
+private fun BinaryPreview.galleryFileName(): String {
+    val rawName = path
+        .trimEnd('/', '\\')
+        .substringAfterLast('/')
+        .substringAfterLast('\\')
+        .ifBlank { "hermex-image" }
+    val safeName = rawName
+        .replace(Regex("[^A-Za-z0-9._-]+"), "_")
+        .trim('.', '_', '-')
+        .take(96)
+        .ifBlank { "hermex-image" }
+    if (safeName.substringAfterLast('.', missingDelimiterValue = "").isNotBlank()) return safeName
+    val extension = mimeType.substringAfter('/', missingDelimiterValue = "png")
+        .substringBefore(';')
+        .lowercase()
+        .takeIf { it.matches(Regex("[a-z0-9]{2,5}")) }
+        ?: "png"
+    return "$safeName.$extension"
+}
 
 private fun shareWorkspacePreview(
     context: Context,

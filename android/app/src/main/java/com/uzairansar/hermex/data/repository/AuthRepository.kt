@@ -141,16 +141,36 @@ class AuthRepository(
     companion object {
         fun normalizeServerUrl(input: String): okhttp3.HttpUrl {
             val trimmed = input.trim()
-            val withScheme = when {
-                trimmed.startsWith("http://") || trimmed.startsWith("https://") -> trimmed
-                else -> "https://$trimmed"
+            val withScheme = if (trimmed.contains("://")) {
+                trimmed
+            } else {
+                "${defaultScheme(trimmed)}://$trimmed"
             }
             val parsed = withScheme.toHttpUrl()
             return parsed.newBuilder()
+                .host(normalizedHost(parsed.host))
                 .encodedPath("/")
                 .encodedQuery(null)
                 .fragment(null)
                 .build()
+        }
+
+        private fun normalizedHost(host: String): String =
+            if (host.startsWith("www.webui.", ignoreCase = true)) host.drop(4) else host
+
+        private fun defaultScheme(schemalessServer: String): String {
+            val host = runCatching { "http://$schemalessServer".toHttpUrl().host.lowercase() }.getOrNull()
+            return if (host != null && shouldDefaultToPlainHttp(host)) "http" else "https"
+        }
+
+        private fun shouldDefaultToPlainHttp(host: String): Boolean {
+            if (host == "localhost" || host == "127.0.0.1") return true
+
+            val octets = host.split('.').mapNotNull(String::toIntOrNull)
+            return octets.size == 4 &&
+                octets.all { it in 0..255 } &&
+                octets[0] == 100 &&
+                octets[1] in 64..127
         }
     }
 }

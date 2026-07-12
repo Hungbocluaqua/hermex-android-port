@@ -25,11 +25,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shape
@@ -43,6 +44,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.uzairansar.hermex.R
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 
 object HermexColors {
     val Gold = Color(0xFFE8A030)
@@ -59,6 +65,58 @@ object HermexColors {
     val TertiarySystemDark = Color(0xFF2C2C2E)
     val SoftLineLight = Color(0x1F000000)
     val SoftLineDark = Color(0x2EFFFFFF)
+}
+
+enum class HermexSurfaceLevel {
+    Base,
+    Raised,
+    Floating,
+}
+
+@Immutable
+data class HermexSurfaceTokens(
+    val background: Color,
+    val base: Color,
+    val raised: Color,
+    val floating: Color,
+    val glassTint: Color,
+    val glassBorder: Color,
+    val glassShadow: Color,
+    val fallbackScrimAlpha: Float,
+)
+
+internal val LightHermexSurfaceTokens = HermexSurfaceTokens(
+    background = Color(0xFFF2F2F7),
+    base = Color(0xFFF2F2F7),
+    raised = Color(0xFFFAFAFC),
+    floating = Color(0xFFFFFFFF),
+    glassTint = Color(0x8AFFFFFF),
+    glassBorder = Color(0x1F000000),
+    glassShadow = Color(0x24000000),
+    fallbackScrimAlpha = 0.86f,
+)
+
+internal val DarkHermexSurfaceTokens = HermexSurfaceTokens(
+    background = Color.Black,
+    base = Color(0xFF08090A),
+    raised = Color(0xFF111214),
+    floating = Color(0xFF17191C),
+    glassTint = Color(0x16FFFFFF),
+    glassBorder = Color(0x2BFFFFFF),
+    glassShadow = Color(0xB3000000),
+    fallbackScrimAlpha = 0.80f,
+)
+
+val LocalHermexSurfaceTokens = staticCompositionLocalOf { DarkHermexSurfaceTokens }
+val LocalHermexHazeState = staticCompositionLocalOf<HazeState?> { null }
+
+object HermexGlassTokens {
+    val BaseBlurRadius: Dp = 18.dp
+    val RaisedBlurRadius: Dp = 21.dp
+    val FloatingBlurRadius: Dp = 24.dp
+    val ShadowElevation: Dp = 18.dp
+    val BorderWidth: Dp = 0.6.dp
+    const val NoiseFactor: Float = 0.06f
 }
 
 val HermexCardShape: RoundedCornerShape = RoundedCornerShape(12.dp)
@@ -106,53 +164,94 @@ fun HermesHeaderLogo(
 }
 
 @Composable
-fun hermexGlassBrush(): Brush {
-    val dark = isSystemInDarkTheme()
-    return if (dark) {
-        Brush.verticalGradient(
-            listOf(
-                Color.White.copy(alpha = 0.13f),
-                Color.White.copy(alpha = 0.07f),
-            ),
-        )
-    } else {
-        Brush.verticalGradient(
-            listOf(
-                Color.White.copy(alpha = 0.92f),
-                Color.White.copy(alpha = 0.72f),
-            ),
-        )
-    }
+fun hermexBackgroundColor(): Color = LocalHermexSurfaceTokens.current.background
+
+@Composable
+fun hermexSurfaceColor(level: HermexSurfaceLevel): Color =
+    LocalHermexSurfaceTokens.current.colorFor(level)
+
+@Composable
+fun Modifier.hermexHazeSource(
+    zIndex: Float = 0f,
+    key: Any? = null,
+): Modifier {
+    val state = LocalHermexHazeState.current ?: return this
+    return hazeSource(state = state, zIndex = zIndex, key = key)
 }
 
 @Composable
 fun Modifier.hermexGlass(
     shape: Shape = HermexGlassShape,
     castsShadow: Boolean = true,
+    surfaceLevel: HermexSurfaceLevel = if (castsShadow) HermexSurfaceLevel.Floating else HermexSurfaceLevel.Raised,
+    tintEnabled: Boolean = true,
 ): Modifier {
-    val dark = isSystemInDarkTheme()
-    val borderColor = if (dark) HermexColors.SoftLineDark else HermexColors.SoftLineLight
-    val shadowColor = Color.Black.copy(alpha = if (dark) 0.35f else 0.14f)
+    val state = LocalHermexHazeState.current
+    val tokens = LocalHermexSurfaceTokens.current
+    val surfaceColor = tokens.colorFor(surfaceLevel)
+    val glassTint = remember(tokens, surfaceLevel) {
+        tokens.glassTint.copy(
+            alpha = (tokens.glassTint.alpha * surfaceLevel.tintAlphaMultiplier).coerceAtMost(1f),
+        )
+    }
+    val hazeStyle = remember(tokens, surfaceLevel, tintEnabled, glassTint) {
+        HazeStyle(
+            backgroundColor = tokens.background,
+            tint = if (tintEnabled) HazeTint(glassTint) else HazeTint(Color.Transparent),
+            blurRadius = surfaceLevel.blurRadius,
+            noiseFactor = HermexGlassTokens.NoiseFactor,
+            fallbackTint = HazeTint(surfaceColor.copy(alpha = tokens.fallbackScrimAlpha)),
+        )
+    }
     val base = if (castsShadow) {
-        shadow(18.dp, shape, ambientColor = shadowColor, spotColor = shadowColor)
+        shadow(
+            elevation = HermexGlassTokens.ShadowElevation,
+            shape = shape,
+            ambientColor = tokens.glassShadow,
+            spotColor = tokens.glassShadow,
+        )
     } else {
         this
     }
-    return base
-        .clip(shape)
-        .background(hermexGlassBrush())
-        .border(0.6.dp, borderColor, shape)
+    val clipped = base.clip(shape)
+    val glass = if (state != null) {
+        clipped.hazeEffect(state = state, style = hazeStyle)
+    } else {
+        clipped
+            .background(surfaceColor.copy(alpha = tokens.fallbackScrimAlpha))
+            .then(if (tintEnabled) Modifier.background(glassTint) else Modifier)
+    }
+    return glass.border(HermexGlassTokens.BorderWidth, tokens.glassBorder, shape)
 }
 
 @Composable
 fun Modifier.hermexHairline(shape: Shape = HermexCardShape): Modifier {
-    val dark = isSystemInDarkTheme()
     return border(
-        width = 0.6.dp,
-        color = if (dark) HermexColors.SoftLineDark else HermexColors.SoftLineLight,
+        width = HermexGlassTokens.BorderWidth,
+        color = LocalHermexSurfaceTokens.current.glassBorder,
         shape = shape,
     )
 }
+
+private fun HermexSurfaceTokens.colorFor(level: HermexSurfaceLevel): Color = when (level) {
+    HermexSurfaceLevel.Base -> base
+    HermexSurfaceLevel.Raised -> raised
+    HermexSurfaceLevel.Floating -> floating
+}
+
+private val HermexSurfaceLevel.blurRadius: Dp
+    get() = when (this) {
+        HermexSurfaceLevel.Base -> HermexGlassTokens.BaseBlurRadius
+        HermexSurfaceLevel.Raised -> HermexGlassTokens.RaisedBlurRadius
+        HermexSurfaceLevel.Floating -> HermexGlassTokens.FloatingBlurRadius
+    }
+
+private val HermexSurfaceLevel.tintAlphaMultiplier: Float
+    get() = when (this) {
+        HermexSurfaceLevel.Base -> 0.82f
+        HermexSurfaceLevel.Raised -> 1f
+        HermexSurfaceLevel.Floating -> 1.22f
+    }
 
 @Composable
 fun hermexPrimaryActionContainerColor(

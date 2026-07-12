@@ -17,6 +17,52 @@ import org.junit.Test
 
 class AuthRepositoryTest {
     @Test
+    fun normalizeServerUrlDefaultsLocalAndTailscaleHostsToHttp() {
+        val cases = mapOf(
+            "localhost:8787/chat?draft=1#composer" to "http://localhost:8787/",
+            "127.0.0.1:3000" to "http://127.0.0.1:3000/",
+            "100.64.0.0:9119" to "http://100.64.0.0:9119/",
+            "100.96.12.34:9119" to "http://100.96.12.34:9119/",
+            "100.127.255.255:9119" to "http://100.127.255.255:9119/",
+        )
+
+        cases.forEach { (input, expected) ->
+            assertEquals(expected, AuthRepository.normalizeServerUrl(input).toString())
+        }
+    }
+
+    @Test
+    fun normalizeServerUrlDefaultsOtherSchemelessHostsToHttps() {
+        val cases = mapOf(
+            "example.test:9119" to "https://example.test:9119/",
+            "192.168.1.50:9119" to "https://192.168.1.50:9119/",
+            "100.63.255.255:9119" to "https://100.63.255.255:9119/",
+            "100.128.0.0:9119" to "https://100.128.0.0:9119/",
+        )
+
+        cases.forEach { (input, expected) ->
+            assertEquals(expected, AuthRepository.normalizeServerUrl(input).toString())
+        }
+    }
+
+    @Test
+    fun normalizeServerUrlPreservesExplicitSchemeAndDropsAccidentalWebuiWwwPrefix() {
+        val cases = mapOf(
+            "https://www.webui.example.test/chat?q=1#result" to "https://webui.example.test/",
+            "www.webui.example.test" to "https://webui.example.test/",
+            "HTTP://WWW.WEBUI.EXAMPLE.TEST:8080/path" to "http://webui.example.test:8080/",
+            "http://example.test/path" to "http://example.test/",
+            "https://localhost:8787/path" to "https://localhost:8787/",
+            "https://100.96.12.34:9119/path" to "https://100.96.12.34:9119/",
+            "https://www.example.com/path" to "https://www.example.com/",
+        )
+
+        cases.forEach { (input, expected) ->
+            assertEquals(expected, AuthRepository.normalizeServerUrl(input).toString())
+        }
+    }
+
+    @Test
     fun testConnectionUsesProbeHeadersWithoutRegisteringServer() = runBlocking {
         val server = MockWebServer()
         try {

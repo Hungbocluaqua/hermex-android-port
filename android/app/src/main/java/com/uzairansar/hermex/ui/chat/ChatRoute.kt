@@ -35,14 +35,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -51,6 +49,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -156,11 +155,13 @@ import com.uzairansar.hermex.ui.theme.HermexGlassShape
 import com.uzairansar.hermex.ui.theme.HermexIconButton
 import com.uzairansar.hermex.ui.theme.HermexPillButton
 import com.uzairansar.hermex.ui.theme.HermexSelectorPill
+import com.uzairansar.hermex.ui.theme.HermexSurfaceLevel
 import com.uzairansar.hermex.ui.theme.LocalHermexHapticsEnabled
 import com.uzairansar.hermex.ui.git.HermexGitDiffContent
 import com.uzairansar.hermex.ui.notifications.AndroidNotificationPermissionPolicy
 import com.uzairansar.hermex.ui.theme.hermexColorFromHex
 import com.uzairansar.hermex.ui.theme.hermexGlass
+import com.uzairansar.hermex.ui.theme.hermexHazeSource
 import com.uzairansar.hermex.ui.theme.hermexPrimaryActionContainerColor
 import com.uzairansar.hermex.ui.theme.hermexPrimaryActionContentColor
 import com.uzairansar.hermex.ui.theme.primaryActionTintApplies
@@ -338,9 +339,7 @@ fun ChatRoute(
     var turnDiffPresentation by remember { mutableStateOf<TurnDiffPresentation?>(null) }
     var autoVoiceConsumed by remember(sessionId, autoStartVoice) { mutableStateOf(false) }
     var composerHeight by remember { mutableStateOf(0.dp) }
-    val imeBottomInset = with(density) { WindowInsets.ime.getBottom(this).toDp() }
-    val navigationBottomInset = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
-    val transcriptBottomInset = composerHeight + maxOf(imeBottomInset, navigationBottomInset) + 28.dp
+    val transcriptBottomInset = composerHeight + 28.dp
 
     LaunchedEffect(state.showsReasoningControl) {
         if (!state.showsReasoningControl) {
@@ -519,14 +518,10 @@ fun ChatRoute(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxSize(),
     ) {
         Column(
-            Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
+            Modifier.fillMaxSize(),
         ) {
             ChatTopBar(
                 title = state.headerTitle,
@@ -587,7 +582,9 @@ fun ChatRoute(
                     }
                 }
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hermexHazeSource(key = "chat-transcript"),
                     contentPadding = PaddingValues(
                         start = 14.dp,
                         end = 14.dp,
@@ -739,8 +736,8 @@ fun ChatRoute(
                     Brush.verticalGradient(
                         listOf(
                             Color.Transparent,
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.92f),
-                            MaterialTheme.colorScheme.background,
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.72f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.96f),
                         ),
                     ),
                 )
@@ -759,6 +756,7 @@ fun ChatRoute(
                     onOpenProfilePicker = { showsProfilePicker = true },
                     onOpenReasoningPicker = { showsReasoningPicker = true },
                     onOpenWorkspacePicker = { showsWorkspacePicker = true },
+                    onLoadWorkspaceSuggestions = viewModel::loadWorkspaceSuggestions,
                     onAttach = { showsAttachmentOptions = true },
                     onVoice = {
                         if (state.isRecordingVoiceNote) {
@@ -1217,7 +1215,12 @@ private fun ChatTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .hermexGlass(
+                shape = RoundedCornerShape(24.dp),
+                surfaceLevel = HermexSurfaceLevel.Floating,
+            )
+            .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         HermexIconButton("Back", "\u2039", onBack)
@@ -1614,6 +1617,105 @@ private fun InlineNotice(
 }
 
 @Composable
+private fun SlashAutocompleteSurface(
+    result: SlashAutocompleteResult,
+    onSelect: (SlashAutocompleteSuggestion) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 280.dp)
+            .hermexGlass(
+                shape = RoundedCornerShape(16.dp),
+                surfaceLevel = HermexSurfaceLevel.Floating,
+            ),
+    ) {
+        if (result.suggestions.isEmpty()) {
+            Text(
+                text = result.emptyMessage ?: "No matching commands",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 280.dp),
+            ) {
+                itemsIndexed(
+                    items = result.suggestions,
+                    key = { _, suggestion -> suggestion.key },
+                ) { index, suggestion ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .clickable { onSelect(suggestion) }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = suggestion.label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                fontFamily = if (suggestion.kind == SlashAutocompleteSuggestionKind.Argument) {
+                                    FontFamily.Default
+                                } else {
+                                    FontFamily.Monospace
+                                },
+                                color = if (suggestion.isSelected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                            suggestion.argumentHint?.let { hint ->
+                                Text(
+                                    text = hint,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                        Text(
+                            text = if (suggestion.isSelected) "Current" else suggestion.detail,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (suggestion.isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 144.dp),
+                        )
+                    }
+                    if (index < result.suggestions.lastIndex) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ComposerSurface(
     state: ChatUiState,
     streamingSendBehavior: StreamingSendBehavior,
@@ -1626,6 +1728,7 @@ private fun ComposerSurface(
     onOpenProfilePicker: () -> Unit,
     onOpenReasoningPicker: () -> Unit,
     onOpenWorkspacePicker: () -> Unit,
+    onLoadWorkspaceSuggestions: (String) -> Unit,
     onAttach: () -> Unit,
     onVoice: () -> Unit,
     onCancelVoice: () -> Unit,
@@ -1637,11 +1740,35 @@ private fun ComposerSurface(
     onCompress: () -> Unit,
 ) {
     var previewAttachment by remember { mutableStateOf<UploadResponse?>(null) }
+    val slashAutocompleteContext = remember(
+        state.modelOptions,
+        state.profileOptions,
+        state.reasoningOptions,
+        state.workspaceRoots,
+        state.workspaceSuggestions,
+        state.skillSuggestions,
+        state.agentCommands,
+        state.selectedModel,
+        state.selectedProfile,
+        state.selectedReasoning,
+        state.selectedWorkspacePath,
+    ) {
+        state.slashAutocompleteContext()
+    }
+    val slashAutocompleteResult = remember(state.draft, slashAutocompleteContext) {
+        SlashAutocompletePolicy.evaluate(state.draft, slashAutocompleteContext)
+    }
+    val slashWorkspaceQuery = remember(state.draft) {
+        SlashAutocompletePolicy.workspaceArgumentQuery(state.draft)
+    }
+    LaunchedEffect(slashWorkspaceQuery) {
+        val query = slashWorkspaceQuery ?: return@LaunchedEffect
+        delay(160)
+        onLoadWorkspaceSuggestions(query)
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
-            .imePadding()
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
@@ -1653,10 +1780,19 @@ private fun ComposerSurface(
             )
             state.isTranscribingVoiceNote -> ComposerVoiceTranscribingStatus()
         }
+        if (slashAutocompleteResult.isVisible) {
+            SlashAutocompleteSurface(
+                result = slashAutocompleteResult,
+                onSelect = { suggestion -> onDraftChange(suggestion.replacement) },
+            )
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .hermexGlass(shape = HermexGlassShape),
+                .hermexGlass(
+                    shape = HermexGlassShape,
+                    surfaceLevel = HermexSurfaceLevel.Floating,
+                ),
         ) {
             if (state.pendingAttachments.isNotEmpty()) {
                 ComposerAttachmentStrip(
@@ -1807,8 +1943,11 @@ private fun ComposerVoiceRecordingStatus(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 2.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f), RoundedCornerShape(12.dp))
-            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+            .hermexGlass(
+                shape = RoundedCornerShape(12.dp),
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Raised,
+            )
             .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1844,8 +1983,11 @@ private fun ComposerVoiceTranscribingStatus() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 2.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f), RoundedCornerShape(12.dp))
-            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+            .hermexGlass(
+                shape = RoundedCornerShape(12.dp),
+                castsShadow = false,
+                surfaceLevel = HermexSurfaceLevel.Raised,
+            )
             .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -2738,18 +2880,24 @@ private fun PickerSheet(
     heightFraction: Float = 0.86f,
     content: @Composable () -> Unit,
 ) {
+    val sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         dragHandle = null,
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onBackground,
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        scrimColor = Color.Black.copy(alpha = 0.52f),
+        shape = sheetShape,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(heightFraction)
-                .navigationBarsPadding(),
+                .navigationBarsPadding()
+                .hermexGlass(
+                    shape = sheetShape,
+                    surfaceLevel = HermexSurfaceLevel.Floating,
+                ),
         ) {
             Box(
                 modifier = Modifier
@@ -3482,6 +3630,26 @@ private fun TranscriptMediaPreviewSheet(
     val bitmap = remember(bytes) {
         bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
     }
+    val saveImage: () -> Unit = {
+        val imageBytes = bytes
+        if (imageBytes == null) {
+            saveMessage = "Could not save image."
+        } else {
+            scope.launch {
+                isSaving = true
+                try {
+                    saveMessage = withContext(Dispatchers.IO) {
+                        saveTranscriptMediaImageToGallery(context, reference, imageBytes)
+                    }
+                } finally {
+                    isSaving = false
+                }
+            }
+        }
+    }
+    val legacyStoragePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) saveImage() else saveMessage = "Photos permission is required to save this image."
+    }
 
     PickerSheet(
         title = reference.displayName,
@@ -3513,13 +3681,16 @@ private fun TranscriptMediaPreviewSheet(
                         HermexPillButton(
                             label = if (isSaving) "Saving" else "Save",
                             onClick = {
-                                val imageBytes = bytes ?: return@HermexPillButton
-                                scope.launch {
-                                    isSaving = true
-                                    saveMessage = withContext(Dispatchers.IO) {
-                                        saveTranscriptMediaImageToGallery(context, reference, imageBytes)
-                                    }
-                                    isSaving = false
+                                if (
+                                    Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
+                                    ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                                    ) != PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    legacyStoragePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                                } else {
+                                    saveImage()
                                 }
                             },
                             enabled = !isSaving,
@@ -3555,7 +3726,7 @@ private fun saveTranscriptMediaImageToGallery(
     context: Context,
     reference: TranscriptMediaReference,
     bytes: ByteArray,
-): String {
+): String = runCatching {
     val resolver = context.contentResolver
     val fileName = reference.galleryFilename()
     val values = ContentValues().apply {
@@ -3567,9 +3738,8 @@ private fun saveTranscriptMediaImageToGallery(
         }
     }
     val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-        ?: return "Could not save image."
-
-    return try {
+        ?: error("Gallery did not create an image entry.")
+    try {
         resolver.openOutputStream(uri)?.use { output ->
             output.write(bytes)
         } ?: error("Could not open gallery item.")
@@ -3581,8 +3751,10 @@ private fun saveTranscriptMediaImageToGallery(
         "Image saved to gallery."
     } catch (error: Throwable) {
         runCatching { resolver.delete(uri, null, null) }
-        "Could not save image: ${error.localizedMessage ?: "Unknown error."}"
+        throw error
     }
+}.getOrElse { error ->
+    "Could not save image: ${error.localizedMessage ?: "Unknown error."}"
 }
 
 private fun TranscriptMediaReference.galleryFilename(): String {
@@ -5118,6 +5290,39 @@ private fun MessageAttachmentPreviewSheet(
         }
     }
 }
+
+private fun ChatUiState.slashAutocompleteContext(): SlashAutocompleteContext =
+    SlashAutocompleteContext(
+        modelIds = modelOptions.mapNotNull { model ->
+            model.id?.trim()?.takeIf { it.isNotEmpty() }
+                ?: model.name?.trim()?.takeIf { it.isNotEmpty() }
+                ?: model.label?.trim()?.takeIf { it.isNotEmpty() }
+        },
+        profileNames = profileOptions.mapNotNull { profile ->
+            profile.name?.trim()?.takeIf { it.isNotEmpty() }
+                ?: profile.displayName?.trim()?.takeIf { it.isNotEmpty() }
+        },
+        reasoningEfforts = reasoningOptions,
+        workspacePaths = buildList {
+            workspaceRoots.mapNotNullTo(this) { root -> root.path?.trim()?.takeIf { it.isNotEmpty() } }
+            workspaceSuggestions.mapNotNullTo(this) { path -> path.trim().takeIf { it.isNotEmpty() } }
+        },
+        skillSuggestions = skillSuggestions,
+        serverCommands = agentCommands.mapNotNull { command ->
+            command.displayName?.let { name ->
+                SlashServerCommand(
+                    name = name,
+                    description = command.displayDescription,
+                    argumentHint = command.displayArgsHint,
+                    isMobileVisible = command.isMobileVisible,
+                )
+            }
+        },
+        selectedModelId = selectedModel?.id ?: selectedModel?.name ?: selectedModel?.label,
+        selectedProfileName = selectedProfile?.name ?: selectedProfile?.displayName,
+        selectedReasoningEffort = selectedReasoning,
+        selectedWorkspacePath = selectedWorkspacePath,
+    )
 
 private val ModelSummary.displayTitle: String
     get() = label?.takeIf { it.isNotBlank() }

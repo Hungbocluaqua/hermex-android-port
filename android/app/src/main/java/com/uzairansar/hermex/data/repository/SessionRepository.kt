@@ -48,8 +48,9 @@ class SessionRepository(
     }
 
     suspend fun loadProjects(): List<ProjectSummary> = client.projects().projects.orEmpty()
-    suspend fun createProject(name: String): ProjectSummary? = client.createProject(name).project
-    suspend fun renameProject(projectId: String, name: String): ProjectSummary? = client.renameProject(projectId, name).project
+    suspend fun createProject(name: String, color: String?): ProjectSummary? = client.createProject(name, color).project
+    suspend fun renameProject(projectId: String, name: String, color: String?): ProjectSummary? =
+        client.renameProject(projectId, name, color).project
     suspend fun deleteProject(projectId: String) = client.deleteProject(projectId)
 
     suspend fun createSession(profile: String? = null): SessionSummary? =

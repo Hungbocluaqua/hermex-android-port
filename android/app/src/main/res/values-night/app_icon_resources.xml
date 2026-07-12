@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="hermex_app_icon_default" type="drawable">@drawable/hermex_app_icon</item>
+</resources>

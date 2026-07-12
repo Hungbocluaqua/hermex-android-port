@@ -78,12 +78,14 @@ data class UpdateSessionRequest(
 @Serializable
 data class CreateProjectRequest(
     val name: String,
+    val color: String?,
 )
 
 @Serializable
 data class RenameProjectRequest(
     @SerialName("project_id") val projectId: String,
     val name: String,
+    val color: String?,
 )
 
 @Serializable

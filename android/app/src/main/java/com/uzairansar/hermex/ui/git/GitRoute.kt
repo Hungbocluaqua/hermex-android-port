@@ -41,6 +41,7 @@ import com.uzairansar.hermex.data.repository.GitRepository
 import com.uzairansar.hermex.ui.theme.HermexCardShape
 import com.uzairansar.hermex.ui.theme.HermexIconButton
 import com.uzairansar.hermex.ui.theme.HermexPillButton
+import com.uzairansar.hermex.ui.theme.HermexSurfaceLevel
 import com.uzairansar.hermex.ui.theme.hermexGlass
 import com.uzairansar.hermex.ui.theme.hermexHairline
 
@@ -59,9 +60,7 @@ fun GitRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxSize(),
     ) {
         Column(
             modifier = Modifier
@@ -173,7 +172,12 @@ private fun GitHeader(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(bottom = 14.dp),
+            .padding(bottom = 14.dp)
+            .hermexGlass(
+                shape = HermexCardShape,
+                surfaceLevel = HermexSurfaceLevel.Floating,
+            )
+            .padding(horizontal = 4.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         HermexIconButton("Back", "‹", onBack)

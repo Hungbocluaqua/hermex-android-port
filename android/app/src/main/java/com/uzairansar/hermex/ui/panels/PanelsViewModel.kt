@@ -12,6 +12,9 @@ import com.uzairansar.hermex.core.model.SessionSummary
 import com.uzairansar.hermex.core.model.SkillContentResponse
 import com.uzairansar.hermex.core.model.SkillSummary
 import com.uzairansar.hermex.data.repository.PanelsRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -76,6 +79,7 @@ data class PanelsUiState(
     val insightSessions: List<SessionSummary> = emptyList(),
     val insightsDataSource: InsightsDataSource = InsightsDataSource.Local,
     val insightsFallbackReason: String? = null,
+    val refreshErrors: Map<String, String> = emptyMap(),
     val notice: String? = null,
     val error: String? = null,
 )
@@ -85,59 +89,163 @@ class PanelsViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(PanelsUiState())
     val state: StateFlow<PanelsUiState> = _state
+    private var refreshJob: Job? = null
+    private var refreshGeneration: Long = 0
 
     init {
         refresh()
     }
 
     fun refresh(clearNotice: Boolean = true) {
-        viewModelScope.launch {
-            val section = _state.value.memorySection
-            val skillSearchText = _state.value.skillSearchText
-            val selectedInsightsTimeframe = _state.value.selectedInsightsTimeframe
-            val selectedCronDetailId = _state.value.selectedCronDetail?.stableId
-            val selectedCronOutput = _state.value.selectedCronOutput
-            _state.update { it.copy(isLoading = true, error = null, notice = if (clearNotice) null else it.notice) }
-            runCatching {
-                val memory = repository.memory()
-                val crons = repository.crons()
-                val runningCrons = runCatching { repository.cronStatus().runningJobDurations }.getOrDefault(emptyMap())
-                val sortedCrons = crons.sortedForTasks(runningCrons)
-                val insightsResult = runCatching { repository.insights(selectedInsightsTimeframe.serverDays) }
-                val insights = insightsResult.getOrNull()
-                val fallbackSessionsResult = if (insights == null) {
-                    runCatching { repository.sessions() }
-                } else {
-                    null
-                }
-                PanelsUiState(
-                    isLoading = false,
-                    crons = sortedCrons,
-                    runningCrons = runningCrons,
-                    selectedCronDetail = sortedCrons.firstOrNull { it.stableId == selectedCronDetailId },
-                    selectedCronOutput = selectedCronOutput,
-                    skills = repository.skills(),
-                    skillSearchText = skillSearchText,
-                    memory = memory,
-                    memorySection = section,
-                    memoryDraft = memory.sectionText(section),
-                    editingMemorySection = _state.value.editingMemorySection,
-                    insights = insights,
-                    selectedInsightsTimeframe = selectedInsightsTimeframe,
-                    insightSessions = fallbackSessionsResult?.getOrNull().orEmpty(),
-                    insightsDataSource = when {
-                        insights != null -> InsightsDataSource.Server
-                        fallbackSessionsResult?.isSuccess == true -> InsightsDataSource.LocalFallback
-                        else -> InsightsDataSource.Local
-                    },
-                    insightsFallbackReason = insightsResult.exceptionOrNull()?.message,
-                    notice = if (clearNotice) null else _state.value.notice,
+        refreshJob?.cancel()
+        val generation = ++refreshGeneration
+        refreshJob = viewModelScope.launch {
+            val snapshot = _state.value
+            val selectedInsightsTimeframe = snapshot.selectedInsightsTimeframe
+            _state.update {
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    refreshErrors = emptyMap(),
+                    notice = if (clearNotice) null else it.notice,
                 )
-            }.onSuccess { loaded ->
-                _state.value = loaded
-            }.onFailure { error ->
-                _state.update { it.copy(isLoading = false, error = error.message ?: "Could not load panels.") }
             }
+            try {
+                coroutineScope {
+                    launch {
+                        try {
+                            val memory = repository.memory()
+                            if (refreshGeneration != generation) return@launch
+                            _state.update { state ->
+                                val currentSection = state.memorySection
+                                state.copy(
+                                    memory = memory,
+                                    memoryDraft = if (state.editingMemorySection != null) {
+                                        state.memoryDraft
+                                    } else {
+                                        memory.sectionText(currentSection)
+                                    },
+                                    refreshErrors = state.refreshErrors - "Memory",
+                                )
+                            }
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (error: Throwable) {
+                            recordRefreshError("Memory", error, "Could not load memory.", generation)
+                        }
+                    }
+                    launch {
+                        try {
+                            val crons = repository.crons()
+                            if (refreshGeneration != generation) return@launch
+                            _state.update { state ->
+                                val sorted = crons.sortedForTasks(state.runningCrons)
+                                val currentDetailId = state.selectedCronDetail?.stableId
+                                state.copy(
+                                    crons = sorted,
+                                    selectedCronDetail = currentDetailId?.let { id ->
+                                        sorted.firstOrNull { it.stableId == id }
+                                    },
+                                    refreshErrors = state.refreshErrors - "Tasks",
+                                )
+                            }
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (error: Throwable) {
+                            recordRefreshError("Tasks", error, "Could not load tasks.", generation)
+                        }
+                    }
+                    launch {
+                        try {
+                            val runningCrons = repository.cronStatus().runningJobDurations
+                            if (refreshGeneration != generation) return@launch
+                            _state.update { state ->
+                                val sorted = state.crons.sortedForTasks(runningCrons)
+                                val currentDetailId = state.selectedCronDetail?.stableId
+                                state.copy(
+                                    crons = sorted,
+                                    runningCrons = runningCrons,
+                                    selectedCronDetail = currentDetailId?.let { id ->
+                                        sorted.firstOrNull { it.stableId == id }
+                                    },
+                                    refreshErrors = state.refreshErrors - "Task status",
+                                )
+                            }
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (error: Throwable) {
+                            recordRefreshError("Task status", error, "Could not load running task status.", generation)
+                        }
+                    }
+                    launch {
+                        try {
+                            val skills = repository.skills()
+                            if (refreshGeneration != generation) return@launch
+                            _state.update { it.copy(skills = skills, refreshErrors = it.refreshErrors - "Skills") }
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (error: Throwable) {
+                            recordRefreshError("Skills", error, "Could not load skills.", generation)
+                        }
+                    }
+                    launch {
+                        try {
+                            val insights = repository.insights(selectedInsightsTimeframe.serverDays)
+                            if (refreshGeneration != generation) return@launch
+                            _state.update {
+                                it.copy(
+                                    insights = insights,
+                                    selectedInsightsTimeframe = selectedInsightsTimeframe,
+                                    insightSessions = emptyList(),
+                                    insightsDataSource = InsightsDataSource.Server,
+                                    insightsFallbackReason = null,
+                                    refreshErrors = it.refreshErrors - "Insights",
+                                )
+                            }
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (insightsError: Throwable) {
+                            try {
+                                val sessions = repository.sessions()
+                                if (refreshGeneration != generation) return@launch
+                                _state.update {
+                                    it.copy(
+                                        insights = null,
+                                        selectedInsightsTimeframe = selectedInsightsTimeframe,
+                                        insightSessions = sessions,
+                                        insightsDataSource = InsightsDataSource.LocalFallback,
+                                        insightsFallbackReason = insightsError.message,
+                                        refreshErrors = it.refreshErrors - "Insights",
+                                    )
+                                }
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (fallbackError: Throwable) {
+                                recordRefreshError("Insights", fallbackError, "Could not load insights.", generation)
+                                if (refreshGeneration == generation) {
+                                    _state.update { it.copy(insightsFallbackReason = insightsError.message) }
+                                }
+                            }
+                        }
+                    }
+                }
+            } finally {
+                if (refreshGeneration == generation) {
+                    _state.update { it.copy(isLoading = false) }
+                }
+            }
+        }
+    }
+
+    private fun recordRefreshError(
+        section: String,
+        error: Throwable,
+        fallback: String,
+        generation: Long,
+    ) {
+        if (refreshGeneration != generation) return
+        _state.update {
+            it.copy(refreshErrors = it.refreshErrors + (section to (error.message ?: fallback)))
         }
     }
 

@@ -9,7 +9,9 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +29,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -44,12 +47,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -71,8 +78,10 @@ import com.uzairansar.hermex.data.repository.CacheMaintenanceRepository
 import com.uzairansar.hermex.data.repository.PanelsRepository
 import com.uzairansar.hermex.data.secure.ServerAccount
 import com.uzairansar.hermex.ui.theme.HermexCardShape
+import com.uzairansar.hermex.ui.theme.HermexGlassShape
 import com.uzairansar.hermex.ui.theme.HermexIconButton
 import com.uzairansar.hermex.ui.theme.HermexPillButton
+import com.uzairansar.hermex.ui.theme.HermexSurfaceLevel
 import com.uzairansar.hermex.ui.theme.hermexGlass
 import com.uzairansar.hermex.ui.notifications.AndroidNotificationPermissionPolicy
 
@@ -100,30 +109,47 @@ fun SettingsRoute(
     val loggedIn = authState as? AuthState.LoggedIn
     val context = LocalContext.current
     val appInfo = remember(context) { context.currentAndroidAppInfo() }
+    val appIconManager = remember(context) { AppIconManager(context) }
+    var selectedAppIcon by remember(appIconManager) {
+        mutableStateOf(runCatching(appIconManager::currentChoice).getOrDefault(AppIconChoice.Default))
+    }
+    var isAppIconPickerExpanded by remember { mutableStateOf(false) }
+    var appIconErrorMessage by remember { mutableStateOf<String?>(null) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         viewModel.handleResponseCompletionNotificationPermissionResult(granted)
     }
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    DisposableEffect(lifecycleOwner, context, viewModel) {
+    DisposableEffect(lifecycleOwner, context, viewModel, appIconManager) {
         fun refreshNotificationPermission() {
             viewModel.refreshResponseCompletionNotificationPermission(
                 canPostNotifications = canPostAndroidNotifications(context),
             )
         }
 
+        fun refreshAppIcon() {
+            appIconManager.ensureValidSelection()
+                .onSuccess {
+                    selectedAppIcon = it
+                    appIconErrorMessage = null
+                }
+                .onFailure { appIconErrorMessage = it.message ?: "Unable to read the launcher icon." }
+        }
+
         refreshNotificationPermission()
+        refreshAppIcon()
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) refreshNotificationPermission()
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshNotificationPermission()
+                refreshAppIcon()
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxSize(),
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().testTag("settings_list"),
@@ -140,14 +166,16 @@ fun SettingsRoute(
             }
             item {
                 SettingsSection(title = "Identity") {
-                    DetailLine("Display Name", loggedIn?.account?.displayName ?: "Hermex")
-                    DetailLine("Initials", loggedIn?.account?.initials ?: "HX")
-                    DetailLine("Header Color", loggedIn?.account?.headerLogoColorHex ?: "#7DD3FC")
+                    IdentitySummary(
+                        displayName = loggedIn?.account?.displayName ?: "Hermex",
+                        initials = loggedIn?.account?.initials ?: "HX",
+                        headerColorHex = loggedIn?.account?.headerLogoColorHex ?: "#7DD3FC",
+                    )
                 }
             }
             item {
                 SettingsSection(title = "Appearance") {
-                    DetailLine("Theme", state.themeMode.label)
+                    SettingsInfoRow("Theme", state.themeMode.label)
                     Spacer(Modifier.height(9.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -171,6 +199,27 @@ fun SettingsRoute(
                         "Apply your header color to these primary buttons.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.secondary,
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    AppIconSettingsPicker(
+                        selected = selectedAppIcon,
+                        isExpanded = isAppIconPickerExpanded,
+                        errorMessage = appIconErrorMessage,
+                        onToggleExpanded = { isAppIconPickerExpanded = !isAppIconPickerExpanded },
+                        onSelect = { choice ->
+                            appIconErrorMessage = null
+                            appIconManager.setChoice(choice)
+                                .onSuccess {
+                                    selectedAppIcon = it
+                                    isAppIconPickerExpanded = false
+                                }
+                                .onFailure { error ->
+                                    selectedAppIcon = runCatching(appIconManager::currentChoice)
+                                        .getOrDefault(AppIconChoice.Default)
+                                    appIconErrorMessage = error.message ?: "Unable to update the launcher icon."
+                                    isAppIconPickerExpanded = true
+                                }
+                        },
                     )
                 }
             }
@@ -456,17 +505,28 @@ fun SettingsRoute(
 
 @Composable
 private fun SettingsHeader(onBack: () -> Unit) {
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding(),
-        verticalAlignment = Alignment.CenterVertically,
+            .statusBarsPadding()
+            .hermexGlass(
+                shape = HermexCardShape,
+                surfaceLevel = HermexSurfaceLevel.Floating,
+            )
+            .padding(horizontal = 4.dp, vertical = 3.dp),
     ) {
-        HermexIconButton("Back", "‹", onBack)
-        Column(Modifier.padding(start = 12.dp)) {
-            Text("Settings", style = MaterialTheme.typography.headlineMedium)
-            Text("Hermes Control Center", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-        }
+        HermexIconButton(
+            label = "Back",
+            symbol = "<",
+            onClick = onBack,
+            modifier = Modifier.align(Alignment.CenterStart),
+        )
+        Text(
+            "Settings",
+            modifier = Modifier.align(Alignment.Center),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 
@@ -476,16 +536,35 @@ private fun SettingsSection(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .hermexGlass(shape = HermexCardShape, castsShadow = false)
-            .padding(12.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(8.dp))
-        content()
+        Text(
+            text = title.uppercase(),
+            modifier = Modifier.padding(start = 8.dp, bottom = 7.dp),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.secondary,
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .hermexGlass(
+                    shape = HermexCardShape,
+                    castsShadow = false,
+                    surfaceLevel = HermexSurfaceLevel.Base,
+                )
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            content = content,
+        )
     }
 }
+
+@Composable
+private fun Modifier.settingsDialogChrome(): Modifier = hermexGlass(
+    shape = HermexGlassShape,
+    surfaceLevel = HermexSurfaceLevel.Floating,
+    tintEnabled = false,
+)
 
 @Composable
 private fun ServerAccountRow(
@@ -534,6 +613,132 @@ private fun ServerAccountRow(
             HermexPillButton("Forget", onForget)
         }
     }
+}
+
+@Composable
+private fun IdentitySummary(
+    displayName: String,
+    initials: String,
+    headerColorHex: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ServerAvatar(
+            initials = displayInitials(displayName, initials, displayName),
+            colorHex = headerColorHex,
+            modifier = Modifier.size(48.dp),
+        )
+        Column(Modifier.weight(1f)) {
+            Text("Sessions Avatar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                "Used throughout this server's sessions.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+        }
+    }
+    SettingsInfoRow("Display Name", displayName)
+    SettingsInfoRow("Initials", initials.ifBlank { "HX" })
+    SettingsInfoRow("Header Color", headerColorHex)
+}
+
+@Composable
+private fun AppIconSettingsPicker(
+    selected: AppIconChoice,
+    isExpanded: Boolean,
+    errorMessage: String?,
+    onToggleExpanded: () -> Unit,
+    onSelect: (AppIconChoice) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggleExpanded)
+            .padding(vertical = 5.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AppIconPreview(selected)
+        Column(Modifier.weight(1f)) {
+            Text("App Icon", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Text(selected.title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+        }
+        Text(
+            text = if (isExpanded) "Hide" else "Choose",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+
+    if (isExpanded) {
+        Spacer(Modifier.height(8.dp))
+        AppIconChoice.entries.forEach { choice ->
+            AppIconChoiceRow(
+                choice = choice,
+                isSelected = choice == selected,
+                onClick = { onSelect(choice) },
+            )
+        }
+    }
+
+    errorMessage?.let {
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = it,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+}
+
+@Composable
+private fun AppIconChoiceRow(
+    choice: AppIconChoice,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 7.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AppIconPreview(choice)
+        Column(Modifier.weight(1f)) {
+            Text(choice.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                choice.subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+        }
+        Text(
+            text = if (isSelected) "Selected" else "",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.tertiary,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun AppIconPreview(choice: AppIconChoice) {
+    val shape = RoundedCornerShape(12.dp)
+    Image(
+        painter = painterResource(choice.previewDrawableRes),
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        modifier = Modifier
+            .size(44.dp)
+            .clip(shape)
+            .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), shape),
+    )
 }
 
 @Composable
@@ -623,6 +828,7 @@ private fun SettingsInfoRow(label: String, value: String) {
             modifier = Modifier.padding(start = 12.dp).weight(1f),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.secondary,
+            textAlign = TextAlign.End,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -649,6 +855,7 @@ private fun SettingsActionRow(
             modifier = Modifier.padding(start = 12.dp).weight(1f),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.End,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -709,6 +916,9 @@ private fun SettingsDialogs(
 
     if (state.confirmServerUpdate) {
         AlertDialog(
+            modifier = Modifier.settingsDialogChrome(),
+            shape = HermexGlassShape,
+            containerColor = Color.Transparent,
             onDismissRequest = viewModel::cancelServerUpdate,
             title = { Text("Update server?") },
             text = { Text("This pulls the latest Hermes server version and restarts it. Active chats may be interrupted briefly; the app reconnects when the server is back.") },
@@ -720,6 +930,9 @@ private fun SettingsDialogs(
     if (state.showForcedUpdateCheckResult) {
         val outcome = state.forcedUpdateCheckOutcome
         AlertDialog(
+            modifier = Modifier.settingsDialogChrome(),
+            shape = HermexGlassShape,
+            containerColor = Color.Transparent,
             onDismissRequest = viewModel::dismissForcedUpdateCheckResult,
             title = { Text(forcedUpdateTitle(outcome)) },
             text = { Text(forcedUpdateMessage(outcome)) },
@@ -782,6 +995,9 @@ private fun SettingsDialogs(
 
     state.clearCacheServer?.let { server ->
         AlertDialog(
+            modifier = Modifier.settingsDialogChrome(),
+            shape = HermexGlassShape,
+            containerColor = Color.Transparent,
             onDismissRequest = viewModel::cancelClearCache,
             title = { Text("Clear Offline Cache?") },
             text = { Text("Remove cached sessions and messages for ${server.displayName}. Server data is not changed.") },
@@ -796,6 +1012,9 @@ private fun SettingsDialogs(
 
     state.forgetServer?.let { server ->
         AlertDialog(
+            modifier = Modifier.settingsDialogChrome(),
+            shape = HermexGlassShape,
+            containerColor = Color.Transparent,
             onDismissRequest = viewModel::cancelForgetServer,
             title = { Text("Forget Server?") },
             text = { Text("Remove ${server.displayName}, its encrypted headers, cookies, offline cache, and saved registry entry. Sign in again to add it back.") },
@@ -826,6 +1045,9 @@ private fun DefaultModelPickerDialog(
     }
 
     AlertDialog(
+        modifier = Modifier.settingsDialogChrome(),
+        shape = HermexGlassShape,
+        containerColor = Color.Transparent,
         onDismissRequest = onDismiss,
         title = { Text("Default Model") },
         text = {
@@ -997,6 +1219,9 @@ private fun DefaultProfilePickerDialog(
     }
 
     AlertDialog(
+        modifier = Modifier.settingsDialogChrome(),
+        shape = HermexGlassShape,
+        containerColor = Color.Transparent,
         onDismissRequest = onDismiss,
         title = { Text("Default Profile") },
         text = {
@@ -1086,6 +1311,9 @@ private fun CreateProfileDialog(
     val canCreate = ProfileNameRules.isValid(normalizedName) && !invalidBaseUrl && !state.isCreatingProfile
 
     AlertDialog(
+        modifier = Modifier.settingsDialogChrome(),
+        shape = HermexGlassShape,
+        containerColor = Color.Transparent,
         onDismissRequest = onDismiss,
         title = { Text("New Profile") },
         text = {
@@ -1172,6 +1400,9 @@ private fun IdentityEditorDialog(
     onSave: () -> Unit,
 ) {
     AlertDialog(
+        modifier = Modifier.settingsDialogChrome(),
+        shape = HermexGlassShape,
+        containerColor = Color.Transparent,
         onDismissRequest = onDismiss,
         title = { Text("Server Identity") },
         text = {
@@ -1200,6 +1431,9 @@ private fun HeaderEditorDialog(
     onSave: () -> Unit,
 ) {
     AlertDialog(
+        modifier = Modifier.settingsDialogChrome(),
+        shape = HermexGlassShape,
+        containerColor = Color.Transparent,
         onDismissRequest = onDismiss,
         title = { Text("Custom Headers") },
         text = {
@@ -1243,6 +1477,9 @@ private fun AddServerDialog(
     onSubmit: () -> Unit,
 ) {
     AlertDialog(
+        modifier = Modifier.settingsDialogChrome(),
+        shape = HermexGlassShape,
+        containerColor = Color.Transparent,
         onDismissRequest = onDismiss,
         title = { Text("Add Server") },
         text = {

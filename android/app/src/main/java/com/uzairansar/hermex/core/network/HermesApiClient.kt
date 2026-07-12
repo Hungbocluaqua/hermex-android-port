@@ -3,6 +3,7 @@ package com.uzairansar.hermex.core.network
 import com.uzairansar.hermex.core.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.CookieJar
@@ -25,6 +26,8 @@ class HermesApiClient(
     private val customHeaders: () -> List<CustomHeader> = { emptyList() },
 ) {
     private val jsonMediaType = "application/json".toMediaType()
+    @OptIn(ExperimentalSerializationApi::class)
+    private val projectMutationJson = Json(json) { explicitNulls = true }
     private val client: OkHttpClient = client.newBuilder()
         .addNetworkInterceptor(SameOriginCustomHeaderInterceptor(baseUrl, customHeaders))
         .build()
@@ -87,8 +90,10 @@ class HermesApiClient(
         modelProvider: String? = null,
     ): SessionResponse = post(Endpoint.UpdateSession, UpdateSessionRequest(sessionId, workspace, model, modelProvider))
     suspend fun projects(): ProjectsResponse = get(Endpoint.Projects)
-    suspend fun createProject(name: String): ProjectMutationResponse = post(Endpoint.CreateProject, CreateProjectRequest(name))
-    suspend fun renameProject(projectId: String, name: String): ProjectMutationResponse = post(Endpoint.RenameProject, RenameProjectRequest(projectId, name))
+    suspend fun createProject(name: String, color: String?): ProjectMutationResponse =
+        post(Endpoint.CreateProject, CreateProjectRequest(name, color), bodyJson = projectMutationJson)
+    suspend fun renameProject(projectId: String, name: String, color: String?): ProjectMutationResponse =
+        post(Endpoint.RenameProject, RenameProjectRequest(projectId, name, color), bodyJson = projectMutationJson)
     suspend fun deleteProject(projectId: String): ProjectMutationResponse = post(Endpoint.DeleteProject, DeleteProjectRequest(projectId))
     suspend fun chatStart(request: ChatStartRequest): ChatStartResponse = post(Endpoint.ChatStart, request)
     suspend fun chatCancel(streamId: String): SessionMutationResponse = get(Endpoint.ChatCancel(streamId))
@@ -291,7 +296,8 @@ class HermesApiClient(
         endpoint: Endpoint,
         body: Body,
         timeoutSeconds: Long? = null,
-    ): Response = request(endpoint, "POST", json.encodeToString(body).toRequestBody(jsonMediaType), timeoutSeconds)
+        bodyJson: Json = json,
+    ): Response = request(endpoint, "POST", bodyJson.encodeToString(body).toRequestBody(jsonMediaType), timeoutSeconds)
 
     private suspend inline fun <reified Response : Any> request(
         endpoint: Endpoint,

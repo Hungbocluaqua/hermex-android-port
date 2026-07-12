@@ -40,6 +40,7 @@ import com.uzairansar.hermex.data.repository.ChatRepository
 import com.uzairansar.hermex.data.repository.ResultState
 import com.uzairansar.hermex.data.share.SharedAttachment
 import com.uzairansar.hermex.data.share.SharedDraft
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -66,6 +67,7 @@ private data class ComposerConfig(
     val profiles: ProfilesResponse,
     val reasoning: ReasoningResponse,
     val workspaces: WorkspacesResponse,
+    val skillSuggestions: List<SlashSkillSuggestion>,
     val agentCommands: List<AgentCommand>,
 )
 
@@ -90,6 +92,7 @@ data class ChatUiState(
     val supportsReasoningEffort: Boolean? = null,
     val workspaceRoots: List<WorkspaceRoot> = emptyList(),
     val workspaceSuggestions: List<String> = emptyList(),
+    val skillSuggestions: List<SlashSkillSuggestion> = emptyList(),
     val selectedModel: ModelSummary? = null,
     val selectedProfile: ProfileSummary? = null,
     val activeProfileName: String? = null,
@@ -161,6 +164,8 @@ class ChatViewModel(
     private var btwJob: Job? = null
     private var backgroundPollJob: Job? = null
     private var pendingPromptJob: Job? = null
+    private var workspaceSuggestionsJob: Job? = null
+    private var workspaceSuggestionsGeneration = 0L
     private val backgroundPromptsByTaskId = mutableMapOf<String, String>()
     private val queuedSlashMessages = ArrayDeque<QueuedDraft>()
     private var isDrainingQueuedSlashMessage = false
@@ -182,6 +187,7 @@ class ChatViewModel(
         btwJob?.cancel()
         backgroundPollJob?.cancel()
         pendingPromptJob?.cancel()
+        workspaceSuggestionsJob?.cancel()
         super.onCleared()
     }
 
@@ -309,8 +315,26 @@ class ChatViewModel(
                 val selectedModel = models.firstOrNull()
                 val reasoning = repository.reasoning(selectedModel)
                 val workspaces = repository.workspaces()
+                val skills = try {
+                    repository.skills()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Throwable) {
+                    emptyList()
+                }
                 val commands = runCatching { repository.commands() }.getOrDefault(emptyList())
-                ComposerConfig(models, profiles, reasoning, workspaces, commands)
+                val skillSuggestions = SlashSkillFormatter.suggestions(
+                    skills.map { skill ->
+                        SlashSkillDefinition(
+                            name = skill.name,
+                            category = skill.category,
+                            description = skill.description,
+                            enabled = skill.enabled,
+                            disabled = skill.disabled,
+                        )
+                    },
+                )
+                ComposerConfig(models, profiles, reasoning, workspaces, skillSuggestions, commands)
             }.onSuccess { config ->
                 val workspaceRoots = config.workspaces.normalizedRoots
                 val supportedReasoningEfforts = config.reasoning.normalizedSupportedEfforts
@@ -329,6 +353,7 @@ class ChatViewModel(
                         supportsReasoningEffort = config.reasoning.supportsReasoningEffort,
                         workspaceRoots = workspaceRoots,
                         workspaceSuggestions = workspaceRoots.mapNotNull { root -> root.path },
+                        skillSuggestions = config.skillSuggestions,
                         selectedModel = when {
                             it.pendingExplicitModelPick -> it.selectedModel ?: sessionModelSelection ?: config.models.firstOrNull()
                             sessionModelSelection != null -> sessionModelSelection
@@ -549,14 +574,27 @@ class ChatViewModel(
 
     fun loadWorkspaceSuggestions(prefix: String) {
         val query = prefix.trim()
-        viewModelScope.launch {
+        val generation = ++workspaceSuggestionsGeneration
+        workspaceSuggestionsJob?.cancel()
+        workspaceSuggestionsJob = viewModelScope.launch {
             if (query.isBlank()) {
-                _state.update { state -> state.copy(workspaceSuggestions = state.workspaceRoots.mapNotNull { it.path }) }
+                if (generation == workspaceSuggestionsGeneration) {
+                    _state.update { state -> state.copy(workspaceSuggestions = state.workspaceRoots.mapNotNull { it.path }) }
+                }
                 return@launch
             }
-            runCatching { repository.workspaceSuggestions(query) }
-                .onSuccess { suggestions -> _state.update { it.copy(workspaceSuggestions = suggestions) } }
-                .onFailure { error -> _state.update { it.copy(error = error.message ?: "Could not load workspace suggestions.") } }
+            try {
+                val suggestions = repository.workspaceSuggestions(query)
+                if (generation == workspaceSuggestionsGeneration) {
+                    _state.update { it.copy(workspaceSuggestions = suggestions) }
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                if (generation == workspaceSuggestionsGeneration) {
+                    _state.update { it.copy(error = error.message ?: "Could not load workspace suggestions.") }
+                }
+            }
         }
     }
 
@@ -1164,6 +1202,12 @@ class ChatViewModel(
         val withoutSlash = text.drop(1).trimStart()
         val command = withoutSlash.substringBefore(' ').lowercase()
         val args = withoutSlash.substringAfter(' ', "").trim()
+        if (
+            command !in BUILTIN_SLASH_COMMAND_NAMES &&
+            SlashSkillFormatter.skill(command, snapshot.skillSuggestions) != null
+        ) {
+            return false
+        }
         when (command) {
             "help" -> {
                 _state.update { it.copy(draft = "", notice = null, error = null) }
@@ -2271,11 +2315,17 @@ class ChatViewModel(
         val name = context.displayName(uri) ?: "attachment-${System.currentTimeMillis()}"
         val safeName = name.replace(Regex("""[^\w.\- ]"""), "_")
         val file = File(context.cacheDir, safeName)
-        context.contentResolver.openInputStream(uri).use { input ->
-            requireNotNull(input) { "Could not open attachment." }
-            file.outputStream().use { output -> input.copyTo(output) }
+        var copied = false
+        try {
+            context.contentResolver.openInputStream(uri).use { input ->
+                requireNotNull(input) { "Could not open attachment." }
+                file.outputStream().use { output -> input.copyTo(output) }
+            }
+            copied = true
+            file
+        } finally {
+            if (!copied) runCatching { file.delete() }
         }
-        file
     }
 
     private suspend fun uploadSharedAttachment(context: Context, attachment: SharedAttachment): UploadResponse =
@@ -2287,12 +2337,18 @@ class ChatViewModel(
             val mimeType = attachment.mimeType ?: runCatching {
                 context.contentResolver.getType(Uri.parse(attachment.uri))
             }.getOrNull()
-            repository.upload(sessionId, file, mimeType).also {
-                if (file.absolutePath.startsWith(context.cacheDir.absolutePath)) {
-                    file.delete()
-                }
+            try {
+                repository.upload(sessionId, file, mimeType)
+            } finally {
+                if (file.isInside(context.cacheDir)) runCatching { file.delete() }
             }
         }
+
+    private fun File.isInside(directory: File): Boolean {
+        val canonicalDirectory = runCatching { directory.canonicalFile }.getOrNull() ?: return false
+        val canonicalFile = runCatching { this.canonicalFile }.getOrNull() ?: return false
+        return canonicalFile.path.startsWith(canonicalDirectory.path + File.separator)
+    }
 
     private fun Context.displayName(uri: Uri): String? {
         contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
