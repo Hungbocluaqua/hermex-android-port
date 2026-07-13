@@ -1,16 +1,22 @@
 package com.uzairansar.hermex.data.repository
 
 import com.uzairansar.hermex.core.model.NewSessionRequest
+import com.uzairansar.hermex.core.model.ProjectMutationResponse
 import com.uzairansar.hermex.core.model.ProjectSummary
+import com.uzairansar.hermex.core.model.SessionBranchResponse
 import com.uzairansar.hermex.core.model.SessionClearResponse
 import com.uzairansar.hermex.core.model.SessionDetail
 import com.uzairansar.hermex.core.model.SessionExportFile
 import com.uzairansar.hermex.core.model.SessionExportFormat
+import com.uzairansar.hermex.core.model.SessionMutationResponse
 import com.uzairansar.hermex.core.model.SessionSummary
 import com.uzairansar.hermex.core.model.SessionUsageResponse
 import com.uzairansar.hermex.core.network.HermesApiClient
+import com.uzairansar.hermex.core.network.ApiError
 import com.uzairansar.hermex.data.db.CacheDao
 import com.uzairansar.hermex.data.db.CachedSessionEntity
+import com.uzairansar.hermex.data.db.ServerCacheOwnership
+import kotlinx.coroutines.CancellationException
 
 data class SessionPage(
     val sessions: List<SessionSummary>,
@@ -25,19 +31,32 @@ data class SessionDuplicateResult(
 class SessionRepository(
     private val client: HermesApiClient,
     private val cacheDao: CacheDao,
+    private val cacheOwnership: ServerCacheOwnership,
 ) {
     private val serverUrl = client.baseUrl.toString()
 
     suspend fun loadSessions(includeArchived: Boolean = false): ResultState<SessionPage> {
+        val cacheGeneration = cacheOwnership.generation(serverUrl)
         val now = System.currentTimeMillis()
         return try {
-            val response = client.sessions(includeArchived = includeArchived, archivedLimit = if (includeArchived) 200 else null)
-            val sessions = response.sessions.orEmpty().filter { includeArchived || it.archived != true }
-            val entities = sessions.filter { it.archived != true }.mapNotNull { CachedSessionEntity.from(serverUrl, it, now) }
-            cacheDao.replaceSessions(serverUrl, entities, now)
+            // Fetch archived identities too so a complete response can distinguish deletion from archiving.
+            val response = client.sessions(includeArchived = true, archivedLimit = ARCHIVED_SYNC_LIMIT)
+            val allSessions = response.sessions.orEmpty()
+            val sessions = allSessions.filter { includeArchived || it.archived != true }
+            val entities = allSessions.mapNotNull { CachedSessionEntity.from(serverUrl, it, now) }
+            val archivedReturned = allSessions.count { it.archived == true }
+            val authoritative = response.archivedCount?.let { archivedReturned >= it } == true
+            cacheOwnership.writeIfCurrent(serverUrl, cacheGeneration) {
+                cacheDao.replaceSessions(serverUrl, entities, now, authoritative)
+            }
             ResultState.Data(SessionPage(sessions, response.archivedCount))
         } catch (error: Throwable) {
-            val cached = cacheDao.cachedSessions(serverUrl, now).map { it.toSummary() }
+            if (error is CancellationException) throw error
+            if (error is ApiError.Unauthorized) return ResultState.Error(error.userMessage(), error)
+            if (!error.isCacheFallbackEligible()) return ResultState.Error(error.userMessage(), error)
+            val cached = cacheOwnership.readIfCurrent(serverUrl, cacheGeneration) {
+                cacheDao.cachedSessions(serverUrl, now).map { it.toSummary() }
+            } ?: return ResultState.Error("The active profile changed while sessions were loading.", error)
             if (cached.isNotEmpty()) ResultState.Data(SessionPage(cached), fromCache = true) else ResultState.Error(error.userMessage(), error)
         }
     }
@@ -48,23 +67,82 @@ class SessionRepository(
     }
 
     suspend fun loadProjects(): List<ProjectSummary> = client.projects().projects.orEmpty()
-    suspend fun createProject(name: String, color: String?): ProjectSummary? = client.createProject(name, color).project
-    suspend fun renameProject(projectId: String, name: String, color: String?): ProjectSummary? =
-        client.renameProject(projectId, name, color).project
+    suspend fun createProject(name: String, color: String?): ProjectMutationResponse = client.createProject(name, color)
+    suspend fun renameProject(projectId: String, name: String, color: String?): ProjectMutationResponse =
+        client.renameProject(projectId, name, color)
     suspend fun deleteProject(projectId: String) = client.deleteProject(projectId)
 
-    suspend fun createSession(profile: String? = null): SessionSummary? =
-        client.newSession(NewSessionRequest(profile = profile?.trim()?.takeIf { it.isNotBlank() })).session
+    suspend fun createSession(profile: String? = null): SessionMutationResponse =
+        client.newSession(NewSessionRequest(profile = profile?.trim()?.takeIf { it.isNotBlank() }))
 
     suspend fun usage(sessionId: String): SessionUsageResponse = client.sessionUsage(sessionId)
 
-    suspend fun rename(sessionId: String, title: String): SessionSummary? = client.renameSession(sessionId, title).session
-    suspend fun clear(sessionId: String): SessionClearResponse = client.clearSession(sessionId)
-    suspend fun delete(sessionId: String) = client.deleteSession(sessionId)
-    suspend fun pin(sessionId: String, pinned: Boolean): SessionSummary? = client.pinSession(sessionId, pinned).session
-    suspend fun archive(sessionId: String, archived: Boolean): SessionSummary? = client.archiveSession(sessionId, archived).session
-    suspend fun move(sessionId: String, projectId: String?): SessionSummary? = client.moveSession(sessionId, projectId).session
-    suspend fun branch(sessionId: String, title: String? = null): String? = client.branchSession(sessionId, title = title).sessionId
+    suspend fun rename(sessionId: String, title: String): SessionMutationResponse {
+        val cacheGeneration = cacheOwnership.generation(serverUrl)
+        val response = client.renameSession(sessionId, title)
+        if (response.isSuccessfulMutation()) {
+            cacheOwnership.writeIfCurrent(serverUrl, cacheGeneration) {
+                cacheDao.updateSessionTitle(serverUrl, sessionId, title)
+            }
+        }
+        return response
+    }
+
+    suspend fun clear(sessionId: String): SessionClearResponse {
+        val cacheGeneration = cacheOwnership.generation(serverUrl)
+        val response = client.clearSession(sessionId)
+        if (response.ok != false && response.error.isNullOrBlank()) {
+            cacheOwnership.writeIfCurrent(serverUrl, cacheGeneration) {
+                cacheDao.deleteCachedSessionMessages(serverUrl, sessionId)
+            }
+        }
+        return response
+    }
+
+    suspend fun delete(sessionId: String): SessionMutationResponse {
+        val cacheGeneration = cacheOwnership.generation(serverUrl)
+        val response = client.deleteSession(sessionId)
+        if (response.isSuccessfulMutation()) {
+            cacheOwnership.writeIfCurrent(serverUrl, cacheGeneration) {
+                cacheDao.purgeSession(serverUrl, sessionId)
+            }
+        }
+        return response
+    }
+
+    suspend fun pin(sessionId: String, pinned: Boolean): SessionMutationResponse {
+        val cacheGeneration = cacheOwnership.generation(serverUrl)
+        val response = client.pinSession(sessionId, pinned)
+        if (response.isSuccessfulMutation()) {
+            cacheOwnership.writeIfCurrent(serverUrl, cacheGeneration) {
+                cacheDao.updateSessionPinned(serverUrl, sessionId, pinned)
+            }
+        }
+        return response
+    }
+
+    suspend fun archive(sessionId: String, archived: Boolean): SessionMutationResponse {
+        val cacheGeneration = cacheOwnership.generation(serverUrl)
+        val response = client.archiveSession(sessionId, archived)
+        if (response.isSuccessfulMutation()) {
+            cacheOwnership.writeIfCurrent(serverUrl, cacheGeneration) {
+                cacheDao.updateSessionArchived(serverUrl, sessionId, archived)
+            }
+        }
+        return response
+    }
+
+    suspend fun move(sessionId: String, projectId: String?): SessionMutationResponse {
+        val cacheGeneration = cacheOwnership.generation(serverUrl)
+        val response = client.moveSession(sessionId, projectId)
+        if (response.isSuccessfulMutation()) {
+            cacheOwnership.writeIfCurrent(serverUrl, cacheGeneration) {
+                cacheDao.updateSessionProject(serverUrl, sessionId, projectId)
+            }
+        }
+        return response
+    }
+    suspend fun branch(sessionId: String, title: String? = null): SessionBranchResponse = client.branchSession(sessionId, title = title)
     suspend fun duplicate(sessionId: String, title: String): SessionDuplicateResult {
         val response = client.branchSession(sessionId, title = title)
         val duplicateId = response.sessionId?.takeIf { it.isNotBlank() }
@@ -78,6 +156,17 @@ class SessionRepository(
 
     suspend fun exportSession(sessionId: String, format: SessionExportFormat, fallbackTitle: String?): SessionExportFile =
         client.exportSession(sessionId, format, fallbackTitle)
+}
+
+private const val ARCHIVED_SYNC_LIMIT = 2_000
+
+private fun com.uzairansar.hermex.core.model.SessionMutationResponse.isSuccessfulMutation(): Boolean =
+    ok != false && error.isNullOrBlank()
+
+private fun Throwable.isCacheFallbackEligible(): Boolean = when (this) {
+    is ApiError.Network -> true
+    is ApiError.Http -> statusCode in setOf(408, 502, 503, 504)
+    else -> false
 }
 
 private fun SessionDetail.toSummary(): SessionSummary = SessionSummary(

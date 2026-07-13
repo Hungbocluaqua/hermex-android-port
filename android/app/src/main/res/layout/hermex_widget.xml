@@ -39,7 +39,7 @@
         <Button
             android:id="@+id/widget_open_sessions"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="48dp"
             android:layout_marginEnd="4dp"
             android:layout_weight="1"
             android:background="@drawable/widget_button_secondary"
@@ -54,7 +54,7 @@
         <Button
             android:id="@+id/widget_new_session"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="48dp"
             android:layout_marginStart="4dp"
             android:layout_marginEnd="4dp"
             android:layout_weight="1"
@@ -70,7 +70,7 @@
         <Button
             android:id="@+id/widget_new_voice"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="48dp"
             android:layout_marginStart="4dp"
             android:layout_weight="1"
             android:background="@drawable/widget_button_primary"

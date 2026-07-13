@@ -42,8 +42,8 @@ fun AnalyticsTimeframe.contains(
     val sessionInstant = Instant.ofEpochMilli((timestamp * 1_000.0).toLong())
     return when (this) {
         AnalyticsTimeframe.Today -> {
-            val today = LocalDate.ofInstant(now, zoneId)
-            LocalDate.ofInstant(sessionInstant, zoneId) == today
+            val today = now.atZone(zoneId).toLocalDate()
+            sessionInstant.atZone(zoneId).toLocalDate() == today
         }
         AnalyticsTimeframe.Last7Days -> !sessionInstant.isBefore(now.minusSeconds(7L * 24L * 60L * 60L)) &&
             !sessionInstant.isAfter(now)

@@ -9,6 +9,8 @@ import com.uzairansar.hermex.data.repository.WorkspaceRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 data class WorkspaceUiState(
@@ -25,7 +27,7 @@ data class WorkspaceUiState(
 
 data class BinaryPreview(
     val path: String,
-    val bytes: ByteArray,
+    val bytes: ByteArray?,
     val isImage: Boolean,
     val mimeType: String,
 ) {
@@ -35,12 +37,16 @@ data class BinaryPreview(
         return path == other.path &&
             isImage == other.isImage &&
             mimeType == other.mimeType &&
-            bytes.contentEquals(other.bytes)
+            when {
+                bytes == null -> other.bytes == null
+                other.bytes == null -> false
+                else -> bytes.contentEquals(other.bytes)
+            }
     }
 
     override fun hashCode(): Int {
         var result = path.hashCode()
-        result = 31 * result + bytes.contentHashCode()
+        result = 31 * result + (bytes?.contentHashCode() ?: 0)
         result = 31 * result + isImage.hashCode()
         result = 31 * result + mimeType.hashCode()
         return result
@@ -53,6 +59,9 @@ class WorkspaceViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(WorkspaceUiState())
     val state: StateFlow<WorkspaceUiState> = _state
+    private var refreshJob: Job? = null
+    private var previewJob: Job? = null
+    private var previewGeneration = 0L
 
     init {
         refresh()
@@ -60,7 +69,8 @@ class WorkspaceViewModel(
 
     fun refresh() {
         val path = _state.value.currentPath
-        viewModelScope.launch {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null, preview = null, binaryPreview = null) }
             runCatching {
                 val roots = repository.workspaces()
@@ -68,6 +78,7 @@ class WorkspaceViewModel(
                 roots to list
             }.onSuccess { (roots, list) ->
                 _state.update {
+                    if (it.currentPath != path) return@update it
                     it.copy(
                         roots = roots,
                         currentPath = list.path ?: path,
@@ -78,7 +89,14 @@ class WorkspaceViewModel(
                     )
                 }
             }.onFailure { error ->
-                _state.update { it.copy(isLoading = false, error = error.message ?: "Could not load workspace.") }
+                if (error is CancellationException) return@onFailure
+                _state.update {
+                    if (it.currentPath == path) {
+                        it.copy(isLoading = false, error = error.message ?: "Could not load workspace.")
+                    } else {
+                        it
+                    }
+                }
             }
         }
     }
@@ -102,7 +120,9 @@ class WorkspaceViewModel(
     }
 
     fun loadPath(path: String?) {
-        _state.update { it.copy(currentPath = path, preview = null, binaryPreview = null) }
+        previewJob?.cancel()
+        previewGeneration += 1
+        _state.update { it.copy(currentPath = path, preview = null, binaryPreview = null, isPreviewLoading = false) }
         refresh()
     }
 
@@ -118,31 +138,63 @@ class WorkspaceViewModel(
         _state.update { it.copy(searchText = value) }
     }
 
+    fun reportError(message: String) {
+        _state.update { it.copy(error = message) }
+    }
+
     fun closePreview() {
-        _state.update { it.copy(preview = null, binaryPreview = null) }
+        previewJob?.cancel()
+        previewGeneration += 1
+        _state.update { it.copy(preview = null, binaryPreview = null, isPreviewLoading = false) }
     }
 
     private fun preview(path: String) {
-        viewModelScope.launch {
+        previewJob?.cancel()
+        val generation = ++previewGeneration
+        previewJob = viewModelScope.launch {
             _state.update { it.copy(isPreviewLoading = true, error = null, preview = null, binaryPreview = null) }
-            if (
-                WorkspaceFilePreviewPolicy.isRasterImage(path) ||
-                WorkspaceFilePreviewPolicy.isKnownUnsupportedBinary(path)
-            ) {
+            if (WorkspaceFilePreviewPolicy.isKnownUnsupportedBinary(path)) {
+                _state.update {
+                    it.copy(
+                        binaryPreview = BinaryPreview(
+                            path = path,
+                            bytes = null,
+                            isImage = false,
+                            mimeType = WorkspaceFilePreviewPolicy.mimeType(path),
+                        ),
+                        isPreviewLoading = false,
+                    )
+                }
+                return@launch
+            }
+            if (WorkspaceFilePreviewPolicy.shouldLoadRawPreview(path)) {
                 loadBinaryPreview(path)
                 return@launch
             }
             runCatching { repository.file(sessionId, path) }
                 .onSuccess { preview ->
-                    if (!preview.content.isNullOrEmpty()) {
+                    if (generation != previewGeneration) return@onSuccess
+                    if (shouldRenderWorkspaceTextPreview(preview.content)) {
                         _state.update { it.copy(preview = preview, isPreviewLoading = false) }
                     } else {
-                        loadBinaryPreview(path)
+                        _state.update {
+                            it.copy(
+                                binaryPreview = BinaryPreview(
+                                    path = path,
+                                    bytes = null,
+                                    isImage = false,
+                                    mimeType = WorkspaceFilePreviewPolicy.mimeType(path),
+                                ),
+                                isPreviewLoading = false,
+                            )
+                        }
                     }
                 }
                 .onFailure { error ->
+                    if (error is CancellationException) return@onFailure
+                    if (generation != previewGeneration) return@onFailure
                     if (WorkspaceFilePreviewPolicy.isRasterImage(path)) {
-                        loadBinaryPreview(path)
+                        loadBinaryPreview(path, generation)
                     } else {
                         _state.update { it.copy(isPreviewLoading = false, error = error.message ?: "Could not open file.") }
                     }
@@ -150,9 +202,10 @@ class WorkspaceViewModel(
         }
     }
 
-    private suspend fun loadBinaryPreview(path: String) {
+    private suspend fun loadBinaryPreview(path: String, generation: Long = previewGeneration) {
         runCatching { repository.rawFile(sessionId, path) }
             .onSuccess { bytes ->
+                if (generation != previewGeneration) return@onSuccess
                 _state.update {
                     it.copy(
                         binaryPreview = BinaryPreview(
@@ -166,8 +219,13 @@ class WorkspaceViewModel(
                 }
             }
             .onFailure { error ->
-                _state.update { it.copy(isPreviewLoading = false, error = error.message ?: "Could not open file.") }
+                if (error is CancellationException) return@onFailure
+                if (generation == previewGeneration) {
+                    _state.update { it.copy(isPreviewLoading = false, error = error.message ?: "Could not open file.") }
+                }
             }
     }
 
 }
+
+internal fun shouldRenderWorkspaceTextPreview(content: String?): Boolean = content != null

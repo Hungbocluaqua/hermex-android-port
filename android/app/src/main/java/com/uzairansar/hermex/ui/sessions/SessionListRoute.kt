@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,6 +56,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -88,6 +90,7 @@ import com.uzairansar.hermex.core.model.ProfileSummary
 import com.uzairansar.hermex.core.model.SessionSummary
 import com.uzairansar.hermex.data.repository.AuthState
 import com.uzairansar.hermex.ui.ShortcutDestination
+import com.uzairansar.hermex.ui.createExportDirectory
 import com.uzairansar.hermex.ui.theme.HermesHeaderLogo
 import com.uzairansar.hermex.ui.theme.HermexCardShape
 import com.uzairansar.hermex.ui.theme.HermexColors
@@ -102,6 +105,9 @@ import com.uzairansar.hermex.ui.theme.primaryActionTintApplies
 import java.io.File
 import java.time.Duration
 import java.time.Instant
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToLong
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -123,30 +129,35 @@ fun SessionListRoute(
 ) {
     val loggedIn = authState as? AuthState.LoggedIn
     if (loggedIn == null) {
-        onNeedsOnboarding()
+        LaunchedEffect(Unit) { onNeedsOnboarding() }
         return
     }
-    val viewModel: SessionListViewModel = viewModel(factory = object : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            @Suppress("UNCHECKED_CAST")
-            return SessionListViewModel(
-                repository = container.sessionRepository(loggedIn.server),
-                panelsRepository = container.panelsRepository(loggedIn.server),
-                localSettingsRepository = container.localSettingsRepository,
-                serverId = loggedIn.server.toString(),
-            ) as T
-        }
-    })
+    val viewModel: SessionListViewModel = viewModel(
+        key = "sessions:${loggedIn.server}",
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return SessionListViewModel(
+                    repository = container.sessionRepository(loggedIn.server),
+                    panelsRepository = container.panelsRepository(loggedIn.server),
+                    localSettingsRepository = container.localSettingsRepository,
+                    serverId = loggedIn.server.toString(),
+                ) as T
+            }
+        },
+    )
     val state by viewModel.state.collectAsStateWithLifecycle()
     val headerLogoColorHex = loggedIn.account.headerLogoColorHex
     val shortcutKey = listOfNotNull(shortcutAction, shortcutNonce).joinToString(":")
     var shortcutConsumed by rememberSaveable(shortcutKey) { mutableStateOf(false) }
+    var pendingShortcutAction by rememberSaveable(shortcutKey) { mutableStateOf<String?>(null) }
     var expandedActionsFor by rememberSaveable { mutableStateOf<String?>(null) }
     var profilesExpanded by rememberSaveable { mutableStateOf(false) }
     var projectsExpanded by rememberSaveable { mutableStateOf(false) }
     var searchExpanded by rememberSaveable { mutableStateOf(false) }
     var isCreatingProject by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
+    val shareScope = rememberCoroutineScope()
     val primaryActionTintColor = remember(state.tintPrimaryActionsWithThemeColor, headerLogoColorHex, state.isMutating) {
         if (primaryActionTintApplies(state.tintPrimaryActionsWithThemeColor, !state.isMutating)) {
             hermexColorFromHex(headerLogoColorHex)
@@ -171,21 +182,13 @@ fun SessionListRoute(
     }
 
     LaunchedEffect(shortcutKey, shortcutAction, shortcutProfile, shortcutConsumed) {
-        if (!shortcutConsumed && shortcutAction == ShortcutDestination.NewSessionAction) {
-            shortcutConsumed = true
-            viewModel.createSession(onCreated = onOpenChat)
-        }
-        if (!shortcutConsumed && shortcutAction == ShortcutDestination.NewVoiceSessionAction) {
-            shortcutConsumed = true
-            viewModel.createSession(onCreated = onOpenVoiceChat)
-        }
-        if (!shortcutConsumed && shortcutAction == ShortcutDestination.NewProfileSessionAction) {
-            shortcutConsumed = true
-            viewModel.createSession(profile = shortcutProfile, onCreated = onOpenChat)
-        }
         if (!shortcutConsumed && shortcutAction == ShortcutDestination.ShareAction) {
             shortcutConsumed = true
-            viewModel.createSession(onCreated = onOpenSharedDraft)
+            if (container.sharedDraftStore.hasPendingDraft()) {
+                viewModel.createSession(onCreated = onOpenSharedDraft)
+            }
+        } else if (!shortcutConsumed && shortcutAction != null && pendingShortcutAction == null) {
+            pendingShortcutAction = shortcutAction
         }
     }
 
@@ -287,7 +290,11 @@ fun SessionListRoute(
                         EmptySessionsRow()
                     }
                 } else {
-                    items(state.visibleSessions, key = { it.stableId }) { session ->
+                    itemsIndexed(
+                        items = state.visibleSessions,
+                        key = { index, session -> "${session.stableId}:$index" },
+                    ) { index, session ->
+                        val rowKey = "${session.stableId}:$index"
                         SessionRow(
                             session = session,
                             projects = state.projects,
@@ -295,10 +302,10 @@ fun SessionListRoute(
                             isViewingCachedData = state.isViewingCachedData,
                             showsMessageCount = state.sessionRowDisplaySettings.showMessageCount,
                             showsWorkspace = state.sessionRowDisplaySettings.showWorkspace,
-                            actionsExpanded = expandedActionsFor == session.stableId,
+                            actionsExpanded = expandedActionsFor == rowKey,
                             onOpen = { session.sessionId?.let(onOpenChat) },
                             onToggleActions = {
-                                expandedActionsFor = if (expandedActionsFor == session.stableId) null else session.stableId
+                                expandedActionsFor = if (expandedActionsFor == rowKey) null else rowKey
                             },
                             onPin = { viewModel.togglePin(session) },
                             onArchive = { viewModel.toggleArchive(session) },
@@ -310,7 +317,12 @@ fun SessionListRoute(
                             onMove = { projectId -> viewModel.move(session, projectId) },
                             onExport = { format ->
                                 viewModel.exportSession(session, format) { file ->
-                                    shareSessionExport(context, file)
+                                    shareScope.launch {
+                                        shareSessionExport(context, file)
+                                            .onFailure { error ->
+                                                viewModel.reportActionError(error.message ?: "Could not share session export.")
+                                            }
+                                    }
                                 }
                             },
                         )
@@ -333,6 +345,47 @@ fun SessionListRoute(
     }
 
     SessionDialogs(state, viewModel, onOpenChat)
+    pendingShortcutAction?.let { action ->
+        val isVoice = action == ShortcutDestination.NewVoiceSessionAction
+        val isProfile = action == ShortcutDestination.NewProfileSessionAction
+        AlertDialog(
+            onDismissRequest = {
+                pendingShortcutAction = null
+                shortcutConsumed = true
+            },
+            title = { Text(if (isVoice) "Start a voice chat?" else "Start a new chat?") },
+            text = {
+                Text(
+                    if (isVoice) {
+                        "Hermex will create a new session and open the microphone after you continue."
+                    } else {
+                        "Hermex will create a new server session after you continue."
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingShortcutAction = null
+                        shortcutConsumed = true
+                        when {
+                            isVoice -> viewModel.createSession(onCreated = onOpenVoiceChat)
+                            isProfile -> viewModel.createSession(profile = shortcutProfile, onCreated = onOpenChat)
+                            else -> viewModel.createSession(onCreated = onOpenChat)
+                        }
+                    },
+                ) { Text("Continue") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingShortcutAction = null
+                        shortcutConsumed = true
+                    },
+                ) { Text("Cancel") }
+            },
+        )
+    }
     if (isCreatingProject) {
         AlertDialog(
             onDismissRequest = {
@@ -1203,7 +1256,7 @@ private fun SessionRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = rowMinimumHeight)
-                    .background(MaterialTheme.colorScheme.background)
+                    .background(MaterialTheme.colorScheme.background.copy(alpha = 1f))
                     .testTag("session_row_${session.stableId}")
                     .combinedClickable(
                         onClick = onOpen,
@@ -1317,7 +1370,8 @@ private fun SessionSwipeContainer(
     }
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        Row(
+        if (offsetPx < -0.5f) {
+            Row(
                 modifier = Modifier.matchParentSize(),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
@@ -1341,6 +1395,7 @@ private fun SessionSwipeContainer(
                     },
                 )
             }
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1372,6 +1427,7 @@ private fun SwipeAction(
         modifier = Modifier
             .width(84.dp)
             .fillMaxSize()
+            .testTag("session_swipe_action_${label.lowercase()}")
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -1619,14 +1675,17 @@ private val SessionSummary.relativeDate: String?
         }
     }
 
-private fun shareSessionExport(context: Context, export: SessionExportFile) {
-    val exportDir = File(context.cacheDir, "exports").also { it.mkdirs() }
-    val file = File(exportDir, export.filename)
-    file.writeBytes(export.data)
-    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-    val intent = Intent(Intent.ACTION_SEND)
-        .setType(export.mimeType)
-        .putExtra(Intent.EXTRA_STREAM, uri)
-        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    context.startActivity(Intent.createChooser(intent, "Export Session"))
-}
+private suspend fun shareSessionExport(context: Context, export: SessionExportFile): Result<Unit> =
+    runCatching {
+        val uri = withContext(Dispatchers.IO) {
+            val exportDir = context.createExportDirectory("session")
+            val file = File(exportDir, export.filename)
+            file.writeBytes(export.data)
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        }
+        val intent = Intent(Intent.ACTION_SEND)
+            .setType(export.mimeType)
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        context.startActivity(Intent.createChooser(intent, "Export Session"))
+    }

@@ -34,6 +34,7 @@ data class HealthResponse(
 @Serializable
 data class AuthStatusResponse(
     @SerialName("auth_enabled") val authEnabled: Boolean? = null,
+    @SerialName("logged_in") val loggedIn: Boolean? = null,
     @SerialName("password_auth_enabled") val passwordAuthEnabled: Boolean? = null,
 )
 
@@ -1236,6 +1237,13 @@ data class ModelCatalogGroupSummary(
     @SerialName("provider_id") val providerId: String? = null,
     val models: List<ModelSummary>? = null,
     @SerialName("extra_models") val extraModels: List<ModelSummary>? = null,
+)
+
+@Serializable
+data class ChatCancelResponse(
+    val ok: Boolean? = null,
+    val cancelled: Boolean? = null,
+    val error: String? = null,
 )
 
 @Serializable

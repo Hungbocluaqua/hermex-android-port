@@ -2,12 +2,21 @@ package com.uzairansar.hermex.ui
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -46,7 +55,23 @@ fun HermexApp(
         initialValue = "#FFD700",
     )
     val activeAccount = (authState as? AuthState.LoggedIn)?.account
+    val activeServerKey = (authState as? AuthState.LoggedIn)?.server?.toString()
     val headerLogoColorHex = activeAccount?.headerLogoColorHex ?: localHeaderLogoColorHex
+    var observedServerKey by rememberSaveable { mutableStateOf(activeServerKey) }
+    var wasLoggedIn by rememberSaveable { mutableStateOf(activeServerKey != null) }
+    var pendingAuthenticatedRoute by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingAuthenticatedServerId by rememberSaveable { mutableStateOf<String?>(null) }
+    var restoredSessionValidationComplete by remember {
+        mutableStateOf(authState !is AuthState.LoggedIn)
+    }
+    val latestAuthState by rememberUpdatedState(authState)
+
+    LaunchedEffect(container.authRepository) {
+        if (authState is AuthState.LoggedIn) {
+            container.authRepository.validateRestoredSession()
+        }
+        restoredSessionValidationComplete = true
+    }
 
     LaunchedEffect(
         activeAccount?.id,
@@ -60,11 +85,84 @@ fun HermexApp(
         container.localSettingsRepository.setHeaderLogoColorHex(activeAccount.headerLogoColorHex)
     }
 
+    if (!restoredSessionValidationComplete) {
+        HermexTheme(themeMode = themeMode) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(strokeWidth = 2.dp)
+            }
+        }
+        return
+    }
+
     LaunchedEffect(navController, shortcutIntents) {
         shortcutIntents.collect { intent ->
-            intent.hermexRoute()?.let { route ->
-                navController.navigate(route)
-            } ?: navController.handleDeepLink(intent)
+            val route = intent.hermexRoute()
+            if (route != null) {
+                val requestedServerId = intent.hermexServerId()
+                val loggedIn = latestAuthState as? AuthState.LoggedIn
+                if (loggedIn != null) {
+                    if (requestedServerId != null && requestedServerId != loggedIn.account.id) {
+                        val account = container.authRepository.servers.value.servers.firstOrNull { it.id == requestedServerId }
+                        if (account != null) {
+                            pendingAuthenticatedRoute = route
+                            pendingAuthenticatedServerId = requestedServerId
+                            container.authRepository.activate(requestedServerId)
+                        } else {
+                            navController.navigateSingleTop("sessions")
+                        }
+                    } else {
+                        navController.navigateSingleTop(route)
+                    }
+                } else {
+                    pendingAuthenticatedRoute = route
+                    pendingAuthenticatedServerId = requestedServerId
+                    navController.navigate("onboarding") {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            } else if (latestAuthState is AuthState.LoggedIn) {
+                navController.handleDeepLink(intent)
+            }
+        }
+    }
+
+    LaunchedEffect(activeServerKey) {
+        if (activeServerKey == null) {
+            if (wasLoggedIn) {
+                wasLoggedIn = false
+                val isWaitingForTargetServerLogin =
+                    pendingAuthenticatedRoute != null && pendingAuthenticatedServerId != null
+                if (!isWaitingForTargetServerLogin) {
+                    pendingAuthenticatedRoute = null
+                    pendingAuthenticatedServerId = null
+                }
+                navController.navigate("onboarding") {
+                    popUpTo(navController.graph.id) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+            return@LaunchedEffect
+        }
+
+        val previousServerKey = observedServerKey
+        val stayedLoggedIn = wasLoggedIn
+        observedServerKey = activeServerKey
+        val changedServer = stayedLoggedIn && previousServerKey != null && previousServerKey != activeServerKey
+        wasLoggedIn = true
+        val pendingRouteForServer = pendingAuthenticatedRoute?.takeIf {
+            pendingAuthenticatedServerId == activeServerKey
+        }
+        if (changedServer || pendingRouteForServer != null) {
+            navController.navigate("sessions") {
+                popUpTo(navController.graph.id) { inclusive = true }
+                launchSingleTop = true
+            }
+            if (pendingRouteForServer != null) {
+                pendingAuthenticatedRoute = null
+                pendingAuthenticatedServerId = null
+                navController.navigateSingleTop(pendingRouteForServer)
+            }
         }
     }
 
@@ -79,7 +177,21 @@ fun HermexApp(
                     OnboardingRoute(
                         authRepository = container.authRepository,
                         onConnected = {
-                            val route = if (container.sharedDraftStore.hasPendingDraft()) {
+                            val requestedServerId = pendingAuthenticatedServerId
+                            val activeId = (container.authRepository.state.value as? AuthState.LoggedIn)?.account?.id
+                            if (requestedServerId != null && requestedServerId != activeId) {
+                                val accountExists = container.authRepository.servers.value.servers.any { it.id == requestedServerId }
+                                if (accountExists) {
+                                    container.authRepository.activate(requestedServerId)
+                                    return@OnboardingRoute
+                                }
+                                pendingAuthenticatedServerId = null
+                            }
+                            val route = pendingAuthenticatedRoute?.also {
+                                pendingAuthenticatedRoute = null
+                                pendingAuthenticatedServerId = null
+                            }
+                                ?: if (container.sharedDraftStore.hasPendingDraft()) {
                                 ShortcutDestination.shareRoute()
                             } else {
                                 "sessions"
@@ -126,12 +238,12 @@ fun HermexApp(
                         shortcutNonce = entry.arguments?.getString("shortcutNonce"),
                         shortcutProfile = entry.arguments?.getString("shortcutProfile"),
                         initialArchived = entry.arguments?.getBoolean("showArchived") == true,
-                        onOpenChat = { sessionId -> navController.navigate("chat/$sessionId") },
-                        onOpenVoiceChat = { sessionId -> navController.navigate("chat/$sessionId?autoStartVoice=true") },
-                        onOpenSharedDraft = { sessionId -> navController.navigate("chat/$sessionId?consumeShare=true") },
-                        onOpenPanels = { navController.navigate("panels") },
-                        onOpenPanel = { section -> navController.navigate("panels?section=$section") },
-                        onOpenSettings = { navController.navigate("settings") },
+                        onOpenChat = { sessionId -> navController.navigateSingleTop("chat/$sessionId") },
+                        onOpenVoiceChat = { sessionId -> navController.navigateSingleTop("chat/$sessionId?autoStartVoice=true") },
+                        onOpenSharedDraft = { sessionId -> navController.navigateSingleTop("chat/$sessionId?consumeShare=true") },
+                        onOpenPanels = { navController.navigateSingleTop("panels") },
+                        onOpenPanel = { section -> navController.navigateSingleTop("panels?section=$section") },
+                        onOpenSettings = { navController.navigateSingleTop("settings") },
                         onNeedsOnboarding = {
                             navController.navigate("onboarding") {
                                 popUpTo("sessions") { inclusive = true }
@@ -159,6 +271,8 @@ fun HermexApp(
                     } else {
                         ChatRoute(
                             sessionId = requireNotNull(entry.arguments?.getString("sessionId")),
+                            serverId = activeServerKey ?: server.toString(),
+                            viewModelKey = "chat:$activeServerKey:${entry.arguments?.getString("sessionId")}",
                             repository = container.chatRepository(server),
                             gitRepository = container.gitRepository(server),
                             localSettingsRepository = container.localSettingsRepository,
@@ -166,7 +280,7 @@ fun HermexApp(
                             sharedDraftStore = container.sharedDraftStore,
                             consumeSharedDraft = entry.arguments?.getBoolean("consumeShare") == true,
                             autoStartVoice = entry.arguments?.getBoolean("autoStartVoice") == true,
-                            onOpenChat = { sessionId -> navController.navigate("chat/$sessionId") },
+                            onOpenChat = { sessionId -> navController.navigateSingleTop("chat/$sessionId") },
                             onBack = { navController.popBackStack() },
                             onOpenWorkspace = {
                                 navController.navigate("workspace/${requireNotNull(entry.arguments?.getString("sessionId"))}")
@@ -185,6 +299,7 @@ fun HermexApp(
                     if (server != null) {
                         WorkspaceRoute(
                             sessionId = requireNotNull(entry.arguments?.getString("sessionId")),
+                            viewModelKey = "workspace:$activeServerKey:${entry.arguments?.getString("sessionId")}",
                             repository = container.workspaceRepository(server),
                             onBack = { navController.popBackStack() },
                         )
@@ -198,6 +313,7 @@ fun HermexApp(
                     if (server != null) {
                         GitRoute(
                             sessionId = requireNotNull(entry.arguments?.getString("sessionId")),
+                            viewModelKey = "git:$activeServerKey:${entry.arguments?.getString("sessionId")}",
                             repository = container.gitRepository(server),
                             onBack = { navController.popBackStack() },
                         )
@@ -221,6 +337,14 @@ fun HermexApp(
                             initialSection = entry.arguments?.getString("section"),
                             onBack = { navController.popBackStack() },
                         )
+                    } else {
+                        LaunchedEffect(Unit) {
+                            if (!navController.popBackStack()) {
+                                navController.navigate("onboarding") {
+                                    popUpTo(navController.graph.id) { inclusive = true }
+                                }
+                            }
+                        }
                     }
                 }
                 composable(
@@ -235,16 +359,24 @@ fun HermexApp(
                         panelsRepository = server?.let { container.panelsRepository(it) },
                         authState = authState,
                         onBack = { navController.popBackStack() },
-                        onOpenArchivedSessions = { navController.navigate("sessions?showArchived=true") },
+                        onOpenArchivedSessions = { navController.navigateSingleTop("sessions?showArchived=true") },
                         onSignedOut = {
                             navController.navigate("onboarding") {
-                                popUpTo("sessions") { inclusive = true }
+                                popUpTo(navController.graph.id) { inclusive = true }
+                                launchSingleTop = true
                             }
                         },
                     )
                 }
             }
         }
+    }
+}
+
+private fun androidx.navigation.NavHostController.navigateSingleTop(route: String) {
+    navigate(route) {
+        launchSingleTop = true
+        restoreState = true
     }
 }
 
@@ -260,11 +392,19 @@ private fun Intent.hermexRoute(): String? {
             ?.takeIf { it.isNotBlank() }
             ?.let { profile -> ShortcutDestination.sessionsRoute(ShortcutDestination.NewProfileSessionAction, profile) }
             ?: ShortcutDestination.sessionsRoute(ShortcutDestination.NewSessionAction)
+        "chat" -> uri.getQueryParameter("sessionId")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { sessionId -> "chat/${Uri.encode(sessionId)}" }
         "settings" -> "settings"
         "panels" -> uri.getQueryParameter("section")?.takeIf { it.isNotBlank() }?.let { "panels?section=${Uri.encode(it)}" } ?: "panels"
         else -> null
     }
 }
+
+private fun Intent.hermexServerId(): String? = data
+    ?.takeIf { it.scheme == "hermes-agent" && it.host == "chat" }
+    ?.getQueryParameter("serverId")
+    ?.takeIf { it.isNotBlank() }
 
 private fun ShortcutDestination.sessionsRoute(action: String? = null, profile: String? = null): String {
     val supportedAction = supportedAction(action) ?: return "sessions"

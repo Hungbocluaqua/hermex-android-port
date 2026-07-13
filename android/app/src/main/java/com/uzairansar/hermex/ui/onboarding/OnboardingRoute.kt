@@ -65,6 +65,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -695,6 +696,7 @@ private fun OnboardingConnectPage(
                 onValueChange = onServerUrlChange,
                 placeholder = "http://100.64.0.1:8787",
                 keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri),
+                enabled = !state.isBusy,
             )
             if (state.isPasswordRequired) {
                 OnboardingTextField(
@@ -707,6 +709,7 @@ private fun OnboardingConnectPage(
                     keyboardOptions = KeyboardOptions(
                         keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
                     ),
+                    enabled = !state.isBusy,
                 )
             }
         }
@@ -718,8 +721,13 @@ private fun OnboardingConnectPage(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 48.dp)
                     .clip(OnboardingShape)
                     .clickable { isShowingAdvanced = !isShowingAdvanced }
+                    .semantics {
+                        contentDescription = "Advanced connection settings"
+                        stateDescription = if (isShowingAdvanced) "Expanded" else "Collapsed"
+                    }
                     .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -760,6 +768,7 @@ private fun OnboardingConnectPage(
                         color = Color.White,
                         fontFamily = FontFamily.Monospace,
                     ),
+                    enabled = !state.isBusy,
                 )
             }
         }
@@ -798,6 +807,7 @@ private fun OnboardingTextField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     textStyle: TextStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = modifier
@@ -839,6 +849,7 @@ private fun OnboardingTextField(
                 singleLine = singleLine,
                 visualTransformation = visualTransformation,
                 keyboardOptions = keyboardOptions,
+                enabled = enabled,
                 decorationBox = { innerTextField ->
                     Box {
                         if (value.isEmpty()) {
@@ -966,7 +977,8 @@ private fun OnboardingBottomBar(
                     modifier = Modifier
                         .clip(OnboardingShape)
                         .clickable(onClick = onJumpToConnect)
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                        .heightIn(min = 48.dp)
+                        .padding(horizontal = 8.dp, vertical = 12.dp),
                 )
             }
         }

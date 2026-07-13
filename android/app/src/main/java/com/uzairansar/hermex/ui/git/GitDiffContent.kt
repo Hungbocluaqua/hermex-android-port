@@ -9,15 +9,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +28,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.uzairansar.hermex.core.model.DiffHunk
 import com.uzairansar.hermex.core.model.DiffHunkParser
@@ -32,6 +38,8 @@ import com.uzairansar.hermex.core.model.DiffLine
 import com.uzairansar.hermex.core.model.DiffLineKind
 import com.uzairansar.hermex.core.model.GitDiffResponse
 import com.uzairansar.hermex.ui.theme.HermexPillButton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun HermexGitDiffContent(diff: GitDiffResponse) {
@@ -40,13 +48,18 @@ fun HermexGitDiffContent(diff: GitDiffResponse) {
         diff.isTooLarge -> Text("Diff too large to show.", style = MaterialTheme.typography.bodySmall)
         diff.diff.isNullOrBlank() -> Text("No changes.", style = MaterialTheme.typography.bodySmall)
         else -> {
-            val hunks = remember(diff.diff) { DiffHunkParser.parse(diff.diff.orEmpty()) }
-            if (hunks.isEmpty()) {
+            val hunks by produceState<List<DiffHunk>?>(initialValue = null, diff.diff) {
+                value = withContext(Dispatchers.Default) { DiffHunkParser.parse(diff.diff.orEmpty()) }
+            }
+            val resolvedHunks = hunks
+            if (resolvedHunks == null) {
+                CircularProgressIndicator(strokeWidth = 2.dp)
+            } else if (resolvedHunks.isEmpty()) {
                 Text("No changes.", style = MaterialTheme.typography.bodySmall)
             } else {
                 var collapsedHunks by remember(diff.diff) { mutableStateOf(emptySet<Int>()) }
-                val additions = diff.additions ?: hunks.sumOf { it.additions }
-                val deletions = diff.deletions ?: hunks.sumOf { it.deletions }
+                val additions = diff.additions ?: resolvedHunks.sumOf { it.additions }
+                val deletions = diff.deletions ?: resolvedHunks.sumOf { it.deletions }
                 Row(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -56,12 +69,12 @@ fun HermexGitDiffContent(diff: GitDiffResponse) {
                     Text("+$additions", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
                     Text("-$deletions", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
                     HermexPillButton(
-                        if (collapsedHunks.size == hunks.size) "Expand all" else "Collapse all",
+                        if (collapsedHunks.size == resolvedHunks.size) "Expand all" else "Collapse all",
                         onClick = {
-                            collapsedHunks = if (collapsedHunks.size == hunks.size) {
+                            collapsedHunks = if (collapsedHunks.size == resolvedHunks.size) {
                                 emptySet()
                             } else {
-                                hunks.map { it.id }.toSet()
+                                resolvedHunks.map { it.id }.toSet()
                             }
                         },
                     )
@@ -71,7 +84,8 @@ fun HermexGitDiffContent(diff: GitDiffResponse) {
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    hunks.forEach { hunk ->
+                    var renderedLineCount = 0
+                    resolvedHunks.forEach { hunk ->
                         HermexDiffHunkHeader(
                             hunk = hunk,
                             collapsed = hunk.id in collapsedHunks,
@@ -84,8 +98,17 @@ fun HermexGitDiffContent(diff: GitDiffResponse) {
                             },
                         )
                         if (hunk.id !in collapsedHunks) {
-                            hunk.lines.forEach { line -> HermexDiffLineRow(line) }
+                            val remaining = (MAX_RENDERED_DIFF_LINES - renderedLineCount).coerceAtLeast(0)
+                            hunk.lines.take(remaining).forEach { line -> HermexDiffLineRow(line) }
+                            renderedLineCount += minOf(hunk.lines.size, remaining)
                         }
+                    }
+                    if (resolvedHunks.sumOf { it.lines.size } > MAX_RENDERED_DIFF_LINES) {
+                        Text(
+                            "Diff display limited to $MAX_RENDERED_DIFF_LINES lines.",
+                            modifier = Modifier.padding(10.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
                 }
             }
@@ -102,7 +125,12 @@ private fun HermexDiffHunkHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .clickable(onClick = onToggle)
+            .semantics {
+                contentDescription = hunk.displayLabel
+                stateDescription = if (collapsed) "Collapsed" else "Expanded"
+            }
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
             .padding(horizontal = 10.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -114,6 +142,8 @@ private fun HermexDiffHunkHeader(
         Text("-${hunk.deletions}", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
     }
 }
+
+private const val MAX_RENDERED_DIFF_LINES = 2_000
 
 @Composable
 private fun HermexDiffLineRow(line: DiffLine) {

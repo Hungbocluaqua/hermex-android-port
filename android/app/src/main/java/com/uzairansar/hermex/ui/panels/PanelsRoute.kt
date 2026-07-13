@@ -58,6 +58,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uzairansar.hermex.core.model.CronJob
@@ -109,6 +111,11 @@ fun PanelsRoute(
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             @Suppress("UNCHECKED_CAST")
             return PanelsViewModel(panelsRepository) as T
+        }
+
+        override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+            @Suppress("UNCHECKED_CAST")
+            return PanelsViewModel(panelsRepository, extras.createSavedStateHandle()) as T
         }
     })
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -192,7 +199,7 @@ fun PanelsRoute(
                             if (state.crons.isEmpty()) {
                                 item { PanelEmptyCard("No scheduled tasks.") }
                             } else {
-                                state.crons.take(12).forEach { job ->
+                                state.crons.forEach { job ->
                                     item {
                                         FocusedTaskCard(
                                             job = job,
@@ -216,7 +223,7 @@ fun PanelsRoute(
                                     if (state.crons.isEmpty()) {
                                         Text("No scheduled tasks.")
                                     } else {
-                                        state.crons.take(12).forEach { job ->
+                                        state.crons.forEach { job ->
                                             CronRow(
                                                 job = job,
                                                 runningElapsed = state.runningCrons.runningElapsedFor(job),

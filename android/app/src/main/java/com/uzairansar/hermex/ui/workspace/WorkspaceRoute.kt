@@ -40,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,6 +63,7 @@ import androidx.core.content.ContextCompat
 import com.uzairansar.hermex.core.model.WorkspaceEntry
 import com.uzairansar.hermex.core.model.WorkspaceRoot
 import com.uzairansar.hermex.data.repository.WorkspaceRepository
+import com.uzairansar.hermex.ui.createExportDirectory
 import com.uzairansar.hermex.ui.theme.HermexCardShape
 import com.uzairansar.hermex.ui.theme.HermexIconButton
 import com.uzairansar.hermex.ui.theme.HermexPillButton
@@ -76,10 +78,11 @@ import java.io.File
 @Composable
 fun WorkspaceRoute(
     sessionId: String,
+    viewModelKey: String = "workspace:$sessionId",
     repository: WorkspaceRepository,
     onBack: () -> Unit,
 ) {
-    val viewModel: WorkspaceViewModel = viewModel(factory = object : ViewModelProvider.Factory {
+    val viewModel: WorkspaceViewModel = viewModel(key = viewModelKey, factory = object : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             @Suppress("UNCHECKED_CAST")
             return WorkspaceViewModel(sessionId, repository) as T
@@ -87,6 +90,7 @@ fun WorkspaceRoute(
     })
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val shareScope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -133,12 +137,16 @@ fun WorkspaceRoute(
                     binaryPreview = null,
                     onClose = viewModel::closePreview,
                     onShare = {
-                        shareWorkspacePreview(
-                            context = context,
-                            title = state.preview?.path,
-                            content = state.preview?.content,
-                            binaryPreview = null,
-                        )
+                        shareScope.launch {
+                            shareWorkspacePreview(
+                                context = context,
+                                title = state.preview?.path,
+                                content = state.preview?.content,
+                                binaryPreview = null,
+                            ).onFailure { error ->
+                                viewModel.reportError(error.message ?: "Could not share file.")
+                            }
+                        }
                     },
                 )
                 state.binaryPreview != null -> FilePreview(
@@ -147,15 +155,19 @@ fun WorkspaceRoute(
                     content = null,
                     textSizeBytes = null,
                     textLineCount = null,
-                    binaryPreview = state.binaryPreview,
+                binaryPreview = state.binaryPreview,
                     onClose = viewModel::closePreview,
                     onShare = {
-                        shareWorkspacePreview(
-                            context = context,
-                            title = state.binaryPreview?.path,
-                            content = null,
-                            binaryPreview = state.binaryPreview,
-                        )
+                        shareScope.launch {
+                            shareWorkspacePreview(
+                                context = context,
+                                title = state.binaryPreview?.path,
+                                content = null,
+                                binaryPreview = state.binaryPreview,
+                            ).onFailure { error ->
+                                viewModel.reportError(error.message ?: "Could not share file.")
+                            }
+                        }
                     },
                 )
                 visibleEntries.isEmpty() -> EmptyWorkspace(query = state.searchText, currentPath = state.currentPath)
@@ -427,13 +439,21 @@ private fun FilePreview(
         if (granted) saveImage() else saveImageMessage = "Photos permission is required to save this image."
     }
     Column(Modifier.fillMaxSize()) {
-        Row(
+        Column(
             Modifier.fillMaxWidth().padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(title ?: "Preview", style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.MiddleEllipsis, modifier = Modifier.weight(1f))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                title ?: "Preview",
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                overflow = TextOverflow.MiddleEllipsis,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 if (binaryPreview?.isImage == true) {
                     HermexPillButton(
                         if (isSavingImage) "Saving" else "Save",
@@ -454,7 +474,11 @@ private fun FilePreview(
                         filled = true,
                     )
                 }
-                HermexPillButton("Share", onShare, enabled = !isLoading && (content != null || binaryPreview != null))
+                HermexPillButton(
+                    "Share",
+                    onShare,
+                    enabled = !isLoading && (content != null || binaryPreview?.bytes != null),
+                )
                 HermexPillButton("Close", onClose)
             }
         }
@@ -470,11 +494,13 @@ private fun FilePreview(
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(strokeWidth = 2.dp)
             }
-        } else if (binaryPreview?.isImage == true) {
-            val bitmap = remember(binaryPreview.bytes) {
-                BitmapFactory.decodeByteArray(binaryPreview.bytes, 0, binaryPreview.bytes.size)
+        } else if (binaryPreview?.isImage == true && binaryPreview.bytes != null) {
+            val previewBytes = binaryPreview.bytes
+            val bitmap by produceState<android.graphics.Bitmap?>(null, previewBytes) {
+                value = withContext(Dispatchers.IO) { decodeWorkspacePreviewBitmap(previewBytes) }
             }
-            if (bitmap != null) {
+            val decodedBitmap = bitmap
+            if (decodedBitmap != null) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -483,7 +509,7 @@ private fun FilePreview(
                 ) {
                     FilePreviewHeader(displayPath, metadata)
                     Image(
-                        bitmap = bitmap.asImageBitmap(),
+                        bitmap = decodedBitmap.asImageBitmap(),
                         contentDescription = title ?: "Image preview",
                         modifier = Modifier.fillMaxWidth(),
                         contentScale = ContentScale.Fit,
@@ -613,7 +639,8 @@ private fun saveWorkspaceImageToGallery(
     }.getOrNull() ?: return "Could not save image."
 
     return try {
-        resolver.openOutputStream(uri)?.use { output -> output.write(preview.bytes) }
+        val bytes = preview.bytes ?: return "This image is not loaded."
+        resolver.openOutputStream(uri)?.use { output -> output.write(bytes) }
             ?: error("Could not open gallery item.")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             values.clear()
@@ -647,27 +674,56 @@ private fun BinaryPreview.galleryFileName(): String {
     return "$safeName.$extension"
 }
 
-private fun shareWorkspacePreview(
+private fun decodeWorkspacePreviewBitmap(bytes: ByteArray): android.graphics.Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+    var sampleSize = 1
+    while (
+        bounds.outWidth / sampleSize > MAX_PREVIEW_DIMENSION ||
+        bounds.outHeight / sampleSize > MAX_PREVIEW_DIMENSION ||
+        (bounds.outWidth.toLong() / sampleSize) * (bounds.outHeight.toLong() / sampleSize) > MAX_PREVIEW_PIXELS
+    ) {
+        sampleSize *= 2
+    }
+    return BitmapFactory.decodeByteArray(
+        bytes,
+        0,
+        bytes.size,
+        BitmapFactory.Options().apply { inSampleSize = sampleSize },
+    )
+}
+
+private const val MAX_PREVIEW_DIMENSION = 4_096
+private const val MAX_PREVIEW_PIXELS = 8_000_000L
+
+private suspend fun shareWorkspacePreview(
     context: Context,
     title: String?,
     content: String?,
     binaryPreview: BinaryPreview?,
-) {
-    val bytes = content?.toByteArray(Charsets.UTF_8) ?: binaryPreview?.bytes ?: return
+): Result<Unit> = runCatching {
+    val bytes = content?.toByteArray(Charsets.UTF_8) ?: binaryPreview?.bytes
+        ?: error("No file content is available to share.")
     val sourcePath = title ?: binaryPreview?.path ?: "workspace-file"
     val fileName = WorkspaceFilePreviewPolicy.displayName(sourcePath)
         .ifBlank { "workspace-file" }
         .replace(Regex("[^A-Za-z0-9._-]"), "_")
         .take(96)
-    val exportDir = File(context.cacheDir, "exports").also { it.mkdirs() }
-    val file = File(exportDir, fileName)
-    file.writeBytes(bytes)
+        .takeIf { it != "." && it != ".." }
+        ?: "workspace-file"
     val mimeType = when {
         content != null -> WorkspaceFilePreviewPolicy.mimeType(sourcePath, isText = true)
         binaryPreview != null -> binaryPreview.mimeType
         else -> WorkspaceFilePreviewPolicy.mimeType(sourcePath)
     }
-    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    val uri = withContext(Dispatchers.IO) {
+        val exportDir = context.createExportDirectory("workspace")
+        val file = File(exportDir, fileName)
+        file.writeBytes(bytes)
+        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    }
     val intent = Intent(Intent.ACTION_SEND)
         .setType(mimeType)
         .putExtra(Intent.EXTRA_STREAM, uri)

@@ -60,6 +60,8 @@ object WorkspaceFilePreviewPolicy {
 
     fun isKnownUnsupportedBinary(path: String?): Boolean = extension(path) in unsupportedBinaryExtensions
 
+    fun shouldLoadRawPreview(path: String?): Boolean = isRasterImage(path)
+
     fun mimeType(path: String?, isText: Boolean = false): String =
         if (isText) {
             "text/plain"

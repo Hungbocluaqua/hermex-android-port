@@ -13,6 +13,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,6 +61,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -97,6 +99,7 @@ import com.uzairansar.hermex.ui.theme.HermesHeaderLogo
 import com.uzairansar.hermex.ui.theme.hermexColorFromHex
 import com.uzairansar.hermex.ui.theme.hermexGlass
 import com.uzairansar.hermex.ui.notifications.AndroidNotificationPermissionPolicy
+import com.uzairansar.hermex.ui.chat.StreamStatusNotifier
 
 @Composable
 fun SettingsRoute(
@@ -265,6 +268,9 @@ fun SettingsRoute(
                                 viewModel.setResponseCompletionNotificationsEnabled(false, "Android notifications disabled.")
                             } else if (canPostAndroidNotifications(context)) {
                                 viewModel.setResponseCompletionNotificationsEnabled(true, "Android notifications allowed.")
+                            } else if (hasPostNotificationPermission(context)) {
+                                viewModel.setResponseCompletionNotificationsEnabled(false, "Enable Hermex notifications in Android Settings.")
+                                openAndroidAppSettings(context)
                             } else {
                                 viewModel.markResponseCompletionNotificationPermissionRequested()
                                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -869,7 +875,7 @@ private fun HeaderLogoColorSettings(
             val color = hermexColorFromHex(hex) ?: Color.White
             Box(
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .background(color)
                     .border(
@@ -900,7 +906,7 @@ private fun HeaderLogoColorSettings(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(44.dp)
+            .heightIn(min = 48.dp)
             .semantics { contentDescription = "Custom header logo color" }
             .clickable {
                 customHexDraft = selectedHex
@@ -982,6 +988,7 @@ private fun AppIconSettingsPicker(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .clickable(onClick = onToggleExpanded)
             .padding(vertical = 5.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1030,6 +1037,8 @@ private fun AppIconChoiceRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .semantics { this.selected = isSelected }
             .clickable(onClick = onClick)
             .padding(vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1127,7 +1136,13 @@ private fun SettingsToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled) { onValueChange(!value) }
+            .then(switchTestTag?.let { Modifier.testTag(it) } ?: Modifier)
+            .toggleable(
+                value = value,
+                enabled = enabled,
+                role = Role.Switch,
+                onValueChange = onValueChange,
+            )
             .heightIn(min = 54.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1141,9 +1156,8 @@ private fun SettingsToggleRow(
         )
         Switch(
             checked = value,
-            onCheckedChange = onValueChange,
+            onCheckedChange = null,
             enabled = enabled,
-            modifier = switchTestTag?.let { Modifier.testTag(it) } ?: Modifier,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
                 checkedTrackColor = Color(0xFF34C759),
@@ -1184,6 +1198,7 @@ private fun SettingsActionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .clickable(onClick = onClick)
             .padding(vertical = 7.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -2022,11 +2037,12 @@ private fun forcedUpdateMessage(outcome: ForcedUpdateCheckOutcome?): String =
 private fun canPostAndroidNotifications(context: Context): Boolean =
     AndroidNotificationPermissionPolicy.canPostNotifications(
         sdkInt = Build.VERSION.SDK_INT,
-        permissionGranted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.POST_NOTIFICATIONS,
-        ) == PackageManager.PERMISSION_GRANTED,
-    )
+        permissionGranted = hasPostNotificationPermission(context),
+    ) && StreamStatusNotifier(context.applicationContext).canPostCompletionNotifications()
+
+private fun hasPostNotificationPermission(context: Context): Boolean =
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
 private fun responseCompletionNotificationStatusText(
     state: SettingsUiState,

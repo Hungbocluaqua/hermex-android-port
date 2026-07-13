@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,7 +38,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -62,6 +63,9 @@ import io.noties.markwon.syntax.Prism4jThemeDarkula
 import io.noties.markwon.syntax.Prism4jThemeDefault
 import io.noties.markwon.syntax.SyntaxHighlightPlugin
 import io.noties.prism4j.Prism4j
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 @Composable
 fun MarkdownText(
@@ -71,8 +75,20 @@ fun MarkdownText(
     isStreaming: Boolean = false,
     streamedTextAnimationEnabled: Boolean = false,
 ) {
+    val latestMarkdown by rememberUpdatedState(markdown)
+    var renderedMarkdown by remember { mutableStateOf(markdown) }
+    LaunchedEffect(markdown, isStreaming) {
+        if (!isStreaming) renderedMarkdown = markdown
+    }
+    LaunchedEffect(isStreaming) {
+        if (!isStreaming) return@LaunchedEffect
+        while (true) {
+            if (renderedMarkdown != latestMarkdown) renderedMarkdown = latestMarkdown
+            delay(STREAM_RENDER_INTERVAL_MILLIS)
+        }
+    }
     val fadeAlpha = remember { Animatable(1f) }
-    LaunchedEffect(markdown, isStreaming, streamedTextAnimationEnabled) {
+    LaunchedEffect(renderedMarkdown, isStreaming, streamedTextAnimationEnabled) {
         if (isStreaming && streamedTextAnimationEnabled) {
             fadeAlpha.snapTo(0.72f)
             fadeAlpha.animateTo(1f, animationSpec = tween(durationMillis = 220))
@@ -80,7 +96,11 @@ fun MarkdownText(
             fadeAlpha.snapTo(1f)
         }
     }
-    val segments = remember(markdown) { markdown.parseMarkdownSegments() }
+    var parsedSegments by remember { mutableStateOf<List<MarkdownSegment>?>(null) }
+    LaunchedEffect(renderedMarkdown) {
+        parsedSegments = withContext(Dispatchers.Default) { renderedMarkdown.parseMarkdownSegments() }
+    }
+    val segments = parsedSegments ?: listOf(MarkdownSegment.Markdown(renderedMarkdown))
     val animatedModifier = modifier.graphicsLayer(alpha = fadeAlpha.value)
     if (segments.size == 1 && segments.single() is MarkdownSegment.Markdown) {
         MarkdownAndroidView(
@@ -109,6 +129,8 @@ fun MarkdownText(
         }
     }
 }
+
+private const val STREAM_RENDER_INTERVAL_MILLIS = 50L
 
 @Composable
 private fun MarkdownAndroidView(
@@ -158,8 +180,12 @@ private fun MarkdownAndroidView(
             )
             .build()
     }
+    var parsedMarkdown by remember(markwon) { mutableStateOf<android.text.Spanned?>(null) }
+    LaunchedEffect(markwon, markdown) {
+        parsedMarkdown = withContext(Dispatchers.Default) { markwon.toMarkdown(markdown) }
+    }
     AndroidView(
-        modifier = modifier.clearAndSetSemantics {
+        modifier = modifier.semantics {
             text = AnnotatedString(markdown)
         },
         factory = {
@@ -175,7 +201,7 @@ private fun MarkdownAndroidView(
             textView.setLinkTextColor(linkColor)
             textView.setHorizontallyScrolling(false)
             textView.isHorizontalScrollBarEnabled = false
-            markwon.setMarkdown(textView, markdown)
+            parsedMarkdown?.let { markwon.setParsedMarkdown(textView, it) }
         },
     )
 }

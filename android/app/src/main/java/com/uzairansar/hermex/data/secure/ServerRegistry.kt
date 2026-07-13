@@ -35,20 +35,36 @@ class ServerRegistry(
 
     fun activeServer(): ServerAccount? = _snapshot.value.servers.firstOrNull { it.id == _snapshot.value.activeServerId }
 
-    fun activate(url: HttpUrl): ServerAccount {
+    fun activate(
+        url: HttpUrl,
+        displayName: String? = null,
+        initials: String? = null,
+        headerLogoColorHex: String? = null,
+    ): ServerAccount {
         val id = normalizedId(url)
         var result: ServerAccount? = null
         _snapshot.update { current ->
             val existing = current.servers.firstOrNull { it.id == id }
             if (existing != null) {
-                result = existing
-                current.copy(activeServerId = id)
+                val updated = existing.copy(
+                    displayName = displayName?.trim()?.takeIf { it.isNotBlank() } ?: existing.displayName,
+                    initials = initials?.trim()?.takeIf { it.isNotBlank() } ?: existing.initials,
+                    headerLogoColorHex = headerLogoColorHex?.trim()?.takeIf { it.isNotBlank() }
+                        ?: existing.headerLogoColorHex,
+                    updatedAtEpochMillis = System.currentTimeMillis(),
+                )
+                result = updated
+                current.copy(
+                    servers = current.servers.map { account -> if (account.id == id) updated else account },
+                    activeServerId = id,
+                )
             } else {
                 val account = ServerAccount(
                     id = id,
                     urlString = id,
-                    displayName = url.host,
-                    initials = url.host.take(2).uppercase(),
+                    displayName = displayName?.trim()?.takeIf { it.isNotBlank() } ?: url.host,
+                    initials = initials?.trim()?.takeIf { it.isNotBlank() } ?: url.host.take(2).uppercase(),
+                    headerLogoColorHex = headerLogoColorHex?.trim()?.takeIf { it.isNotBlank() } ?: "#FFD700",
                 )
                 result = account
                 current.copy(servers = current.servers + account, activeServerId = id)
@@ -90,7 +106,19 @@ class ServerRegistry(
             )
         }
         secretStore.remove(customHeadersKey(id))
+        secretStore.remove(loggedOutKey(id))
         persist(_snapshot.value)
+    }
+
+    fun isLoggedOut(serverId: String): Boolean =
+        secretStore.getString(loggedOutKey(serverId)) == LOGGED_OUT_VALUE
+
+    fun setLoggedOut(serverId: String, loggedOut: Boolean) {
+        if (loggedOut) {
+            secretStore.putString(loggedOutKey(serverId), LOGGED_OUT_VALUE)
+        } else {
+            secretStore.remove(loggedOutKey(serverId))
+        }
     }
 
     fun customHeaders(serverId: String): List<CustomHeader> =
@@ -112,9 +140,11 @@ class ServerRegistry(
     }
 
     private fun customHeadersKey(serverId: String) = "custom_headers::$serverId"
+    private fun loggedOutKey(serverId: String) = "logged_out::$serverId"
 
     companion object {
         private const val KEY = "servers"
+        private const val LOGGED_OUT_VALUE = "true"
 
         fun normalizedId(url: HttpUrl): String {
             val builder = url.newBuilder()

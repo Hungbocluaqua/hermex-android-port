@@ -9,17 +9,21 @@ import okhttp3.HttpUrl
 class PersistentCookieJar(
     private val secretStore: SecretStore,
 ) : CookieJar {
+    private val lock = Any()
+
     override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
         if (cookies.isEmpty()) return
-        val key = keyFor(url)
-        val existing = read(key).filterNot { stored ->
-            cookies.any { it.name == stored.name && it.domain == stored.domain && it.path == stored.path }
+        synchronized(lock) {
+            val key = keyFor(url)
+            val existing = read(key).filterNot { stored ->
+                cookies.any { it.name == stored.name && it.domain == stored.domain && it.path == stored.path }
+            }
+            val updated = existing + cookies.map(CookieRecord::from)
+            secretStore.putString(key, HermesJson.encodeToString(updated))
         }
-        val updated = existing + cookies.map(CookieRecord::from)
-        secretStore.putString(key, HermesJson.encodeToString(updated))
     }
 
-    override fun loadForRequest(url: HttpUrl): List<Cookie> {
+    override fun loadForRequest(url: HttpUrl): List<Cookie> = synchronized(lock) {
         val key = keyFor(url)
         val now = System.currentTimeMillis()
         val records = read(key)
@@ -27,11 +31,13 @@ class PersistentCookieJar(
         if (fresh.size != records.size) {
             secretStore.putString(key, HermesJson.encodeToString(fresh))
         }
-        return fresh.mapNotNull { it.toCookie() }.filter { it.matches(url) }
+        fresh.mapNotNull { it.toCookie() }.filter { it.matches(url) }
     }
 
     fun clear(url: HttpUrl) {
-        secretStore.remove(keyFor(url))
+        synchronized(lock) {
+            secretStore.remove(keyFor(url))
+        }
     }
 
     private fun read(key: String): List<CookieRecord> =

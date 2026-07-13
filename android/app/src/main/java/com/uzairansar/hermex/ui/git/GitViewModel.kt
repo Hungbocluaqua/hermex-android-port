@@ -1,6 +1,7 @@
 package com.uzairansar.hermex.ui.git
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.uzairansar.hermex.core.model.GitBranchRef
 import com.uzairansar.hermex.core.model.GitBranchesResponse
@@ -13,6 +14,8 @@ import com.uzairansar.hermex.data.repository.GitRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 data class GitBranchOption(
@@ -67,16 +70,28 @@ data class GitUiState(
 class GitViewModel(
     private val sessionId: String,
     private val repository: GitRepository,
+    private val savedStateHandle: SavedStateHandle? = null,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(GitUiState())
+    private val _state = MutableStateFlow(
+        GitUiState(
+            newBranchName = savedStateHandle?.get<String>(SAVED_NEW_BRANCH_NAME).orEmpty(),
+            commitMessage = savedStateHandle?.get<String>(SAVED_COMMIT_MESSAGE).orEmpty(),
+            pushAfterCommit = savedStateHandle?.get<Boolean>(SAVED_PUSH_AFTER_COMMIT) ?: false,
+        ),
+    )
     val state: StateFlow<GitUiState> = _state
+    private var diffJob: Job? = null
+    private var refreshJob: Job? = null
+    private var refreshGeneration = 0L
 
     init {
         refresh()
     }
 
     fun refresh(clearNotice: Boolean = true, clearError: Boolean = true) {
-        viewModelScope.launch {
+        refreshJob?.cancel()
+        val generation = ++refreshGeneration
+        refreshJob = viewModelScope.launch {
             _state.update {
                 it.copy(
                     isLoading = true,
@@ -90,6 +105,7 @@ class GitViewModel(
                 status to branches
             }
                 .onSuccess { (status, branches) ->
+                    if (generation != refreshGeneration) return@onSuccess
                     val current = branches?.branches?.current ?: branches?.current ?: status.branch
                     val files = status.files.orEmpty()
                     val validPaths = files.mapNotNull { it.serverPath() }.toSet()
@@ -111,21 +127,43 @@ class GitViewModel(
                         )
                     }
                 }
-                .onFailure { error -> _state.update { it.copy(isLoading = false, error = error.friendlyGitMessage("Could not load git status.")) } }
+                .onFailure { error ->
+                    if (error is CancellationException || generation != refreshGeneration) return@onFailure
+                    _state.update { it.copy(isLoading = false, error = error.friendlyGitMessage("Could not load git status.")) }
+                }
         }
     }
 
     fun updateNewBranchName(value: String) {
+        savedStateHandle?.set(SAVED_NEW_BRANCH_NAME, value)
         _state.update { it.copy(newBranchName = value, error = null) }
     }
 
     fun selectFile(file: GitFileChange, kind: String = if (file.staged == true) "staged" else "unstaged") {
         val path = file.serverPath() ?: return
-        viewModelScope.launch {
+        diffJob?.cancel()
+        diffJob = viewModelScope.launch {
             _state.update { it.copy(selectedPath = path, selectedKind = kind, diff = null, error = null) }
             runCatching { repository.diff(sessionId, path, kind) }
-                .onSuccess { diff -> _state.update { it.copy(diff = diff, error = diff.error) } }
-                .onFailure { error -> _state.update { it.copy(error = error.friendlyGitMessage("Could not load diff.")) } }
+                .onSuccess { diff ->
+                    _state.update {
+                        if (it.selectedPath == path && it.selectedKind == kind) {
+                            it.copy(diff = diff, error = diff.error)
+                        } else {
+                            it
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    if (error is CancellationException) return@onFailure
+                    _state.update {
+                        if (it.selectedPath == path && it.selectedKind == kind) {
+                            it.copy(error = error.friendlyGitMessage("Could not load diff."))
+                        } else {
+                            it
+                        }
+                    }
+                }
         }
     }
 
@@ -143,10 +181,12 @@ class GitViewModel(
     }
 
     fun updateCommitMessage(value: String) {
+        savedStateHandle?.set(SAVED_COMMIT_MESSAGE, value)
         _state.update { it.copy(commitMessage = value, messageWasTruncated = false) }
     }
 
     fun updatePushAfterCommit(value: Boolean) {
+        savedStateHandle?.set(SAVED_PUSH_AFTER_COMMIT, value)
         _state.update { it.copy(pushAfterCommit = value) }
     }
 
@@ -276,9 +316,9 @@ class GitViewModel(
     }
 
     fun generateCommitMessage() {
+        if (!beginMutation()) return
         viewModelScope.launch {
             val paths = _state.value.selectedPaths.toList()
-            _state.update { it.copy(isMutating = true, error = null, notice = null) }
             runCatching {
                 if (paths.isEmpty()) {
                     repository.commitMessage(sessionId)
@@ -305,6 +345,7 @@ class GitViewModel(
                             )
                         }
                     }
+                    if (suggested.isNotBlank()) savedStateHandle?.set(SAVED_COMMIT_MESSAGE, suggested)
                 }
                 .onFailure { error -> _state.update { it.copy(isMutating = false, error = error.friendlyGitMessage("Could not generate commit message.")) } }
         }
@@ -334,9 +375,9 @@ class GitViewModel(
             _state.update { it.copy(error = "Enter a commit message.") }
             return
         }
+        if (!beginMutation()) return
         viewModelScope.launch {
             val shouldPush = _state.value.pushAfterCommit
-            _state.update { it.copy(isMutating = true, error = null, notice = null) }
             runCatching {
                 if (paths == null) {
                     repository.commit(sessionId, message)
@@ -362,6 +403,7 @@ class GitViewModel(
                         notice = notice,
                     )
                 }
+                savedStateHandle?.set(SAVED_COMMIT_MESSAGE, "")
                 refresh(clearNotice = false, clearError = false)
             }.onFailure { error ->
                 _state.update { it.copy(isMutating = false, error = error.friendlyGitMessage("Could not commit changes.")) }
@@ -412,13 +454,13 @@ class GitViewModel(
     }
 
     private fun mutate(success: String, action: suspend () -> GitMutationResponse) {
+        if (!beginMutation()) return
         viewModelScope.launch {
-            _state.update { it.copy(isMutating = true, error = null, notice = null) }
             runCatching { action() }
                 .onSuccess { response ->
                     if (response.error == null) {
                         _state.update { it.copy(isMutating = false, notice = response.message ?: success, diff = null) }
-                        refresh()
+                        refresh(clearNotice = false)
                     } else {
                         _state.update { it.copy(isMutating = false, error = response.error) }
                     }
@@ -428,10 +470,10 @@ class GitViewModel(
     }
 
     private fun checkout(target: GitCheckoutSelection, stashingChanges: Boolean) {
+        if (!beginMutation()) return
         viewModelScope.launch {
             _state.update {
                 it.copy(
-                    isMutating = true,
                     pendingCheckout = null,
                     pendingDirtyCheckout = null,
                     error = null,
@@ -455,6 +497,9 @@ class GitViewModel(
                         notice = if (responseError == null) message else null,
                     )
                 }
+                if (target.newBranch != null && responseError == null) {
+                    savedStateHandle?.set(SAVED_NEW_BRANCH_NAME, "")
+                }
                 refresh(clearNotice = responseError != null, clearError = responseError == null)
             }.onFailure { error ->
                 if (!stashingChanges && error.isDirtyWorktree()) {
@@ -470,6 +515,18 @@ class GitViewModel(
                 }
             }
         }
+    }
+
+    private fun beginMutation(): Boolean {
+        if (_state.value.isMutating) return false
+        _state.update { it.copy(isMutating = true, error = null, notice = null) }
+        return true
+    }
+
+    private companion object {
+        const val SAVED_COMMIT_MESSAGE = "git_commit_message"
+        const val SAVED_NEW_BRANCH_NAME = "git_new_branch_name"
+        const val SAVED_PUSH_AFTER_COMMIT = "git_push_after_commit"
     }
 }
 

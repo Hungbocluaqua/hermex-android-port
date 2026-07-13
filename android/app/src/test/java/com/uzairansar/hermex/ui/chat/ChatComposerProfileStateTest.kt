@@ -7,6 +7,12 @@ import org.junit.Test
 
 class ChatComposerProfileStateTest {
     @Test
+    fun reportsAttachmentUploadsUntilEveryUploadCompletes() {
+        assertFalse(ChatUiState().isUploadingAttachment)
+        assertTrue(ChatUiState(attachmentUploadsInFlight = 2).isUploadingAttachment)
+    }
+
+    @Test
     fun profileControlIsHiddenForSingleProfileMode() {
         val state = ChatUiState(
             profileOptions = listOf(ProfileSummary(name = "default")),
@@ -26,5 +32,11 @@ class ChatComposerProfileStateTest {
         )
 
         assertTrue(state.showsProfileControl)
+    }
+
+    @Test
+    fun profileCanChangeOnlyBeforeConversationHasPersistedHistory() {
+        assertTrue(ChatProfileSwitchPolicy.canSwitchProfile(hasPersistedConversation = false))
+        assertFalse(ChatProfileSwitchPolicy.canSwitchProfile(hasPersistedConversation = true))
     }
 }

@@ -7,6 +7,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 
@@ -51,6 +52,34 @@ class CustomHeaderTest {
             fail("Expected Origin to be rejected.")
         } catch (error: IllegalArgumentException) {
             assertEquals("Origin, Referer, Host, and Content-Length are not allowed.", error.message)
+        }
+    }
+
+    @Test
+    fun parserRejectsInvalidHttpHeaderSyntax() {
+        val error = runCatching { parseCustomHeaderLines("Bad Header: value") }.exceptionOrNull()
+
+        assertTrue(error is IllegalArgumentException)
+        assertEquals("Line 1: invalid HTTP header name or value.", error?.message)
+    }
+
+    @Test
+    fun invalidPersistedHeadersAreDroppedBeforeRequestMutation() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            server.enqueue(json("""{"status":"ok"}"""))
+            val api = HermesApiClient(
+                baseUrl = server.url("/"),
+                client = OkHttpClient(),
+                customHeaders = { listOf(CustomHeader("Bad Header", "value")) },
+            )
+
+            api.health()
+
+            assertNull(server.takeRequest().headers["Bad Header"])
+        } finally {
+            server.close()
         }
     }
 

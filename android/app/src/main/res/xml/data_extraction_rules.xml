@@ -2,9 +2,13 @@
     <cloud-backup>
         <exclude domain="sharedpref" path="hermex_secure.xml" />
         <exclude domain="sharedpref" path="hermex_share.xml" />
+        <exclude domain="sharedpref" path="hermex_chat_pending_state.xml" />
+        <exclude domain="sharedpref" path="hermex_stream_recovery.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="hermex_secure.xml" />
         <exclude domain="sharedpref" path="hermex_share.xml" />
+        <exclude domain="sharedpref" path="hermex_chat_pending_state.xml" />
+        <exclude domain="sharedpref" path="hermex_stream_recovery.xml" />
     </device-transfer>
 </data-extraction-rules>

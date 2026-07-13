@@ -1,6 +1,7 @@
 package com.uzairansar.hermex.ui.panels
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.uzairansar.hermex.core.model.CronCreateRequest
 import com.uzairansar.hermex.core.model.CronJob
@@ -12,6 +13,7 @@ import com.uzairansar.hermex.core.model.SessionSummary
 import com.uzairansar.hermex.core.model.SkillContentResponse
 import com.uzairansar.hermex.core.model.SkillSummary
 import com.uzairansar.hermex.data.repository.PanelsRepository
+import com.uzairansar.hermex.core.network.HermesJson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -22,7 +24,9 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class CronTaskDraft(
     val editingJobId: String? = null,
     val name: String = "",
@@ -86,11 +90,24 @@ data class PanelsUiState(
 
 class PanelsViewModel(
     private val repository: PanelsRepository,
+    private val savedStateHandle: SavedStateHandle? = null,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(PanelsUiState())
+    private val restoredTaskDraft = savedStateHandle?.get<String>(SAVED_TASK_DRAFT)
+        ?.let { runCatching { HermesJson.decodeFromString<CronTaskDraft>(it) }.getOrNull() }
+    private val _state = MutableStateFlow(
+        PanelsUiState(
+            taskDraft = restoredTaskDraft,
+            memorySection = savedStateHandle?.get<String>(SAVED_MEMORY_SECTION) ?: "memory",
+            memoryDraft = savedStateHandle?.get<String>(SAVED_MEMORY_DRAFT).orEmpty(),
+            editingMemorySection = savedStateHandle?.get<String>(SAVED_EDITING_MEMORY_SECTION),
+        ),
+    )
     val state: StateFlow<PanelsUiState> = _state
     private var refreshJob: Job? = null
     private var refreshGeneration: Long = 0
+    private var cronDetailJob: Job? = null
+    private var skillDetailJob: Job? = null
+    private var skillFileJob: Job? = null
 
     init {
         refresh()
@@ -285,7 +302,8 @@ class PanelsViewModel(
 
     fun openCronDetail(job: CronJob) {
         val id = job.stableId ?: return
-        viewModelScope.launch {
+        cronDetailJob?.cancel()
+        cronDetailJob = viewModelScope.launch {
             _state.update {
                 it.copy(
                     selectedCronDetail = job,
@@ -296,8 +314,25 @@ class PanelsViewModel(
                 )
             }
             runCatching { repository.cronOutput(id) }
-                .onSuccess { output -> _state.update { it.copy(selectedCronOutput = output, isLoadingCronOutput = false) } }
-                .onFailure { error -> _state.update { it.copy(isLoadingCronOutput = false, error = error.message ?: "Could not load task output.") } }
+                .onSuccess { output ->
+                    _state.update {
+                        if (it.selectedCronDetail?.stableId == id) {
+                            it.copy(selectedCronOutput = output, isLoadingCronOutput = false)
+                        } else {
+                            it
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    if (error is CancellationException) return@onFailure
+                    _state.update {
+                        if (it.selectedCronDetail?.stableId == id) {
+                            it.copy(isLoadingCronOutput = false, error = error.message ?: "Could not load task output.")
+                        } else {
+                            it
+                        }
+                    }
+                }
         }
     }
 
@@ -307,17 +342,17 @@ class PanelsViewModel(
     }
 
     fun dismissCronDetail() {
+        cronDetailJob?.cancel()
         _state.update { it.copy(selectedCronDetail = null, selectedCronOutput = null, isLoadingCronOutput = false) }
     }
 
     fun openCreateTask() {
-        _state.update { it.copy(taskDraft = CronTaskDraft(), error = null, notice = null) }
+        setTaskDraft(CronTaskDraft())
     }
 
     fun openEditTask(job: CronJob) {
-        _state.update {
-            it.copy(
-                taskDraft = CronTaskDraft(
+        setTaskDraft(
+            CronTaskDraft(
                     editingJobId = job.stableId,
                     name = job.name.orEmpty(),
                     prompt = job.prompt ?: job.command.orEmpty(),
@@ -327,18 +362,17 @@ class PanelsViewModel(
                     model = job.model.orEmpty(),
                     profile = job.profile.orEmpty(),
                     toastNotifications = job.toastNotifications ?: true,
-                ),
-                error = null,
-                notice = null,
-            )
-        }
+            ),
+        )
     }
 
     fun updateTaskDraft(draft: CronTaskDraft) {
+        savedStateHandle?.set(SAVED_TASK_DRAFT, HermesJson.encodeToString(draft))
         _state.update { it.copy(taskDraft = draft, error = null) }
     }
 
     fun dismissTaskEditor() {
+        savedStateHandle?.remove<String>(SAVED_TASK_DRAFT)
         _state.update { it.copy(taskDraft = null) }
     }
 
@@ -383,7 +417,10 @@ class PanelsViewModel(
                     ),
                 ).error
             }
-            if (error == null) _state.update { it.copy(taskDraft = null) }
+            if (error == null) {
+                savedStateHandle?.remove<String>(SAVED_TASK_DRAFT)
+                _state.update { it.copy(taskDraft = null) }
+            }
             error
         }
     }
@@ -407,25 +444,42 @@ class PanelsViewModel(
 
     fun loadSkill(skill: SkillSummary) {
         val name = skill.name ?: return
-        viewModelScope.launch {
+        skillDetailJob?.cancel()
+        skillDetailJob = viewModelScope.launch {
             _state.update {
                 it.copy(
                     isMutating = true,
                     error = null,
                     notice = null,
                     selectedSkillName = name,
+                    selectedSkill = null,
                     selectedSkillFileName = null,
                     selectedSkillFileContent = null,
                     isLoadingSkillFile = false,
                 )
             }
             runCatching { repository.skillContent(name) }
-                .onSuccess { detail -> _state.update { it.copy(selectedSkill = detail, isMutating = false) } }
-                .onFailure { error -> _state.update { it.copy(isMutating = false, error = error.message ?: "Could not load skill.") } }
+                .onSuccess { detail ->
+                    _state.update {
+                        if (it.selectedSkillName == name) it.copy(selectedSkill = detail, isMutating = false) else it
+                    }
+                }
+                .onFailure { error ->
+                    if (error is CancellationException) return@onFailure
+                    _state.update {
+                        if (it.selectedSkillName == name) {
+                            it.copy(isMutating = false, error = error.message ?: "Could not load skill.")
+                        } else {
+                            it
+                        }
+                    }
+                }
         }
     }
 
     fun dismissSkillDetail() {
+        skillDetailJob?.cancel()
+        skillFileJob?.cancel()
         _state.update {
             it.copy(
                 selectedSkillName = null,
@@ -438,7 +492,8 @@ class PanelsViewModel(
 
     fun loadSkillLinkedFile(fileName: String) {
         val name = _state.value.selectedSkillName ?: _state.value.selectedSkill?.name ?: return
-        viewModelScope.launch {
+        skillFileJob?.cancel()
+        skillFileJob = viewModelScope.launch {
             _state.update {
                 it.copy(
                     selectedSkillFileName = fileName,
@@ -451,6 +506,7 @@ class PanelsViewModel(
             runCatching { repository.skillContent(name, fileName) }
                 .onSuccess { detail ->
                     _state.update {
+                        if (it.selectedSkillName != name || it.selectedSkillFileName != fileName) return@update it
                         it.copy(
                             selectedSkillFileContent = detail.content ?: detail.error ?: "",
                             isLoadingSkillFile = false,
@@ -458,7 +514,9 @@ class PanelsViewModel(
                     }
                 }
                 .onFailure { error ->
+                    if (error is CancellationException) return@onFailure
                     _state.update {
+                        if (it.selectedSkillName != name || it.selectedSkillFileName != fileName) return@update it
                         it.copy(
                             selectedSkillFileContent = "Could not load file: ${error.message ?: "Unknown error"}",
                             isLoadingSkillFile = false,
@@ -469,6 +527,7 @@ class PanelsViewModel(
     }
 
     fun dismissSkillLinkedFile() {
+        skillFileJob?.cancel()
         _state.update {
             it.copy(
                 selectedSkillFileName = null,
@@ -530,11 +589,16 @@ class PanelsViewModel(
 
     fun selectMemorySection(section: String) {
         val memory = _state.value.memory
+        savedStateHandle?.set(SAVED_MEMORY_SECTION, section)
+        savedStateHandle?.set(SAVED_MEMORY_DRAFT, memory.sectionText(section))
         _state.update { it.copy(memorySection = section, memoryDraft = memory.sectionText(section), error = null, notice = null) }
     }
 
     fun openMemoryEditor(section: String) {
         val memory = _state.value.memory
+        savedStateHandle?.set(SAVED_MEMORY_SECTION, section)
+        savedStateHandle?.set(SAVED_MEMORY_DRAFT, memory.sectionText(section))
+        savedStateHandle?.set(SAVED_EDITING_MEMORY_SECTION, section)
         _state.update {
             it.copy(
                 memorySection = section,
@@ -547,10 +611,12 @@ class PanelsViewModel(
     }
 
     fun dismissMemoryEditor() {
+        savedStateHandle?.remove<String>(SAVED_EDITING_MEMORY_SECTION)
         _state.update { it.copy(editingMemorySection = null) }
     }
 
     fun updateMemoryDraft(value: String) {
+        savedStateHandle?.set(SAVED_MEMORY_DRAFT, value)
         _state.update { it.copy(memoryDraft = value, error = null) }
     }
 
@@ -559,7 +625,10 @@ class PanelsViewModel(
         val content = _state.value.memoryDraft
         mutate(
             success = "Memory saved.",
-            afterSuccess = { _state.update { it.copy(editingMemorySection = null) } },
+            afterSuccess = {
+                savedStateHandle?.remove<String>(SAVED_EDITING_MEMORY_SECTION)
+                _state.update { it.copy(editingMemorySection = null) }
+            },
         ) {
             repository.writeMemory(section, content).error
         }
@@ -584,6 +653,18 @@ class PanelsViewModel(
                 }
                 .onFailure { error -> _state.update { it.copy(isMutating = false, error = error.message ?: "Panel action failed.") } }
         }
+    }
+
+    private fun setTaskDraft(draft: CronTaskDraft) {
+        savedStateHandle?.set(SAVED_TASK_DRAFT, HermesJson.encodeToString(draft))
+        _state.update { it.copy(taskDraft = draft, error = null, notice = null) }
+    }
+
+    private companion object {
+        const val SAVED_TASK_DRAFT = "panels_task_draft"
+        const val SAVED_MEMORY_SECTION = "panels_memory_section"
+        const val SAVED_MEMORY_DRAFT = "panels_memory_draft"
+        const val SAVED_EDITING_MEMORY_SECTION = "panels_editing_memory_section"
     }
 }
 
