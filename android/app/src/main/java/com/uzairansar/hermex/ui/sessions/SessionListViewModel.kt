@@ -3,9 +3,12 @@ package com.uzairansar.hermex.ui.sessions
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uzairansar.hermex.core.model.ProfileSummary
+import com.uzairansar.hermex.core.model.ProjectMutationResponse
 import com.uzairansar.hermex.core.model.ProjectSummary
+import com.uzairansar.hermex.core.model.SessionBranchResponse
 import com.uzairansar.hermex.core.model.SessionExportFile
 import com.uzairansar.hermex.core.model.SessionExportFormat
+import com.uzairansar.hermex.core.model.SessionMutationResponse
 import com.uzairansar.hermex.core.model.SessionSummary
 import com.uzairansar.hermex.data.preferences.LocalSettingsRepository
 import com.uzairansar.hermex.data.preferences.SessionRowDisplaySettings
@@ -117,6 +120,8 @@ class SessionListViewModel(
     val state: StateFlow<SessionListUiState> = _state
     private var refreshJob: Job? = null
     private var remoteSearchJob: Job? = null
+    private var profilesJob: Job? = null
+    private var profilesGeneration = 0L
 
     init {
         viewModelScope.launch {
@@ -250,10 +255,13 @@ class SessionListViewModel(
     }
 
     fun refreshProfiles() {
-        viewModelScope.launch {
+        profilesJob?.cancel()
+        val generation = ++profilesGeneration
+        profilesJob = viewModelScope.launch {
             _state.update { it.copy(isLoadingProfiles = true, profileError = null) }
             runCatching { panelsRepository.profiles() }
                 .onSuccess { response ->
+                    if (generation != profilesGeneration) return@onSuccess
                     _state.update {
                         it.copy(
                             profileOptions = response.profiles.orEmpty(),
@@ -264,6 +272,7 @@ class SessionListViewModel(
                     }
                 }
                 .onFailure { error ->
+                    if (error is CancellationException || generation != profilesGeneration) return@onFailure
                     _state.update {
                         it.copy(
                             isLoadingProfiles = false,
@@ -277,19 +286,34 @@ class SessionListViewModel(
     fun switchProfile(profile: ProfileSummary) {
         val profileName = profile.name?.takeIf { it.isNotBlank() } ?: return
         if (profileName == _state.value.activeProfileName) return
+        profilesJob?.cancel()
+        profilesGeneration += 1
         viewModelScope.launch {
-            _state.update { it.copy(isSwitchingProfile = true, profileError = null, notice = null, error = null) }
+            _state.update {
+                it.copy(
+                    isSwitchingProfile = true,
+                    isLoadingProfiles = false,
+                    profileError = null,
+                    notice = null,
+                    error = null,
+                )
+            }
             runCatching { panelsRepository.switchProfile(profileName) }
                 .onSuccess { response ->
                     val error = response.error
                     if (error == null) {
                         _state.update {
                             it.copy(
+                                sessions = emptyList(),
+                                projects = emptyList(),
+                                archivedCount = null,
                                 activeProfileName = profileName,
                                 isSwitchingProfile = false,
+                                isViewingCachedData = false,
                                 notice = "Profile set to ${profile.displayName?.takeIf { name -> name.isNotBlank() } ?: profileName}.",
                             )
                         }
+                        refresh(clearNotice = false)
                         refreshProfiles()
                     } else {
                         _state.update { it.copy(isSwitchingProfile = false, profileError = error) }
@@ -313,26 +337,45 @@ class SessionListViewModel(
     fun createSession(profile: String? = null, onCreated: (String) -> Unit) {
         viewModelScope.launch {
             _state.update { it.copy(isMutating = true, error = null, notice = null) }
-            runCatching { repository.createSession(profile)?.sessionId }
-                .onSuccess { id ->
-                    _state.update { it.copy(isMutating = false, notice = "Session created.") }
-                    refresh(clearNotice = false)
-                    if (!id.isNullOrBlank()) onCreated(id)
+            runCatching { repository.createSession(profile) }
+                .onSuccess { response ->
+                    val responseError = response.mutationError("The server could not create a session.")
+                    val id = response.session?.sessionId
+                    if (responseError != null) {
+                        _state.update { it.copy(isMutating = false, error = responseError) }
+                        return@onSuccess
+                    }
+                    if (id.isNullOrBlank()) {
+                        _state.update {
+                            it.copy(
+                                isMutating = false,
+                                error = "The server did not return the new session ID.",
+                            )
+                        }
+                    } else {
+                        _state.update { it.copy(isMutating = false, notice = "Session created.") }
+                        refresh(clearNotice = false)
+                        onCreated(id)
+                    }
                 }
                 .onFailure { error -> _state.update { it.copy(isMutating = false, error = error.message ?: "Could not create session.") } }
         }
     }
 
+    fun reportActionError(message: String) {
+        _state.update { it.copy(isMutating = false, notice = null, error = message) }
+    }
+
     fun togglePin(session: SessionSummary) {
         val id = session.sessionId ?: return
-        mutate("Pin updated.") { repository.pin(id, session.pinned != true)?.let { null } }
+        mutate("Pin updated.") { repository.pin(id, session.pinned != true).mutationError("The server could not update the pin.") }
     }
 
     fun toggleArchive(session: SessionSummary) {
         val id = session.sessionId ?: return
         val archived = session.archived != true
         mutate(if (archived) "Session archived." else "Session restored.") {
-            repository.archive(id, archived)?.let { null }
+            repository.archive(id, archived).mutationError("The server could not update the archive state.")
         }
     }
 
@@ -357,7 +400,7 @@ class SessionListViewModel(
             return
         }
         _state.update { it.copy(renameSession = null, renameDraft = "") }
-        mutate("Session renamed.") { repository.rename(id, title)?.let { null } }
+        mutate("Session renamed.") { repository.rename(id, title).mutationError("The server could not rename the session.") }
     }
 
     fun requestDelete(session: SessionSummary) {
@@ -372,7 +415,7 @@ class SessionListViewModel(
         val id = _state.value.deleteSession?.sessionId ?: return
         _state.update { it.copy(deleteSession = null) }
         mutate("Session deleted.") {
-            repository.delete(id).error
+            repository.delete(id).mutationError("The server could not delete the session.")
         }
     }
 
@@ -396,10 +439,21 @@ class SessionListViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isMutating = true, error = null, notice = null) }
             runCatching { repository.branch(id, title) }
-                .onSuccess { branchedId ->
+                .onSuccess { response ->
+                    val responseError = response.mutationError()
+                    val branchedId = response.sessionId
+                    if (responseError != null || branchedId.isNullOrBlank()) {
+                        _state.update {
+                            it.copy(
+                                isMutating = false,
+                                error = responseError ?: "The server did not return the branched session ID.",
+                            )
+                        }
+                        return@onSuccess
+                    }
                     _state.update { it.copy(isMutating = false, notice = "Session branched.") }
                     refresh(clearNotice = false)
-                    if (!branchedId.isNullOrBlank()) onCreated(branchedId)
+                    onCreated(branchedId)
                 }
                 .onFailure { error -> _state.update { it.copy(isMutating = false, error = error.message ?: "Could not branch session.") } }
         }
@@ -454,7 +508,7 @@ class SessionListViewModel(
         val id = session.sessionId ?: return
         if (session.projectId == projectId) return
         mutate(if (projectId == null) "Moved to no project." else "Moved to project.") {
-            repository.move(id, projectId)?.let { null }
+            repository.move(id, projectId).mutationError("The server could not move the session.")
         }
     }
 
@@ -515,9 +569,10 @@ class SessionListViewModel(
             return
         }
         mutate("Project created.") {
-            repository.createProject(name, snapshot.newProjectColor)
-            _state.update { it.copy(newProjectName = "", newProjectColor = null) }
-            null
+            val error = repository.createProject(name, snapshot.newProjectColor)
+                .mutationError("The server could not create the project.")
+            if (error == null) _state.update { it.copy(newProjectName = "", newProjectColor = null) }
+            error
         }
     }
 
@@ -556,7 +611,7 @@ class SessionListViewModel(
         _state.update { it.copy(renameProject = null, renameProjectDraft = "", renameProjectColor = null) }
         mutate("Project renamed.") {
             repository.renameProject(id, name, snapshot.renameProjectColor)
-            null
+                .mutationError("The server could not rename the project.")
         }
     }
 
@@ -578,7 +633,7 @@ class SessionListViewModel(
             )
         }
         mutate("Project deleted.") {
-            repository.deleteProject(id).error
+            repository.deleteProject(id).mutationError("The server could not delete the project.")
         }
     }
 
@@ -645,6 +700,14 @@ class SessionListViewModel(
 }
 
 private const val REMOTE_SEARCH_DEBOUNCE_MILLIS = 350L
+
+private fun SessionMutationResponse.mutationError(fallback: String): String? =
+    error?.trim()?.takeIf { it.isNotBlank() } ?: fallback.takeIf { ok == false }
+
+private fun ProjectMutationResponse.mutationError(fallback: String): String? =
+    error?.trim()?.takeIf { it.isNotBlank() } ?: fallback.takeIf { ok == false }
+
+private fun SessionBranchResponse.mutationError(): String? = error?.trim()?.takeIf { it.isNotBlank() }
 
 private fun String.normalizedSearchQuery(): String = trim().lowercase()
 

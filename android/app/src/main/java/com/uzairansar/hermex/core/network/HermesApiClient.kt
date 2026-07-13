@@ -2,10 +2,14 @@ package com.uzairansar.hermex.core.network
 
 import com.uzairansar.hermex.core.model.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -14,26 +18,40 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import okio.Buffer
 import java.io.File
 import java.io.IOException
 import kotlin.time.Duration.Companion.seconds
-import okhttp3.Call
 
 class HermesApiClient(
     val baseUrl: HttpUrl,
     client: OkHttpClient,
     private val json: Json = HermesJson,
     private val customHeaders: () -> List<CustomHeader> = { emptyList() },
+    private val onUnauthorized: (HttpUrl) -> Unit = {},
+    private val onProfileChanged: suspend (HttpUrl, String) -> Unit = { _, _ -> },
 ) {
     private val jsonMediaType = "application/json".toMediaType()
     @OptIn(ExperimentalSerializationApi::class)
     private val projectMutationJson = Json(json) { explicitNulls = true }
+    @OptIn(ExperimentalSerializationApi::class)
+    private val cronMutationJson = Json(json) {
+        explicitNulls = true
+        encodeDefaults = true
+    }
     private val client: OkHttpClient = client.newBuilder()
+        .addNetworkInterceptor(ServerTransportPolicyInterceptor())
         .addNetworkInterceptor(SameOriginCustomHeaderInterceptor(baseUrl, customHeaders))
         .build()
     private val publicMediaClient: OkHttpClient = client.newBuilder()
         .cookieJar(CookieJar.NO_COOKIES)
+        .addNetworkInterceptor(ServerTransportPolicyInterceptor())
         .build()
+
+    init {
+        requireAllowedServerTransport(baseUrl)
+    }
 
     suspend fun health(): HealthResponse = get(Endpoint.Health)
     suspend fun authStatus(): AuthStatusResponse = get(Endpoint.AuthStatus)
@@ -59,24 +77,27 @@ class HermesApiClient(
     suspend fun sessionYolo(sessionId: String): SessionYoloResponse = get(Endpoint.SessionYolo(sessionId))
     suspend fun setSessionYolo(sessionId: String, enabled: Boolean): SessionYoloResponse =
         post(Endpoint.SessionYolo(null), SessionYoloRequest(sessionId, enabled))
-    suspend fun exportSession(sessionId: String, format: SessionExportFormat, fallbackTitle: String? = null): SessionExportFile =
-        withContext(Dispatchers.IO) {
-            val request = requestBuilder(Endpoint.ExportSession(sessionId, format.wireValue))
-                .get()
-                .header("Accept", "*/*")
-                .build()
-            val response = executeDataWithHeaders(client.newCall(request), headers = listOf("Content-Disposition"))
-            SessionExportFile(
-                data = response.bytes,
-                filename = sessionExportFilename(
-                    contentDisposition = response.headers["Content-Disposition"],
-                    fallbackTitle = fallbackTitle,
-                    sessionId = sessionId,
-                    format = format,
-                ),
-                mimeType = format.mimeType,
-            )
-        }
+    suspend fun exportSession(sessionId: String, format: SessionExportFormat, fallbackTitle: String? = null): SessionExportFile {
+        val request = requestBuilder(Endpoint.ExportSession(sessionId, format.wireValue))
+            .get()
+            .header("Accept", "*/*")
+            .build()
+        val response = executeDataWithHeaders(
+            client.newCall(request),
+            headers = listOf("Content-Disposition"),
+            maxResponseBytes = MAX_BINARY_RESPONSE_BYTES,
+        )
+        return SessionExportFile(
+            data = response.bytes,
+            filename = sessionExportFilename(
+                contentDisposition = response.headers["Content-Disposition"],
+                fallbackTitle = fallbackTitle,
+                sessionId = sessionId,
+                format = format,
+            ),
+            mimeType = format.mimeType,
+        )
+    }
     suspend fun compressSession(sessionId: String, focusTopic: String? = null): SessionCompressResponse =
         post(Endpoint.CompressSession, CompressSessionRequest(sessionId, focusTopic), timeoutSeconds = 120)
     suspend fun undoSession(sessionId: String): SessionUndoResponse = post(Endpoint.UndoSession, SessionIdRequest(sessionId))
@@ -96,7 +117,7 @@ class HermesApiClient(
         post(Endpoint.RenameProject, RenameProjectRequest(projectId, name, color), bodyJson = projectMutationJson)
     suspend fun deleteProject(projectId: String): ProjectMutationResponse = post(Endpoint.DeleteProject, DeleteProjectRequest(projectId))
     suspend fun chatStart(request: ChatStartRequest): ChatStartResponse = post(Endpoint.ChatStart, request)
-    suspend fun chatCancel(streamId: String): SessionMutationResponse = get(Endpoint.ChatCancel(streamId))
+    suspend fun chatCancel(streamId: String): ChatCancelResponse = get(Endpoint.ChatCancel(streamId))
     suspend fun chatStreamStatus(streamId: String): SessionStatusResponse = get(Endpoint.ChatStreamStatus(streamId))
     suspend fun chatSteer(sessionId: String, text: String): ChatSteerResponse = post(Endpoint.ChatSteer, ChatSteerRequest(sessionId, text))
     suspend fun startBtw(sessionId: String, question: String): BtwStartResponse = post(Endpoint.Btw, BtwRequest(sessionId, question))
@@ -130,27 +151,33 @@ class HermesApiClient(
     suspend fun workspaceSuggestions(prefix: String): WorkspaceSuggestionsResponse = get(Endpoint.WorkspaceSuggestions(prefix))
     suspend fun directoryList(sessionId: String, path: String?): DirectoryListResponse = get(Endpoint.DirectoryList(sessionId, path))
     suspend fun file(sessionId: String, path: String): FileResponse = get(Endpoint.File(sessionId, path))
-    suspend fun rawFile(sessionId: String, path: String): ByteArray = data(Endpoint.RawFile(sessionId, path), "GET")
-    suspend fun media(path: String): ByteArray = data(Endpoint.Media(path), "GET")
+    suspend fun rawFile(sessionId: String, path: String): ByteArray =
+        data(Endpoint.RawFile(sessionId, path), "GET", maxResponseBytes = MAX_PREVIEW_RESPONSE_BYTES)
+    suspend fun media(path: String): ByteArray =
+        data(Endpoint.Media(path), "GET", maxResponseBytes = MAX_MEDIA_RESPONSE_BYTES)
     suspend fun transcriptMediaData(reference: TranscriptMediaReference): ByteArray =
         when (val source = reference.source) {
             is TranscriptMediaSource.LocalPath -> media(source.path)
             is TranscriptMediaSource.RemoteUrl -> remoteTranscriptMediaData(source.url)
         }
-    suspend fun remoteTranscriptMediaData(url: HttpUrl): ByteArray = withContext(Dispatchers.IO) {
+    suspend fun remoteTranscriptMediaData(url: HttpUrl): ByteArray {
         val request = Request.Builder()
             .url(url)
             .get()
             .header("Accept", "*/*")
             .build()
         val callClient = if (url.isSameOriginAs(baseUrl)) client else publicMediaClient
-        executeData(callClient.newCall(request))
+        return executeData(callClient.newCall(request), MAX_REMOTE_MEDIA_RESPONSE_BYTES)
     }
     suspend fun models(): ModelCatalogResponse = get(Endpoint.Models)
     suspend fun modelsLive(): ModelsLiveResponse = get(Endpoint.ModelsLive)
     suspend fun commands(): CommandsResponse = get(Endpoint.Commands)
     suspend fun profiles(): ProfilesResponse = get(Endpoint.Profiles)
-    suspend fun switchProfile(profile: String): ProfileSwitchResponse = post(Endpoint.SwitchProfile, SwitchProfileRequest(profile))
+    suspend fun switchProfile(profile: String): ProfileSwitchResponse {
+        val response: ProfileSwitchResponse = post(Endpoint.SwitchProfile, SwitchProfileRequest(profile))
+        if (response.error.isNullOrBlank()) onProfileChanged(baseUrl, profile)
+        return response
+    }
     suspend fun createProfile(
         name: String,
         cloneConfig: Boolean = false,
@@ -186,7 +213,8 @@ class HermesApiClient(
     suspend fun insights(days: Int): InsightsResponse = get(Endpoint.Insights(days))
     suspend fun crons(): CronsResponse = get(Endpoint.Crons)
     suspend fun createCron(request: CronCreateRequest): CronMutationResponse = post(Endpoint.CronCreate, request)
-    suspend fun updateCron(request: CronUpdateRequest): CronMutationResponse = post(Endpoint.CronUpdate, request)
+    suspend fun updateCron(request: CronUpdateRequest): CronMutationResponse =
+        post(Endpoint.CronUpdate, request, bodyJson = cronMutationJson)
     suspend fun deleteCron(jobId: String): CronMutationResponse = post(Endpoint.CronDelete, CronJobIdRequest(jobId))
     suspend fun runCron(jobId: String): CronMutationResponse = post(Endpoint.CronRun, CronJobIdRequest(jobId))
     suspend fun pauseCron(jobId: String, reason: String? = null): CronMutationResponse = post(Endpoint.CronPause, CronJobIdRequest(jobId, reason))
@@ -259,7 +287,7 @@ class HermesApiClient(
             accept = "audio/mpeg",
         )
 
-    suspend fun upload(sessionId: String, file: File, mimeType: String?): UploadResponse = withContext(Dispatchers.IO) {
+    suspend fun upload(sessionId: String, file: File, mimeType: String?): UploadResponse {
         val mediaType = (mimeType ?: "application/octet-stream").toMediaType()
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
@@ -270,10 +298,10 @@ class HermesApiClient(
             .post(body)
             .header("Accept", "application/json")
             .build()
-        executeAndDecode(request)
+        return executeAndDecode(request)
     }
 
-    suspend fun transcribe(file: File, mimeType: String? = "audio/mp4"): TranscribeResponse = withContext(Dispatchers.IO) {
+    suspend fun transcribe(file: File, mimeType: String? = "audio/mp4"): TranscribeResponse {
         val mediaType = (mimeType ?: "application/octet-stream").toMediaType()
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
@@ -283,7 +311,7 @@ class HermesApiClient(
             .post(body)
             .header("Accept", "application/json")
             .build()
-        executeAndDecode(request)
+        return executeAndDecode(request)
     }
 
     fun streamUrl(streamId: String, replayAfterSeq: Int? = null): HttpUrl =
@@ -304,7 +332,7 @@ class HermesApiClient(
         method: String,
         encodedBody: okhttp3.RequestBody?,
         timeoutSeconds: Long? = null,
-    ): Response = withContext(Dispatchers.IO) {
+    ): Response {
         val builder = requestBuilder(endpoint)
             .method(method, encodedBody)
             .header("Accept", "application/json")
@@ -312,7 +340,7 @@ class HermesApiClient(
         val callClient = timeoutSeconds?.let {
             client.newBuilder().callTimeout(it.seconds.inWholeMilliseconds, java.util.concurrent.TimeUnit.MILLISECONDS).build()
         } ?: client
-        executeAndDecode(callClient.newCall(request))
+        return executeAndDecode(callClient.newCall(request))
     }
 
     private suspend fun data(
@@ -320,23 +348,24 @@ class HermesApiClient(
         method: String,
         encodedBody: okhttp3.RequestBody? = null,
         accept: String = "*/*",
-    ): ByteArray = withContext(Dispatchers.IO) {
+        maxResponseBytes: Long = MAX_BINARY_RESPONSE_BYTES,
+    ): ByteArray {
         val request = requestBuilder(endpoint)
             .method(method, encodedBody)
             .header("Accept", accept)
             .build()
-        executeData(client.newCall(request))
+        return executeData(client.newCall(request), maxResponseBytes)
     }
 
     private fun requestBuilder(endpoint: Endpoint): Request.Builder {
         return Request.Builder().url(endpoint.url(baseUrl))
     }
 
-    private inline fun <reified Response : Any> executeAndDecode(request: Request): Response =
+    private suspend inline fun <reified Response : Any> executeAndDecode(request: Request): Response =
         executeAndDecode(client.newCall(request))
 
-    private inline fun <reified Response : Any> executeAndDecode(call: Call): Response {
-        val bytes = executeData(call)
+    private suspend inline fun <reified Response : Any> executeAndDecode(call: Call): Response {
+        val bytes = executeData(call, MAX_JSON_RESPONSE_BYTES)
         return try {
             json.decodeFromString<Response>(bytes.decodeToString())
         } catch (error: Throwable) {
@@ -344,24 +373,41 @@ class HermesApiClient(
         }
     }
 
-    private fun executeData(call: Call): ByteArray {
-        return executeDataWithHeaders(call).bytes
+    private suspend fun executeData(call: Call, maxResponseBytes: Long): ByteArray {
+        return executeDataWithHeaders(call, maxResponseBytes = maxResponseBytes).bytes
     }
 
-    private fun executeDataWithHeaders(call: Call, headers: List<String> = emptyList()): RawResponse {
-        val response = try {
-            call.execute()
-        } catch (error: IOException) {
-            throw ApiError.Network(error)
-        }
-        response.use {
-            val bytes = it.body.bytes()
-            if (it.code == 401) throw ApiError.Unauthorized
-            if (!it.isSuccessful) throw ApiError.Http(it.code, bytes.decodeToString())
-            return RawResponse(
-                bytes = bytes,
-                headers = headers.associateWith { name -> it.header(name) }.filterValues { value -> value != null }.mapValues { entry -> requireNotNull(entry.value) },
-            )
+    private suspend fun executeDataWithHeaders(
+        call: Call,
+        headers: List<String> = emptyList(),
+        maxResponseBytes: Long = MAX_JSON_RESPONSE_BYTES,
+    ): RawResponse {
+        val response = call.awaitResponse()
+        try {
+            return withContext(Dispatchers.IO) {
+                val body = if (response.isSuccessful) {
+                    response.body.readLimited(maxResponseBytes, failOnOverflow = true)
+                } else {
+                    response.body.readLimited(MAX_ERROR_RESPONSE_BYTES, failOnOverflow = false)
+                }
+                val bytes = body.bytes
+                if (response.code == 401 && response.request.url.isSameOriginAs(baseUrl)) {
+                    onUnauthorized(baseUrl)
+                    throw ApiError.Unauthorized
+                }
+                if (!response.isSuccessful) {
+                    val suffix = if (body.truncated) "\n[response truncated]" else ""
+                    throw ApiError.Http(response.code, bytes.decodeToString() + suffix)
+                }
+                RawResponse(
+                    bytes = bytes,
+                    headers = headers.associateWith { name -> response.header(name) }
+                        .filterValues { value -> value != null }
+                        .mapValues { entry -> requireNotNull(entry.value) },
+                )
+            }
+        } finally {
+            withContext(NonCancellable + Dispatchers.IO) { response.close() }
         }
     }
 
@@ -369,6 +415,60 @@ class HermesApiClient(
         val bytes: ByteArray,
         val headers: Map<String, String> = emptyMap(),
     )
+
+    companion object {
+        private const val MAX_JSON_RESPONSE_BYTES = 16L * 1024L * 1024L
+        private const val MAX_PREVIEW_RESPONSE_BYTES = 16L * 1024L * 1024L
+        private const val MAX_MEDIA_RESPONSE_BYTES = 20L * 1024L * 1024L
+        private const val MAX_REMOTE_MEDIA_RESPONSE_BYTES = 16L * 1024L * 1024L
+        private const val MAX_BINARY_RESPONSE_BYTES = 64L * 1024L * 1024L
+        private const val MAX_ERROR_RESPONSE_BYTES = 1L * 1024L * 1024L
+    }
+}
+
+private suspend fun Call.awaitResponse(): Response = suspendCancellableCoroutine { continuation ->
+    continuation.invokeOnCancellation { cancel() }
+    enqueue(
+        object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                val error = (e as? InsecureTransportIOException)?.apiError ?: ApiError.Network(e)
+                if (continuation.isActive) continuation.resumeWith(Result.failure(error))
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (continuation.isActive) {
+                    continuation.resumeWith(Result.success(response))
+                } else {
+                    response.close()
+                }
+            }
+        },
+    )
+}
+
+private data class LimitedResponseBody(
+    val bytes: ByteArray,
+    val truncated: Boolean,
+)
+
+private fun okhttp3.ResponseBody.readLimited(limitBytes: Long, failOnOverflow: Boolean): LimitedResponseBody {
+    if (contentLength() > limitBytes) {
+        if (failOnOverflow) throw ApiError.ResponseTooLarge(limitBytes)
+        return LimitedResponseBody(ByteArray(0), truncated = true)
+    }
+
+    val source = source()
+    val buffer = Buffer()
+    var total = 0L
+    while (true) {
+        val read = source.read(buffer, minOf(8L * 1024L, limitBytes - total + 1L))
+        if (read == -1L) return LimitedResponseBody(buffer.readByteArray(), truncated = false)
+        total += read
+        if (total > limitBytes) {
+            if (failOnOverflow) throw ApiError.ResponseTooLarge(limitBytes)
+            return LimitedResponseBody(buffer.readByteArray(limitBytes), truncated = true)
+        }
+    }
 }
 
 private fun sessionExportFilename(

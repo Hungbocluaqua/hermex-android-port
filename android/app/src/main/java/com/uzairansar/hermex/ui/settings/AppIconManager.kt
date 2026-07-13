@@ -16,7 +16,7 @@ internal enum class AppIconChoice(
     Default(
         title = "Default",
         subtitle = "Matches device appearance",
-        previewDrawableRes = R.drawable.hermex_app_icon_default,
+        previewDrawableRes = R.drawable.hermex_app_icon_default_preview,
         aliasName = "AppIconDefault",
         enabledByDefault = true,
     ),

@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.uzairansar.hermex.data.share.SharedAttachment
@@ -27,23 +28,40 @@ class ShareActivity : ComponentActivity() {
             val uris = mutableListOf<Uri>()
             intent.streamUri()?.let(uris::add)
             intent.streamUris()?.let(uris::addAll)
-            val saved = withContext(Dispatchers.IO) {
+            val (saved, rejectedAttachmentCount) = withContext(Dispatchers.IO) {
+                var rejected = (uris.size - SharedDraftPolicy.MAXIMUM_SHARED_ATTACHMENT_COUNT).coerceAtLeast(0)
                 val attachments = buildList {
-                    for (uri in uris) {
-                        if (size >= SharedDraftPolicy.MAXIMUM_SHARED_ATTACHMENT_COUNT) break
-                        cacheSharedAttachment(uri)?.let(::add)
+                    for (uri in uris.take(SharedDraftPolicy.MAXIMUM_SHARED_ATTACHMENT_COUNT)) {
+                        val attachment = cacheSharedAttachment(uri)
+                        if (attachment == null) rejected += 1 else add(attachment)
                     }
                 }
-                store.savePendingDraft(
-                    text = SharedDraftPolicy.draftText(subject = subject, text = text),
-                    attachments = attachments,
+                Pair(
+                    store.savePendingDraft(
+                        text = SharedDraftPolicy.draftText(subject = subject, text = text),
+                        attachments = attachments,
+                    ),
+                    rejected,
                 )
             }
             if (saved) {
+                if (rejectedAttachmentCount > 0) {
+                    Toast.makeText(
+                        this@ShareActivity,
+                        "Imported the share, but skipped $rejectedAttachmentCount unreadable, empty, oversized, or extra file(s).",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
                 startActivity(Intent(this@ShareActivity, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                     data = Uri.parse("hermes-agent://share")
                 })
+            } else {
+                Toast.makeText(
+                    this@ShareActivity,
+                    "Hermex could not import this share. Files must be readable, non-empty, and no larger than 20 MB.",
+                    Toast.LENGTH_LONG,
+                ).show()
             }
             finish()
         }

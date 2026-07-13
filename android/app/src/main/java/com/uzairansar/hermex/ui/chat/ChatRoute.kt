@@ -8,12 +8,14 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.speech.tts.TextToSpeech
 import android.view.HapticFeedbackConstants
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -80,6 +82,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
@@ -113,10 +116,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uzairansar.hermex.core.model.ApprovalChoice
 import com.uzairansar.hermex.core.model.ChatMessage
@@ -137,6 +137,7 @@ import com.uzairansar.hermex.core.model.ToolCall
 import com.uzairansar.hermex.core.model.ToolCallGroup
 import com.uzairansar.hermex.core.model.TranscriptMediaParser
 import com.uzairansar.hermex.core.model.TranscriptMediaReference
+import com.uzairansar.hermex.core.model.TranscriptMediaSource
 import com.uzairansar.hermex.core.model.TranscriptMediaSegment
 import com.uzairansar.hermex.core.model.TurnFileChange
 import com.uzairansar.hermex.core.model.TurnFileChangeAggregator
@@ -157,6 +158,7 @@ import com.uzairansar.hermex.data.preferences.visibleFavoriteModels
 import com.uzairansar.hermex.data.preferences.visibleRecentModels
 import com.uzairansar.hermex.data.repository.ChatRepository
 import com.uzairansar.hermex.data.repository.GitRepository
+import com.uzairansar.hermex.data.share.SharedDraftPolicy
 import com.uzairansar.hermex.data.share.SharedDraftStore
 import com.uzairansar.hermex.ui.theme.HermexCardShape
 import com.uzairansar.hermex.ui.theme.HermexGlassShape
@@ -166,7 +168,6 @@ import com.uzairansar.hermex.ui.theme.HermexSelectorPill
 import com.uzairansar.hermex.ui.theme.HermexSurfaceLevel
 import com.uzairansar.hermex.ui.theme.LocalHermexHapticsEnabled
 import com.uzairansar.hermex.ui.git.HermexGitDiffContent
-import com.uzairansar.hermex.ui.notifications.AndroidNotificationPermissionPolicy
 import com.uzairansar.hermex.ui.theme.hermexColorFromHex
 import com.uzairansar.hermex.ui.theme.hermexGlass
 import com.uzairansar.hermex.ui.theme.hermexHazeSource
@@ -196,6 +197,8 @@ private data class TurnDiffPresentation(
 @Composable
 fun ChatRoute(
     sessionId: String,
+    serverId: String = "",
+    viewModelKey: String = "chat:$sessionId",
     repository: ChatRepository,
     gitRepository: GitRepository? = null,
     localSettingsRepository: LocalSettingsRepository? = null,
@@ -208,16 +211,21 @@ fun ChatRoute(
     onOpenWorkspace: () -> Unit,
     onOpenGit: () -> Unit,
 ) {
-    val viewModel: ChatViewModel = viewModel(factory = object : ViewModelProvider.Factory {
+    val context = LocalContext.current
+    val viewModel: ChatViewModel = viewModel(key = viewModelKey, factory = object : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             @Suppress("UNCHECKED_CAST")
-            return ChatViewModel(sessionId, repository) as T
+            return ChatViewModel(
+                sessionId,
+                repository,
+                ChatPendingStateStore(context.applicationContext, "$serverId\u0000$sessionId"),
+            ) as T
         }
     })
     val state by viewModel.state.collectAsStateWithLifecycle()
     val gitViewModel: ChatGitViewModel? = gitRepository?.let { repo ->
         viewModel(
-            key = "chat-git-$sessionId",
+            key = "$viewModelKey:git",
             factory = object : ViewModelProvider.Factory {
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     @Suppress("UNCHECKED_CAST")
@@ -270,10 +278,11 @@ fun ChatRoute(
     val recentModelKeys by remember(localSettingsRepository) {
         localSettingsRepository?.recentModelKeys ?: flowOf(emptyList<ModelFavoriteKey>())
     }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val systemLayoutDirection = LocalLayoutDirection.current
     val chatLayoutDirection = if (chatDisplaySettings.rtlChatLayoutEnabled) {
         LayoutDirection.Rtl
     } else {
-        LayoutDirection.Ltr
+        systemLayoutDirection
     }
     val sendButtonEnabled = if (state.isStreaming) true else state.draft.isNotBlank() && !state.isViewingCachedData
     val primaryActionTintColor = remember(tintPrimaryActionsWithThemeColor, activeHeaderColorHex, sendButtonEnabled) {
@@ -283,15 +292,10 @@ fun ChatRoute(
             null
         }
     }
-    val context = LocalContext.current
     val hapticView = LocalView.current
     val hapticsEnabled = LocalHermexHapticsEnabled.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    var appIsActive by remember(lifecycleOwner) {
-        mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
-    }
     val latestResponseCompletionNotificationsEnabled by rememberUpdatedState(responseCompletionNotificationsEnabled)
-    val latestAppIsActive by rememberUpdatedState(appIsActive)
+    val latestShowResponseExcerpts by rememberUpdatedState(chatDisplaySettings.showsStatusNotificationResponseExcerpts)
     val recorder = remember(context) { VoiceNoteRecorder(context) }
     val streamNotifier = remember(context) { StreamStatusNotifier(context.applicationContext) }
     val ttsState = remember { mutableStateOf<TextToSpeech?>(null) }
@@ -316,6 +320,7 @@ fun ChatRoute(
         val tts = TextToSpeech(context) { }
         ttsState.value = tts
         onDispose {
+            if (recorder.isRecording) viewModel.cancelVoiceNote(recorder)
             releaseServerSpeech()
             tts.stop()
             tts.shutdown()
@@ -324,10 +329,18 @@ fun ChatRoute(
     }
 
     val attachmentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-        uris.forEach { uri -> viewModel.attach(context, uri) }
+        val availableSlots = viewModel.remainingAttachmentSlots()
+        if (uris.size > availableSlots) {
+            Toast.makeText(context, "Attach up to ${SharedDraftPolicy.MAXIMUM_SHARED_ATTACHMENT_COUNT} files per message.", Toast.LENGTH_LONG).show()
+        }
+        uris.take(availableSlots).forEach { uri -> viewModel.attach(context, uri) }
     }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
-        uris.forEach { uri -> viewModel.attach(context, uri) }
+        val availableSlots = viewModel.remainingAttachmentSlots()
+        if (uris.size > availableSlots) {
+            Toast.makeText(context, "Attach up to ${SharedDraftPolicy.MAXIMUM_SHARED_ATTACHMENT_COUNT} photos per message.", Toast.LENGTH_LONG).show()
+        }
+        uris.take(availableSlots).forEach { uri -> viewModel.attach(context, uri) }
     }
     val microphonePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) viewModel.startVoiceNote(recorder)
@@ -401,30 +414,39 @@ fun ChatRoute(
                 speakLocally(text)
                 return@launch
             }
-            val played = runCatching {
-                releaseServerSpeech()
-                val audioFile = withContext(Dispatchers.IO) {
-                    File.createTempFile("hermex-tts-", ".mp3", context.cacheDir).also { it.writeBytes(audio) }
+            val prepared = runCatching {
+                withContext(Dispatchers.IO) {
+                    val audioFile = File.createTempFile("hermex-tts-", ".mp3", context.cacheDir).also { it.writeBytes(audio) }
+                    val player = MediaPlayer()
+                    try {
+                        player.setDataSource(audioFile.absolutePath)
+                        player.prepare()
+                        player to audioFile
+                    } catch (error: Throwable) {
+                        player.release()
+                        audioFile.delete()
+                        throw error
+                    }
                 }
-                val player = MediaPlayer()
+            }.getOrNull()
+            val played = prepared?.let { (player, audioFile) ->
+                releaseServerSpeech()
                 serverSpeechPlayer.value = player
                 serverSpeechFile.value = audioFile
-                player.setDataSource(audioFile.absolutePath)
                 player.setOnCompletionListener { releaseServerSpeech() }
                 player.setOnErrorListener { _, _, _ ->
                     releaseServerSpeech()
                     true
                 }
-                player.prepare()
                 player.start()
-            }.isSuccess
+                true
+            } == true
             if (!played) {
                 releaseServerSpeech()
                 speakLocally(text)
             }
         }
     }
-    val assistantPreview = state.messages.lastOrNull { it.role == "assistant" }?.displayText
     val transcriptMessagesAfter: (MessageActionContext) -> Int = remember(
         state.messages,
         chatDisplaySettings.showThinkingAndToolCards,
@@ -456,62 +478,24 @@ fun ChatRoute(
         }
     }
 
-    LaunchedEffect(
-        state.isStreaming,
-        state.isRecoveringStream,
-        state.activeStreamId,
-        state.liveToolActivity,
-        assistantPreview,
-        chatDisplaySettings.showsStatusNotificationResponseExcerpts,
-    ) {
+    LaunchedEffect(state.isStreaming) {
         if (state.isStreaming) {
-            streamNotifier.show(
+            streamNotifier.monitor(
+                serverId = serverId,
                 sessionId = sessionId,
-                streamId = state.activeStreamId,
-                recoveryLabel = state.activeStreamRecoveryLabel,
-                toolActivity = state.liveToolActivity,
-                preview = assistantPreview.takeIf { chatDisplaySettings.showsStatusNotificationResponseExcerpts },
+                state = viewModel.state,
+                completionNotificationsEnabled = { latestResponseCompletionNotificationsEnabled },
+                showResponseExcerpts = { latestShowResponseExcerpts },
             )
-        } else {
-            streamNotifier.clear(sessionId)
         }
     }
 
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, _ ->
-            appIsActive = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    DisposableEffect(streamNotifier, serverId, sessionId) {
+        onDispose { streamNotifier.release(serverId, sessionId) }
     }
 
-    LaunchedEffect(viewModel, streamNotifier, sessionId, context) {
-        var lastHandledTrigger = viewModel.state.value.responseCompletionTrigger
-        viewModel.state
-            .map { it.responseCompletionTrigger }
-            .distinctUntilChanged()
-            .collect { trigger ->
-                if (trigger <= lastHandledTrigger) return@collect
-                lastHandledTrigger = trigger
-                viewModel.refreshCompletedTranscriptIfNeeded()
-                val canPostNotifications = AndroidNotificationPermissionPolicy.canPostNotifications(
-                    sdkInt = Build.VERSION.SDK_INT,
-                    permissionGranted = ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.POST_NOTIFICATIONS,
-                    ) == PackageManager.PERMISSION_GRANTED,
-                )
-                if (
-                    ResponseCompletionNotificationPolicy.shouldSchedule(
-                        preferenceEnabled = latestResponseCompletionNotificationsEnabled,
-                        canPostNotifications = canPostNotifications,
-                        completedNormally = true,
-                        appIsActive = latestAppIsActive,
-                    )
-                ) {
-                    streamNotifier.showResponseComplete(sessionId)
-                }
-            }
+    LaunchedEffect(state.responseCompletionTrigger) {
+        if (state.responseCompletionTrigger > 0) viewModel.refreshCompletedTranscriptIfNeeded()
     }
 
     LaunchedEffect(viewModel, sessionId, hapticsEnabled) {
@@ -532,7 +516,13 @@ fun ChatRoute(
                         )
                     ) {
                         ChatHapticEvent.MessageSent -> hapticView.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                        ChatHapticEvent.ResponseCompleted -> hapticView.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                        ChatHapticEvent.ResponseCompleted -> hapticView.performHapticFeedback(
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                HapticFeedbackConstants.CONFIRM
+                            } else {
+                                HapticFeedbackConstants.LONG_PRESS
+                            },
+                        )
                         ChatHapticEvent.StreamCancelled -> hapticView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                         ChatHapticEvent.None -> Unit
                     }
@@ -540,10 +530,6 @@ fun ChatRoute(
                 previousIsStreaming = isStreaming
                 previousCompletionTrigger = completionTrigger
             }
-    }
-
-    DisposableEffect(streamNotifier, sessionId) {
-        onDispose { streamNotifier.clear(sessionId) }
     }
 
     LaunchedEffect(gitViewModel, state.responseCompletionTrigger, state.isStreaming) {
@@ -799,7 +785,9 @@ fun ChatRoute(
                         followsTranscriptBottom = true
                         val lastItem = transcriptListState.layoutInfo.totalItemsCount - 1
                         if (lastItem >= 0) {
-                            speechScope.launch { transcriptListState.animateScrollToItem(lastItem) }
+                            speechScope.launch {
+                                transcriptListState.scrollToItem(lastItem, Int.MAX_VALUE)
+                            }
                         }
                     },
                     modifier = Modifier
@@ -1114,29 +1102,48 @@ private fun RemoteAttachmentImageTile(
 ) {
     var bytes by remember(path) { mutableStateOf<ByteArray?>(null) }
     var didAttemptLoad by remember(path) { mutableStateOf(false) }
-    LaunchedEffect(path) {
+    var remoteLoadApproved by remember(path) { mutableStateOf(false) }
+    val remoteUrl = remember(path) {
+        path?.let { (TranscriptMediaReference(it).source as? TranscriptMediaSource.RemoteUrl)?.url }
+    }
+    val isRemote = remoteUrl != null
+    val remoteLoadBlocked = remoteUrl?.scheme != null && remoteUrl.scheme != "https"
+    LaunchedEffect(path, remoteLoadApproved) {
         bytes = null
         didAttemptLoad = false
+        if (isRemote && (!remoteLoadApproved || remoteLoadBlocked)) return@LaunchedEffect
         val resolvedPath = path?.takeIf { it.isNotBlank() }
         if (resolvedPath != null) {
             bytes = loadAttachmentImage(resolvedPath)
         }
         didAttemptLoad = true
     }
-    val bitmap = remember(bytes) {
-        bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-    }
+    val bitmap = rememberDecodedBitmap(bytes, maxDimension = 1_024, maxPixels = 1_500_000L)
     val shape = RoundedCornerShape(cornerRadius)
     Box(
         modifier = Modifier
             .size(size)
             .clip(shape)
-            .clickable(onClick = onPreview)
+            .clickable(enabled = !remoteLoadBlocked) {
+                if (isRemote && !remoteLoadApproved && !remoteLoadBlocked) remoteLoadApproved = true else if (!remoteLoadBlocked) onPreview()
+            }
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, shape),
         contentAlignment = Alignment.Center,
     ) {
         when {
+            remoteLoadBlocked -> Text(
+                "REMOTE\nHTTP blocked",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            isRemote && !remoteLoadApproved -> Text(
+                "REMOTE\nTap to load",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
             bitmap != null -> {
                 Image(
                     bitmap = bitmap.asImageBitmap(),
@@ -1258,6 +1265,7 @@ private fun ChatTopBar(
                 castsShadow = false,
                 surfaceLevel = HermexSurfaceLevel.Floating,
                 tintEnabled = false,
+                drawsBorder = false,
             )
             .padding(horizontal = 14.dp, vertical = 8.dp)
             .testTag("chat_top_bar"),
@@ -1305,14 +1313,14 @@ private fun ChatTopBar(
                     symbol = "\u2302",
                     onClick = onOpenWorkspace,
                     tonalContainerColor = Color.Transparent,
-                    modifier = Modifier.size(44.dp),
+                    modifier = Modifier.size(48.dp),
                 )
                 HermexIconButton(
                     label = "Git",
                     symbol = "Git",
                     onClick = onOpenGit,
                     tonalContainerColor = Color.Transparent,
-                    modifier = Modifier.size(44.dp),
+                    modifier = Modifier.size(48.dp),
                 )
             }
         } else {
@@ -1846,7 +1854,8 @@ private fun ComposerSurface(
                 HermexSelectorPill(
                     label = state.selectedModel?.label ?: state.selectedModel?.name ?: state.selectedModel?.id ?: "Model",
                     onClick = onOpenModelPicker,
-                    enabled = state.modelOptions.isNotEmpty() && !state.isStreaming && !state.isViewingCachedData && !state.isRunningSessionAction,
+                    enabled = (state.selectedModel != null || state.modelOptions.isNotEmpty()) &&
+                        !state.isStreaming && !state.isViewingCachedData && !state.isRunningSessionAction,
                     modifier = Modifier.weight(1f),
                     glassed = false,
                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp),
@@ -1873,17 +1882,24 @@ private fun ComposerSurface(
                     label = if (state.isStreaming) "Stop" else "Send",
                     symbol = if (state.isStreaming) "■" else "↑",
                     onClick = if (state.isStreaming) onCancel else onSend,
-                    enabled = if (state.isStreaming) true else state.draft.isNotBlank() && !state.isViewingCachedData && !state.isRunningSessionAction,
+                    enabled = if (state.isStreaming) {
+                        true
+                    } else {
+                        state.draft.isNotBlank() &&
+                            !state.isViewingCachedData &&
+                            !state.isRunningSessionAction &&
+                            !state.isUploadingAttachment
+                    },
                     filled = true,
                     filledContainerColor = hermexPrimaryActionContainerColor(
-                        if (state.isStreaming) true else state.draft.isNotBlank() && !state.isViewingCachedData && !state.isRunningSessionAction,
+                        if (state.isStreaming) true else state.draft.isNotBlank() && !state.isViewingCachedData && !state.isRunningSessionAction && !state.isUploadingAttachment,
                         primaryActionTintColor,
                     ),
                     filledContentColor = hermexPrimaryActionContentColor(
-                        if (state.isStreaming) true else state.draft.isNotBlank() && !state.isViewingCachedData && !state.isRunningSessionAction,
+                        if (state.isStreaming) true else state.draft.isNotBlank() && !state.isViewingCachedData && !state.isRunningSessionAction && !state.isUploadingAttachment,
                         primaryActionTintColor,
                     ),
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier.size(48.dp),
                 )
             }
             if (state.isStreaming && state.draft.isNotBlank()) {
@@ -1934,7 +1950,7 @@ private fun ComposerInlineIconButton(
         painter = painterResource(iconRes),
         contentDescription = label,
         modifier = Modifier
-            .size(40.dp)
+            .size(48.dp)
             .clip(CircleShape)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(9.dp),
@@ -2075,9 +2091,12 @@ private fun ContextWindowIndicator(snapshot: ContextWindowSnapshot) {
     val progressColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.82f)
     Box(
         modifier = Modifier
-            .size(44.dp)
+            .size(48.dp)
             .clip(CircleShape)
             .clickable { showsDetails = true }
+            .semantics(mergeDescendants = true) {
+                contentDescription = "Context window ${(clamped * 100).toInt()} percent"
+            }
             .hermexGlass(shape = CircleShape, castsShadow = false),
         contentAlignment = Alignment.Center,
     ) {
@@ -2096,7 +2115,6 @@ private fun ContextWindowIndicator(snapshot: ContextWindowSnapshot) {
         }
         Text(
             text = "${(clamped * 100).toInt()}",
-            modifier = Modifier.clickable { showsDetails = true },
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
         )
@@ -3552,17 +3570,46 @@ private fun TranscriptMediaThumbnailView(
 
     var bytes by remember(reference.id) { mutableStateOf<ByteArray?>(null) }
     var didAttemptLoad by remember(reference.id) { mutableStateOf(false) }
-    LaunchedEffect(reference.id) {
+    var remoteLoadApproved by remember(reference.id) { mutableStateOf(false) }
+    val isRemote = reference.source is TranscriptMediaSource.RemoteUrl
+    val remoteUrl = (reference.source as? TranscriptMediaSource.RemoteUrl)?.url
+    val remoteHost = remoteUrl?.host
+    val remoteLoadBlocked = remoteUrl?.scheme != null && remoteUrl.scheme != "https"
+    LaunchedEffect(reference.id, remoteLoadApproved) {
         didAttemptLoad = false
+        bytes = null
+        if (isRemote && (!remoteLoadApproved || remoteLoadBlocked)) return@LaunchedEffect
         bytes = loadMediaImage(reference)
         didAttemptLoad = true
     }
-    val bitmap = remember(bytes) {
-        bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-    }
+    val bitmap = rememberDecodedBitmap(bytes, maxDimension = 840, maxPixels = 1_000_000L)
 
     val shape = RoundedCornerShape(10.dp)
     when {
+        remoteLoadBlocked -> {
+            TranscriptMediaUnavailableChip(reference = reference, detail = "Insecure remote media blocked")
+        }
+        isRemote && !remoteLoadApproved -> {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 240.dp)
+                    .clip(shape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f))
+                    .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f), shape)
+                    .clickable { remoteLoadApproved = true }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text("Load remote image", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "This contacts ${remoteHost ?: "an external server"}.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
         bitmap != null -> {
             Image(
                 bitmap = bitmap.asImageBitmap(),
@@ -3592,7 +3639,10 @@ private fun TranscriptMediaThumbnailView(
 }
 
 @Composable
-private fun TranscriptMediaUnavailableChip(reference: TranscriptMediaReference) {
+private fun TranscriptMediaUnavailableChip(
+    reference: TranscriptMediaReference,
+    detail: String = "Media unavailable",
+) {
     val shape = RoundedCornerShape(8.dp)
     Row(
         modifier = Modifier
@@ -3620,7 +3670,7 @@ private fun TranscriptMediaUnavailableChip(reference: TranscriptMediaReference) 
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                "Media unavailable",
+                detail,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -3646,9 +3696,7 @@ private fun TranscriptMediaPreviewSheet(
         bytes = loadMediaImage(reference)
         didAttemptLoad = true
     }
-    val bitmap = remember(bytes) {
-        bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-    }
+    val bitmap = rememberDecodedBitmap(bytes, maxDimension = 4_096, maxPixels = 8_000_000L)
     val saveImage: () -> Unit = {
         val imageBytes = bytes
         if (imageBytes == null) {
@@ -4714,7 +4762,8 @@ private fun UserMessageBubble(
     val bubbleShape = RoundedCornerShape(20.dp)
     Column(
         modifier = Modifier
-            .fillMaxWidth(0.86f)
+            .widthIn(max = 520.dp)
+            .testTag("user_message_bubble")
             .messageActionsGesture(
                 enabled = text.isNotBlank(),
                 onLongPress = onShowActions,
@@ -4888,8 +4937,14 @@ private fun InlineAudioAttachmentPlayer(
     var isPlaying by remember(path) { mutableStateOf(false) }
     var currentMs by remember(path) { mutableStateOf(0) }
     var durationMs by remember(path) { mutableStateOf(0) }
+    var remoteLoadApproved by remember(path) { mutableStateOf(false) }
+    val remoteUrl = remember(path) {
+        path?.let { (TranscriptMediaReference(it).source as? TranscriptMediaSource.RemoteUrl)?.url }
+    }
+    val isRemote = remoteUrl != null
+    val remoteLoadBlocked = remoteUrl?.scheme != null && remoteUrl.scheme != "https"
 
-    LaunchedEffect(path) {
+    LaunchedEffect(path, remoteLoadApproved) {
         phase = AudioAttachmentPhase.Loading
         isPlaying = false
         currentMs = 0
@@ -4899,17 +4954,22 @@ private fun InlineAudioAttachmentPlayer(
             phase = AudioAttachmentPhase.Failed
             return@LaunchedEffect
         }
+        if (isRemote && (!remoteLoadApproved || remoteLoadBlocked)) {
+            phase = if (remoteLoadBlocked) AudioAttachmentPhase.BlockedRemote else AudioAttachmentPhase.AwaitingRemoteApproval
+            return@LaunchedEffect
+        }
         val bytes = loadAttachmentData(resolvedPath)
         if (bytes == null || bytes.isEmpty()) {
             phase = AudioAttachmentPhase.Failed
             return@LaunchedEffect
         }
+        var audioFile: File? = null
+        var candidatePlayer: MediaPlayer? = null
         val prepared = runCatching {
-            val audioFile = withContext(Dispatchers.IO) {
+            audioFile = withContext(Dispatchers.IO) {
                 File.createTempFile("hermex-attachment-", ".audio", context.cacheDir).also { it.writeBytes(bytes) }
             }
             val mediaPlayer = MediaPlayer().apply {
-                setDataSource(audioFile.absolutePath)
                 setOnCompletionListener { completedPlayer ->
                     isPlaying = false
                     currentMs = 0
@@ -4922,11 +4982,19 @@ private fun InlineAudioAttachmentPlayer(
                     phase = AudioAttachmentPhase.Failed
                     true
                 }
-                prepare()
+            }
+            candidatePlayer = mediaPlayer
+            withContext(Dispatchers.IO) {
+                mediaPlayer.setDataSource(requireNotNull(audioFile).absolutePath)
+                mediaPlayer.prepare()
             }
             tempFile = audioFile
             mediaPlayer
-        }.getOrNull()
+        }.getOrElse {
+            runCatching { candidatePlayer?.release() }
+            withContext(Dispatchers.IO) { runCatching { audioFile?.delete() } }
+            null
+        }
         if (prepared == null) {
             phase = AudioAttachmentPhase.Failed
         } else {
@@ -4943,13 +5011,15 @@ private fun InlineAudioAttachmentPlayer(
         }
     }
 
+    val latestPlayer by rememberUpdatedState(player)
+    val latestTempFile by rememberUpdatedState(tempFile)
     DisposableEffect(path) {
         onDispose {
-            player?.let { mediaPlayer ->
+            latestPlayer?.let { mediaPlayer ->
                 AudioAttachmentPlaybackCenter.clear(mediaPlayer)
                 mediaPlayer.release()
             }
-            tempFile?.delete()
+            latestTempFile?.delete()
         }
     }
 
@@ -4965,9 +5035,13 @@ private fun InlineAudioAttachmentPlayer(
     ) {
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(48.dp)
                 .clip(CircleShape)
-                .clickable(enabled = phase == AudioAttachmentPhase.Ready) {
+                .clickable(enabled = phase == AudioAttachmentPhase.Ready || phase == AudioAttachmentPhase.AwaitingRemoteApproval) {
+                    if (phase == AudioAttachmentPhase.AwaitingRemoteApproval) {
+                        remoteLoadApproved = true
+                        return@clickable
+                    }
                     val mediaPlayer = player ?: return@clickable
                     if (isPlaying) {
                         mediaPlayer.pause()
@@ -4994,6 +5068,8 @@ private fun InlineAudioAttachmentPlayer(
             when (phase) {
                 AudioAttachmentPhase.Loading -> CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
                 AudioAttachmentPhase.Failed -> Text("!", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+                AudioAttachmentPhase.BlockedRemote -> Text("!", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                AudioAttachmentPhase.AwaitingRemoteApproval -> Text(">", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
                 AudioAttachmentPhase.Ready -> Text(
                     if (isPlaying) "II" else ">",
                     color = MaterialTheme.colorScheme.onPrimary,
@@ -5013,9 +5089,13 @@ private fun InlineAudioAttachmentPlayer(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (phase == AudioAttachmentPhase.Failed) {
+            if (phase == AudioAttachmentPhase.Failed || phase == AudioAttachmentPhase.BlockedRemote || phase == AudioAttachmentPhase.AwaitingRemoteApproval) {
                 Text(
-                    "Couldn't play this audio",
+                    when (phase) {
+                        AudioAttachmentPhase.AwaitingRemoteApproval -> "Tap to load remote audio"
+                        AudioAttachmentPhase.BlockedRemote -> "Insecure remote audio blocked"
+                        else -> "Couldn't play this audio"
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -5053,6 +5133,8 @@ private fun InlineAudioAttachmentPlayer(
 
 private enum class AudioAttachmentPhase {
     Loading,
+    BlockedRemote,
+    AwaitingRemoteApproval,
     Ready,
     Failed,
 }
@@ -5147,9 +5229,7 @@ private fun AttachmentPreviewImage(
         }
         didAttemptLoad = true
     }
-    val bitmap = remember(bytes) {
-        bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-    }
+    val bitmap = rememberDecodedBitmap(bytes, maxDimension = 2_048, maxPixels = 4_000_000L)
 
     Box(
         modifier = Modifier
@@ -5174,6 +5254,45 @@ private fun AttachmentPreviewImage(
             )
         }
     }
+}
+
+@Composable
+private fun rememberDecodedBitmap(
+    bytes: ByteArray?,
+    maxDimension: Int,
+    maxPixels: Long,
+): Bitmap? {
+    val bitmap by produceState<Bitmap?>(initialValue = null, bytes, maxDimension, maxPixels) {
+        value = withContext(Dispatchers.IO) {
+            bytes?.let { decodeSampledBitmap(it, maxDimension, maxPixels) }
+        }
+    }
+    return bitmap
+}
+
+private fun decodeSampledBitmap(
+    bytes: ByteArray,
+    maxDimension: Int,
+    maxPixels: Long,
+): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+    var sampleSize = 1
+    while (
+        bounds.outWidth / sampleSize > maxDimension ||
+        bounds.outHeight / sampleSize > maxDimension ||
+        (bounds.outWidth.toLong() / sampleSize) * (bounds.outHeight.toLong() / sampleSize) > maxPixels
+    ) {
+        sampleSize *= 2
+    }
+    return BitmapFactory.decodeByteArray(
+        bytes,
+        0,
+        bytes.size,
+        BitmapFactory.Options().apply { inSampleSize = sampleSize },
+    )
 }
 
 @Composable

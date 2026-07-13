@@ -22,6 +22,13 @@ class WorkspaceFilePreviewPolicyTest {
     }
 
     @Test
+    fun onlyLoadsRawBytesForRenderableBinaryPreviews() {
+        assertTrue(WorkspaceFilePreviewPolicy.shouldLoadRawPreview("image.png"))
+        assertFalse(WorkspaceFilePreviewPolicy.shouldLoadRawPreview("archive.zip"))
+        assertFalse(WorkspaceFilePreviewPolicy.shouldLoadRawPreview("report.pdf"))
+    }
+
+    @Test
     fun resolvesMimeTypesForExport() {
         assertEquals("text/plain", WorkspaceFilePreviewPolicy.mimeType("README.md", isText = true))
         assertEquals("image/png", WorkspaceFilePreviewPolicy.mimeType("image.png"))
@@ -36,5 +43,12 @@ class WorkspaceFilePreviewPolicyTest {
         assertEquals(0, WorkspaceFilePreviewPolicy.lineCount(""))
         assertEquals(2, WorkspaceFilePreviewPolicy.lineCount("one\ntwo"))
         assertEquals(null, WorkspaceFilePreviewPolicy.lineCount(null))
+    }
+
+    @Test
+    fun treatsEmptyTextContentAsAValidPreview() {
+        assertTrue(shouldRenderWorkspaceTextPreview(""))
+        assertTrue(shouldRenderWorkspaceTextPreview("content"))
+        assertFalse(shouldRenderWorkspaceTextPreview(null))
     }
 }

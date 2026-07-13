@@ -16,7 +16,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             HermexApp(container = container, shortcutIntents = shortcutIntents)
         }
-        shortcutIntents.tryEmit(intent)
+        if (savedInstanceState == null) {
+            shortcutIntents.tryEmit(intent)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

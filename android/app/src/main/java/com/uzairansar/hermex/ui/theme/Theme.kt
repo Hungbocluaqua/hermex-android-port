@@ -138,6 +138,14 @@ private val HermexShapes = Shapes(
 
 @Composable
 fun HermexDarkContent(content: @Composable () -> Unit) {
+    val view = LocalView.current
+    SideEffect {
+        val window = (view.context as? Activity)?.window ?: return@SideEffect
+        WindowCompat.getInsetsController(window, view).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+    }
     MaterialTheme(
         colorScheme = DarkColors,
         typography = HermexTypography,

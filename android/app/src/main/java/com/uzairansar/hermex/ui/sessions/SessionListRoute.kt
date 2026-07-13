@@ -6,9 +6,9 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.graphics.Color as AndroidColor
 import androidx.annotation.DrawableRes
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,6 +53,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -60,11 +62,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -85,6 +90,7 @@ import com.uzairansar.hermex.core.model.ProfileSummary
 import com.uzairansar.hermex.core.model.SessionSummary
 import com.uzairansar.hermex.data.repository.AuthState
 import com.uzairansar.hermex.ui.ShortcutDestination
+import com.uzairansar.hermex.ui.createExportDirectory
 import com.uzairansar.hermex.ui.theme.HermesHeaderLogo
 import com.uzairansar.hermex.ui.theme.HermexCardShape
 import com.uzairansar.hermex.ui.theme.HermexColors
@@ -99,7 +105,9 @@ import com.uzairansar.hermex.ui.theme.primaryActionTintApplies
 import java.io.File
 import java.time.Duration
 import java.time.Instant
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToLong
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -121,36 +129,46 @@ fun SessionListRoute(
 ) {
     val loggedIn = authState as? AuthState.LoggedIn
     if (loggedIn == null) {
-        onNeedsOnboarding()
+        LaunchedEffect(Unit) { onNeedsOnboarding() }
         return
     }
-    val viewModel: SessionListViewModel = viewModel(factory = object : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            @Suppress("UNCHECKED_CAST")
-            return SessionListViewModel(
-                repository = container.sessionRepository(loggedIn.server),
-                panelsRepository = container.panelsRepository(loggedIn.server),
-                localSettingsRepository = container.localSettingsRepository,
-                serverId = loggedIn.server.toString(),
-            ) as T
-        }
-    })
+    val viewModel: SessionListViewModel = viewModel(
+        key = "sessions:${loggedIn.server}",
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return SessionListViewModel(
+                    repository = container.sessionRepository(loggedIn.server),
+                    panelsRepository = container.panelsRepository(loggedIn.server),
+                    localSettingsRepository = container.localSettingsRepository,
+                    serverId = loggedIn.server.toString(),
+                ) as T
+            }
+        },
+    )
     val state by viewModel.state.collectAsStateWithLifecycle()
     val headerLogoColorHex = loggedIn.account.headerLogoColorHex
     val shortcutKey = listOfNotNull(shortcutAction, shortcutNonce).joinToString(":")
     var shortcutConsumed by rememberSaveable(shortcutKey) { mutableStateOf(false) }
+    var pendingShortcutAction by rememberSaveable(shortcutKey) { mutableStateOf<String?>(null) }
     var expandedActionsFor by rememberSaveable { mutableStateOf<String?>(null) }
     var profilesExpanded by rememberSaveable { mutableStateOf(false) }
     var projectsExpanded by rememberSaveable { mutableStateOf(false) }
     var searchExpanded by rememberSaveable { mutableStateOf(false) }
     var isCreatingProject by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
+    val shareScope = rememberCoroutineScope()
     val primaryActionTintColor = remember(state.tintPrimaryActionsWithThemeColor, headerLogoColorHex, state.isMutating) {
         if (primaryActionTintApplies(state.tintPrimaryActionsWithThemeColor, !state.isMutating)) {
             hermexColorFromHex(headerLogoColorHex)
         } else {
             null
         }
+    }
+
+    BackHandler(enabled = searchExpanded) {
+        viewModel.clearSearch()
+        searchExpanded = false
     }
 
     LaunchedEffect(initialArchived) {
@@ -164,21 +182,13 @@ fun SessionListRoute(
     }
 
     LaunchedEffect(shortcutKey, shortcutAction, shortcutProfile, shortcutConsumed) {
-        if (!shortcutConsumed && shortcutAction == ShortcutDestination.NewSessionAction) {
-            shortcutConsumed = true
-            viewModel.createSession(onCreated = onOpenChat)
-        }
-        if (!shortcutConsumed && shortcutAction == ShortcutDestination.NewVoiceSessionAction) {
-            shortcutConsumed = true
-            viewModel.createSession(onCreated = onOpenVoiceChat)
-        }
-        if (!shortcutConsumed && shortcutAction == ShortcutDestination.NewProfileSessionAction) {
-            shortcutConsumed = true
-            viewModel.createSession(profile = shortcutProfile, onCreated = onOpenChat)
-        }
         if (!shortcutConsumed && shortcutAction == ShortcutDestination.ShareAction) {
             shortcutConsumed = true
-            viewModel.createSession(onCreated = onOpenSharedDraft)
+            if (container.sharedDraftStore.hasPendingDraft()) {
+                viewModel.createSession(onCreated = onOpenSharedDraft)
+            }
+        } else if (!shortcutConsumed && shortcutAction != null && pendingShortcutAction == null) {
+            pendingShortcutAction = shortcutAction
         }
     }
 
@@ -280,7 +290,11 @@ fun SessionListRoute(
                         EmptySessionsRow()
                     }
                 } else {
-                    items(state.visibleSessions, key = { it.stableId }) { session ->
+                    itemsIndexed(
+                        items = state.visibleSessions,
+                        key = { index, session -> "${session.stableId}:$index" },
+                    ) { index, session ->
+                        val rowKey = "${session.stableId}:$index"
                         SessionRow(
                             session = session,
                             projects = state.projects,
@@ -288,10 +302,10 @@ fun SessionListRoute(
                             isViewingCachedData = state.isViewingCachedData,
                             showsMessageCount = state.sessionRowDisplaySettings.showMessageCount,
                             showsWorkspace = state.sessionRowDisplaySettings.showWorkspace,
-                            actionsExpanded = expandedActionsFor == session.stableId,
+                            actionsExpanded = expandedActionsFor == rowKey,
                             onOpen = { session.sessionId?.let(onOpenChat) },
                             onToggleActions = {
-                                expandedActionsFor = if (expandedActionsFor == session.stableId) null else session.stableId
+                                expandedActionsFor = if (expandedActionsFor == rowKey) null else rowKey
                             },
                             onPin = { viewModel.togglePin(session) },
                             onArchive = { viewModel.toggleArchive(session) },
@@ -303,7 +317,12 @@ fun SessionListRoute(
                             onMove = { projectId -> viewModel.move(session, projectId) },
                             onExport = { format ->
                                 viewModel.exportSession(session, format) { file ->
-                                    shareSessionExport(context, file)
+                                    shareScope.launch {
+                                        shareSessionExport(context, file)
+                                            .onFailure { error ->
+                                                viewModel.reportActionError(error.message ?: "Could not share session export.")
+                                            }
+                                    }
                                 }
                             },
                         )
@@ -326,6 +345,47 @@ fun SessionListRoute(
     }
 
     SessionDialogs(state, viewModel, onOpenChat)
+    pendingShortcutAction?.let { action ->
+        val isVoice = action == ShortcutDestination.NewVoiceSessionAction
+        val isProfile = action == ShortcutDestination.NewProfileSessionAction
+        AlertDialog(
+            onDismissRequest = {
+                pendingShortcutAction = null
+                shortcutConsumed = true
+            },
+            title = { Text(if (isVoice) "Start a voice chat?" else "Start a new chat?") },
+            text = {
+                Text(
+                    if (isVoice) {
+                        "Hermex will create a new session and open the microphone after you continue."
+                    } else {
+                        "Hermex will create a new server session after you continue."
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingShortcutAction = null
+                        shortcutConsumed = true
+                        when {
+                            isVoice -> viewModel.createSession(onCreated = onOpenVoiceChat)
+                            isProfile -> viewModel.createSession(profile = shortcutProfile, onCreated = onOpenChat)
+                            else -> viewModel.createSession(onCreated = onOpenChat)
+                        }
+                    },
+                ) { Text("Continue") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingShortcutAction = null
+                        shortcutConsumed = true
+                    },
+                ) { Text("Cancel") }
+            },
+        )
+    }
     if (isCreatingProject) {
         AlertDialog(
             onDismissRequest = {
@@ -429,6 +489,14 @@ private fun SessionSearchChrome(
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
     Row(
         modifier = modifier
             .height(48.dp)
@@ -460,7 +528,10 @@ private fun SessionSearchChrome(
                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                        .testTag("session_search_field"),
                 )
             }
             if (query.isNotBlank()) {
@@ -479,6 +550,7 @@ private fun SessionSearchChrome(
             symbol = if (expanded) "x" else avatarInitials,
             onClick = {
                 if (expanded) {
+                    keyboardController?.hide()
                     onClear()
                     onExpandedChange(false)
                 } else {
@@ -574,7 +646,7 @@ private fun ActiveProfileSection(
                 "Active Profile",
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
             )
             Image(
                 painter = painterResource(if (expanded) R.drawable.ic_hermex_chevron_down else R.drawable.ic_hermex_chevron_right),
@@ -619,27 +691,47 @@ private fun ProfileOptionRow(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    val shape = RoundedCornerShape(10.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(HermexCardShape)
+            .padding(start = 42.dp, end = 24.dp)
+            .clip(shape)
+            .then(
+                if (selected) {
+                    Modifier
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f))
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.20f), shape)
+                } else {
+                    Modifier
+                },
+            )
             .clickable(enabled = enabled && !selected, onClick = onClick)
-            .padding(start = 72.dp, end = 12.dp, top = 9.dp, bottom = 9.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .heightIn(min = 56.dp)
+            .padding(start = 18.dp, end = 10.dp, top = 7.dp, bottom = 7.dp)
+            .testTag("profile_option_${profile.name.orEmpty()}"),
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f)) {
+        SidebarUtilityIcon(
+            iconRes = R.drawable.ic_lucide_user_round_cog,
+            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
             Text(
                 profile.displayTitle,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             profile.modelProviderText?.let {
                 Text(
                     it,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.secondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -647,8 +739,26 @@ private fun ProfileOptionRow(
             }
         }
         if (selected) {
-            Text("check", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            SelectedSubrowIndicator(contentDescription = "Selected profile ${profile.displayTitle}")
         }
+    }
+}
+
+@Composable
+private fun SelectedSubrowIndicator(contentDescription: String? = null) {
+    Box(
+        modifier = Modifier
+            .size(18.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary),
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_hermex_check),
+            contentDescription = contentDescription,
+            modifier = Modifier.size(12.dp),
+            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onPrimary),
+        )
     }
 }
 
@@ -799,7 +909,7 @@ private fun ProjectSection(
                 Text(
                     "Projects",
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                 )
                 Image(
@@ -888,6 +998,7 @@ private fun ProjectFilterSubrow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 42.dp, end = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Row(
             modifier = Modifier
@@ -908,7 +1019,7 @@ private fun ProjectFilterSubrow(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 44.dp)
+                    .heightIn(min = 52.dp)
                     .clickable(enabled = project.projectId != null, onClick = onSelect)
                     .padding(start = 18.dp),
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
@@ -917,7 +1028,8 @@ private fun ProjectFilterSubrow(
                 SidebarUtilityIcon(iconRes = R.drawable.ic_lucide_folder, tint = project.displayColor)
                 Text(
                     project.displayName,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -925,22 +1037,13 @@ private fun ProjectFilterSubrow(
                 if (count > 0) {
                     Text(
                         count.toString(),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.secondary,
                     )
                 }
                 if (selected) {
-                    Text(
-                        "✓",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
-                    )
+                    SelectedSubrowIndicator(contentDescription = "Selected project ${project.displayName}")
                 }
             }
             HermexIconButton(
@@ -1153,7 +1256,7 @@ private fun SessionRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = rowMinimumHeight)
-                    .background(MaterialTheme.colorScheme.background)
+                    .background(MaterialTheme.colorScheme.background.copy(alpha = 1f))
                     .testTag("session_row_${session.stableId}")
                     .combinedClickable(
                         onClick = onOpen,
@@ -1259,16 +1362,16 @@ private fun SessionSwipeContainer(
     onDelete: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
     val revealWidthPx = with(LocalDensity.current) { 168.dp.toPx() }
-    val offset = remember { Animatable(0f) }
+    var offsetPx by remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(enabled) {
-        if (!enabled) offset.snapTo(0f)
+        if (!enabled) offsetPx = 0f
     }
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        Row(
+        if (offsetPx < -0.5f) {
+            Row(
                 modifier = Modifier.matchParentSize(),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
@@ -1278,7 +1381,7 @@ private fun SessionSwipeContainer(
                     symbol = "⌫",
                     color = Color(0xFFFF3B30),
                     onClick = {
-                        scope.launch { offset.animateTo(0f) }
+                        offsetPx = 0f
                         onDelete()
                     },
                 )
@@ -1287,26 +1390,24 @@ private fun SessionSwipeContainer(
                     symbol = "▣",
                     color = Color(0xFFFF9500),
                     onClick = {
-                        scope.launch { offset.animateTo(0f) }
+                        offsetPx = 0f
                         onArchive()
                     },
                 )
             }
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .graphicsLayer { translationX = offset.value }
+                .graphicsLayer { translationX = offsetPx }
                 .draggable(
                     enabled = enabled,
                     orientation = Orientation.Horizontal,
                     state = rememberDraggableState { delta ->
-                        scope.launch {
-                            offset.snapTo((offset.value + delta).coerceIn(-revealWidthPx, 0f))
-                        }
+                        offsetPx = (offsetPx + delta).coerceIn(-revealWidthPx, 0f)
                     },
                     onDragStopped = {
-                        val target = if (offset.value <= -revealWidthPx * 0.35f) -revealWidthPx else 0f
-                        offset.animateTo(target)
+                        offsetPx = if (offsetPx <= -revealWidthPx * 0.35f) -revealWidthPx else 0f
                     },
                 ),
         ) {
@@ -1326,6 +1427,7 @@ private fun SwipeAction(
         modifier = Modifier
             .width(84.dp)
             .fillMaxSize()
+            .testTag("session_swipe_action_${label.lowercase()}")
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -1502,13 +1604,11 @@ private fun String.withLeadingHash(): String = if (startsWith('#')) this else "#
 
 private val ProfileSummary.displayTitle: String
     get() = displayName?.takeIf { it.isNotBlank() }
-        ?: name?.takeIf { it.isNotBlank() }
+        ?: name?.takeIf { it.isNotBlank() }?.let { if (it == "default") "Default" else it }
         ?: "Profile"
 
 private val ProfileSummary.modelProviderText: String?
-    get() = listOfNotNull(
-        provider?.takeIf { it.isNotBlank() },
-    ).joinToString(" / ").ifBlank { null }
+    get() = model?.trim()?.takeIf { it.isNotBlank() }
 
 private val SessionListUiState.activeProfileDisplayText: String
     get() = profileOptions.firstOrNull { it.name == activeProfileName }?.displayTitle
@@ -1575,14 +1675,17 @@ private val SessionSummary.relativeDate: String?
         }
     }
 
-private fun shareSessionExport(context: Context, export: SessionExportFile) {
-    val exportDir = File(context.cacheDir, "exports").also { it.mkdirs() }
-    val file = File(exportDir, export.filename)
-    file.writeBytes(export.data)
-    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-    val intent = Intent(Intent.ACTION_SEND)
-        .setType(export.mimeType)
-        .putExtra(Intent.EXTRA_STREAM, uri)
-        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    context.startActivity(Intent.createChooser(intent, "Export Session"))
-}
+private suspend fun shareSessionExport(context: Context, export: SessionExportFile): Result<Unit> =
+    runCatching {
+        val uri = withContext(Dispatchers.IO) {
+            val exportDir = context.createExportDirectory("session")
+            val file = File(exportDir, export.filename)
+            file.writeBytes(export.data)
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        }
+        val intent = Intent(Intent.ACTION_SEND)
+            .setType(export.mimeType)
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        context.startActivity(Intent.createChooser(intent, "Export Session"))
+    }

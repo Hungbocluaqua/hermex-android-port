@@ -34,6 +34,7 @@ data class HealthResponse(
 @Serializable
 data class AuthStatusResponse(
     @SerialName("auth_enabled") val authEnabled: Boolean? = null,
+    @SerialName("logged_in") val loggedIn: Boolean? = null,
     @SerialName("password_auth_enabled") val passwordAuthEnabled: Boolean? = null,
 )
 
@@ -1202,7 +1203,47 @@ data class FileResponse(
 data class ModelCatalogResponse(
     val models: List<ModelSummary>? = null,
     val providers: List<ProviderSummary>? = null,
+    val groups: List<ModelCatalogGroupSummary>? = null,
+    @SerialName("active_provider") val activeProvider: String? = null,
     @SerialName("default_model") val defaultModel: String? = null,
+) {
+    val flattenedModels: List<ModelSummary>
+        get() {
+            val catalogModels = buildList {
+                addAll(models.orEmpty())
+                groups.orEmpty().forEach { group ->
+                    (group.models.orEmpty() + group.extraModels.orEmpty()).forEach { model ->
+                        add(
+                            if (model.provider.isNullOrBlank()) {
+                                model.copy(provider = group.providerId ?: group.provider)
+                            } else {
+                                model
+                            },
+                        )
+                    }
+                }
+            }
+            return catalogModels
+                .filter { !it.id.isNullOrBlank() || !it.name.isNullOrBlank() }
+                .distinctBy { model ->
+                    listOf(model.provider.orEmpty(), model.id ?: model.name.orEmpty()).joinToString("\u001f")
+                }
+        }
+}
+
+@Serializable
+data class ModelCatalogGroupSummary(
+    val provider: String? = null,
+    @SerialName("provider_id") val providerId: String? = null,
+    val models: List<ModelSummary>? = null,
+    @SerialName("extra_models") val extraModels: List<ModelSummary>? = null,
+)
+
+@Serializable
+data class ChatCancelResponse(
+    val ok: Boolean? = null,
+    val cancelled: Boolean? = null,
+    val error: String? = null,
 )
 
 @Serializable
@@ -1292,9 +1333,13 @@ data class ProfileCreateResponse(
 @Serializable
 data class ReasoningResponse(
     val effort: String? = null,
+    @SerialName("reasoning_effort") val reasoningEffort: String? = null,
     @SerialName("supported_efforts") val supportedEfforts: List<String>? = null,
     @SerialName("supports_reasoning_effort") val supportsReasoningEffort: Boolean? = null,
-)
+) {
+    val effectiveEffort: String?
+        get() = reasoningEffort ?: effort
+}
 
 @Serializable
 data class SettingsResponse(

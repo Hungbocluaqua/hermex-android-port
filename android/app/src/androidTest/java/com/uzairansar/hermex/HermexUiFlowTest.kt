@@ -9,15 +9,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasText as hasSemanticsText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.performClick
@@ -39,6 +42,7 @@ import com.uzairansar.hermex.data.secure.SecretStore
 import com.uzairansar.hermex.data.secure.ServerAccount
 import com.uzairansar.hermex.data.secure.ServerRegistry
 import com.uzairansar.hermex.ui.chat.ChatRoute
+import com.uzairansar.hermex.ui.git.GitRoute
 import com.uzairansar.hermex.ui.onboarding.OnboardingRoute
 import com.uzairansar.hermex.ui.panels.PanelsRoute
 import com.uzairansar.hermex.ui.sessions.SessionListRoute
@@ -113,6 +117,46 @@ class HermexUiFlowTest {
     }
 
     @Test
+    fun gitRouteUsesGroupedRepositorySections() {
+        val mockServer = MockWebServer().also { server ->
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse = when (request.url.encodedPath) {
+                    "/api/git/status" -> json(
+                        """{"ok":true,"is_git":true,"branch":"main","files":[],"changed_count":0,"total_additions":0,"total_deletions":0}""",
+                    )
+                    "/api/git/branches" -> json(
+                        """{"ok":true,"branches":{"is_git":true,"current":"main","local":[{"name":"main"}]}}""",
+                    )
+                    else -> MockResponse.Builder().code(404).body("""{"error":"unexpected"}""").build()
+                }
+            }
+            server.start()
+            this.server = server
+        }
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        val container = AppContainer(application)
+
+        composeRule.setContent {
+            HermexTheme {
+                GitRoute(
+                    sessionId = "s1",
+                    repository = container.gitRepository(mockServer.url("/")),
+                    onBack = {},
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Working tree clean") }
+        composeRule.onNodeWithText("WORKING TREE").assertIsDisplayed()
+        composeRule.onNodeWithText("0 changes").assertIsDisplayed()
+        composeRule.onNodeWithText("BRANCHES").assertIsDisplayed()
+        composeRule.onNodeWithText("COMMIT").assertIsDisplayed()
+        composeRule.onNodeWithText("Fetch").assertHasClickAction()
+        composeRule.onNodeWithText("Pull").assertHasClickAction()
+        composeRule.onNodeWithText("Push").assertHasClickAction()
+    }
+
+    @Test
     fun onboardingConnectsAndInvokesConnectedCallback() {
         val mockServer = startServer(
             json("""{"status":"ok"}"""),
@@ -180,7 +224,7 @@ class HermexUiFlowTest {
                               "active": "default",
                               "single_profile_mode": false,
                               "profiles": [
-                                {"name":"default","display_name":"Default","model":"gpt-5","provider":"openai"},
+                                {"name":"default","model":"gpt-5","provider":"openai"},
                                 {"name":"review","display_name":"Review","model":"o4-mini","provider":"openai"}
                               ]
                             }
@@ -299,6 +343,10 @@ class HermexUiFlowTest {
 
         composeRule.onNodeWithContentDescription("HERMEX").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Search sessions").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Search sessions").performClick()
+        composeRule.onNodeWithTag("session_search_field").assertIsFocused()
+        composeRule.onNodeWithContentDescription("Close search").performClick()
+        composeRule.onNodeWithContentDescription("Search sessions").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Settings").assertIsDisplayed()
         composeRule.onNodeWithText("Chat").assertIsDisplayed()
         composeRule.onNodeWithText("Sessions").assertIsDisplayed()
@@ -332,20 +380,24 @@ class HermexUiFlowTest {
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Mobile") }
         composeRule.onNodeWithText("Purple").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Add project").assertIsDisplayed()
+        assertTrue(composeRule.onAllNodesWithTag("session_swipe_action_delete").fetchSemanticsNodes().isEmpty())
+        assertTrue(composeRule.onAllNodesWithTag("session_swipe_action_archive").fetchSemanticsNodes().isEmpty())
         composeRule.onNodeWithTag("session_row_s1").performTouchInput { swipeLeft() }
         composeRule.onNodeWithTag("session_row_s1").assertIsDisplayed()
-        assertTrue(composeRule.onAllNodesWithText("Delete").fetchSemanticsNodes().isNotEmpty())
-        assertTrue(composeRule.onAllNodesWithText("Archive").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(composeRule.onAllNodesWithTag("session_swipe_action_delete").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(composeRule.onAllNodesWithTag("session_swipe_action_archive").fetchSemanticsNodes().isNotEmpty())
         composeRule.onNodeWithText("Tasks").performClick()
         assertEquals("tasks", openedPanel)
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Active Profile") }
         composeRule.onNodeWithText("Active Profile").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Review") }
+        composeRule.onNodeWithText("gpt-5").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Selected profile Default").assertIsDisplayed()
         composeRule.onNodeWithText("Review").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { switchProfileBody.contains("review") }
         assertTrue(switchProfileBody.contains(""""name":"review""""))
         assertTrue(composeRule.onAllNodesWithText("Archived Sessions").fetchSemanticsNodes().isEmpty())
-        assertTrue(sessionRequests.contains(null))
+        assertTrue(sessionRequests.contains("1"))
     }
 
     @Test
@@ -695,6 +747,14 @@ class HermexUiFlowTest {
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Mock response") }
 
         composeRule.onNodeWithText("Mock response").assertExists()
+        val shortUserBubbleWidth = composeRule
+            .onAllNodesWithTag("user_message_bubble")
+            .fetchSemanticsNodes()
+            .last()
+            .boundsInRoot
+            .width
+        val screenWidth = composeRule.onRoot().fetchSemanticsNode().boundsInRoot.width
+        assertTrue(shortUserBubbleWidth < screenWidth * 0.65f)
         assertTrue(chatStartBody.contains(""""message":"Hello Android""""))
         assertTrue(chatStartBody.contains(""""session_id":"s1""""))
         assertTrue(chatStartBody.contains(""""model":"gpt-4o""""))

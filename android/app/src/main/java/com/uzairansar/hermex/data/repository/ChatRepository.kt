@@ -34,12 +34,15 @@ import com.uzairansar.hermex.core.model.contextWindowSnapshot
 import com.uzairansar.hermex.core.model.hasOlderMessages
 import com.uzairansar.hermex.core.model.resolvedMessagesOffset
 import com.uzairansar.hermex.core.network.HermesApiClient
+import com.uzairansar.hermex.core.network.ApiError
 import com.uzairansar.hermex.core.network.SseEvent
 import com.uzairansar.hermex.core.network.SseReplayCursor
 import com.uzairansar.hermex.core.network.SseStreamClient
 import com.uzairansar.hermex.data.db.CacheDao
 import com.uzairansar.hermex.data.db.CachedMessageEntity
+import com.uzairansar.hermex.data.db.ServerCacheOwnership
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.CancellationException
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -75,25 +78,34 @@ data class ChatSessionClearResult(
 class ChatRepository(
     private val client: HermesApiClient,
     private val cacheDao: CacheDao,
+    private val cacheOwnership: ServerCacheOwnership,
     private val sse: SseStreamClient,
 ) {
-    private val serverUrl = client.baseUrl.toString()
+    val serverUrl: String = client.baseUrl.toString()
     private val streamEventIds = ConcurrentHashMap<String, String>()
+    private val streamCacheGenerations = ConcurrentHashMap<String, Long>()
 
     suspend fun loadSessionSnapshot(sessionId: String): ResultState<ChatSessionSnapshot> {
+        val operationGeneration = cacheOwnership.generation(serverUrl)
         val now = System.currentTimeMillis()
         return try {
             val session = client.session(sessionId).session
             val messages = session?.messages.orEmpty()
-            cacheDao.replaceMessages(
-                serverUrl,
-                sessionId,
-                messages.mapIndexed { index, message -> CachedMessageEntity.from(serverUrl, sessionId, message, index, now) },
-                now,
-            )
+            replaceCachedMessages(sessionId, messages, now, operationGeneration)
             ResultState.Data(snapshotFromSession(session))
         } catch (error: Throwable) {
-            val cached = cacheDao.cachedMessages(serverUrl, sessionId, now).mapNotNull { it.toMessage() }
+            if (error is CancellationException) throw error
+            if (error is ApiError.Unauthorized) return ResultState.Error(error.userMessage(), error)
+            if (error is ApiError.Http && error.statusCode == 404) {
+                cacheOwnership.writeIfCurrent(serverUrl, operationGeneration) {
+                    cacheDao.purgeSession(serverUrl, sessionId)
+                }
+                return ResultState.Error(error.userMessage(), error)
+            }
+            if (!error.isChatCacheFallbackEligible()) return ResultState.Error(error.userMessage(), error)
+            val cached = cacheOwnership.readIfCurrent(serverUrl, operationGeneration) {
+                cacheDao.cachedMessages(serverUrl, sessionId, now).mapNotNull { it.toMessage() }
+            } ?: return ResultState.Error("The active profile changed while this conversation was loading.", error)
             if (cached.isNotEmpty()) {
                 ResultState.Data(ChatSessionSnapshot(cached), fromCache = true)
             } else {
@@ -105,19 +117,14 @@ class ChatRepository(
     suspend fun snapshotFromCompletedSession(
         sessionId: String,
         session: SessionDetail,
+        streamId: String? = null,
     ): ChatSessionSnapshot {
+        val operationGeneration = streamId?.let(streamCacheGenerations::remove)
+            ?: cacheOwnership.generation(serverUrl)
         val messages = session.messages.orEmpty()
-        if (messages.isNotEmpty()) {
-            val now = System.currentTimeMillis()
-            cacheDao.replaceMessages(
-                serverUrl,
-                session.sessionId?.takeIf { it.isNotBlank() } ?: sessionId,
-                messages.mapIndexed { index, message ->
-                    CachedMessageEntity.from(serverUrl, sessionId, message, index, now)
-                },
-                now,
-            )
-        }
+        val now = System.currentTimeMillis()
+        val resolvedSessionId = session.sessionId?.takeIf { it.isNotBlank() } ?: sessionId
+        replaceCachedMessages(resolvedSessionId, messages, now, operationGeneration)
         return snapshotFromSession(session)
     }
 
@@ -130,29 +137,37 @@ class ChatRepository(
         explicitModelPick: Boolean = false,
         attachments: List<UploadResponse> = emptyList(),
         workspace: String? = null,
-    ): String? = client.chatStart(
-        ChatStartRequest(
-            sessionId = sessionId,
-            message = message,
-            workspace = workspace,
-            model = model?.id ?: model?.name,
-            modelProvider = model?.provider,
-            profile = profile?.name ?: profile?.displayName ?: profileName,
-            explicitModelPick = explicitModelPick,
-            attachments = attachments.ifEmpty { null },
-        ),
-    ).streamId
+    ): String? {
+        val operationGeneration = cacheOwnership.generation(serverUrl)
+        val streamId = client.chatStart(
+            ChatStartRequest(
+                sessionId = sessionId,
+                message = message,
+                workspace = workspace,
+                model = model?.id ?: model?.name,
+                modelProvider = model?.provider,
+                profile = profile?.name ?: profile?.displayName ?: profileName,
+                explicitModelPick = explicitModelPick,
+                attachments = attachments.ifEmpty { null },
+            ),
+        ).streamId
+        streamId?.let { streamCacheGenerations[it] = operationGeneration }
+        return streamId
+    }
 
     fun stream(streamId: String, replayAfterSeq: Int? = null): Flow<SseEvent> =
         sse.stream(client.streamUrl(streamId, replayAfterSeq)) { eventId ->
             streamEventIds[streamId] = eventId
         }
 
-    suspend fun cancel(streamId: String) = client.chatCancel(streamId)
+    suspend fun cancel(streamId: String) = client.chatCancel(streamId).also {
+        streamCacheGenerations.remove(streamId)
+    }
     suspend fun chatStreamStatus(streamId: String): SessionStatusResponse = client.chatStreamStatus(streamId)
     fun replayAfterSeq(streamId: String): Int? = SseReplayCursor.afterSeqFromEventId(streamEventIds[streamId])
     fun clearStreamCursor(streamId: String) {
         streamEventIds.remove(streamId)
+        streamCacheGenerations.remove(streamId)
     }
     suspend fun steer(sessionId: String, text: String) = client.chatSteer(sessionId, text)
     suspend fun startBtw(sessionId: String, question: String) = client.startBtw(sessionId, question)
@@ -166,10 +181,29 @@ class ChatRepository(
             modelProvider = model?.provider,
             profile = profile?.name,
         )
-    suspend fun compressSession(sessionId: String, focusTopic: String?) = client.compressSession(sessionId, focusTopic)
+    suspend fun compressSession(sessionId: String, focusTopic: String?) = run {
+        val operationGeneration = cacheOwnership.generation(serverUrl)
+        client.compressSession(sessionId, focusTopic).also { response ->
+            if (response.ok != false && response.error.isNullOrBlank()) {
+                response.session?.let { session ->
+                    val resolvedSessionId = session.sessionId?.takeIf { it.isNotBlank() } ?: sessionId
+                    replaceCachedMessages(resolvedSessionId, session.messages.orEmpty(), generation = operationGeneration)
+                }
+            }
+        }
+    }
     suspend fun undoSession(sessionId: String) = client.undoSession(sessionId)
     suspend fun retrySession(sessionId: String) = client.retrySession(sessionId)
-    suspend fun renameSession(sessionId: String, title: String): SessionMutationResponse = client.renameSession(sessionId, title)
+    suspend fun renameSession(sessionId: String, title: String): SessionMutationResponse {
+        val operationGeneration = cacheOwnership.generation(serverUrl)
+        val response = client.renameSession(sessionId, title)
+        if (response.ok != false && response.error.isNullOrBlank()) {
+            cacheOwnership.writeIfCurrent(serverUrl, operationGeneration) {
+                cacheDao.updateSessionTitle(serverUrl, sessionId, title)
+            }
+        }
+        return response
+    }
     suspend fun branchSession(sessionId: String, title: String? = null, keepCount: Int? = null): SessionDuplicateResult {
         val response = client.branchSession(sessionId, keepCount = keepCount, title = title)
         val branchId = response.sessionId?.takeIf { it.isNotBlank() }
@@ -183,11 +217,17 @@ class ChatRepository(
     suspend fun setSessionYolo(sessionId: String, enabled: Boolean) = client.setSessionYolo(sessionId, enabled)
 
     suspend fun truncateSessionSnapshot(sessionId: String, keepCount: Int): ChatSessionSnapshot {
+        val operationGeneration = cacheOwnership.generation(serverUrl)
         val session = client.truncateSession(sessionId, keepCount).session
+        session?.let {
+            val resolvedSessionId = it.sessionId?.takeIf { value -> value.isNotBlank() } ?: sessionId
+            replaceCachedMessages(resolvedSessionId, it.messages.orEmpty(), generation = operationGeneration)
+        }
         return snapshotFromSession(session)
     }
 
     suspend fun clearSessionSnapshot(sessionId: String): ChatSessionClearResult {
+        val operationGeneration = cacheOwnership.generation(serverUrl)
         val response = client.clearSession(sessionId)
         val error = response.error?.trim()?.takeIf { it.isNotBlank() }
         if (response.ok == false || error != null) {
@@ -199,14 +239,7 @@ class ChatRepository(
         val clearedMessages = session.messages.orEmpty()
         val resolvedSessionId = session.sessionId?.takeIf { it.isNotBlank() } ?: sessionId
         val now = System.currentTimeMillis()
-        cacheDao.replaceMessages(
-            serverUrl,
-            resolvedSessionId,
-            clearedMessages.mapIndexed { index, message ->
-                CachedMessageEntity.from(serverUrl, resolvedSessionId, message, index, now)
-            },
-            now,
-        )
+        replaceCachedMessages(resolvedSessionId, clearedMessages, now, operationGeneration)
         return ChatSessionClearResult(snapshot = snapshotFromSession(session, messagesOverride = clearedMessages))
     }
 
@@ -234,6 +267,7 @@ class ChatRepository(
         before: Int,
         currentMessages: List<ChatMessage>,
     ): ChatSessionSnapshot {
+        val operationGeneration = cacheOwnership.generation(serverUrl)
         val session = client.session(
             id = sessionId,
             includeMessages = true,
@@ -245,12 +279,7 @@ class ChatRepository(
             currentMessages = currentMessages,
         )
         val now = System.currentTimeMillis()
-        cacheDao.replaceMessages(
-            serverUrl,
-            sessionId,
-            messages.mapIndexed { index, message -> CachedMessageEntity.from(serverUrl, sessionId, message, index, now) },
-            now,
-        )
+        replaceCachedMessages(sessionId, messages, now, operationGeneration)
         return snapshotFromSession(session, messagesOverride = messages)
     }
 
@@ -279,7 +308,7 @@ class ChatRepository(
     suspend fun attachmentFile(sessionId: String, path: String): FileResponse = client.file(sessionId, path)
     suspend fun synthesizeSpeech(text: String, voice: String = "en-US-AriaNeural"): ByteArray =
         client.synthesizeSpeech(text, voice)
-    suspend fun models(): List<ModelSummary> = client.models().models.orEmpty()
+    suspend fun models(): List<ModelSummary> = client.models().flattenedModels
     suspend fun commands() = client.commands().commands.orEmpty()
     suspend fun profilesResponse(): ProfilesResponse = client.profiles()
     suspend fun profiles(): List<ProfileSummary> = client.profiles().profiles.orEmpty()
@@ -288,13 +317,32 @@ class ChatRepository(
     suspend fun setPersonality(sessionId: String, name: String) = client.setPersonality(sessionId, name)
     suspend fun switchProfile(profile: ProfileSummary) {
         val name = profile.name ?: return
-        client.switchProfile(name)
+        val response = client.switchProfile(name)
+        require(response.error.isNullOrBlank()) { response.error ?: "Could not switch profile." }
     }
     suspend fun reasoning(model: ModelSummary?): ReasoningResponse = client.reasoning(model?.id ?: model?.name, model?.provider)
     suspend fun workspaces(): WorkspacesResponse = client.workspaces()
     suspend fun workspaceSuggestions(prefix: String): List<String> = client.workspaceSuggestions(prefix).suggestions.orEmpty()
     suspend fun setReasoning(effort: String, model: ModelSummary?) {
         client.setReasoning(effort, model?.id ?: model?.name, model?.provider)
+    }
+
+    private suspend fun replaceCachedMessages(
+        sessionId: String,
+        messages: List<ChatMessage>,
+        now: Long = System.currentTimeMillis(),
+        generation: Long = cacheOwnership.generation(serverUrl),
+    ) {
+        cacheOwnership.writeIfCurrent(serverUrl, generation) {
+            cacheDao.replaceMessages(
+                serverUrl,
+                sessionId,
+                messages.mapIndexed { index, message ->
+                    CachedMessageEntity.from(serverUrl, sessionId, message, index, now)
+                },
+                now,
+            )
+        }
     }
 
     private fun snapshotFromSession(
@@ -328,6 +376,12 @@ class ChatRepository(
             isStreaming = session?.isStreaming == true || activeStreamId != null,
         )
     }
+}
+
+private fun Throwable.isChatCacheFallbackEligible(): Boolean = when (this) {
+    is ApiError.Network -> true
+    is ApiError.Http -> statusCode in setOf(408, 502, 503, 504)
+    else -> false
 }
 
 private fun SessionDetail.toSummary(): SessionSummary = SessionSummary(

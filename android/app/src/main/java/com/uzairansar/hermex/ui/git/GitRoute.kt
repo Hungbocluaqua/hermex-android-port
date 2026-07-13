@@ -17,14 +17,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -35,6 +38,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uzairansar.hermex.core.model.GitDiffResponse
@@ -50,13 +55,19 @@ import com.uzairansar.hermex.ui.theme.hermexHairline
 @Composable
 fun GitRoute(
     sessionId: String,
+    viewModelKey: String = "git:$sessionId",
     repository: GitRepository,
     onBack: () -> Unit,
 ) {
-    val viewModel: GitViewModel = viewModel(factory = object : ViewModelProvider.Factory {
+    val viewModel: GitViewModel = viewModel(key = viewModelKey, factory = object : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             @Suppress("UNCHECKED_CAST")
             return GitViewModel(sessionId, repository) as T
+        }
+
+        override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+            @Suppress("UNCHECKED_CAST")
+            return GitViewModel(sessionId, repository, extras.createSavedStateHandle()) as T
         }
     })
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -76,18 +87,12 @@ fun GitRoute(
                 onRefresh = viewModel::refresh,
             )
             StatusLines(notice = state.notice, error = state.error)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .hermexGlass(shape = androidx.compose.foundation.shape.CircleShape, castsShadow = false)
-                    .padding(4.dp)
-                    .padding(bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                HermexPillButton("Fetch", viewModel::fetch, enabled = !state.isMutating, modifier = Modifier.weight(1f))
-                HermexPillButton("Pull", viewModel::pull, enabled = !state.isMutating, modifier = Modifier.weight(1f))
-                HermexPillButton("Push", viewModel::requestPush, enabled = !state.isMutating, modifier = Modifier.weight(1f))
-            }
+            RemoteActionsBar(
+                enabled = !state.isMutating,
+                onFetch = viewModel::fetch,
+                onPull = viewModel::pull,
+                onPush = viewModel::requestPush,
+            )
             if (state.isLoading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(strokeWidth = 2.dp)
@@ -104,10 +109,9 @@ fun GitRoute(
                     additions = state.totalAdditions,
                     deletions = state.totalDeletions,
                     truncated = state.truncated,
+                    isClean = state.files.isEmpty(),
                 )
-                if (state.files.isEmpty()) {
-                    CleanTreeCard()
-                } else {
+                if (state.files.isNotEmpty()) {
                     BatchActionsBar(
                         selectedCount = state.selectedPaths.size,
                         totalCount = state.files.size,
@@ -117,7 +121,7 @@ fun GitRoute(
                         onDiscard = viewModel::requestDiscardSelectedOrAll,
                         onClear = viewModel::clearSelection,
                     )
-                    state.files.forEach { file ->
+                    state.files.take(MAX_RENDERED_GIT_FILES).forEach { file ->
                         val path = file.gitPath()
                         GitFileRow(
                             file = file,
@@ -125,6 +129,13 @@ fun GitRoute(
                             checked = path != null && path in state.selectedPaths,
                             onClick = { viewModel.selectFile(file) },
                             onCheckedChange = { viewModel.togglePathSelection(file) },
+                        )
+                    }
+                    if (state.files.size > MAX_RENDERED_GIT_FILES) {
+                        Text(
+                            "Showing the first $MAX_RENDERED_GIT_FILES changed files.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary,
                         )
                     }
                 }
@@ -182,9 +193,28 @@ private fun GitHeader(
         HermexIconButton("Back", "‹", onBack)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Git", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text(branch ?: "Branch unavailable", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, maxLines = 1)
+            Text(branch ?: "Repository workspace", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, maxLines = 1)
         }
         HermexIconButton("Refresh", "↻", onRefresh)
+    }
+}
+
+@Composable
+private fun RemoteActionsBar(
+    enabled: Boolean,
+    onFetch: () -> Unit,
+    onPull: () -> Unit,
+    onPush: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        HermexPillButton("Fetch", onFetch, enabled = enabled, modifier = Modifier.weight(1f))
+        HermexPillButton("Pull", onPull, enabled = enabled, modifier = Modifier.weight(1f))
+        HermexPillButton("Push", onPush, enabled = enabled, modifier = Modifier.weight(1f))
     }
 }
 
@@ -201,13 +231,19 @@ private fun CleanTreeCard() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 12.dp),
+            .padding(top = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("✓", color = Color(0xFF34C759), style = MaterialTheme.typography.titleLarge)
+        Box(
+            modifier = Modifier
+                .background(Color(0xFF34C759).copy(alpha = 0.14f), RoundedCornerShape(999.dp))
+                .padding(horizontal = 9.dp, vertical = 5.dp),
+        ) {
+            Text("✓", color = Color(0xFF34C759), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        }
         Column {
-            Text("Working tree is clean.", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text("Working tree clean", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text("No changed files in this session workspace.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
         }
     }
@@ -220,25 +256,31 @@ private fun GitSummaryCard(
     additions: Int,
     deletions: Int,
     truncated: Boolean,
+    isClean: Boolean,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .hermexHairline(HermexCardShape)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+    SectionSurface("Working tree") {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("$changedCount files changed", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (changedCount == 1) "1 change" else "$changedCount changes",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(branch ?: "HEAD", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+            }
             Text("+$additions", color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.width(8.dp))
             Text("-$deletions", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium)
         }
-        Text(branch ?: "HEAD", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+        if (isClean) {
+            Spacer(Modifier.height(12.dp))
+            CleanTreeCard()
+        }
         if (truncated) {
+            Spacer(Modifier.height(8.dp))
             Text("Showing first 500 changed files.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
         }
     }
@@ -294,7 +336,7 @@ private fun BranchesSection(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                branches.forEach { branch ->
+                branches.take(MAX_RENDERED_BRANCHES).forEach { branch ->
                     HermexPillButton(
                         label = buildString {
                             if (branch.isCurrent) append("Current: ")
@@ -307,16 +349,21 @@ private fun BranchesSection(
                     )
                 }
             }
+            if (branches.size > MAX_RENDERED_BRANCHES) {
+                Text(
+                    "Showing the first $MAX_RENDERED_BRANCHES branches.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
         }
         Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
+        GitTextField(
             value = newBranchName,
             onValueChange = onNewBranchNameChange,
-            placeholder = { Text("New branch") },
-            modifier = Modifier.fillMaxWidth(),
+            placeholder = "New branch name",
             singleLine = true,
             enabled = enabled,
-            shape = HermexCardShape,
         )
         Spacer(Modifier.height(8.dp))
         HermexPillButton("Create and switch", onCreateBranch, enabled = enabled && newBranchName.isNotBlank(), filled = true)
@@ -361,23 +408,28 @@ private fun CommitSection(
     enabled: Boolean,
 ) {
     SectionSurface("Commit") {
-        OutlinedTextField(
+        GitTextField(
             value = message,
             onValueChange = onMessageChange,
-            placeholder = { Text("Message") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 2,
-            shape = HermexCardShape,
+            placeholder = "Commit message",
+            minLines = 3,
             enabled = enabled,
         )
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Push after commit", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                Text("Send the new commit to the upstream remote.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+            }
+            Switch(
                 checked = pushAfterCommit,
                 onCheckedChange = onPushAfterCommitChange,
                 enabled = enabled,
             )
-            Text("Push after commit", style = MaterialTheme.typography.bodySmall)
         }
         if (messageWasTruncated) {
             Text("Diff was large; message may be partial.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
@@ -407,15 +459,62 @@ private fun SectionSurface(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .hermexGlass(shape = HermexCardShape, castsShadow = false)
-            .padding(12.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.MiddleEllipsis)
+        Text(
+            title.uppercase(),
+            modifier = Modifier.padding(start = 8.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.secondary,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.MiddleEllipsis,
+        )
         Spacer(Modifier.height(8.dp))
-        content()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .hermexGlass(
+                    shape = RoundedCornerShape(20.dp),
+                    castsShadow = false,
+                    surfaceLevel = HermexSurfaceLevel.Base,
+                    tintEnabled = false,
+                )
+                .padding(16.dp),
+        ) {
+            content()
+        }
     }
+}
+
+@Composable
+private fun GitTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    enabled: Boolean,
+    singleLine: Boolean = false,
+    minLines: Int = 1,
+) {
+    val container = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.54f)
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = { Text(placeholder, color = MaterialTheme.colorScheme.secondary) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = singleLine,
+        minLines = minLines,
+        enabled = enabled,
+        shape = RoundedCornerShape(15.dp),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = container,
+            unfocusedContainerColor = container,
+            disabledContainerColor = container.copy(alpha = 0.42f),
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
+        ),
+    )
 }
 
 @Composable
@@ -528,3 +627,6 @@ private fun GitFileChange.gitPath(): String? =
     (path ?: workspacePath)
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
+
+private const val MAX_RENDERED_GIT_FILES = 250
+private const val MAX_RENDERED_BRANCHES = 200

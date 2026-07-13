@@ -723,7 +723,16 @@ class SettingsViewModel(
             .getOrNull() ?: return
         viewModelScope.launch {
             _state.update { it.copy(isAddingServer = true, addServerError = null, notice = null, error = null) }
-            runCatching { authRepository.addServer(snapshot.addServerUrl, snapshot.addServerPassword, headers) }
+            runCatching {
+                authRepository.addServer(
+                    serverUrlString = snapshot.addServerUrl,
+                    password = snapshot.addServerPassword,
+                    customHeaders = headers,
+                    displayName = snapshot.addServerDisplayName,
+                    initials = snapshot.addServerInitials,
+                    headerLogoColorHex = normalizedHeaderColorHex(snapshot.addServerHeaderColorHex),
+                )
+            }
                 .onSuccess { result ->
                     when (result) {
                         is AddServerResult.Added -> {

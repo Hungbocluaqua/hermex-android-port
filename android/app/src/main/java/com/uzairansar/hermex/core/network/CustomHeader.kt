@@ -1,6 +1,7 @@
 package com.uzairansar.hermex.core.network
 
 import kotlinx.serialization.Serializable
+import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.Request
@@ -16,11 +17,17 @@ data class CustomHeader(
             val normalized = name.trim().lowercase()
             return normalized.isNotEmpty() &&
                 value.isNotBlank() &&
+                hasValidHttpSyntax &&
                 normalized != "origin" &&
                 normalized != "referer" &&
                 normalized != "host" &&
                 normalized != "content-length"
         }
+
+    internal val hasValidHttpSyntax: Boolean
+        get() = runCatching {
+            Headers.Builder().add(name.trim(), value).build()
+        }.isSuccess
 }
 
 fun List<CustomHeader>.sanitized(): List<CustomHeader> = filter { it.isSafeForClient }
@@ -44,7 +51,11 @@ fun parseCustomHeaderLines(text: String): List<CustomHeader> {
             val name = line.substring(0, delimiterIndex).trim()
             val value = line.substring(delimiterIndex + 1).trim()
             if (name.isBlank() || value.isBlank()) throw IllegalArgumentException("Line ${index + 1}: header name and value are required.")
-            CustomHeader(name, value)
+            val header = CustomHeader(name, value)
+            if (!header.hasValidHttpSyntax) {
+                throw IllegalArgumentException("Line ${index + 1}: invalid HTTP header name or value.")
+            }
+            header
         }
         .toList()
     val sanitized = headers.sanitized()
@@ -60,7 +71,7 @@ class SameOriginCustomHeaderInterceptor(
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-        val headers = customHeaders()
+        val headers = customHeaders().sanitized()
         val controlledNames = headers
             .map { it.name.trim() }
             .filter { it.isNotEmpty() }
@@ -72,7 +83,7 @@ class SameOriginCustomHeaderInterceptor(
         controlledNames.forEach { name -> builder.removeHeader(name) }
 
         if (request.url.isSameOriginAs(baseUrl)) {
-            headers.sanitized().forEach { header ->
+            headers.forEach { header ->
                 builder.header(header.name.trim(), header.value)
             }
         }

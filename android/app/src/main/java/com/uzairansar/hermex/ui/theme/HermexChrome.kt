@@ -185,6 +185,7 @@ fun Modifier.hermexGlass(
     castsShadow: Boolean = true,
     surfaceLevel: HermexSurfaceLevel = if (castsShadow) HermexSurfaceLevel.Floating else HermexSurfaceLevel.Raised,
     tintEnabled: Boolean = true,
+    drawsBorder: Boolean = true,
 ): Modifier {
     val state = LocalHermexHazeState.current
     val tokens = LocalHermexSurfaceTokens.current
@@ -221,7 +222,11 @@ fun Modifier.hermexGlass(
             .background(surfaceColor.copy(alpha = tokens.fallbackScrimAlpha))
             .then(if (tintEnabled) Modifier.background(glassTint) else Modifier)
     }
-    return glass.border(HermexGlassTokens.BorderWidth, tokens.glassBorder, shape)
+    return if (drawsBorder) {
+        glass.border(HermexGlassTokens.BorderWidth, tokens.glassBorder, shape)
+    } else {
+        glass
+    }
 }
 
 @Composable

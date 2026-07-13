@@ -9,6 +9,8 @@ import com.uzairansar.hermex.core.model.CronHistoryResponse
 import com.uzairansar.hermex.core.model.CronStatusResponse
 import com.uzairansar.hermex.core.model.GoalSubmissionResponse
 import com.uzairansar.hermex.core.model.MemoryResponse
+import com.uzairansar.hermex.core.model.ModelCatalogResponse
+import com.uzairansar.hermex.core.model.ReasoningResponse
 import com.uzairansar.hermex.core.model.SessionClearResponse
 import com.uzairansar.hermex.core.model.SessionResponse
 import com.uzairansar.hermex.core.model.SessionStatusResponse
@@ -18,6 +20,45 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class TolerantDecodingTest {
+    @Test
+    fun modelCatalogDecodesGroupedCurrentServerShape() {
+        val json = """
+            {
+              "active_provider": "openai-codex",
+              "default_model": "gpt-5.6-luna",
+              "groups": [
+                {
+                  "provider": "OpenAI Codex",
+                  "provider_id": "openai-codex",
+                  "models": [{"id": "gpt-5.6-luna", "label": "GPT-5.6 Luna"}],
+                  "extra_models": [{"id": "gpt-5.5", "label": "GPT-5.5"}]
+                }
+              ],
+              "future_catalog_field": true
+            }
+        """.trimIndent()
+
+        val decoded = HermesJson.decodeFromString<ModelCatalogResponse>(json)
+
+        assertEquals(listOf("gpt-5.6-luna", "gpt-5.5"), decoded.flattenedModels.map { it.id })
+        assertEquals(listOf("openai-codex", "openai-codex"), decoded.flattenedModels.map { it.provider })
+    }
+
+    @Test
+    fun reasoningDecodesCurrentReasoningEffortField() {
+        val json = """
+            {
+              "reasoning_effort": "xhigh",
+              "supported_efforts": ["low", "medium", "high", "xhigh"],
+              "supports_reasoning_effort": true
+            }
+        """.trimIndent()
+
+        val decoded = HermesJson.decodeFromString<ReasoningResponse>(json)
+
+        assertEquals("xhigh", decoded.effectiveEffort)
+    }
+
     @Test
     fun sessionsDecodeWithUnknownFieldsAndMissingOptionals() {
         val json = """
