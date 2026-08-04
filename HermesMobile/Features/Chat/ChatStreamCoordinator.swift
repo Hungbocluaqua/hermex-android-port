@@ -13,12 +13,16 @@ struct ChatStreamCoordinatorTiming: Equatable {
     let reconnectInterval: TimeInterval
     let runningToolReconnectInterval: TimeInterval
     let statusPollCooldown: TimeInterval
+    // Transport quieter than this is treated as provably alive; must sit above
+    // the server's ~5s SSE heartbeat cadence and below reconnectInterval (#227).
+    let transportFreshInterval: TimeInterval
 
     static let standard = ChatStreamCoordinatorTiming(
         checkingInterval: 5,
         reconnectInterval: 18,
         runningToolReconnectInterval: 25,
-        statusPollCooldown: 4
+        statusPollCooldown: 4,
+        transportFreshInterval: 12
     )
 }
 
@@ -374,8 +378,17 @@ final class ChatStreamCoordinator {
             return
         }
 
-        recoveryState = .checking
         let transportElapsed = now.timeIntervalSince(lastTransportActivityDate ?? lastProgressDate)
+        guard transportElapsed >= timing.transportFreshInterval else {
+            // #227: heartbeats prove the connection is alive during a
+            // semantically quiet window (model thinking / slow tool call), so
+            // stay idle and skip status polls. A genuinely silent transport
+            // still escalates below once past transportFreshInterval.
+            recoveryState = .idle
+            return
+        }
+
+        recoveryState = .checking
         let shouldForceReconnect = transportElapsed >= reconnectInterval
         guard shouldForceReconnect || shouldPollStatus(now: now) else { return }
 
@@ -496,7 +509,13 @@ final class ChatStreamCoordinator {
         case .transportError(let message):
             handleTransportError(message)
         case .heartbeat:
-            break
+            // #227: a heartbeat proves the transport is alive without carrying
+            // semantic progress — drop an already-shown "Checking stream" state
+            // immediately. Never demote .reconnecting; that chip is owned by
+            // the reconnect flow until real progress lands.
+            if recoveryState == .checking {
+                recoveryState = .idle
+            }
         case .ignored:
             break
         }
@@ -556,10 +575,12 @@ final class ChatStreamCoordinator {
                 return
             }
 
-            guard forceReconnect else {
-                recoveryState = .checking
-                return
-            }
+            // PR #238 review: recoveryState was set to .checking before this
+            // await. If it changed mid-flight (a heartbeat or real progress
+            // demoted it to .idle), the transport just proved itself alive —
+            // don't resurrect the chip or churn a live connection; the next
+            // recovery tick re-evaluates from scratch.
+            guard recoveryState == .checking, forceReconnect else { return }
 
             reconnectStaleStream(
                 streamID: expectedStreamID,
@@ -580,13 +601,13 @@ final class ChatStreamCoordinator {
                 return
             }
 
-            guard forceReconnect,
+            // Same mid-flight demotion guard as the success path (PR #238
+            // review): only a still-.checking state may escalate.
+            guard recoveryState == .checking,
+                  forceReconnect,
                   activeStreamID == expectedStreamID,
                   !isConnectionSuspended
-            else {
-                recoveryState = .checking
-                return
-            }
+            else { return }
 
             reconnectStaleStream(streamID: expectedStreamID, usesReplay: true)
         }
