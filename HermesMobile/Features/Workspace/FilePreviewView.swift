@@ -7,6 +7,7 @@ struct FilePreviewView: View {
 
     private let entry: WorkspaceEntry
     @State private var viewModel: FilePreviewViewModel
+    @State private var selectableText: SelectableTextPresentation?
     @State private var exportDocument = ExportedFileDocument(data: Data())
     @State private var exportContentType = UTType.data
     @State private var exportFilename = String(localized: "Hermes File")
@@ -88,6 +89,9 @@ struct FilePreviewView: View {
                 exportErrorMessage = error.localizedDescription
             }
         }
+        .fullScreenCover(item: $selectableText) { selection in
+            SelectableTextPresentationView(selection: selection)
+        }
         .alert(
             "Export Failed",
             isPresented: Binding(
@@ -155,18 +159,45 @@ struct FilePreviewView: View {
     }
 
     private func fileContent(_ content: String) -> some View {
-        ScrollView([.vertical, .horizontal]) {
+        ScrollView(isMarkdownFile ? .vertical : [.vertical, .horizontal]) {
             VStack(alignment: .leading, spacing: 12) {
                 fileHeader
 
-                Text(content)
-                    .font(.system(.body, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                if isMarkdownFile {
+                    MarkdownRenderer(content: content, isStreaming: false)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Text(content)
+                        .font(.system(.body, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
             .padding()
         }
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button {
+                selectableText = SelectableTextPresentation(
+                    id: "file-preview:\(displayPath)",
+                    text: content
+                )
+            } label: {
+                Label("Select Text", systemImage: "text.cursor")
+            }
+
+            Button {
+                UIPasteboard.general.string = content
+            } label: {
+                Label("Copy", systemImage: "doc.on.doc")
+            }
+        }
         .background(Color(.systemBackground))
+    }
+
+    private var isMarkdownFile: Bool {
+        guard let path = entry.path else { return false }
+        return ["md", "markdown", "mdown", "mkd"].contains((path as NSString).pathExtension.lowercased())
     }
 
     @ViewBuilder
