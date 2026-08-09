@@ -25,9 +25,12 @@ Config/Local.xcconfig
 # Local reference material
 UPDATES.md
 .obsidian/
+/ios_hermex_reference_images/
+/ios-hermex-reference-images/
 
 # Local agent tooling (per-machine caches, skills, session state)
 node_modules/
+.codex-remote-attachments/
 .codex-tmp/
 .agents/
 .sc/
