@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,6 +33,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -85,11 +87,13 @@ internal fun KanbanLabRoute(
     }
     val viewModel: KanbanLabViewModel = viewModel(key = viewModelKey, factory = factory)
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val workflowState by viewModel.workflowState.collectAsStateWithLifecycle()
     var showsFilters by rememberSaveable { mutableStateOf(false) }
     var cardNavigationStack by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var editorOpen by rememberSaveable { mutableStateOf(false) }
     var editorCardId by rememberSaveable { mutableStateOf<String?>(null) }
     var editorSessionId by rememberSaveable { mutableStateOf(0) }
+    var pendingRunningAction by remember { mutableStateOf<KanbanPendingRunningAction?>(null) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(lifecycleOwner, viewModel) {
@@ -117,6 +121,31 @@ internal fun KanbanLabRoute(
     val showsCardDetail = selectedCardId != null &&
         selectedBoardSlug != null &&
         state.availability == KanbanAvailability.Content
+    val performWorkflowAction: (KanbanCardSummary, KanbanCardWorkflowAction, Boolean) -> Unit =
+        { card, action, confirmingRunningExit ->
+            when (action) {
+                is KanbanCardWorkflowAction.Move -> viewModel.moveCard(card, action.status, confirmingRunningExit)
+                KanbanCardWorkflowAction.Block -> viewModel.blockCard(card, confirmingRunningExit)
+                KanbanCardWorkflowAction.Unblock -> viewModel.unblockCard(card)
+                KanbanCardWorkflowAction.Complete -> viewModel.completeCard(card, confirmingRunningExit)
+                KanbanCardWorkflowAction.Archive -> viewModel.archiveCard(card, confirmingRunningExit)
+            }
+        }
+    val requestWorkflowAction: (KanbanCardSummary, KanbanCardWorkflowAction) -> Unit = { card, action ->
+        if (card.status == "running") {
+            pendingRunningAction = KanbanPendingRunningAction(card, action)
+        } else {
+            performWorkflowAction(card, action, false)
+        }
+    }
+    val retryMutation: (KanbanCardSummary) -> Unit = { card ->
+        val retryAction = workflowState.mutations[card.cardId]?.kind?.runningRetryAction()
+        if (card.status == "running" && retryAction != null) {
+            pendingRunningAction = KanbanPendingRunningAction(card, retryAction)
+        } else {
+            viewModel.retryMutation(card)
+        }
+    }
 
     if (showsEditor) {
         KanbanCardEditorRoute(
@@ -157,6 +186,19 @@ internal fun KanbanLabRoute(
                 editorCardId = cardId
                 editorOpen = true
             },
+            workflowState = workflowState,
+            allCards = state.snapshot?.allCards().orEmpty(),
+            canUseWorkflow = state.canUseCardWorkflow,
+            moveDestinations = viewModel::moveDestinations,
+            displayedCard = viewModel::displayedCard,
+            displayedPrerequisites = viewModel::displayedPrerequisites,
+            onLoadedCardDetail = viewModel::acknowledgeLoadedCardDetail,
+            onWorkflowAction = requestWorkflowAction,
+            onRetryMutation = retryMutation,
+            onCheckMutation = viewModel::checkUncertainMutation,
+            onAddPrerequisite = viewModel::addPrerequisite,
+            onRemovePrerequisite = viewModel::removePrerequisite,
+            onUndoArchive = viewModel::undoArchive,
         )
     } else {
         Column(Modifier.fillMaxSize()) {
@@ -177,11 +219,18 @@ internal fun KanbanLabRoute(
                 KanbanAvailability.Loading -> KanbanLoading()
                 KanbanAvailability.Content -> KanbanBoardContent(
                     state = state,
+                    workflowState = workflowState,
                     onRefresh = viewModel::load,
                     onSearch = viewModel::setSearchQuery,
                     onSelectStatus = viewModel::selectStatus,
                     onClearFilters = viewModel::clearFilters,
                     onOpenCard = { cardNavigationStack = listOf(it) },
+                    moveDestinations = viewModel::moveDestinations,
+                    canMutateCard = viewModel::canMutateCard,
+                    onWorkflowAction = requestWorkflowAction,
+                    onRetryMutation = retryMutation,
+                    onCheckMutation = viewModel::checkUncertainMutation,
+                    onUndoArchive = viewModel::undoArchive,
                 )
                 else -> KanbanUnavailable(state.availability, viewModel::load)
             }
@@ -202,6 +251,38 @@ internal fun KanbanLabRoute(
             },
         )
     }
+
+    pendingRunningAction?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { pendingRunningAction = null },
+            title = { Text(localizedString("Leave Running?")) },
+            text = { Text(localizedString("Leaving Running may clear the Card's claim and worker state.")) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingRunningAction = null
+                        performWorkflowAction(pending.card, pending.action, true)
+                    },
+                    modifier = Modifier.testTag("kanban_confirm_running_exit"),
+                ) { Text(localizedString("Continue")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRunningAction = null }) { Text(localizedString("Cancel")) }
+            },
+        )
+    }
+}
+
+private data class KanbanPendingRunningAction(
+    val card: KanbanCardSummary,
+    val action: KanbanCardWorkflowAction,
+)
+
+private fun KanbanCardMutationKind.runningRetryAction(): KanbanCardWorkflowAction? = when (this) {
+    is KanbanCardMutationKind.Status -> if (status == "done") KanbanCardWorkflowAction.Complete else KanbanCardWorkflowAction.Move(status)
+    is KanbanCardMutationKind.Block -> KanbanCardWorkflowAction.Block
+    is KanbanCardMutationKind.Archive -> KanbanCardWorkflowAction.Archive
+    else -> null
 }
 
 @Composable
@@ -312,11 +393,18 @@ private fun KanbanUnavailable(availability: KanbanAvailability, onRetry: () -> U
 @Composable
 internal fun KanbanBoardContent(
     state: KanbanLabUiState,
+    workflowState: KanbanWorkflowUiState = KanbanWorkflowUiState(),
     onRefresh: () -> Unit,
     onSearch: (String) -> Unit,
     onSelectStatus: (String) -> Unit,
     onClearFilters: () -> Unit,
     onOpenCard: (String) -> Unit = {},
+    moveDestinations: (KanbanCardSummary) -> List<String> = { emptyList() },
+    canMutateCard: (KanbanCardSummary) -> Boolean = { false },
+    onWorkflowAction: (KanbanCardSummary, KanbanCardWorkflowAction) -> Unit = { _, _ -> },
+    onRetryMutation: (KanbanCardSummary) -> Unit = {},
+    onCheckMutation: (KanbanCardSummary) -> Unit = {},
+    onUndoArchive: () -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
         when {
@@ -332,6 +420,21 @@ internal fun KanbanBoardContent(
             )
         }
         if (state.warnings.isNotEmpty()) KanbanCompatibilityBanner(state.warnings)
+        if (state.workflowCapabilityUnavailable) {
+            KanbanConnectivityBanner(
+                text = localizedString("Unavailable"),
+                offline = false,
+                testTag = "kanban_workflow_unavailable",
+            )
+        }
+        workflowState.archiveUndo?.let { undo ->
+            KanbanArchiveUndoBanner(
+                undo = undo,
+                mutation = workflowState.mutations[undo.cardId],
+                onUndo = onUndoArchive,
+                onCheck = { onCheckMutation(undo.card) },
+            )
+        }
         if (state.refreshFailed) {
             Row(
                 modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(10.dp),
@@ -377,7 +480,17 @@ internal fun KanbanBoardContent(
             if (cards.isEmpty()) {
                 KanbanEmptyState(state.hasActiveFilters, onClearFilters)
             } else {
-                KanbanCardList(state, cards, onOpenCard)
+                KanbanCardList(
+                    state = state,
+                    cards = cards,
+                    workflowState = workflowState,
+                    onOpenCard = onOpenCard,
+                    moveDestinations = moveDestinations,
+                    canMutateCard = canMutateCard,
+                    onWorkflowAction = onWorkflowAction,
+                    onRetryMutation = onRetryMutation,
+                    onCheckMutation = onCheckMutation,
+                )
             }
         }
     }
@@ -431,7 +544,13 @@ private fun KanbanCompatibilityBanner(warnings: List<KanbanCompatibilityWarning>
 private fun KanbanCardList(
     state: KanbanLabUiState,
     cards: List<KanbanCardSummary>,
+    workflowState: KanbanWorkflowUiState,
     onOpenCard: (String) -> Unit,
+    moveDestinations: (KanbanCardSummary) -> List<String>,
+    canMutateCard: (KanbanCardSummary) -> Boolean,
+    onWorkflowAction: (KanbanCardSummary, KanbanCardWorkflowAction) -> Unit,
+    onRetryMutation: (KanbanCardSummary) -> Unit,
+    onCheckMutation: (KanbanCardSummary) -> Unit,
 ) {
     val groups = if (state.filters.groupByProfile) groupedKanbanCards(cards) else listOf(KanbanCardGroup(null, cards))
     LazyColumn(
@@ -453,14 +572,32 @@ private fun KanbanCardList(
                 }
             }
             items(group.cards, key = { it.cardId.orEmpty() }) { card ->
-                KanbanCardRow(card, onOpenCard)
+                KanbanCardRow(
+                    card = card,
+                    mutation = workflowState.mutations[card.cardId],
+                    onOpenCard = onOpenCard,
+                    destinations = moveDestinations(card),
+                    actionsEnabled = canMutateCard(card) && card.cardId !in workflowState.activeCardIds,
+                    onWorkflowAction = onWorkflowAction,
+                    onRetryMutation = onRetryMutation,
+                    onCheckMutation = onCheckMutation,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun KanbanCardRow(card: KanbanCardSummary, onOpenCard: (String) -> Unit) {
+private fun KanbanCardRow(
+    card: KanbanCardSummary,
+    mutation: KanbanCardMutationState?,
+    onOpenCard: (String) -> Unit,
+    destinations: List<String>,
+    actionsEnabled: Boolean,
+    onWorkflowAction: (KanbanCardSummary, KanbanCardWorkflowAction) -> Unit,
+    onRetryMutation: (KanbanCardSummary) -> Unit,
+    onCheckMutation: (KanbanCardSummary) -> Unit,
+) {
     val title = card.title?.trim().takeUnless { it.isNullOrEmpty() } ?: localizedString("Card")
     val id = card.cardId ?: localizedString("Unknown")
     val profile = card.assignee?.trim().takeUnless { it.isNullOrEmpty() } ?: localizedString("Unassigned")
@@ -505,6 +642,7 @@ private fun KanbanCardRow(card: KanbanCardSummary, onOpenCard: (String) -> Unit)
             Text(id, style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.secondary)
             Spacer(Modifier.weight(1f))
             age?.let { Text("◷ $it", style = MaterialTheme.typography.labelSmall, color = stalenessColor) }
+            KanbanCardActionsMenu(card, destinations, actionsEnabled, onWorkflowAction)
         }
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         card.body?.takeIf(String::isNotBlank)?.let { body ->
@@ -524,6 +662,155 @@ private fun KanbanCardRow(card: KanbanCardSummary, onOpenCard: (String) -> Unit)
             card.tenant?.takeIf(String::isNotBlank)?.let { Text("⌂ $it", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary) }
             if (comments > 0) Text("◇ $comments", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
             if (links > 0) Text("↔ $links", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+        }
+        mutation?.let { KanbanMutationStatus(card, it, onRetryMutation, onCheckMutation) }
+    }
+}
+
+@Composable
+internal fun KanbanCardActionsMenu(
+    card: KanbanCardSummary,
+    destinations: List<String>,
+    enabled: Boolean,
+    onAction: (KanbanCardSummary, KanbanCardWorkflowAction) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        HermexIconButton(
+            label = localizedString("Card Actions"),
+            symbol = "⋯",
+            onClick = { expanded = true },
+            enabled = enabled,
+            modifier = Modifier.testTag("kanban_card_actions_${card.cardId}"),
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            destinations.forEach { status ->
+                DropdownMenuItem(
+                    text = { Text("${localizedString("Move")}: ${localizedString(kanbanStatusTitleKey(status))}") },
+                    onClick = {
+                        expanded = false
+                        onAction(card, KanbanCardWorkflowAction.Move(status))
+                    },
+                    modifier = Modifier.testTag("kanban_move_${card.cardId}_$status"),
+                )
+            }
+            if (card.status == "blocked") {
+                DropdownMenuItem(
+                    text = { Text(localizedString("Unblock")) },
+                    onClick = {
+                        expanded = false
+                        onAction(card, KanbanCardWorkflowAction.Unblock)
+                    },
+                    modifier = Modifier.testTag("kanban_unblock_${card.cardId}"),
+                )
+            } else if (card.status != "archived") {
+                DropdownMenuItem(
+                    text = { Text(localizedString("Block")) },
+                    onClick = {
+                        expanded = false
+                        onAction(card, KanbanCardWorkflowAction.Block)
+                    },
+                    modifier = Modifier.testTag("kanban_block_${card.cardId}"),
+                )
+            }
+            if (card.status !in setOf("done", "archived")) {
+                DropdownMenuItem(
+                    text = { Text(localizedString("Complete")) },
+                    onClick = {
+                        expanded = false
+                        onAction(card, KanbanCardWorkflowAction.Complete)
+                    },
+                    modifier = Modifier.testTag("kanban_complete_${card.cardId}"),
+                )
+            }
+            if (card.status != "archived") {
+                DropdownMenuItem(
+                    text = { Text(localizedString("Archive"), color = MaterialTheme.colorScheme.error) },
+                    onClick = {
+                        expanded = false
+                        onAction(card, KanbanCardWorkflowAction.Archive)
+                    },
+                    modifier = Modifier.testTag("kanban_archive_${card.cardId}"),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun KanbanMutationStatus(
+    card: KanbanCardSummary,
+    mutation: KanbanCardMutationState,
+    onRetry: (KanbanCardSummary) -> Unit,
+    onCheck: (KanbanCardSummary) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().testTag("kanban_mutation_${card.cardId}"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        val message = when (mutation.phase) {
+            KanbanCardMutationPhase.Updating -> localizedString("Updating task...")
+            KanbanCardMutationPhase.CheckingResult -> localizedString("Checking Result")
+            KanbanCardMutationPhase.Succeeded -> localizedString("Updated")
+            KanbanCardMutationPhase.Failed -> localizedString("Update failed")
+            KanbanCardMutationPhase.OutcomeUncertain -> localizedString("Outcome Uncertain")
+        }
+        val color = when (mutation.phase) {
+            KanbanCardMutationPhase.Failed -> MaterialTheme.colorScheme.error
+            KanbanCardMutationPhase.OutcomeUncertain -> MaterialTheme.colorScheme.tertiary
+            KanbanCardMutationPhase.Succeeded -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.secondary
+        }
+        Text(message, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = color)
+        when (mutation.phase) {
+            KanbanCardMutationPhase.Failed -> HermexPillButton(
+                localizedString("Try Again"),
+                { onRetry(card) },
+                modifier = Modifier.testTag("kanban_retry_${card.cardId}"),
+            )
+            KanbanCardMutationPhase.OutcomeUncertain -> HermexPillButton(
+                localizedString("Refresh"),
+                { onCheck(card) },
+                modifier = Modifier.testTag("kanban_check_${card.cardId}"),
+            )
+            else -> Unit
+        }
+    }
+}
+
+@Composable
+internal fun KanbanArchiveUndoBanner(
+    undo: KanbanArchiveUndo,
+    mutation: KanbanCardMutationState?,
+    onUndo: () -> Unit,
+    onCheck: () -> Unit,
+) {
+    val recoveryPhase = mutation?.phase
+    val status = when (recoveryPhase) {
+        KanbanCardMutationPhase.OutcomeUncertain -> localizedString("Outcome Uncertain")
+        KanbanCardMutationPhase.Failed -> localizedString("Update failed")
+        else -> localizedString("Archived")
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .semantics { contentDescription = "${undo.cardTitle}, $status" }
+            .testTag("kanban_archive_undo"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(status, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        if (recoveryPhase == KanbanCardMutationPhase.OutcomeUncertain) {
+            HermexPillButton(localizedString("Refresh"), onCheck, modifier = Modifier.testTag("kanban_archive_check"))
+        } else {
+            HermexPillButton(
+                localizedString(if (recoveryPhase == KanbanCardMutationPhase.Failed) "Try Again" else "Undo"),
+                onUndo,
+                modifier = Modifier.testTag("kanban_archive_undo_action"),
+            )
         }
     }
 }

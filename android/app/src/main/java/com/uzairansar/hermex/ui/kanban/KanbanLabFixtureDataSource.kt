@@ -16,6 +16,8 @@ import com.uzairansar.hermex.core.model.KanbanAddCommentResponse
 import com.uzairansar.hermex.core.model.KanbanCardMutationEnvelope
 import com.uzairansar.hermex.core.model.KanbanCreateCardRequestBody
 import com.uzairansar.hermex.core.model.KanbanEditCardRequestBody
+import com.uzairansar.hermex.core.model.KanbanDependencyMutationEnvelope
+import com.uzairansar.hermex.core.model.KanbanDependencyRequestBody
 import com.uzairansar.hermex.core.model.KanbanColumn
 import com.uzairansar.hermex.core.model.KanbanCompatibilityReport
 import com.uzairansar.hermex.core.model.KanbanCompatibilityWarning
@@ -37,6 +39,7 @@ internal class KanbanLabFixtureDataSource(
     private val scenario: String,
 ) : KanbanBrowseDataSource {
     private val mutatedCards = linkedMapOf<String, KanbanCardSummary>()
+    private val mutatedPrerequisites = linkedMapOf<String, MutableSet<String>>()
     private val boards = listOf(
         KanbanBoardSummary(slug = "default", name = "Default Board", total = 5, readOnly = scenario == "read-only"),
         KanbanBoardSummary(slug = "release", name = "Release Board", total = 1, readOnly = scenario == "read-only"),
@@ -118,7 +121,10 @@ internal class KanbanLabFixtureDataSource(
                     payload = KanbanDetailEventPayload(status = card.status, summary = "Fixture status updated"),
                 ),
             ),
-            links = KanbanDependencyLinks(prerequisites = listOf("CARD-0"), dependents = listOf("CARD-9")),
+            links = KanbanDependencyLinks(
+                prerequisites = mutatedPrerequisites.getOrPut("$board:$cardId") { linkedSetOf("CARD-0") }.toList(),
+                dependents = listOf("CARD-9"),
+            ),
             runs = listOf(
                 KanbanDispatchRun(
                     runId = "run-fixture",
@@ -184,6 +190,57 @@ internal class KanbanLabFixtureDataSource(
         )
         mutatedCards["$board:$cardId"] = edited
         return KanbanCardMutationEnvelope(card = edited, readOnly = scenario == "read-only")
+    }
+
+    override suspend fun setCardStatus(cardId: String, board: String, status: String): KanbanCardMutationEnvelope =
+        updateStatus(cardId, board, status)
+
+    override suspend fun blockCard(
+        cardId: String,
+        board: String,
+        reason: String?,
+    ): KanbanCardMutationEnvelope = updateStatus(cardId, board, "blocked")
+
+    override suspend fun unblockCard(cardId: String, board: String): KanbanCardMutationEnvelope =
+        updateStatus(cardId, board, "ready")
+
+    override suspend fun addDependency(
+        board: String,
+        body: KanbanDependencyRequestBody,
+    ): KanbanDependencyMutationEnvelope {
+        mutatedPrerequisites.getOrPut("$board:${body.dependentId}") { linkedSetOf("CARD-0") }
+            .add(body.prerequisiteId)
+        return KanbanDependencyMutationEnvelope(
+            ok = true,
+            changed = true,
+            prerequisiteId = body.prerequisiteId,
+            dependentId = body.dependentId,
+            readOnly = scenario == "read-only",
+        )
+    }
+
+    override suspend fun removeDependency(
+        board: String,
+        body: KanbanDependencyRequestBody,
+    ): KanbanDependencyMutationEnvelope {
+        val changed = mutatedPrerequisites.getOrPut("$board:${body.dependentId}") { linkedSetOf("CARD-0") }
+            .remove(body.prerequisiteId)
+        return KanbanDependencyMutationEnvelope(
+            ok = true,
+            changed = changed,
+            prerequisiteId = body.prerequisiteId,
+            dependentId = body.dependentId,
+            readOnly = scenario == "read-only",
+        )
+    }
+
+    private fun updateStatus(cardId: String, board: String, status: String): KanbanCardMutationEnvelope {
+        val existing = snapshot(board, KanbanBrowseFilters(includeArchived = true)).allCards()
+            .firstOrNull { it.cardId == cardId }
+            ?: throw ApiError.Http(404, null)
+        val updated = existing.copy(status = status)
+        mutatedCards["$board:$cardId"] = updated
+        return KanbanCardMutationEnvelope(card = updated, readOnly = scenario == "read-only")
     }
 
     private fun snapshot(board: String, filters: KanbanBrowseFilters): KanbanBoardSnapshot {

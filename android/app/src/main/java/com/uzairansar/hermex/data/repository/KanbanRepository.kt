@@ -11,6 +11,8 @@ import com.uzairansar.hermex.core.model.KanbanAddCommentResponse
 import com.uzairansar.hermex.core.model.KanbanCardMutationEnvelope
 import com.uzairansar.hermex.core.model.KanbanCreateCardRequestBody
 import com.uzairansar.hermex.core.model.KanbanEditCardRequestBody
+import com.uzairansar.hermex.core.model.KanbanDependencyMutationEnvelope
+import com.uzairansar.hermex.core.model.KanbanDependencyRequestBody
 import com.uzairansar.hermex.core.model.KanbanStats
 import com.uzairansar.hermex.core.model.KanbanAssigneeHistory
 import com.uzairansar.hermex.core.network.HermesApiClient
@@ -54,6 +56,21 @@ interface KanbanBrowseDataSource {
 
     suspend fun editCard(cardId: String, board: String, body: KanbanEditCardRequestBody): KanbanCardMutationEnvelope =
         throw UnsupportedOperationException("Kanban Card editing is unavailable.")
+
+    suspend fun setCardStatus(cardId: String, board: String, status: String): KanbanCardMutationEnvelope =
+        throw UnsupportedOperationException("Kanban Card workflow is unavailable.")
+
+    suspend fun blockCard(cardId: String, board: String, reason: String?): KanbanCardMutationEnvelope =
+        throw UnsupportedOperationException("Kanban Card workflow is unavailable.")
+
+    suspend fun unblockCard(cardId: String, board: String): KanbanCardMutationEnvelope =
+        throw UnsupportedOperationException("Kanban Card workflow is unavailable.")
+
+    suspend fun addDependency(board: String, body: KanbanDependencyRequestBody): KanbanDependencyMutationEnvelope =
+        throw UnsupportedOperationException("Kanban Card workflow is unavailable.")
+
+    suspend fun removeDependency(board: String, body: KanbanDependencyRequestBody): KanbanDependencyMutationEnvelope =
+        throw UnsupportedOperationException("Kanban Card workflow is unavailable.")
 }
 
 class KanbanRepository(
@@ -133,6 +150,44 @@ class KanbanRepository(
         validateMutationCard(it, expectedCardId = cardId)
     }
 
+    override suspend fun setCardStatus(cardId: String, board: String, status: String): KanbanCardMutationEnvelope =
+        client.setKanbanCardStatus(cardId, board, status).also { envelope ->
+            if (envelope.readOnly != true) {
+                validateMutationCard(envelope, expectedCardId = cardId)
+                if (envelope.card?.status?.trim() != status.trim()) throw KanbanContractViolation.MissingCardStatus
+            }
+        }
+
+    override suspend fun blockCard(cardId: String, board: String, reason: String?): KanbanCardMutationEnvelope =
+        client.blockKanbanCard(cardId, board, reason).also { envelope ->
+            if (envelope.readOnly != true) {
+                validateMutationCard(envelope, expectedCardId = cardId)
+                if (envelope.card?.status?.trim() != "blocked") throw KanbanContractViolation.MissingCardStatus
+            }
+        }
+
+    override suspend fun unblockCard(cardId: String, board: String): KanbanCardMutationEnvelope =
+        client.unblockKanbanCard(cardId, board).also { envelope ->
+            if (envelope.readOnly != true) {
+                validateMutationCard(envelope, expectedCardId = cardId)
+                if (envelope.card?.status?.trim() != "ready") throw KanbanContractViolation.MissingCardStatus
+            }
+        }
+
+    override suspend fun addDependency(
+        board: String,
+        body: KanbanDependencyRequestBody,
+    ): KanbanDependencyMutationEnvelope = client.addKanbanDependency(board, body).also { envelope ->
+        if (envelope.readOnly != true) validateDependencyMutation(envelope, body)
+    }
+
+    override suspend fun removeDependency(
+        board: String,
+        body: KanbanDependencyRequestBody,
+    ): KanbanDependencyMutationEnvelope = client.removeKanbanDependency(board, body).also { envelope ->
+        if (envelope.readOnly != true) validateDependencyMutation(envelope, body)
+    }
+
     private fun validateSnapshot(snapshot: KanbanBoardSnapshot) {
         val columns = snapshot.columns
         if (snapshot.changed != true || columns.isNullOrEmpty()) throw KanbanContractViolation.MissingBoardSnapshot
@@ -150,6 +205,19 @@ class KanbanRepository(
             throw KanbanContractViolation.MissingCardIdentity
         }
         if (card.status.isNullOrBlank()) throw KanbanContractViolation.MissingCardStatus
+    }
+
+    private fun validateDependencyMutation(
+        envelope: KanbanDependencyMutationEnvelope,
+        body: KanbanDependencyRequestBody,
+    ) {
+        if (
+            envelope.ok != true ||
+            envelope.prerequisiteId?.trim() != body.prerequisiteId.trim() ||
+            envelope.dependentId?.trim() != body.dependentId.trim()
+        ) {
+            throw KanbanContractViolation.MissingDependencyIdentity
+        }
     }
 
     private fun compatibilityWarnings(

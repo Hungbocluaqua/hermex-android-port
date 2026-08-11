@@ -394,6 +394,39 @@ data class KanbanEditCardRequestBody(
     val status: String?,
 )
 
+@Serializable
+data class KanbanStatusRequestBody(
+    val status: String,
+)
+
+@Serializable
+data class KanbanCardActionRequestBody(
+    val reason: String? = null,
+)
+
+@Serializable
+data class KanbanDependencyRequestBody(
+    @SerialName("parent_id") val prerequisiteId: String,
+    @SerialName("child_id") val dependentId: String,
+)
+
+@Serializable
+data class KanbanDependencyMutationEnvelope(
+    @Serializable(with = LossyNullableBooleanSerializer::class)
+    val ok: Boolean? = null,
+    @Serializable(with = LossyNullableBooleanSerializer::class)
+    val changed: Boolean? = null,
+    @SerialName("parent_id")
+    @Serializable(with = LossyNullableStringSerializer::class)
+    val prerequisiteId: String? = null,
+    @SerialName("child_id")
+    @Serializable(with = LossyNullableStringSerializer::class)
+    val dependentId: String? = null,
+    @SerialName("read_only")
+    @Serializable(with = LossyNullableBooleanSerializer::class)
+    val readOnly: Boolean? = null,
+)
+
 data class KanbanCompatibilityReport(
     val configuration: KanbanConfiguration,
     val boards: List<KanbanBoardSummary>,
@@ -416,6 +449,7 @@ sealed class KanbanContractViolation(message: String) : IllegalStateException(me
     data object MissingColumnStatus : KanbanContractViolation("The server returned a Kanban column without a status.")
     data object MissingCardIdentity : KanbanContractViolation("The server returned a Kanban card without an identity.")
     data object MissingCardStatus : KanbanContractViolation("The server returned a Kanban card without a status.")
+    data object MissingDependencyIdentity : KanbanContractViolation("The server returned an invalid Kanban dependency result.")
 }
 
 val supportedKanbanStatuses = setOf("triage", "todo", "blocked", "ready", "running", "done", "archived")

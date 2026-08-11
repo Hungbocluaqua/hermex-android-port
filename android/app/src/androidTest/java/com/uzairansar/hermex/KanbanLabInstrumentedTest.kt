@@ -148,9 +148,10 @@ class KanbanLabInstrumentedTest {
                 }
             }
             composeRule.onNodeWithTag("kanban_status_todo").performClick()
-            composeRule.waitUntil(timeoutMillis = 5_000) {
-                composeRule.onAllNodesWithText("CARD-release").fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntil(timeoutMillis = 10_000) {
+                composeRule.onAllNodesWithTag("kanban_card_list").fetchSemanticsNodes().isNotEmpty()
             }
+            composeRule.onNodeWithTag("kanban_card_list").performScrollToNode(hasText("CARD-release"))
             composeRule.onNodeWithText("CARD-release").assertIsDisplayed()
 
             assertTrue(requests.any { it.url.encodedPath == "/api/kanban/config" })
@@ -440,6 +441,102 @@ class KanbanLabInstrumentedTest {
             composeRule.onAllNodesWithTag("kanban_edit_card").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithTag("kanban_edit_card").assertIsNotEnabled()
+        composeRule.onNodeWithTag("kanban_card_actions_CARD-1").assertIsNotEnabled()
+    }
+
+    @Test
+    fun cardActionsCompleteAndMoveFocusToTheCanonicalStatus() {
+        composeRule.setContent {
+            HermexTheme {
+                KanbanLabRoute(
+                    repository = KanbanLabFixtureDataSource("dense"),
+                    onBack = {},
+                    viewModelKey = "kanban-workflow-complete-device",
+                )
+            }
+        }
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("CARD-1").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag("kanban_card_actions_CARD-1").performClick()
+        composeRule.onNodeWithTag("kanban_complete_CARD-1").performClick()
+
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_status_done").fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithText("Triage Android parity").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_mutation_CARD-1", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun runningArchiveRequiresConfirmationAndOffersUndo() {
+        composeRule.setContent {
+            HermexTheme {
+                KanbanLabRoute(
+                    repository = KanbanLabFixtureDataSource("dense"),
+                    onBack = {},
+                    viewModelKey = "kanban-workflow-running-device",
+                )
+            }
+        }
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_status_running").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_status_running").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_card_CARD-4", useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_card_CARD-4", useUnmergedTree = true).performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_card_detail").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_card_actions_CARD-4").performClick()
+        composeRule.onNodeWithTag("kanban_archive_CARD-4").performClick()
+
+        composeRule.onNodeWithText("Leave Running?").assertIsDisplayed()
+        composeRule.onNodeWithTag("kanban_confirm_running_exit").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_archive_undo").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_archive_undo_action").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("CARD-4").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test
+    fun detailAddsAndRemovesPrerequisiteWithCanonicalRefresh() {
+        composeRule.setContent {
+            HermexTheme {
+                KanbanLabRoute(
+                    repository = KanbanLabFixtureDataSource("dense"),
+                    onBack = {},
+                    viewModelKey = "kanban-workflow-dependency-device",
+                )
+            }
+        }
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("CARD-1").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_card_CARD-1").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_card_detail").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag("kanban_card_detail")
+            .performScrollToNode(hasTestTag("kanban_add_prerequisite"))
+        composeRule.onNodeWithTag("kanban_add_prerequisite").performClick()
+        composeRule.onNodeWithTag("kanban_prerequisite_option_CARD-2").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_remove_prerequisite_CARD-2").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag("kanban_remove_prerequisite_CARD-2").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_remove_prerequisite_CARD-2").fetchSemanticsNodes().isEmpty()
+        }
     }
 
     private fun liveUiState(

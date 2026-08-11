@@ -5,6 +5,7 @@ import com.uzairansar.hermex.core.model.KanbanAssigneeHistory
 import com.uzairansar.hermex.core.model.KanbanBoardSnapshot
 import com.uzairansar.hermex.core.model.KanbanBoardSummary
 import com.uzairansar.hermex.core.model.KanbanCardSummary
+import com.uzairansar.hermex.core.model.KanbanCardMutationEnvelope
 import com.uzairansar.hermex.core.model.KanbanColumn
 import com.uzairansar.hermex.core.model.KanbanCompatibilityReport
 import com.uzairansar.hermex.core.model.KanbanConfiguration
@@ -40,6 +41,22 @@ class KanbanLabViewModelTest {
         assertEquals(listOf("CARD-main"), viewModel.state.value.visibleCards.map { it.cardId })
         assertEquals(listOf("triage", "todo", "blocked", "ready", "running", "done"), viewModel.state.value.availableStatuses)
         assertTrue(viewModel.state.value.canMutateCards)
+        assertTrue(viewModel.state.value.canUseCardWorkflow)
+    }
+
+    @Test
+    fun missingWorkflowEndpointLeavesCardEditorCapabilityAvailable() = runTest {
+        val repository = FakeKanbanBrowseDataSource().apply {
+            statusFailure = ApiError.Http(404, "missing")
+        }
+        val viewModel = KanbanLabViewModel(repository)
+        val card = requireNotNull(viewModel.state.value.snapshot?.allCards()?.first())
+
+        viewModel.completeCard(card)
+
+        assertFalse(viewModel.state.value.canUseCardWorkflow)
+        assertTrue(viewModel.state.value.canMutateCards)
+        assertEquals(KanbanCardMutationPhase.Failed, viewModel.workflowState.value.mutations[card.cardId]?.phase)
     }
 
     @Test
@@ -60,6 +77,22 @@ class KanbanLabViewModelTest {
 
         assertEquals("fast", viewModel.state.value.selectedBoardSlug)
         assertEquals(listOf("CARD-fast"), viewModel.state.value.visibleCards.map { it.cardId })
+    }
+
+    @Test
+    fun boardResultPreservesStatusChosenWhileRefreshWasInFlight() = runTest {
+        val repository = FakeKanbanBrowseDataSource()
+        val slow = CompletableDeferred<KanbanBoardSnapshot>()
+        repository.boardLoader = { board, _ -> if (board == "slow") slow.await() else snapshot(board) }
+        val viewModel = KanbanLabViewModel(repository)
+
+        viewModel.selectBoard("slow")
+        viewModel.selectStatus("todo")
+        slow.complete(snapshot("slow", status = "todo"))
+
+        assertEquals("slow", viewModel.state.value.selectedBoardSlug)
+        assertEquals("todo", viewModel.state.value.selectedStatus)
+        assertEquals(listOf("CARD-slow"), viewModel.state.value.visibleCards.map { it.cardId })
     }
 
     @Test
@@ -128,6 +161,7 @@ class KanbanLabViewModelTest {
     ) : KanbanBrowseDataSource {
         var handshakeFailure: Throwable? = null
         var lastFilters: KanbanBrowseFilters? = null
+        var statusFailure: Throwable? = null
         var boardLoader: suspend (String, KanbanBrowseFilters) -> KanbanBoardSnapshot = { board, _ -> snapshot(board) }
 
         override suspend fun compatibilityHandshake(): KanbanCompatibilityReport {
@@ -151,14 +185,25 @@ class KanbanLabViewModelTest {
 
         override suspend fun stats(board: String): KanbanStats = KanbanStats(total = 1, byStatus = mapOf("triage" to 1))
         override suspend fun assignees(board: String): KanbanAssigneeHistory = KanbanAssigneeHistory()
+        override suspend fun setCardStatus(
+            cardId: String,
+            board: String,
+            status: String,
+        ): KanbanCardMutationEnvelope {
+            statusFailure?.let { throw it }
+            return KanbanCardMutationEnvelope(
+                card = KanbanCardSummary(cardId = cardId, title = cardId, status = status),
+                readOnly = false,
+            )
+        }
     }
 
     private companion object {
-        fun snapshot(board: String) = KanbanBoardSnapshot(
+        fun snapshot(board: String, status: String = "triage") = KanbanBoardSnapshot(
             columns = listOf(
                 KanbanColumn(
-                    name = "triage",
-                    cards = listOf(KanbanCardSummary(cardId = "CARD-$board", title = board, status = "triage")),
+                    name = status,
+                    cards = listOf(KanbanCardSummary(cardId = "CARD-$board", title = board, status = status)),
                 ),
             ),
             changed = true,

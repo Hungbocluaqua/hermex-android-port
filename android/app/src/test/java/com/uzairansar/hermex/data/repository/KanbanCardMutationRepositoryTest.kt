@@ -3,6 +3,7 @@ package com.uzairansar.hermex.data.repository
 import com.uzairansar.hermex.core.model.KanbanContractViolation
 import com.uzairansar.hermex.core.model.KanbanCreateCardRequestBody
 import com.uzairansar.hermex.core.model.KanbanEditCardRequestBody
+import com.uzairansar.hermex.core.model.KanbanDependencyRequestBody
 import com.uzairansar.hermex.core.network.HermesApiClient
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
@@ -139,6 +140,76 @@ class KanbanCardMutationRepositoryTest {
 
             assertTrue(createError is KanbanContractViolation.MissingCardStatus)
             assertTrue(editError is KanbanContractViolation.MissingCardIdentity)
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun workflowAndDependenciesUseExactVerifiedContracts() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            server.enqueue(json("""{"task":{"id":"CARD-1","status":"done"},"read_only":false}"""))
+            server.enqueue(json("""{"task":{"id":"CARD-1","status":"blocked"},"read_only":false}"""))
+            server.enqueue(json("""{"task":{"id":"CARD-1","status":"ready"},"read_only":false}"""))
+            server.enqueue(json("""{"ok":true,"parent_id":"CARD-0","child_id":"CARD-1","read_only":false}"""))
+            server.enqueue(json("""{"ok":true,"changed":true,"parent_id":"CARD-0","child_id":"CARD-1","read_only":false}"""))
+            val repository = repository(server)
+            val dependency = KanbanDependencyRequestBody("CARD-0", "CARD-1")
+
+            repository.setCardStatus("CARD-1", "release board", "done")
+            repository.blockCard("CARD-1", "release board", "Waiting for review")
+            repository.unblockCard("CARD-1", "release board")
+            repository.addDependency("release board", dependency)
+            repository.removeDependency("release board", dependency)
+
+            val status = server.takeRequest()
+            assertEquals("PATCH", status.method)
+            assertEquals("/api/kanban/tasks/CARD-1", status.url.encodedPath)
+            assertEquals("release board", status.url.queryParameter("board"))
+            assertEquals("""{"status":"done"}""", status.body?.utf8())
+
+            val block = server.takeRequest()
+            assertEquals("POST", block.method)
+            assertEquals("/api/kanban/tasks/CARD-1/block", block.url.encodedPath)
+            assertEquals("""{"reason":"Waiting for review"}""", block.body?.utf8())
+
+            val unblock = server.takeRequest()
+            assertEquals("POST", unblock.method)
+            assertEquals("/api/kanban/tasks/CARD-1/unblock", unblock.url.encodedPath)
+            assertEquals("{}", unblock.body?.utf8())
+
+            val add = server.takeRequest()
+            assertEquals("POST", add.method)
+            assertEquals("/api/kanban/links", add.url.encodedPath)
+            assertEquals("""{"parent_id":"CARD-0","child_id":"CARD-1"}""", add.body?.utf8())
+
+            val remove = server.takeRequest()
+            assertEquals("POST", remove.method)
+            assertEquals("/api/kanban/links/delete", remove.url.encodedPath)
+            assertEquals("""{"parent_id":"CARD-0","child_id":"CARD-1"}""", remove.body?.utf8())
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun workflowRejectsRunningEntryAndInvalidDependencyIdentity() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            val repository = repository(server)
+
+            val runningError = runCatching { repository.setCardStatus("CARD-1", "main", "running") }.exceptionOrNull()
+            assertTrue(runningError is IllegalArgumentException)
+            assertEquals(0, server.requestCount)
+
+            server.enqueue(json("""{"ok":true,"parent_id":"OTHER","child_id":"CARD-1","read_only":false}"""))
+            val dependencyError = runCatching {
+                repository.addDependency("main", KanbanDependencyRequestBody("CARD-0", "CARD-1"))
+            }.exceptionOrNull()
+            assertTrue(dependencyError is KanbanContractViolation.MissingDependencyIdentity)
         } finally {
             server.close()
         }

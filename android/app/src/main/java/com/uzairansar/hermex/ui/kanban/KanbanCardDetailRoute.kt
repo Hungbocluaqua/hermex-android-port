@@ -42,6 +42,7 @@ import com.uzairansar.hermex.core.model.KanbanCardSummary
 import com.uzairansar.hermex.core.model.KanbanComment
 import com.uzairansar.hermex.core.model.KanbanDetailEvent
 import com.uzairansar.hermex.core.model.KanbanDispatchRun
+import com.uzairansar.hermex.core.model.KanbanDependencyLinks
 import com.uzairansar.hermex.data.repository.KanbanBrowseDataSource
 import com.uzairansar.hermex.ui.chat.MarkdownText
 import com.uzairansar.hermex.ui.localization.localizedString
@@ -66,6 +67,19 @@ internal fun KanbanCardDetailRoute(
     onBack: () -> Unit,
     onOpenRelatedCard: (String) -> Unit,
     onEdit: (String) -> Unit,
+    workflowState: KanbanWorkflowUiState,
+    allCards: List<KanbanCardSummary>,
+    canUseWorkflow: Boolean,
+    moveDestinations: (KanbanCardSummary) -> List<String>,
+    displayedCard: (KanbanCardSummary) -> KanbanCardSummary,
+    displayedPrerequisites: (String, List<String>) -> List<String>,
+    onLoadedCardDetail: (String) -> Unit,
+    onWorkflowAction: (KanbanCardSummary, KanbanCardWorkflowAction) -> Unit,
+    onRetryMutation: (KanbanCardSummary) -> Unit,
+    onCheckMutation: (KanbanCardSummary) -> Unit,
+    onAddPrerequisite: (String, KanbanCardSummary) -> Unit,
+    onRemovePrerequisite: (String, KanbanCardSummary) -> Unit,
+    onUndoArchive: () -> Unit,
 ) {
     val factory = remember(repository, board, cardId, parentAllowsWrites) {
         object : ViewModelProvider.Factory {
@@ -80,9 +94,25 @@ internal fun KanbanCardDetailRoute(
         factory = factory,
     )
     val state by model.state.collectAsStateWithLifecycle()
+    val canonicalDetail = state.detail
+    val canonicalCard = canonicalDetail?.card
+    val renderedCard = canonicalCard?.let(displayedCard)
+    val canonicalPrerequisites = canonicalDetail?.links?.prerequisites.orEmpty()
+    val renderedPrerequisites = canonicalCard?.cardId?.let { displayedPrerequisites(it, canonicalPrerequisites) }
+        ?: canonicalPrerequisites
+    val renderedDetail = canonicalDetail?.copy(
+        card = renderedCard,
+        links = (canonicalDetail.links ?: KanbanDependencyLinks()).copy(prerequisites = renderedPrerequisites),
+    )
+    val renderedState = state.copy(detail = renderedDetail)
 
     LaunchedEffect(parentOffline, parentAllowsWrites, refreshRevision) {
         model.updateParentState(parentOffline, parentAllowsWrites, refreshRevision)
+    }
+    LaunchedEffect(state.detail) {
+        if (state.availability == KanbanCardDetailAvailability.Content) {
+            state.detail?.card?.cardId?.let(onLoadedCardDetail)
+        }
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -93,7 +123,7 @@ internal fun KanbanCardDetailRoute(
         ) {
             HermexIconButton(localizedString("Back"), "‹", onBack)
             Text(
-                state.detail?.card?.title?.trim().takeUnless { it.isNullOrEmpty() }
+                renderedCard?.title?.trim().takeUnless { it.isNullOrEmpty() }
                     ?: localizedString("Card"),
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
@@ -108,6 +138,14 @@ internal fun KanbanCardDetailRoute(
                     !state.isStale,
                 modifier = Modifier.testTag("kanban_edit_card"),
             )
+            renderedCard?.let { card ->
+                KanbanCardActionsMenu(
+                    card = card,
+                    destinations = moveDestinations(card),
+                    enabled = canUseWorkflow && card.cardId !in workflowState.activeCardIds && card.hasSupportedStatus,
+                    onAction = onWorkflowAction,
+                )
+            }
             HermexIconButton(
                 localizedString("Refresh"),
                 "↻",
@@ -119,12 +157,22 @@ internal fun KanbanCardDetailRoute(
         when (state.availability) {
             KanbanCardDetailAvailability.Loading -> DetailLoading()
             KanbanCardDetailAvailability.Content -> KanbanCardDetailContent(
-                state = state,
+                state = renderedState,
                 onCommentDraft = model::updateCommentDraft,
                 onSubmitComment = model::submitComment,
                 onRetryComment = model::retryComment,
                 onLoadWorkerLog = model::loadWorkerLog,
                 onOpenRelatedCard = onOpenRelatedCard,
+                workflowState = workflowState,
+                allCards = allCards,
+                canUseWorkflow = canUseWorkflow,
+                moveDestinations = moveDestinations,
+                onWorkflowAction = onWorkflowAction,
+                onRetryMutation = onRetryMutation,
+                onCheckMutation = onCheckMutation,
+                onAddPrerequisite = onAddPrerequisite,
+                onRemovePrerequisite = onRemovePrerequisite,
+                onUndoArchive = onUndoArchive,
             )
             else -> DetailUnavailable(state.availability, model::load)
         }
@@ -162,6 +210,16 @@ internal fun KanbanCardDetailContent(
     onRetryComment: () -> Unit,
     onLoadWorkerLog: () -> Unit,
     onOpenRelatedCard: (String) -> Unit,
+    workflowState: KanbanWorkflowUiState = KanbanWorkflowUiState(),
+    allCards: List<KanbanCardSummary> = emptyList(),
+    canUseWorkflow: Boolean = false,
+    moveDestinations: (KanbanCardSummary) -> List<String> = { emptyList() },
+    onWorkflowAction: (KanbanCardSummary, KanbanCardWorkflowAction) -> Unit = { _, _ -> },
+    onRetryMutation: (KanbanCardSummary) -> Unit = {},
+    onCheckMutation: (KanbanCardSummary) -> Unit = {},
+    onAddPrerequisite: (String, KanbanCardSummary) -> Unit = { _, _ -> },
+    onRemovePrerequisite: (String, KanbanCardSummary) -> Unit = { _, _ -> },
+    onUndoArchive: () -> Unit = {},
 ) {
     val detail = state.detail ?: return
     val card = detail.card ?: return
@@ -171,6 +229,16 @@ internal fun KanbanCardDetailContent(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        workflowState.archiveUndo?.takeIf { it.cardId == card.cardId }?.let { undo ->
+            item("archive-undo") {
+                KanbanArchiveUndoBanner(
+                    undo = undo,
+                    mutation = workflowState.mutations[undo.cardId],
+                    onUndo = onUndoArchive,
+                    onCheck = { onCheckMutation(undo.card) },
+                )
+            }
+        }
         if (state.isStale) {
             item("stale") {
                 DetailNotice(
@@ -181,6 +249,9 @@ internal fun KanbanCardDetailContent(
         }
         item("description") { DescriptionSection(card) }
         item("metadata") { MetadataSection(card) }
+        workflowState.mutations[card.cardId]?.let { mutation ->
+            item("mutation") { KanbanMutationStatus(card, mutation, onRetryMutation, onCheckMutation) }
+        }
         item("comments") {
             CommentsSection(
                 comments = detail.comments.orEmpty(),
@@ -192,9 +263,14 @@ internal fun KanbanCardDetailContent(
         }
         item("dependencies") {
             DependenciesSection(
+                card = card,
                 prerequisites = detail.links?.prerequisites.orEmpty(),
                 dependents = detail.links?.dependents.orEmpty(),
+                allCards = allCards,
+                canMutate = canUseWorkflow && card.cardId !in workflowState.activeCardIds && !state.isStale,
                 onOpenRelatedCard = onOpenRelatedCard,
+                onAddPrerequisite = onAddPrerequisite,
+                onRemovePrerequisite = onRemovePrerequisite,
             )
         }
         item("operational-toggle") {
@@ -306,13 +382,90 @@ private fun CommentRow(comment: KanbanComment) {
 
 @Composable
 private fun DependenciesSection(
+    card: KanbanCardSummary,
     prerequisites: List<String>,
     dependents: List<String>,
+    allCards: List<KanbanCardSummary>,
+    canMutate: Boolean,
     onOpenRelatedCard: (String) -> Unit,
+    onAddPrerequisite: (String, KanbanCardSummary) -> Unit,
+    onRemovePrerequisite: (String, KanbanCardSummary) -> Unit,
 ) {
     DetailSection(localizedString("Dependencies")) {
-        DependencyGroup(localizedString("Prerequisite"), prerequisites, onOpenRelatedCard)
+        PrerequisiteGroup(
+            card = card,
+            ids = prerequisites,
+            options = allCards.filter { option ->
+                val optionId = option.cardId
+                optionId != null && optionId != card.cardId && optionId !in prerequisites
+            },
+            canMutate = canMutate,
+            onOpenRelatedCard = onOpenRelatedCard,
+            onAdd = onAddPrerequisite,
+            onRemove = onRemovePrerequisite,
+        )
         DependencyGroup(localizedString("Dependencies"), dependents, onOpenRelatedCard)
+    }
+}
+
+@Composable
+private fun PrerequisiteGroup(
+    card: KanbanCardSummary,
+    ids: List<String>,
+    options: List<KanbanCardSummary>,
+    canMutate: Boolean,
+    onOpenRelatedCard: (String) -> Unit,
+    onAdd: (String, KanbanCardSummary) -> Unit,
+    onRemove: (String, KanbanCardSummary) -> Unit,
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    Text("${localizedString("Prerequisite")} · ${ids.size}", style = MaterialTheme.typography.titleSmall)
+    if (ids.isEmpty()) Text(localizedString("None"), color = MaterialTheme.colorScheme.secondary)
+    ids.forEach { id ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                id,
+                modifier = Modifier.weight(1f).clickable { onOpenRelatedCard(id) }.padding(vertical = 8.dp),
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            HermexPillButton(
+                localizedString("Remove"),
+                { onRemove(id, card) },
+                enabled = canMutate,
+                modifier = Modifier.testTag("kanban_remove_prerequisite_$id"),
+            )
+        }
+    }
+    if (options.isNotEmpty()) {
+        Box {
+            HermexPillButton(
+                localizedString("Add Prerequisite"),
+                { menuExpanded = true },
+                enabled = canMutate,
+                modifier = Modifier.fillMaxWidth().testTag("kanban_add_prerequisite"),
+            )
+            androidx.compose.material3.DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false },
+            ) {
+                options.forEach { option ->
+                    val optionId = option.cardId ?: return@forEach
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(option.title?.takeIf(String::isNotBlank) ?: optionId) },
+                        onClick = {
+                            menuExpanded = false
+                            onAdd(optionId, card)
+                        },
+                        modifier = Modifier.testTag("kanban_prerequisite_option_$optionId"),
+                    )
+                }
+            }
+        }
     }
 }
 

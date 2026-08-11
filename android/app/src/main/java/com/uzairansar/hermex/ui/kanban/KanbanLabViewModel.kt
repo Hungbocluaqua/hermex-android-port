@@ -9,6 +9,7 @@ import com.uzairansar.hermex.core.model.KanbanCompatibilityReport
 import com.uzairansar.hermex.core.model.KanbanCompatibilityWarning
 import com.uzairansar.hermex.core.model.KanbanConfiguration
 import com.uzairansar.hermex.core.model.KanbanContractViolation
+import com.uzairansar.hermex.core.model.KanbanCardSummary
 import com.uzairansar.hermex.core.model.KanbanEventsEnvelope
 import com.uzairansar.hermex.core.model.KanbanStats
 import com.uzairansar.hermex.core.network.ApiError
@@ -78,6 +79,7 @@ internal data class KanbanLabUiState(
     val isOffline: Boolean = false,
     val liveUpdatesDelayed: Boolean = false,
     val detailRefreshRevision: Int = 0,
+    val workflowCapabilityUnavailable: Boolean = false,
 ) {
     val selectedBoard: KanbanBoardSummary?
         get() = boards.firstOrNull { it.slug?.trim() == selectedBoardSlug }
@@ -108,6 +110,9 @@ internal data class KanbanLabUiState(
                     it == KanbanCompatibilityWarning.WriteCapabilityUnavailable
             } &&
             KanbanCardEditorViewModel.CREATE_STATUSES.all { it in configuration?.columns.orEmpty() }
+
+    val canUseCardWorkflow: Boolean
+        get() = canMutateCards && !workflowCapabilityUnavailable
 }
 
 internal class KanbanLabViewModel(
@@ -116,6 +121,29 @@ internal class KanbanLabViewModel(
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(KanbanLabUiState())
     val state: StateFlow<KanbanLabUiState> = mutableState
+    private val workflowController = KanbanWorkflowController(
+        repository = repository,
+        scope = viewModelScope,
+        selectedBoard = { mutableState.value.selectedBoardSlug },
+        configuredColumns = { mutableState.value.configuration?.columns.orEmpty() },
+        includesArchived = { mutableState.value.filters.includeArchived },
+        canMutate = { card -> mutableState.value.canUseCardWorkflow && card.hasSupportedStatus },
+        cardInSnapshot = ::cardInCurrentSnapshot,
+        replaceCard = ::replaceCardInCurrentSnapshot,
+        removeCard = ::removeCardFromCurrentSnapshot,
+        onStatusSucceeded = { _, status ->
+            val current = mutableState.value
+            if (status in current.availableStatuses) mutableState.value = current.copy(selectedStatus = status)
+        },
+        onDetailRefresh = {
+            val current = mutableState.value
+            mutableState.value = current.copy(detailRefreshRevision = current.detailRefreshRevision + 1)
+        },
+        onCapabilityUnavailable = {
+            mutableState.value = mutableState.value.copy(workflowCapabilityUnavailable = true)
+        },
+    )
+    val workflowState: StateFlow<KanbanWorkflowUiState> = workflowController.state
 
     private var loadGeneration = 0
     private var liveGeneration = 0
@@ -163,7 +191,10 @@ internal class KanbanLabViewModel(
                 }
                 val supplementary = loadSupplementary(selectedSlug)
                 if (generation != loadGeneration) return@launch
-                val statuses = availableKanbanStatuses(snapshot, filters.includeArchived)
+                val boardChanged = previous.selectedBoardSlug != null && previous.selectedBoardSlug != selectedSlug
+                workflowController.acknowledgeCanonicalBoardLoad(boardChanged)
+                val protectedSnapshot = if (boardChanged) snapshot else workflowController.protectSnapshot(snapshot)
+                val statuses = availableKanbanStatuses(protectedSnapshot, filters.includeArchived)
                 val selectedStatus = previous.selectedStatus.takeIf(statuses::contains)
                     ?: "triage".takeIf(statuses::contains)
                     ?: statuses.firstOrNull().orEmpty()
@@ -174,10 +205,10 @@ internal class KanbanLabViewModel(
                     configuration = report.configuration,
                     boards = report.boards,
                     selectedBoardSlug = selectedSlug,
-                    snapshot = snapshot,
+                    snapshot = protectedSnapshot,
                     stats = supplementary.first,
                     assigneeHistory = supplementary.second,
-                    warnings = warningsFor(report, selectedSlug, snapshot),
+                    warnings = warningsFor(report, selectedSlug, protectedSnapshot),
                     filters = filters,
                     selectedStatus = selectedStatus,
                     searchQuery = previous.searchQuery,
@@ -273,8 +304,12 @@ internal class KanbanLabViewModel(
                 val snapshot = repository.boardSnapshot(slug, filters.request())
                 val supplementary = loadSupplementary(slug)
                 if (generation != loadGeneration) return@launch
-                val statuses = availableKanbanStatuses(snapshot, filters.includeArchived)
-                val selectedStatus = previous.selectedStatus
+                val current = mutableState.value
+                val boardChanged = previous.selectedBoardSlug != slug
+                workflowController.acknowledgeCanonicalBoardLoad(boardChanged)
+                val protectedSnapshot = if (boardChanged) snapshot else workflowController.protectSnapshot(snapshot)
+                val statuses = availableKanbanStatuses(protectedSnapshot, filters.includeArchived)
+                val selectedStatus = current.selectedStatus
                     .takeIf { it in statuses && (it != "archived" || filters.includeArchived) }
                     ?: "triage".takeIf(statuses::contains)
                     ?: statuses.firstOrNull().orEmpty()
@@ -282,25 +317,26 @@ internal class KanbanLabViewModel(
                     configuration = requireNotNull(previous.configuration),
                     boards = previous.boards,
                     currentBoard = previous.selectedBoard ?: previous.boards.first(),
-                    snapshot = snapshot,
+                    snapshot = protectedSnapshot,
                     warnings = previous.warnings,
                 )
                 liveCursor = snapshot.latestEventId?.coerceAtLeast(0) ?: 0
                 streamFailureCount = 0
-                mutableState.value = previous.copy(
+                mutableState.value = current.copy(
                     availability = KanbanAvailability.Content,
                     selectedBoardSlug = slug,
                     snapshot = snapshot,
                     stats = supplementary.first,
                     assigneeHistory = supplementary.second,
-                    warnings = warningsFor(report, slug, snapshot),
+                    warnings = warningsFor(report, slug, protectedSnapshot),
                     filters = filters,
                     selectedStatus = selectedStatus,
                     isRefreshing = false,
                     refreshFailed = false,
                     isOffline = false,
                     liveUpdatesDelayed = false,
-                    detailRefreshRevision = previous.detailRefreshRevision + 1,
+                    detailRefreshRevision = current.detailRefreshRevision + 1,
+                    workflowCapabilityUnavailable = if (boardChanged) false else current.workflowCapabilityUnavailable,
                 )
                 startLiveUpdatesIfReady()
             } catch (error: CancellationException) {
@@ -465,7 +501,7 @@ internal class KanbanLabViewModel(
             )
             liveCursor = maxOf(liveCursor, snapshot.latestEventId?.coerceAtLeast(0) ?: 0)
             mutableState.value = current.copy(
-                snapshot = snapshot,
+                snapshot = workflowController.protectSnapshot(snapshot),
                 stats = supplementary.first,
                 assigneeHistory = supplementary.second,
                 warnings = warningsFor(report, board, snapshot),
@@ -534,6 +570,70 @@ internal class KanbanLabViewModel(
         }
     }
 
+    fun canMutateCard(card: KanbanCardSummary): Boolean = workflowController.canMutateCard(card)
+
+    fun isMutatingCard(cardId: String?): Boolean = workflowController.isMutatingCard(cardId)
+
+    fun moveDestinations(card: KanbanCardSummary): List<String> =
+        workflowController.moveDestinations(card, mutableState.value.configuration?.columns.orEmpty())
+
+    fun moveCard(card: KanbanCardSummary, status: String, confirmingRunningExit: Boolean = false) =
+        workflowController.moveCard(card, status, confirmingRunningExit)
+
+    fun completeCard(card: KanbanCardSummary, confirmingRunningExit: Boolean = false) =
+        workflowController.completeCard(card, confirmingRunningExit)
+
+    fun archiveCard(card: KanbanCardSummary, confirmingRunningExit: Boolean = false) =
+        workflowController.archiveCard(card, confirmingRunningExit)
+
+    fun blockCard(card: KanbanCardSummary, confirmingRunningExit: Boolean = false) =
+        workflowController.blockCard(card, confirmingRunningExit = confirmingRunningExit)
+
+    fun unblockCard(card: KanbanCardSummary) = workflowController.unblockCard(card)
+
+    fun addPrerequisite(prerequisiteId: String, card: KanbanCardSummary) =
+        workflowController.addPrerequisite(prerequisiteId, card)
+
+    fun removePrerequisite(prerequisiteId: String, card: KanbanCardSummary) =
+        workflowController.removePrerequisite(prerequisiteId, card)
+
+    fun retryMutation(card: KanbanCardSummary, confirmingRunningExit: Boolean = false) =
+        workflowController.retryMutation(card, confirmingRunningExit)
+
+    fun checkUncertainMutation(card: KanbanCardSummary) = workflowController.checkUncertainMutation(card)
+
+    fun undoArchive() = workflowController.undoArchive()
+
+    fun displayedCard(card: KanbanCardSummary): KanbanCardSummary = workflowController.displayedCard(card)
+
+    fun displayedPrerequisites(cardId: String, canonical: List<String>): List<String> =
+        workflowController.displayedPrerequisites(cardId, canonical)
+
+    fun acknowledgeLoadedCardDetail(cardId: String) = workflowController.acknowledgeLoadedCardDetail(cardId)
+
+    private fun cardInCurrentSnapshot(cardId: String): KanbanCardSummary? =
+        mutableState.value.snapshot?.allCards()?.firstOrNull { it.cardId?.trim() == cardId }
+
+    private fun replaceCardInCurrentSnapshot(card: KanbanCardSummary) {
+        val current = mutableState.value
+        val snapshot = current.snapshot ?: return
+        mutableState.value = current.copy(
+            snapshot = snapshot.replacingKanbanCard(card, current.filters.includeArchived),
+        )
+    }
+
+    private fun removeCardFromCurrentSnapshot(cardId: String) {
+        val current = mutableState.value
+        val snapshot = current.snapshot ?: return
+        mutableState.value = current.copy(
+            snapshot = snapshot.copy(
+                columns = snapshot.columns.orEmpty().map { column ->
+                    column.copy(cards = column.cards.orEmpty().filterNot { it.cardId?.trim() == cardId })
+                },
+            ),
+        )
+    }
+
     private suspend fun loadSupplementary(slug: String): Pair<KanbanStats?, KanbanAssigneeHistory?> = coroutineScope {
         val stats = async { runCatching { repository.stats(slug) }.getOrNull() }
         val assignees = async { runCatching { repository.assignees(slug) }.getOrNull() }
@@ -566,6 +666,7 @@ internal class KanbanLabViewModel(
 
     override fun onCleared() {
         suspendLiveUpdates()
+        workflowController.reset()
         super.onCleared()
     }
 }

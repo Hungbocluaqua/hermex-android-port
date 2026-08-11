@@ -307,6 +307,22 @@ class HermesApiClient(
             json.encodeToString(payload).toRequestBody(jsonMediaType),
         )
     }
+    suspend fun setKanbanCardStatus(cardId: String, board: String, status: String): KanbanCardMutationEnvelope {
+        require(status.trim().lowercase() != "running") { "Running status requires the dispatcher." }
+        return request(
+            Endpoint.KanbanCard(cardId, board),
+            "PATCH",
+            json.encodeToString(KanbanStatusRequestBody(status)).toRequestBody(jsonMediaType),
+        )
+    }
+    suspend fun blockKanbanCard(cardId: String, board: String, reason: String?): KanbanCardMutationEnvelope =
+        post(Endpoint.KanbanCardBlock(cardId, board), KanbanCardActionRequestBody(reason))
+    suspend fun unblockKanbanCard(cardId: String, board: String): KanbanCardMutationEnvelope =
+        post(Endpoint.KanbanCardUnblock(cardId, board), KanbanCardActionRequestBody())
+    suspend fun addKanbanDependency(board: String, body: KanbanDependencyRequestBody): KanbanDependencyMutationEnvelope =
+        post(Endpoint.KanbanLinks(board), body)
+    suspend fun removeKanbanDependency(board: String, body: KanbanDependencyRequestBody): KanbanDependencyMutationEnvelope =
+        post(Endpoint.KanbanLinksDelete(board), body)
     suspend fun skills(): SkillsResponse = get(Endpoint.Skills)
     suspend fun skillContent(name: String, file: String? = null): SkillContentResponse = get(Endpoint.SkillContent(name, file))
     suspend fun toggleSkill(name: String, enabled: Boolean): ToggleSkillResponse = post(Endpoint.ToggleSkill, ToggleSkillRequest(name, enabled))
