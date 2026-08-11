@@ -3728,7 +3728,7 @@ final class ChatViewModelSendTests: XCTestCase {
         XCTAssertTrue(didStart)
         streamClient.emit(.token("First "))
 
-        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(6))
+        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(13))
 
         XCTAssertEqual(viewModel.activeStreamRecoveryState, .checking)
         XCTAssertEqual(viewModel.activeStreamID, "stream-123")
@@ -3765,7 +3765,7 @@ final class ChatViewModelSendTests: XCTestCase {
         XCTAssertTrue(didStart)
         streamClient.emit(.reasoning("I need to inspect the workspace first."))
 
-        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(6))
+        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(13))
 
         XCTAssertEqual(viewModel.activeStreamRecoveryState, .checking)
         XCTAssertEqual(viewModel.liveReasoningText, "I need to inspect the workspace first.")
@@ -3863,7 +3863,9 @@ final class ChatViewModelSendTests: XCTestCase {
         XCTAssertTrue(didStart)
         streamClient.emit(.token("Partial "))
 
-        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(10))
+        // 13s: past transportFreshInterval (12), so stale recovery polls status
+        // and finalizes the inactive run (#227).
+        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(13))
 
         XCTAssertNil(viewModel.activeStreamID)
         XCTAssertEqual(viewModel.activeStreamRecoveryState, .idle)
@@ -3922,7 +3924,9 @@ final class ChatViewModelSendTests: XCTestCase {
         XCTAssertTrue(didStart)
         streamClient.emit(.token("Partial "))
 
-        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(10))
+        // 13s: past transportFreshInterval (12), so stale recovery polls status
+        // and finalizes the inactive run (#227).
+        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(13))
 
         XCTAssertNil(viewModel.activeStreamID)
         XCTAssertEqual(viewModel.activeStreamRecoveryState, .idle)
@@ -4102,7 +4106,7 @@ final class ChatViewModelSendTests: XCTestCase {
         XCTAssertTrue(didStart)
         streamClient.emit(.token("First "))
 
-        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(6))
+        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(13))
 
         XCTAssertEqual(statusRequestCount, 1)
         XCTAssertEqual(viewModel.activeStreamRecoveryState, .checking)
@@ -4152,7 +4156,7 @@ final class ChatViewModelSendTests: XCTestCase {
         XCTAssertTrue(didStart)
         streamClient.emit(.token("First "))
 
-        let firstPollDate = Date().addingTimeInterval(6)
+        let firstPollDate = Date().addingTimeInterval(12.5)
         await viewModel.recoverStaleActiveStreamIfNeeded(now: firstPollDate)
         await viewModel.recoverStaleActiveStreamIfNeeded(now: firstPollDate.addingTimeInterval(2))
         await viewModel.recoverStaleActiveStreamIfNeeded(now: firstPollDate.addingTimeInterval(5))
@@ -4194,7 +4198,10 @@ final class ChatViewModelSendTests: XCTestCase {
 
         await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(10))
 
-        XCTAssertEqual(viewModel.activeStreamRecoveryState, .checking)
+        // #227: 10s of quiet is still inside transportFreshInterval, so the
+        // slow-but-alive stream shows no recovery chip at all — and is
+        // certainly not force-reconnected.
+        XCTAssertEqual(viewModel.activeStreamRecoveryState, .idle)
         XCTAssertEqual(viewModel.activeStreamID, "stream-123")
         XCTAssertEqual(streamClient.stopCount, 0)
         XCTAssertEqual(streamClient.startedURLs.count, 1)
@@ -4474,7 +4481,7 @@ final class ChatViewModelSendTests: XCTestCase {
         XCTAssertEqual(viewModel.activeStreamRecoveryState, .reconnecting)
         XCTAssertEqual(viewModel.messages.compactMap(\.content), ["Keep working", "First "])
 
-        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(6))
+        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(13))
 
         XCTAssertEqual(statusRequestCount, 2)
         XCTAssertEqual(viewModel.activeStreamRecoveryState, .checking)
@@ -4731,7 +4738,7 @@ final class ChatViewModelSendTests: XCTestCase {
             isError: nil
         )))
 
-        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(10))
+        await viewModel.recoverStaleActiveStreamIfNeeded(now: Date().addingTimeInterval(13))
 
         XCTAssertEqual(viewModel.activeStreamRecoveryState, .checking)
         XCTAssertEqual(viewModel.activeStreamID, "stream-123")
