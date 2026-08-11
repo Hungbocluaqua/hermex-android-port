@@ -56,6 +56,18 @@ class AndroidLocalizationCatalogTest {
         composeRule.onNodeWithText("Réglages").assertIsDisplayed()
     }
 
+    @Test
+    fun preservesIosPluralVariationsForCardCounts() {
+        val cardsId = requireNotNull(AndroidLocalizationCatalog.pluralResourceId("%lld Cards"))
+        val english = context.forLocale(Locale.ENGLISH)
+        assertEquals("1 Card", english.resources.getQuantityString(cardsId, 1, 1))
+        assertEquals("2 Cards", english.resources.getQuantityString(cardsId, 2, 2))
+
+        val french = context.forLocale(Locale.FRENCH)
+        assertEquals("1 Carte", french.resources.getQuantityString(cardsId, 1, 1))
+        assertEquals("2 Cartes", french.resources.getQuantityString(cardsId, 2, 2))
+    }
+
     private fun Context.forLocale(locale: Locale): Context {
         val configuration = Configuration(resources.configuration)
         configuration.setLocale(locale)

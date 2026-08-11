@@ -121,13 +121,49 @@ internal class KanbanLabViewModel(
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(KanbanLabUiState())
     val state: StateFlow<KanbanLabUiState> = mutableState
+    private val bulkController = KanbanBulkActionController(
+        repository = repository,
+        scope = viewModelScope,
+        selectedBoard = { mutableState.value.selectedBoardSlug },
+        configuredColumns = { mutableState.value.configuration?.columns.orEmpty() },
+        profileOptions = { mutableState.value.profileOptions },
+        isOffline = { mutableState.value.isOffline },
+        isRefreshing = { mutableState.value.isRefreshing },
+        baseAllowsMutation = { mutableState.value.canMutateCards },
+        contractCompatible = {
+            mutableState.value.availability == KanbanAvailability.Content &&
+                mutableState.value.snapshot != null &&
+                KanbanCardEditorViewModel.CREATE_STATUSES.all {
+                    status -> status in mutableState.value.configuration?.columns.orEmpty()
+                }
+        },
+        isReadOnly = {
+            val current = mutableState.value
+            current.configuration?.readOnly != false ||
+                current.snapshot?.readOnly != false ||
+                current.selectedBoard?.readOnly == true ||
+                current.warnings.any {
+                    it == KanbanCompatibilityWarning.ReadOnly ||
+                        it == KanbanCompatibilityWarning.WriteCapabilityUnavailable
+                }
+        },
+        hasOtherBoardActivity = ::hasActiveWorkflowMutation,
+        cardInSnapshot = ::cardInCurrentSnapshot,
+        replaceCard = ::replaceCardInCurrentSnapshot,
+        refreshBoard = ::refreshAfterBulkAction,
+    )
+    val bulkState: StateFlow<KanbanBulkUiState> = bulkController.state
     private val workflowController = KanbanWorkflowController(
         repository = repository,
         scope = viewModelScope,
         selectedBoard = { mutableState.value.selectedBoardSlug },
         configuredColumns = { mutableState.value.configuration?.columns.orEmpty() },
         includesArchived = { mutableState.value.filters.includeArchived },
-        canMutate = { card -> mutableState.value.canUseCardWorkflow && card.hasSupportedStatus },
+        canMutate = { card ->
+            mutableState.value.canUseCardWorkflow &&
+                bulkController.state.value.phase == null &&
+                card.hasSupportedStatus
+        },
         cardInSnapshot = ::cardInCurrentSnapshot,
         replaceCard = ::replaceCardInCurrentSnapshot,
         removeCard = ::removeCardFromCurrentSnapshot,
@@ -215,7 +251,13 @@ internal class KanbanLabViewModel(
                     isOffline = false,
                     liveUpdatesDelayed = false,
                     detailRefreshRevision = previous.detailRefreshRevision + 1,
+                    workflowCapabilityUnavailable = previous.workflowCapabilityUnavailable,
                 )
+                if (boardChanged) {
+                    bulkController.resetForBoardChange()
+                } else {
+                    bulkController.acknowledgeSnapshot(protectedSnapshot.allCards())
+                }
                 startLiveUpdatesIfReady()
             } catch (error: CancellationException) {
                 throw error
@@ -261,6 +303,7 @@ internal class KanbanLabViewModel(
     fun selectBoard(slug: String) {
         val normalized = slug.trim().takeIf(String::isNotEmpty) ?: return
         if (normalized == mutableState.value.selectedBoardSlug) return
+        bulkController.resetForBoardChange()
         loadBoard(normalized, mutableState.value.filters)
     }
 
@@ -325,7 +368,7 @@ internal class KanbanLabViewModel(
                 mutableState.value = current.copy(
                     availability = KanbanAvailability.Content,
                     selectedBoardSlug = slug,
-                    snapshot = snapshot,
+                    snapshot = protectedSnapshot,
                     stats = supplementary.first,
                     assigneeHistory = supplementary.second,
                     warnings = warningsFor(report, slug, protectedSnapshot),
@@ -336,8 +379,13 @@ internal class KanbanLabViewModel(
                     isOffline = false,
                     liveUpdatesDelayed = false,
                     detailRefreshRevision = current.detailRefreshRevision + 1,
-                    workflowCapabilityUnavailable = if (boardChanged) false else current.workflowCapabilityUnavailable,
+                    workflowCapabilityUnavailable = current.workflowCapabilityUnavailable,
                 )
+                if (boardChanged) {
+                    bulkController.resetForBoardChange()
+                } else {
+                    bulkController.acknowledgeSnapshot(protectedSnapshot.allCards())
+                }
                 startLiveUpdatesIfReady()
             } catch (error: CancellationException) {
                 throw error
@@ -509,6 +557,7 @@ internal class KanbanLabViewModel(
                 isOffline = false,
                 detailRefreshRevision = current.detailRefreshRevision + 1,
             )
+            bulkController.acknowledgeSnapshot(mutableState.value.snapshot?.allCards().orEmpty())
             true
         } catch (error: CancellationException) {
             throw error
@@ -611,6 +660,36 @@ internal class KanbanLabViewModel(
 
     fun acknowledgeLoadedCardDetail(cardId: String) = workflowController.acknowledgeLoadedCardDetail(cardId)
 
+    fun canUseBulkActions(): Boolean = bulkController.canEnterSelection()
+
+    fun bulkActionsAvailability(): KanbanBulkActionsAvailability = bulkController.availability()
+
+    fun canSubmitBulkAction(action: KanbanBulkAction): Boolean = bulkController.canSubmit(action)
+
+    fun canRetryFailedBulkAction(): Boolean = bulkController.canRetryFailed()
+
+    fun canCheckUncertainBulkAction(): Boolean = bulkController.canCheckUncertain()
+
+    fun bulkSelectionContainsRunning(): Boolean = bulkController.selectionContainsRunning()
+
+    fun beginSelectingCards() = bulkController.beginSelection()
+
+    fun toggleCardSelection(card: KanbanCardSummary) = bulkController.toggleSelection(card)
+
+    fun clearCardSelection() = bulkController.clearSelection()
+
+    fun dismissBulkActionSummary() = bulkController.dismissSummary()
+
+    fun performBulkAction(
+        action: KanbanBulkAction,
+        confirmedRunningExit: Boolean = false,
+        confirmedArchive: Boolean = false,
+    ) = bulkController.perform(action, confirmedRunningExit, confirmedArchive)
+
+    fun retryFailedBulkAction() = bulkController.retryFailed()
+
+    fun checkUncertainBulkAction() = bulkController.checkUncertain()
+
     private fun cardInCurrentSnapshot(cardId: String): KanbanCardSummary? =
         mutableState.value.snapshot?.allCards()?.firstOrNull { it.cardId?.trim() == cardId }
 
@@ -632,6 +711,52 @@ internal class KanbanLabViewModel(
                 },
             ),
         )
+    }
+
+    private fun hasActiveWorkflowMutation(): Boolean =
+        workflowController.state.value.activeCardIds.isNotEmpty()
+
+    private suspend fun refreshAfterBulkAction() {
+        val requestState = mutableState.value
+        val board = requestState.selectedBoardSlug ?: return
+        mutableState.value = requestState.copy(isRefreshing = true, refreshFailed = false)
+        try {
+            val snapshot = repository.boardSnapshot(board, requestState.filters.request())
+            val supplementary = loadSupplementary(board)
+            val current = mutableState.value
+            if (current.selectedBoardSlug != board) return
+            val selectedBoard = current.selectedBoard ?: return
+            val protectedSnapshot = workflowController.protectSnapshot(snapshot)
+            val report = KanbanCompatibilityReport(
+                configuration = current.configuration ?: return,
+                boards = current.boards,
+                currentBoard = selectedBoard,
+                snapshot = protectedSnapshot,
+                warnings = current.warnings,
+            )
+            bulkController.acknowledgeSnapshot(protectedSnapshot.allCards())
+            mutableState.value = current.copy(
+                snapshot = protectedSnapshot,
+                stats = supplementary.first,
+                assigneeHistory = supplementary.second,
+                warnings = warningsFor(report, board, protectedSnapshot),
+                isRefreshing = false,
+                refreshFailed = false,
+                isOffline = false,
+                detailRefreshRevision = current.detailRefreshRevision + 1,
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            val current = mutableState.value
+            if (current.selectedBoardSlug != board) return
+            val offline = isOfflineError(error)
+            mutableState.value = current.copy(
+                isRefreshing = false,
+                refreshFailed = !offline,
+                isOffline = current.isOffline || offline,
+            )
+        }
     }
 
     private suspend fun loadSupplementary(slug: String): Pair<KanbanStats?, KanbanAssigneeHistory?> = coroutineScope {

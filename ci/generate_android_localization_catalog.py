@@ -80,9 +80,41 @@ def localized_value(payload: dict[str, Any] | None) -> str | None:
     return None
 
 
+def plural_values(payload: dict[str, Any] | None) -> dict[str, str]:
+    if not payload:
+        return {}
+    variations = payload.get("variations")
+    if not isinstance(variations, dict):
+        return {}
+    plural = variations.get("plural")
+    if not isinstance(plural, dict):
+        return {}
+    return {
+        category: value
+        for category in ("zero", "one", "two", "few", "many", "other")
+        if (value := localized_value(plural.get(category))) is not None
+    }
+
+
 def android_xml_value(value: str) -> str:
     escaped = (
         value.replace("\\", "\\\\")
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .replace("\n", "\\n")
+        .replace('"', '\\"')
+    )
+    return html.escape(f'"{escaped}"', quote=False)
+
+
+def android_plural_xml_value(value: str) -> str:
+    android_format = (
+        value.replace("%lld", "%d")
+        .replace("%ld", "%d")
+        .replace("%@", "%s")
+    )
+    escaped = (
+        android_format.replace("\\", "\\\\")
         .replace("\r\n", "\n")
         .replace("\r", "\n")
         .replace("\n", "\\n")
@@ -116,13 +148,27 @@ def xml_content(
     ]
     for key in sorted(entries):
         entry = entries[key]
+        localization = entry.get("localizations", {}).get(locale)
         if locale == "en":
-            value = localized_value(entry.get("localizations", {}).get("en")) or key
+            localization = entry.get("localizations", {}).get("en")
+            value = localized_value(localization) or key
         else:
-            value = localized_value(entry.get("localizations", {}).get(locale)) or key
+            value = localized_value(localization) or key
         lines.append(
             f'    <string name="{resource_name(key)}" formatted="false">{android_xml_value(value)}</string>'
         )
+        plurals = plural_values(localization)
+        if plurals:
+            lines.append(f'    <plurals name="{resource_name(key)}">')
+            fallback_plural = plurals.get("other") or plurals.get("one")
+            for category in ("zero", "one", "two", "few", "many", "other"):
+                plural_value = plurals.get(category) or fallback_plural
+                if plural_value is None:
+                    continue
+                lines.append(
+                    f'        <item quantity="{category}">{android_plural_xml_value(plural_value)}</item>'
+                )
+            lines.append("    </plurals>")
     for key in sorted(aliases):
         if key in entries:
             continue
@@ -171,6 +217,7 @@ def kotlin_content(
         "package com.uzairansar.hermex.ui.localization",
         "",
         "import androidx.annotation.StringRes",
+        "import androidx.annotation.PluralsRes",
         "import com.uzairansar.hermex.R",
         "",
         "internal object AndroidLocalizationCatalog {",
@@ -194,11 +241,28 @@ def kotlin_content(
         [
             "    )",
             "",
+            "    private val pluralsByEnglishText: Map<String, Int> = mapOf(",
+        ]
+    )
+    for key in sorted(entries):
+        if any(
+            plural_values(payload)
+            for payload in entries[key].get("localizations", {}).values()
+            if isinstance(payload, dict)
+        ):
+            lines.append(f'        "{kotlin_string(key)}" to R.plurals.{resource_name(key)},')
+    lines.extend(
+        [
+            "    )",
+            "",
             f"    const val sourceEntryCount: Int = {len(entries)}",
             "    val entryCount: Int = resourcesByEnglishText.size",
             "",
             "    @StringRes",
             "    fun resourceId(englishText: String): Int? = resourcesByEnglishText[englishText]",
+            "",
+            "    @PluralsRes",
+            "    fun pluralResourceId(englishText: String): Int? = pluralsByEnglishText[englishText]",
             "}",
         ]
     )

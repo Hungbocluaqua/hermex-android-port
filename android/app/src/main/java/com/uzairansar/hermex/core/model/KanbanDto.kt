@@ -427,6 +427,35 @@ data class KanbanDependencyMutationEnvelope(
     val readOnly: Boolean? = null,
 )
 
+@Serializable
+data class KanbanBulkActionRequestBody(
+    val ids: List<String>,
+    val archive: Boolean? = null,
+    val status: String? = null,
+    val assignee: String? = null,
+    val priority: Int? = null,
+)
+
+@Serializable
+data class KanbanBulkActionEnvelope(
+    @Serializable(with = LossyNullableKanbanBulkActionResultListSerializer::class)
+    val results: List<KanbanBulkActionResult>? = null,
+    @SerialName("read_only")
+    @Serializable(with = LossyNullableBooleanSerializer::class)
+    val readOnly: Boolean? = null,
+)
+
+@Serializable
+data class KanbanBulkActionResult(
+    @SerialName("id")
+    @Serializable(with = LossyNullableStringSerializer::class)
+    val cardId: String? = null,
+    @Serializable(with = LossyNullableBooleanSerializer::class)
+    val ok: Boolean? = null,
+    @Serializable(with = LossyNullableStringSerializer::class)
+    val error: String? = null,
+)
+
 data class KanbanCompatibilityReport(
     val configuration: KanbanConfiguration,
     val boards: List<KanbanBoardSummary>,
@@ -572,6 +601,22 @@ object LossyNullableKanbanDispatchRunListSerializer : KSerializer<List<KanbanDis
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("LossyNullableKanbanDispatchRunList")
     override fun deserialize(decoder: Decoder): List<KanbanDispatchRun>? = decodeList(decoder)
     override fun serialize(encoder: Encoder, value: List<KanbanDispatchRun>?) = encodeList(encoder, value)
+}
+
+object LossyNullableKanbanBulkActionResultListSerializer : KSerializer<List<KanbanBulkActionResult>?> {
+    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("LossyNullableKanbanBulkActionResultList")
+    override fun deserialize(decoder: Decoder): List<KanbanBulkActionResult>? {
+        val jsonDecoder = decoder as? JsonDecoder ?: return null
+        return when (val element = jsonDecoder.decodeJsonElement()) {
+            JsonNull -> null
+            is JsonArray -> element.map { value ->
+                runCatching { jsonDecoder.json.decodeFromJsonElement<KanbanBulkActionResult>(value) }
+                    .getOrDefault(KanbanBulkActionResult())
+            }
+            else -> null
+        }
+    }
+    override fun serialize(encoder: Encoder, value: List<KanbanBulkActionResult>?) = encodeList(encoder, value)
 }
 
 private inline fun <reified Value> decodeList(decoder: Decoder): List<Value>? {

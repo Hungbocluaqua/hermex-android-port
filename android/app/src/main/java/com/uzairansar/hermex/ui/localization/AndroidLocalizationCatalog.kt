@@ -2,6 +2,7 @@
 package com.uzairansar.hermex.ui.localization
 
 import androidx.annotation.StringRes
+import androidx.annotation.PluralsRes
 import com.uzairansar.hermex.R
 
 internal object AndroidLocalizationCatalog {
@@ -1297,9 +1298,27 @@ internal object AndroidLocalizationCatalog {
         "Voice dictation. Long press to record a voice note." to R.string.l10n_435367d05b81fd7e,
     )
 
+    private val pluralsByEnglishText: Map<String, Int> = mapOf(
+        "%lld Cards" to R.plurals.l10n_ec77970ef773212e,
+        "%lld Dependents" to R.plurals.l10n_8d777c131031fa2e,
+        "%lld Prerequisites" to R.plurals.l10n_66a4be0dc2595729,
+        "%lld comments" to R.plurals.l10n_5e99075a998414f8,
+        "%lld files changed" to R.plurals.l10n_06c13ef4292ad119,
+        "%lld lines" to R.plurals.l10n_c4b7ead9d1bf1471,
+        "%lld messages" to R.plurals.l10n_2efcf5438a29b31f,
+        "%lld sessions" to R.plurals.l10n_232aab9f8671f81d,
+        "%lld skills" to R.plurals.l10n_66137dc5d00d671d,
+        "Activity: %lld tools" to R.plurals.l10n_03f7eb4fcb825734,
+        "Editing this message will discard %lld later messages." to R.plurals.l10n_b0179bbf23f36576,
+        "Regenerating this response will discard %lld later messages." to R.plurals.l10n_e57e8f39b6e8ce1b,
+    )
+
     const val sourceEntryCount: Int = 1179
     val entryCount: Int = resourcesByEnglishText.size
 
     @StringRes
     fun resourceId(englishText: String): Int? = resourcesByEnglishText[englishText]
+
+    @PluralsRes
+    fun pluralResourceId(englishText: String): Int? = pluralsByEnglishText[englishText]
 }

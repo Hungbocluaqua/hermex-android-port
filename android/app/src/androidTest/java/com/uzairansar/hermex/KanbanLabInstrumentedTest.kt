@@ -2,6 +2,7 @@ package com.uzairansar.hermex
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -436,6 +437,7 @@ class KanbanLabInstrumentedTest {
         }
 
         composeRule.onNodeWithTag("kanban_new_card").assertIsNotEnabled()
+        composeRule.onNodeWithTag("kanban_select_cards").assertIsNotEnabled()
         composeRule.onNodeWithTag("kanban_card_CARD-1").performClick()
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodesWithTag("kanban_edit_card").fetchSemanticsNodes().isNotEmpty()
@@ -537,6 +539,132 @@ class KanbanLabInstrumentedTest {
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodesWithTag("kanban_remove_prerequisite_CARD-2").fetchSemanticsNodes().isEmpty()
         }
+    }
+
+    @Test
+    fun selectionChangesStatusWithoutOpeningCardDetail() {
+        composeRule.setContent {
+            HermexTheme {
+                KanbanLabRoute(
+                    repository = KanbanLabFixtureDataSource("dense"),
+                    onBack = {},
+                    viewModelKey = "kanban-bulk-status-device",
+                )
+            }
+        }
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_card_CARD-1").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag("kanban_select_cards").performClick()
+        composeRule.onNodeWithTag("kanban_card_CARD-1").performClick().assertIsSelected()
+        composeRule.onNodeWithTag("kanban_selection_controls").assertIsDisplayed()
+        composeRule.onNodeWithText("1 Card · Selected").assertIsDisplayed()
+        composeRule.onNodeWithTag("kanban_bulk_actions").performClick()
+        composeRule.onNodeWithText("1 Card").assertIsDisplayed()
+        composeRule.onNodeWithTag("kanban_bulk_change_status").performClick()
+
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_bulk_summary").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_status_todo").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_card_CARD-1").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("Triage Android parity").assertIsDisplayed()
+        composeRule.onNodeWithTag("kanban_card_detail").assertDoesNotExist()
+    }
+
+    @Test
+    fun bulkMoveOutOfRunningRequiresConfirmation() {
+        composeRule.setContent {
+            HermexTheme {
+                KanbanLabRoute(
+                    repository = KanbanLabFixtureDataSource("dense"),
+                    onBack = {},
+                    viewModelKey = "kanban-bulk-running-device",
+                )
+            }
+        }
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_status_running").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_status_running").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_card_CARD-4", useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_select_cards").performClick()
+        composeRule.onNodeWithTag("kanban_card_CARD-4", useUnmergedTree = true).performClick()
+        composeRule.onNodeWithTag("kanban_bulk_actions").performClick()
+        composeRule.onNodeWithTag("kanban_bulk_change_status").performClick()
+
+        composeRule.onNodeWithText("Leave Running?").assertIsDisplayed()
+        composeRule.onNodeWithTag("kanban_bulk_confirm_running_exit").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_bulk_summary").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test
+    fun partialBulkFailureRetainsOnlyFailedCardAndRetryFailedTargetsIt() {
+        composeRule.setContent {
+            HermexTheme {
+                KanbanLabRoute(
+                    repository = KanbanLabFixtureDataSource("partial"),
+                    onBack = {},
+                    viewModelKey = "kanban-bulk-partial-device",
+                )
+            }
+        }
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_card_CARD-1").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_select_cards").performClick()
+        composeRule.onNodeWithTag("kanban_card_CARD-1").performClick()
+        composeRule.onNodeWithTag("kanban_status_blocked").performClick()
+        composeRule.onNodeWithTag("kanban_card_CARD-3").performClick()
+        composeRule.onNodeWithTag("kanban_bulk_actions").performClick()
+        composeRule.onNodeWithTag("kanban_bulk_change_status").performClick()
+
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_bulk_retry_failed").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_bulk_member_CARD-3").assertIsDisplayed()
+        composeRule.onNodeWithTag("kanban_bulk_retry_failed").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_bulk_retry_failed").fetchSemanticsNodes().isEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_status_todo").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_card_CARD-3").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test
+    fun bulkArchiveRequiresConfirmationAndShowsCanonicalSummary() {
+        composeRule.setContent {
+            HermexTheme {
+                KanbanLabRoute(
+                    repository = KanbanLabFixtureDataSource("dense"),
+                    onBack = {},
+                    viewModelKey = "kanban-bulk-archive-device",
+                )
+            }
+        }
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_card_CARD-1").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_select_cards").performClick()
+        composeRule.onNodeWithTag("kanban_card_CARD-1").performClick()
+        composeRule.onNodeWithTag("kanban_bulk_actions").performClick()
+        composeRule.onNodeWithTag("kanban_bulk_archive").performScrollTo().performClick()
+
+        composeRule.onNodeWithTag("kanban_bulk_confirm_archive").assertIsDisplayed().performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_bulk_summary").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_bulk_summary").assertIsDisplayed()
     }
 
     private fun liveUiState(

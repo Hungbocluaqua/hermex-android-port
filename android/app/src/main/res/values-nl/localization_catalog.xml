@@ -18,16 +18,88 @@
     <string name="l10n_bc576900b6f6e566" formatted="false">"%@, actieve server"</string>
     <string name="l10n_16070acfe08366e8" formatted="false">"%lld"</string>
     <string name="l10n_ec77970ef773212e" formatted="false">"%lld kaarten"</string>
+    <plurals name="l10n_ec77970ef773212e">
+        <item quantity="zero">"%d kaarten"</item>
+        <item quantity="one">"%d kaart"</item>
+        <item quantity="two">"%d kaarten"</item>
+        <item quantity="few">"%d kaarten"</item>
+        <item quantity="many">"%d kaarten"</item>
+        <item quantity="other">"%d kaarten"</item>
+    </plurals>
     <string name="l10n_8d777c131031fa2e" formatted="false">"%lld afhankelijke items"</string>
+    <plurals name="l10n_8d777c131031fa2e">
+        <item quantity="zero">"%d afhankelijke items"</item>
+        <item quantity="one">"%d afhankelijk item"</item>
+        <item quantity="two">"%d afhankelijke items"</item>
+        <item quantity="few">"%d afhankelijke items"</item>
+        <item quantity="many">"%d afhankelijke items"</item>
+        <item quantity="other">"%d afhankelijke items"</item>
+    </plurals>
     <string name="l10n_66a4be0dc2595729" formatted="false">"%lld vereisten"</string>
+    <plurals name="l10n_66a4be0dc2595729">
+        <item quantity="zero">"%d vereisten"</item>
+        <item quantity="one">"%d vereiste"</item>
+        <item quantity="two">"%d vereisten"</item>
+        <item quantity="few">"%d vereisten"</item>
+        <item quantity="many">"%d vereisten"</item>
+        <item quantity="other">"%d vereisten"</item>
+    </plurals>
     <string name="l10n_f6450a6cc043203f" formatted="false">"%lld toegevoegd"</string>
     <string name="l10n_5e99075a998414f8" formatted="false">"%lld opmerkingen"</string>
+    <plurals name="l10n_5e99075a998414f8">
+        <item quantity="zero">"%d opmerkingen"</item>
+        <item quantity="one">"%d opmerking"</item>
+        <item quantity="two">"%d opmerkingen"</item>
+        <item quantity="few">"%d opmerkingen"</item>
+        <item quantity="many">"%d opmerkingen"</item>
+        <item quantity="other">"%d opmerkingen"</item>
+    </plurals>
     <string name="l10n_06c13ef4292ad119" formatted="false">"%lld bestanden gewijzigd"</string>
+    <plurals name="l10n_06c13ef4292ad119">
+        <item quantity="zero">"%d bestanden gewijzigd"</item>
+        <item quantity="one">"%d bestand gewijzigd"</item>
+        <item quantity="two">"%d bestanden gewijzigd"</item>
+        <item quantity="few">"%d bestanden gewijzigd"</item>
+        <item quantity="many">"%d bestanden gewijzigd"</item>
+        <item quantity="other">"%d bestanden gewijzigd"</item>
+    </plurals>
     <string name="l10n_c4b7ead9d1bf1471" formatted="false">"%lld regels"</string>
+    <plurals name="l10n_c4b7ead9d1bf1471">
+        <item quantity="zero">"%d regels"</item>
+        <item quantity="one">"%d regel"</item>
+        <item quantity="two">"%d regels"</item>
+        <item quantity="few">"%d regels"</item>
+        <item quantity="many">"%d regels"</item>
+        <item quantity="other">"%d regels"</item>
+    </plurals>
     <string name="l10n_2efcf5438a29b31f" formatted="false">"%lld berichten"</string>
+    <plurals name="l10n_2efcf5438a29b31f">
+        <item quantity="zero">"%d berichten"</item>
+        <item quantity="one">"%d bericht"</item>
+        <item quantity="two">"%d berichten"</item>
+        <item quantity="few">"%d berichten"</item>
+        <item quantity="many">"%d berichten"</item>
+        <item quantity="other">"%d berichten"</item>
+    </plurals>
     <string name="l10n_ced88678ac893dde" formatted="false">"%lld verwijderd"</string>
     <string name="l10n_232aab9f8671f81d" formatted="false">"%lld sessies"</string>
+    <plurals name="l10n_232aab9f8671f81d">
+        <item quantity="zero">"%d sessies"</item>
+        <item quantity="one">"%d sessie"</item>
+        <item quantity="two">"%d sessies"</item>
+        <item quantity="few">"%d sessies"</item>
+        <item quantity="many">"%d sessies"</item>
+        <item quantity="other">"%d sessies"</item>
+    </plurals>
     <string name="l10n_66137dc5d00d671d" formatted="false">"%lld vaardigheden"</string>
+    <plurals name="l10n_66137dc5d00d671d">
+        <item quantity="zero">"%d vaardigheden"</item>
+        <item quantity="one">"%d vaardigheid"</item>
+        <item quantity="two">"%d vaardigheden"</item>
+        <item quantity="few">"%d vaardigheden"</item>
+        <item quantity="many">"%d vaardigheden"</item>
+        <item quantity="other">"%d vaardigheden"</item>
+    </plurals>
     <string name="l10n_78cd57f9892157b8" formatted="false">"%lld%% context"</string>
     <string name="l10n_6ab06c5fe8caa9fa" formatted="false">"%lld%% aandeel"</string>
     <string name="l10n_a5b19753b0ff34b9" formatted="false">", bezig met wisselen"</string>
@@ -47,6 +119,14 @@
     <string name="l10n_d74340399e2a5b1d" formatted="false">"Actief profiel"</string>
     <string name="l10n_81c0d915fa6d82fd" formatted="false">"Activiteit"</string>
     <string name="l10n_03f7eb4fcb825734" formatted="false">"Activiteit: %lld hulpmiddelen"</string>
+    <plurals name="l10n_03f7eb4fcb825734">
+        <item quantity="zero">"Activiteit: %d hulpmiddelen"</item>
+        <item quantity="one">"Activiteit: %d hulpmiddel"</item>
+        <item quantity="two">"Activiteit: %d hulpmiddelen"</item>
+        <item quantity="few">"Activiteit: %d hulpmiddelen"</item>
+        <item quantity="many">"Activiteit: %d hulpmiddelen"</item>
+        <item quantity="other">"Activiteit: %d hulpmiddelen"</item>
+    </plurals>
     <string name="l10n_61cc55aa04531847" formatted="false">"Toevoegen"</string>
     <string name="l10n_ea65bead2508867e" formatted="false">"%@ toevoegen aan favorieten"</string>
     <string name="l10n_42b949077d2f4201" formatted="false">"Koptekst toevoegen"</string>
@@ -337,6 +417,14 @@
     <string name="l10n_2ee30cf2c2908397" formatted="false">"Bericht bewerken"</string>
     <string name="l10n_9d0e05d653ce25e7" formatted="false">"Taak bewerken"</string>
     <string name="l10n_b0179bbf23f36576" formatted="false">"Als u dit bericht bewerkt, worden %lld latere berichten verwijderd."</string>
+    <plurals name="l10n_b0179bbf23f36576">
+        <item quantity="zero">"Als u dit bericht bewerkt, worden %d latere berichten verwijderd."</item>
+        <item quantity="one">"Als u dit bericht bewerkt, wordt %d later bericht verwijderd."</item>
+        <item quantity="two">"Als u dit bericht bewerkt, worden %d latere berichten verwijderd."</item>
+        <item quantity="few">"Als u dit bericht bewerkt, worden %d latere berichten verwijderd."</item>
+        <item quantity="many">"Als u dit bericht bewerkt, worden %d latere berichten verwijderd."</item>
+        <item quantity="other">"Als u dit bericht bewerkt, worden %d latere berichten verwijderd."</item>
+    </plurals>
     <string name="l10n_5fc97790c6a8d0d3" formatted="false">"Verstreken"</string>
     <string name="l10n_755ad4f73ca41dd5" formatted="false">"Lege uitvoer"</string>
     <string name="l10n_aa1092d775fca059" formatted="false">"Coderegelterugloop inschakelen"</string>
@@ -714,6 +802,14 @@
     <string name="l10n_5b7bdb61fdbc48d5" formatted="false">"Verfrissend..."</string>
     <string name="l10n_12798652dee90c23" formatted="false">"Antwoord opnieuw genereren"</string>
     <string name="l10n_e57e8f39b6e8ce1b" formatted="false">"Als u dit antwoord opnieuw genereert, worden %lld latere berichten verwijderd."</string>
+    <plurals name="l10n_e57e8f39b6e8ce1b">
+        <item quantity="zero">"Als u dit antwoord opnieuw genereert, worden %d latere berichten verwijderd."</item>
+        <item quantity="one">"Als u dit antwoord opnieuw genereert, wordt %d later bericht verwijderd."</item>
+        <item quantity="two">"Als u dit antwoord opnieuw genereert, worden %d latere berichten verwijderd."</item>
+        <item quantity="few">"Als u dit antwoord opnieuw genereert, worden %d latere berichten verwijderd."</item>
+        <item quantity="many">"Als u dit antwoord opnieuw genereert, worden %d latere berichten verwijderd."</item>
+        <item quantity="other">"Als u dit antwoord opnieuw genereert, worden %d latere berichten verwijderd."</item>
+    </plurals>
     <string name="l10n_cce7155371fc2668" formatted="false">"Herladen"</string>
     <string name="l10n_8b1c557db10dc346" formatted="false">"Serverversie opnieuw laden"</string>
     <string name="l10n_76cc25831dafa135" formatted="false">"Serverversie opnieuw laden?"</string>

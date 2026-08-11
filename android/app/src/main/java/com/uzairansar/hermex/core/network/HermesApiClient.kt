@@ -323,6 +323,21 @@ class HermesApiClient(
         post(Endpoint.KanbanLinks(board), body)
     suspend fun removeKanbanDependency(board: String, body: KanbanDependencyRequestBody): KanbanDependencyMutationEnvelope =
         post(Endpoint.KanbanLinksDelete(board), body)
+    suspend fun performKanbanBulkAction(
+        board: String,
+        body: KanbanBulkActionRequestBody,
+    ): KanbanBulkActionEnvelope {
+        require(body.ids.isNotEmpty() && body.ids.none(String::isBlank)) { "Bulk Actions require Card IDs." }
+        val actionCount = listOf(
+            body.archive == true,
+            body.status != null,
+            body.assignee != null,
+            body.priority != null,
+        ).count { it }
+        require(actionCount == 1) { "Bulk Actions require exactly one action." }
+        require(body.status?.trim()?.lowercase() != "running") { "Running status requires the dispatcher." }
+        return post(Endpoint.KanbanCardsBulk(board), body)
+    }
     suspend fun skills(): SkillsResponse = get(Endpoint.Skills)
     suspend fun skillContent(name: String, file: String? = null): SkillContentResponse = get(Endpoint.SkillContent(name, file))
     suspend fun toggleSkill(name: String, enabled: Boolean): ToggleSkillResponse = post(Endpoint.ToggleSkill, ToggleSkillRequest(name, enabled))

@@ -18,6 +18,9 @@ import com.uzairansar.hermex.core.model.KanbanCreateCardRequestBody
 import com.uzairansar.hermex.core.model.KanbanEditCardRequestBody
 import com.uzairansar.hermex.core.model.KanbanDependencyMutationEnvelope
 import com.uzairansar.hermex.core.model.KanbanDependencyRequestBody
+import com.uzairansar.hermex.core.model.KanbanBulkActionEnvelope
+import com.uzairansar.hermex.core.model.KanbanBulkActionRequestBody
+import com.uzairansar.hermex.core.model.KanbanBulkActionResult
 import com.uzairansar.hermex.core.model.KanbanColumn
 import com.uzairansar.hermex.core.model.KanbanCompatibilityReport
 import com.uzairansar.hermex.core.model.KanbanCompatibilityWarning
@@ -40,6 +43,7 @@ internal class KanbanLabFixtureDataSource(
 ) : KanbanBrowseDataSource {
     private val mutatedCards = linkedMapOf<String, KanbanCardSummary>()
     private val mutatedPrerequisites = linkedMapOf<String, MutableSet<String>>()
+    private val partialBulkRefusals = mutableSetOf("CARD-3")
     private val boards = listOf(
         KanbanBoardSummary(slug = "default", name = "Default Board", total = 5, readOnly = scenario == "read-only"),
         KanbanBoardSummary(slug = "release", name = "Release Board", total = 1, readOnly = scenario == "read-only"),
@@ -232,6 +236,37 @@ internal class KanbanLabFixtureDataSource(
             dependentId = body.dependentId,
             readOnly = scenario == "read-only",
         )
+    }
+
+    override suspend fun performBulkAction(
+        board: String,
+        body: KanbanBulkActionRequestBody,
+    ): KanbanBulkActionEnvelope {
+        if (scenario == "read-only") return KanbanBulkActionEnvelope(readOnly = true)
+        val results = body.ids.map { cardId ->
+            if (scenario == "partial" && partialBulkRefusals.remove(cardId)) {
+                KanbanBulkActionResult(cardId = cardId, ok = false, error = "fixture refusal")
+            } else {
+                val existing = snapshot(board, KanbanBrowseFilters(includeArchived = true)).allCards()
+                    .firstOrNull { it.cardId == cardId }
+                if (existing == null) {
+                    KanbanBulkActionResult(cardId = cardId, ok = false, error = "not found")
+                } else {
+                    val updated = existing.copy(
+                        status = when {
+                            body.archive == true -> "archived"
+                            body.status != null -> body.status
+                            else -> existing.status
+                        },
+                        assignee = body.assignee ?: existing.assignee,
+                        priority = body.priority ?: existing.priority,
+                    )
+                    mutatedCards["$board:$cardId"] = updated
+                    KanbanBulkActionResult(cardId = cardId, ok = true)
+                }
+            }
+        }
+        return KanbanBulkActionEnvelope(results = results, readOnly = false)
     }
 
     private fun updateStatus(cardId: String, board: String, status: String): KanbanCardMutationEnvelope {

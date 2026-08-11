@@ -18,16 +18,88 @@
     <string name="l10n_bc576900b6f6e566" formatted="false">"%@, servidor activo"</string>
     <string name="l10n_16070acfe08366e8" formatted="false">"%lld"</string>
     <string name="l10n_ec77970ef773212e" formatted="false">"%lld tarjetas"</string>
+    <plurals name="l10n_ec77970ef773212e">
+        <item quantity="zero">"%d tarjetas"</item>
+        <item quantity="one">"%d tarjeta"</item>
+        <item quantity="two">"%d tarjetas"</item>
+        <item quantity="few">"%d tarjetas"</item>
+        <item quantity="many">"%d tarjetas"</item>
+        <item quantity="other">"%d tarjetas"</item>
+    </plurals>
     <string name="l10n_8d777c131031fa2e" formatted="false">"%lld dependientes"</string>
+    <plurals name="l10n_8d777c131031fa2e">
+        <item quantity="zero">"%d dependientes"</item>
+        <item quantity="one">"%d dependiente"</item>
+        <item quantity="two">"%d dependientes"</item>
+        <item quantity="few">"%d dependientes"</item>
+        <item quantity="many">"%d dependientes"</item>
+        <item quantity="other">"%d dependientes"</item>
+    </plurals>
     <string name="l10n_66a4be0dc2595729" formatted="false">"%lld requisitos previos"</string>
+    <plurals name="l10n_66a4be0dc2595729">
+        <item quantity="zero">"%d requisitos previos"</item>
+        <item quantity="one">"%d requisito previo"</item>
+        <item quantity="two">"%d requisitos previos"</item>
+        <item quantity="few">"%d requisitos previos"</item>
+        <item quantity="many">"%d requisitos previos"</item>
+        <item quantity="other">"%d requisitos previos"</item>
+    </plurals>
     <string name="l10n_f6450a6cc043203f" formatted="false">"%lld añadidas"</string>
     <string name="l10n_5e99075a998414f8" formatted="false">"%lld comentarios"</string>
+    <plurals name="l10n_5e99075a998414f8">
+        <item quantity="zero">"%d comentarios"</item>
+        <item quantity="one">"%d comentario"</item>
+        <item quantity="two">"%d comentarios"</item>
+        <item quantity="few">"%d comentarios"</item>
+        <item quantity="many">"%d comentarios"</item>
+        <item quantity="other">"%d comentarios"</item>
+    </plurals>
     <string name="l10n_06c13ef4292ad119" formatted="false">"%lld archivos modificados"</string>
+    <plurals name="l10n_06c13ef4292ad119">
+        <item quantity="zero">"%d archivos modificados"</item>
+        <item quantity="one">"%d archivo modificado"</item>
+        <item quantity="two">"%d archivos modificados"</item>
+        <item quantity="few">"%d archivos modificados"</item>
+        <item quantity="many">"%d archivos modificados"</item>
+        <item quantity="other">"%d archivos modificados"</item>
+    </plurals>
     <string name="l10n_c4b7ead9d1bf1471" formatted="false">"%lld líneas"</string>
+    <plurals name="l10n_c4b7ead9d1bf1471">
+        <item quantity="zero">"%d líneas"</item>
+        <item quantity="one">"%d línea"</item>
+        <item quantity="two">"%d líneas"</item>
+        <item quantity="few">"%d líneas"</item>
+        <item quantity="many">"%d líneas"</item>
+        <item quantity="other">"%d líneas"</item>
+    </plurals>
     <string name="l10n_2efcf5438a29b31f" formatted="false">"%lld mensajes"</string>
+    <plurals name="l10n_2efcf5438a29b31f">
+        <item quantity="zero">"%d mensajes"</item>
+        <item quantity="one">"%d mensaje"</item>
+        <item quantity="two">"%d mensajes"</item>
+        <item quantity="few">"%d mensajes"</item>
+        <item quantity="many">"%d mensajes"</item>
+        <item quantity="other">"%d mensajes"</item>
+    </plurals>
     <string name="l10n_ced88678ac893dde" formatted="false">"%lld eliminadas"</string>
     <string name="l10n_232aab9f8671f81d" formatted="false">"%lld sesiones"</string>
+    <plurals name="l10n_232aab9f8671f81d">
+        <item quantity="zero">"%d sesiones"</item>
+        <item quantity="one">"%d sesión"</item>
+        <item quantity="two">"%d sesiones"</item>
+        <item quantity="few">"%d sesiones"</item>
+        <item quantity="many">"%d sesiones"</item>
+        <item quantity="other">"%d sesiones"</item>
+    </plurals>
     <string name="l10n_66137dc5d00d671d" formatted="false">"%lld habilidades"</string>
+    <plurals name="l10n_66137dc5d00d671d">
+        <item quantity="zero">"%d habilidades"</item>
+        <item quantity="one">"%d habilidad"</item>
+        <item quantity="two">"%d habilidades"</item>
+        <item quantity="few">"%d habilidades"</item>
+        <item quantity="many">"%d habilidades"</item>
+        <item quantity="other">"%d habilidades"</item>
+    </plurals>
     <string name="l10n_78cd57f9892157b8" formatted="false">"%lld%% de contexto"</string>
     <string name="l10n_6ab06c5fe8caa9fa" formatted="false">"%lld%% de cuota"</string>
     <string name="l10n_a5b19753b0ff34b9" formatted="false">", cambio en curso"</string>
@@ -47,6 +119,14 @@
     <string name="l10n_d74340399e2a5b1d" formatted="false">"Perfil activo"</string>
     <string name="l10n_81c0d915fa6d82fd" formatted="false">"Actividad"</string>
     <string name="l10n_03f7eb4fcb825734" formatted="false">"Actividad: %lld herramientas"</string>
+    <plurals name="l10n_03f7eb4fcb825734">
+        <item quantity="zero">"Actividad: %d herramientas"</item>
+        <item quantity="one">"Actividad: %d herramienta"</item>
+        <item quantity="two">"Actividad: %d herramientas"</item>
+        <item quantity="few">"Actividad: %d herramientas"</item>
+        <item quantity="many">"Actividad: %d herramientas"</item>
+        <item quantity="other">"Actividad: %d herramientas"</item>
+    </plurals>
     <string name="l10n_61cc55aa04531847" formatted="false">"Añadir"</string>
     <string name="l10n_ea65bead2508867e" formatted="false">"Añadir %@ a favoritos"</string>
     <string name="l10n_42b949077d2f4201" formatted="false">"Añadir encabezado"</string>
@@ -337,6 +417,14 @@
     <string name="l10n_2ee30cf2c2908397" formatted="false">"Editar mensaje"</string>
     <string name="l10n_9d0e05d653ce25e7" formatted="false">"Editar tarea"</string>
     <string name="l10n_b0179bbf23f36576" formatted="false">"Editar este mensaje descartará %lld mensajes posteriores."</string>
+    <plurals name="l10n_b0179bbf23f36576">
+        <item quantity="zero">"Editar este mensaje descartará %d mensajes posteriores."</item>
+        <item quantity="one">"Editar este mensaje descartará %d mensaje posterior."</item>
+        <item quantity="two">"Editar este mensaje descartará %d mensajes posteriores."</item>
+        <item quantity="few">"Editar este mensaje descartará %d mensajes posteriores."</item>
+        <item quantity="many">"Editar este mensaje descartará %d mensajes posteriores."</item>
+        <item quantity="other">"Editar este mensaje descartará %d mensajes posteriores."</item>
+    </plurals>
     <string name="l10n_5fc97790c6a8d0d3" formatted="false">"Transcurrido"</string>
     <string name="l10n_755ad4f73ca41dd5" formatted="false">"Salida vacía"</string>
     <string name="l10n_aa1092d775fca059" formatted="false">"Activar ajuste de línea de código"</string>
@@ -714,6 +802,14 @@
     <string name="l10n_5b7bdb61fdbc48d5" formatted="false">"Refrescante..."</string>
     <string name="l10n_12798652dee90c23" formatted="false">"Regenerar respuesta"</string>
     <string name="l10n_e57e8f39b6e8ce1b" formatted="false">"Regenerar esta respuesta descartará %lld mensajes posteriores."</string>
+    <plurals name="l10n_e57e8f39b6e8ce1b">
+        <item quantity="zero">"Regenerar esta respuesta descartará %d mensajes posteriores."</item>
+        <item quantity="one">"Regenerar esta respuesta descartará %d mensaje posterior."</item>
+        <item quantity="two">"Regenerar esta respuesta descartará %d mensajes posteriores."</item>
+        <item quantity="few">"Regenerar esta respuesta descartará %d mensajes posteriores."</item>
+        <item quantity="many">"Regenerar esta respuesta descartará %d mensajes posteriores."</item>
+        <item quantity="other">"Regenerar esta respuesta descartará %d mensajes posteriores."</item>
+    </plurals>
     <string name="l10n_cce7155371fc2668" formatted="false">"Recargar"</string>
     <string name="l10n_8b1c557db10dc346" formatted="false">"Recargar la versión del servidor"</string>
     <string name="l10n_76cc25831dafa135" formatted="false">"¿Recargar la versión del servidor?"</string>
