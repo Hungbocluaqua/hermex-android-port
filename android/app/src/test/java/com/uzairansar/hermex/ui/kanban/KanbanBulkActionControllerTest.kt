@@ -135,7 +135,7 @@ class KanbanBulkActionControllerTest {
     @Test
     fun missingEndpointAndReadOnlyResponseCloseOnlyTheBulkCapability() = runTest {
         val missingRepository = FakeBulkDataSource().apply {
-            bulkError = ApiError.Http(404, "missing")
+            bulkError = ApiError.Http(404, "{\"error\":\"Unknown Kanban endpoint; refresh the client\"}")
             detailResults["CARD-1"] = ArrayDeque(listOf(Result.success(detail("CARD-1", "todo"))))
         }
         val missing = harness(missingRepository, listOf(card("CARD-1", "todo")))

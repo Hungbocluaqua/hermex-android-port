@@ -667,6 +667,59 @@ class KanbanLabInstrumentedTest {
         composeRule.onNodeWithTag("kanban_bulk_summary").assertIsDisplayed()
     }
 
+    @Test
+    fun boardManagementCreatesBrowsesActivatesAndArchivesWithCanonicalState() {
+        composeRule.setContent {
+            HermexTheme {
+                KanbanLabRoute(
+                    repository = KanbanLabFixtureDataSource("dense"),
+                    onBack = {},
+                    viewModelKey = "kanban-board-management-device",
+                )
+            }
+        }
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("CARD-1").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag("kanban_board_picker").performClick()
+        composeRule.onNodeWithTag("kanban_manage_boards").performClick()
+        composeRule.onNodeWithTag("kanban_board_management_sheet").assertIsDisplayed()
+        composeRule.onNodeWithTag("kanban_board_browsing_default", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("kanban_board_active_default", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+
+        composeRule.onNodeWithTag("kanban_create_board").performClick()
+        composeRule.onNodeWithTag("kanban_board_slug").performTextInput("team")
+        composeRule.onNodeWithTag("kanban_board_name").performTextInput("Team Board")
+        composeRule.onNodeWithTag("kanban_board_description").performTextInput("Shared work")
+        composeRule.onNodeWithTag("kanban_save_board").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_managed_board_team").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag("kanban_browse_board_team", useUnmergedTree = true).performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_board_browsing_team", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_board_active_default", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+
+        composeRule.onNodeWithTag("kanban_board_actions_team").performClick()
+        composeRule.onNodeWithText("Make Active Board").performClick()
+        composeRule.onNodeWithTag("kanban_confirm_make_active").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_board_active_team", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_board_actions_team").performScrollTo().performClick()
+        composeRule.onNodeWithText("Archive").performClick()
+        composeRule.onNodeWithTag("kanban_confirm_archive_board").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_managed_board_team").fetchSemanticsNodes().isEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_done_managing_boards").performClick()
+        composeRule.onNodeWithTag("kanban_board_selection_notice").assertIsDisplayed()
+        composeRule.onNodeWithText("This Board no longer exists. Choose another Board.").assertIsDisplayed()
+    }
+
     private fun liveUiState(
         isOffline: Boolean = false,
         liveUpdatesDelayed: Boolean = false,

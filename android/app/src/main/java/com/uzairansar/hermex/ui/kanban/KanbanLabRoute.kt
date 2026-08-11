@@ -97,8 +97,10 @@ internal fun KanbanLabRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val workflowState by viewModel.workflowState.collectAsStateWithLifecycle()
     val bulkState by viewModel.bulkState.collectAsStateWithLifecycle()
+    val boardState by viewModel.boardState.collectAsStateWithLifecycle()
     var showsFilters by rememberSaveable { mutableStateOf(false) }
     var showsBulkActions by rememberSaveable { mutableStateOf(false) }
+    var showsBoardManagement by rememberSaveable { mutableStateOf(false) }
     var cardNavigationStack by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var editorOpen by rememberSaveable { mutableStateOf(false) }
     var editorCardId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -107,6 +109,14 @@ internal fun KanbanLabRoute(
     var pendingRunningBulkAction by remember { mutableStateOf<KanbanBulkAction?>(null) }
     var confirmsBulkArchive by rememberSaveable { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(state.selectedBoardSlug) {
+        if (state.selectedBoardSlug == null) {
+            cardNavigationStack = emptyList()
+            editorOpen = false
+            editorCardId = null
+        }
+    }
 
     DisposableEffect(lifecycleOwner, viewModel) {
         val lifecycle = lifecycleOwner.lifecycle
@@ -133,7 +143,7 @@ internal fun KanbanLabRoute(
     val showsCardDetail = selectedCardId != null &&
         selectedBoardSlug != null &&
         state.availability == KanbanAvailability.Content
-    val cardWritesAllowed = state.canMutateCards && bulkState.phase == null
+    val cardWritesAllowed = state.canMutateCards && bulkState.phase == null && !boardState.blocksWrites
     val performWorkflowAction: (KanbanCardSummary, KanbanCardWorkflowAction, Boolean) -> Unit =
         { card, action, confirmingRunningExit ->
             when (action) {
@@ -207,7 +217,7 @@ internal fun KanbanLabRoute(
             },
             workflowState = workflowState,
             allCards = state.snapshot?.allCards().orEmpty(),
-            canUseWorkflow = state.canUseCardWorkflow && bulkState.phase == null,
+            canUseWorkflow = state.canUseCardWorkflow && bulkState.phase == null && !boardState.blocksWrites,
             moveDestinations = viewModel::moveDestinations,
             displayedCard = viewModel::displayedCard,
             displayedPrerequisites = viewModel::displayedPrerequisites,
@@ -227,6 +237,7 @@ internal fun KanbanLabRoute(
                 onRefresh = viewModel::load,
                 onSelectBoard = viewModel::selectBoard,
                 onShowFilters = { showsFilters = true },
+                onManageBoards = { showsBoardManagement = true },
                 canCreateCard = cardWritesAllowed,
                 onCreateCard = {
                     editorSessionId += 1
@@ -235,7 +246,7 @@ internal fun KanbanLabRoute(
                 },
                 isSelectingCards = bulkState.isSelectingCards,
                 canSelectCards = viewModel.canUseBulkActions(),
-                boardWriteInProgress = bulkState.phase != null,
+                boardWriteInProgress = bulkState.phase != null || boardState.blocksWrites,
                 onToggleSelectingCards = {
                     if (bulkState.isSelectingCards) viewModel.clearCardSelection() else viewModel.beginSelectingCards()
                 },
@@ -249,6 +260,7 @@ internal fun KanbanLabRoute(
                     onSearch = viewModel::setSearchQuery,
                     onSelectStatus = viewModel::selectStatus,
                     onClearFilters = viewModel::clearFilters,
+                    onSelectBoard = viewModel::selectBoard,
                     onOpenCard = { cardNavigationStack = listOf(it) },
                     moveDestinations = viewModel::moveDestinations,
                     canMutateCard = viewModel::canMutateCard,
@@ -310,6 +322,22 @@ internal fun KanbanLabRoute(
                     }
                 }
             },
+        )
+    }
+
+    if (showsBoardManagement && !showsEditor && !showsCardDetail && state.availability == KanbanAvailability.Content) {
+        KanbanBoardManagementSheet(
+            state = state,
+            managementState = boardState,
+            canManageBoards = viewModel.canManageBoards(),
+            onDismiss = { showsBoardManagement = false },
+            onBrowse = viewModel::selectBoard,
+            onCreate = viewModel::createBoard,
+            onEdit = viewModel::editBoard,
+            onArchive = viewModel::archiveBoard,
+            onMakeActive = viewModel::makeBoardActive,
+            onCheckResult = viewModel::checkBoardMutationResult,
+            onDismissResult = viewModel::dismissBoardMutationResult,
         )
     }
 
@@ -407,6 +435,7 @@ private fun KanbanTopBar(
     onRefresh: () -> Unit,
     onSelectBoard: (String) -> Unit,
     onShowFilters: () -> Unit,
+    onManageBoards: () -> Unit,
     canCreateCard: Boolean,
     onCreateCard: () -> Unit,
     isSelectingCards: Boolean,
@@ -451,6 +480,15 @@ private fun KanbanTopBar(
                         )
                     }
                 }
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text(localizedString("Manage")) },
+                    onClick = {
+                        boardMenuExpanded = false
+                        onManageBoards()
+                    },
+                    modifier = Modifier.testTag("kanban_manage_boards"),
+                )
             }
         }
         HermexIconButton(
@@ -524,6 +562,7 @@ internal fun KanbanBoardContent(
     onSearch: (String) -> Unit,
     onSelectStatus: (String) -> Unit,
     onClearFilters: () -> Unit,
+    onSelectBoard: (String) -> Unit = {},
     onOpenCard: (String) -> Unit = {},
     moveDestinations: (KanbanCardSummary) -> List<String> = { emptyList() },
     canMutateCard: (KanbanCardSummary) -> Boolean = { false },
@@ -561,6 +600,13 @@ internal fun KanbanBoardContent(
                 text = localizedString("Unavailable"),
                 offline = false,
                 testTag = "kanban_workflow_unavailable",
+            )
+        }
+        state.boardSelectionNotice?.let { boardName ->
+            KanbanBoardSelectionNotice(
+                boardName = boardName,
+                boards = state.boards,
+                onSelectBoard = onSelectBoard,
             )
         }
         workflowState.archiveUndo?.let { undo ->
@@ -1395,6 +1441,442 @@ private fun ToggleRow(label: String, checked: Boolean, onCheckedChange: (Boolean
     ) {
         Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun KanbanBoardSelectionNotice(
+    boardName: String,
+    boards: List<KanbanBoardSummary>,
+    onSelectBoard: (String) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.tertiaryContainer)
+            .padding(14.dp)
+            .testTag("kanban_board_selection_notice"),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(boardName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+        Text(
+            localizedString("This Board no longer exists. Choose another Board."),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            boards.forEach { board ->
+                board.slug?.trim()?.takeIf(String::isNotEmpty)?.let { slug ->
+                    HermexPillButton(
+                        board.displayName(),
+                        { onSelectBoard(slug) },
+                        modifier = Modifier.testTag("kanban_choose_board_$slug"),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private sealed interface KanbanBoardEditorMode {
+    data object Create : KanbanBoardEditorMode
+    data class Edit(val board: KanbanBoardSummary) : KanbanBoardEditorMode
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun KanbanBoardManagementSheet(
+    state: KanbanLabUiState,
+    managementState: KanbanBoardManagementUiState,
+    canManageBoards: Boolean,
+    onDismiss: () -> Unit,
+    onBrowse: (String) -> Unit,
+    onCreate: (String, String, String, String, String) -> Unit,
+    onEdit: (String, String, String, String, String) -> Unit,
+    onArchive: (String) -> Unit,
+    onMakeActive: (String) -> Unit,
+    onCheckResult: () -> Unit,
+    onDismissResult: () -> Unit,
+) {
+    var editorMode by remember { mutableStateOf<KanbanBoardEditorMode?>(null) }
+    var pendingArchive by remember { mutableStateOf<KanbanBoardSummary?>(null) }
+    var pendingActivation by remember { mutableStateOf<KanbanBoardSummary?>(null) }
+    val editorSlug = when (val mode = editorMode) {
+        KanbanBoardEditorMode.Create -> managementState.mutation?.kind?.slug
+        is KanbanBoardEditorMode.Edit -> mode.board.slug?.trim()
+        null -> null
+    }
+    LaunchedEffect(managementState.mutation) {
+        val mutation = managementState.mutation
+        if (
+            editorMode != null &&
+            mutation?.phase == KanbanCardMutationPhase.Succeeded &&
+            mutation.kind.slug == editorSlug
+        ) {
+            editorMode = null
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = { if (!managementState.blocksWrites) onDismiss() },
+        modifier = Modifier.testTag("kanban_board_management_sheet"),
+    ) {
+        if (editorMode != null) {
+            KanbanBoardEditorContent(
+                mode = checkNotNull(editorMode),
+                managementState = managementState,
+                canSave = canManageBoards,
+                onCancel = { if (!managementState.blocksWrites) editorMode = null },
+                onCreate = onCreate,
+                onEdit = onEdit,
+            )
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(localizedString("Manage"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                    HermexPillButton(
+                        localizedString("Create"),
+                        {
+                            onDismissResult()
+                            editorMode = KanbanBoardEditorMode.Create
+                        },
+                        enabled = canManageBoards,
+                        filled = true,
+                        modifier = Modifier.testTag("kanban_create_board"),
+                    )
+                    Spacer(Modifier.size(8.dp))
+                    HermexPillButton(
+                        localizedString("Done"),
+                        onDismiss,
+                        enabled = !managementState.blocksWrites,
+                        modifier = Modifier.testTag("kanban_done_managing_boards"),
+                    )
+                }
+                managementState.mutation?.let { mutation ->
+                    KanbanBoardMutationStatus(mutation, onCheckResult, onDismissResult)
+                }
+                if (managementState.capabilityUnavailable) {
+                    Text(
+                        localizedString("Unavailable"),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.testTag("kanban_board_management_unavailable"),
+                    )
+                }
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(state.boards, key = { it.slug.orEmpty() }) { board ->
+                        KanbanManagedBoardRow(
+                            board = board,
+                            isBrowsing = board.slug?.trim() == state.selectedBoardSlug,
+                            isActive = board.slug?.trim() == state.sharedActiveBoardSlug,
+                            mutationsEnabled = canManageBoards,
+                            onBrowse = onBrowse,
+                            onEdit = {
+                                onDismissResult()
+                                editorMode = KanbanBoardEditorMode.Edit(board)
+                            },
+                            onArchive = { pendingArchive = board },
+                            onMakeActive = { pendingActivation = board },
+                        )
+                    }
+                }
+                Text(
+                    localizedString("Browsing a Board stays local to Hermex. Making a Board active changes shared server state."),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+                Spacer(Modifier.size(10.dp))
+            }
+        }
+    }
+
+    pendingArchive?.let { board ->
+        AlertDialog(
+            onDismissRequest = { pendingArchive = null },
+            title = { Text(localizedString("Archive")) },
+            text = { Text(localizedString("Hermex cannot restore an archived Board in-app.")) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingArchive = null
+                        board.slug?.let(onArchive)
+                    },
+                    modifier = Modifier.testTag("kanban_confirm_archive_board"),
+                ) { Text(localizedString("Archive"), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { pendingArchive = null }) { Text(localizedString("Cancel")) } },
+        )
+    }
+    pendingActivation?.let { board ->
+        AlertDialog(
+            onDismissRequest = { pendingActivation = null },
+            title = { Text(localizedString("Make Active Board")) },
+            text = { Text(localizedString("Making this Board active changes shared server state for other Hermes clients.")) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingActivation = null
+                        board.slug?.let(onMakeActive)
+                    },
+                    modifier = Modifier.testTag("kanban_confirm_make_active"),
+                ) { Text(localizedString("Make Active Board")) }
+            },
+            dismissButton = { TextButton(onClick = { pendingActivation = null }) { Text(localizedString("Cancel")) } },
+        )
+    }
+}
+
+@Composable
+private fun KanbanBoardMutationStatus(
+    mutation: KanbanBoardMutationState,
+    onCheckResult: () -> Unit,
+    onDismissResult: () -> Unit,
+) {
+    val action = when (mutation.kind) {
+        is KanbanBoardMutationKind.Create -> localizedString("Create")
+        is KanbanBoardMutationKind.Edit -> localizedString("Edit")
+        is KanbanBoardMutationKind.Archive -> localizedString("Archive")
+        is KanbanBoardMutationKind.MakeActive -> localizedString("Make Active Board")
+    }
+    val phase = when (mutation.phase) {
+        KanbanCardMutationPhase.Updating -> localizedString("Updating Board...")
+        KanbanCardMutationPhase.CheckingResult -> localizedString("Checking Result")
+        KanbanCardMutationPhase.Succeeded -> localizedString("Done")
+        KanbanCardMutationPhase.Failed -> localizedString("Failed")
+        KanbanCardMutationPhase.OutcomeUncertain -> localizedString("Outcome Uncertain")
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(12.dp))
+            .padding(12.dp)
+            .testTag("kanban_board_mutation_status"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (mutation.phase in setOf(KanbanCardMutationPhase.Updating, KanbanCardMutationPhase.CheckingResult)) {
+            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+        }
+        Column(Modifier.weight(1f)) {
+            Text(action, fontWeight = FontWeight.SemiBold)
+            Text(phase, style = MaterialTheme.typography.bodySmall)
+        }
+        if (mutation.phase == KanbanCardMutationPhase.OutcomeUncertain) {
+            HermexPillButton(
+                localizedString("Check Result"),
+                onCheckResult,
+                modifier = Modifier.testTag("kanban_check_board_result"),
+            )
+        } else if (mutation.phase !in setOf(KanbanCardMutationPhase.Updating, KanbanCardMutationPhase.CheckingResult)) {
+            HermexPillButton(localizedString("Dismiss"), onDismissResult)
+        }
+    }
+}
+
+@Composable
+private fun KanbanManagedBoardRow(
+    board: KanbanBoardSummary,
+    isBrowsing: Boolean,
+    isActive: Boolean,
+    mutationsEnabled: Boolean,
+    onBrowse: (String) -> Unit,
+    onEdit: () -> Unit,
+    onArchive: () -> Unit,
+    onMakeActive: () -> Unit,
+) {
+    val slug = board.slug?.trim().orEmpty()
+    var actionsExpanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .hermexGlass(shape = HermexCardShape, castsShadow = false, surfaceLevel = HermexSurfaceLevel.Raised)
+            .padding(12.dp)
+            .testTag("kanban_managed_board_$slug"),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clickable(enabled = slug.isNotEmpty() && !isBrowsing) { onBrowse(slug) }
+                .testTag("kanban_browse_board_$slug"),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(board.icon?.takeIf(String::isNotBlank) ?: "▣")
+                Text(board.displayName(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            }
+            if (slug.isNotEmpty()) Text(slug, style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (isBrowsing) {
+                    Text(
+                        "◉ ${localizedString("Browsing")}",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.testTag("kanban_board_browsing_$slug"),
+                    )
+                }
+                if (isActive) {
+                    Text(
+                        "✓ ${localizedString("Active")}",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.testTag("kanban_board_active_$slug"),
+                    )
+                }
+            }
+            board.description?.trim()?.takeIf(String::isNotEmpty)?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+            }
+            Text(localizedPluralString("%lld Cards", board.total ?: 0), style = MaterialTheme.typography.labelSmall)
+        }
+        Box {
+            HermexIconButton(
+                localizedString("Board Actions"),
+                "⋯",
+                { actionsExpanded = true },
+                enabled = mutationsEnabled && slug.isNotEmpty(),
+                modifier = Modifier.testTag("kanban_board_actions_$slug"),
+            )
+            DropdownMenu(expanded = actionsExpanded, onDismissRequest = { actionsExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(localizedString("Edit")) },
+                    onClick = { actionsExpanded = false; onEdit() },
+                )
+                if (!isActive) {
+                    DropdownMenuItem(
+                        text = { Text(localizedString("Make Active Board")) },
+                        onClick = { actionsExpanded = false; onMakeActive() },
+                    )
+                }
+                if (slug != "default") {
+                    DropdownMenuItem(
+                        text = { Text(localizedString("Archive"), color = MaterialTheme.colorScheme.error) },
+                        onClick = { actionsExpanded = false; onArchive() },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun KanbanBoardEditorContent(
+    mode: KanbanBoardEditorMode,
+    managementState: KanbanBoardManagementUiState,
+    canSave: Boolean,
+    onCancel: () -> Unit,
+    onCreate: (String, String, String, String, String) -> Unit,
+    onEdit: (String, String, String, String, String) -> Unit,
+) {
+    val editingBoard = (mode as? KanbanBoardEditorMode.Edit)?.board
+    var slug by remember(mode) { mutableStateOf(editingBoard?.slug.orEmpty()) }
+    var name by remember(mode) { mutableStateOf(editingBoard?.name.orEmpty()) }
+    var description by remember(mode) { mutableStateOf(editingBoard?.description.orEmpty()) }
+    var icon by remember(mode) { mutableStateOf(editingBoard?.icon.orEmpty()) }
+    var color by remember(mode) { mutableStateOf(editingBoard?.color.orEmpty()) }
+    var showSlugError by remember(mode) { mutableStateOf(false) }
+    var showNameError by remember(mode) { mutableStateOf(false) }
+    val isEditing = editingBoard != null
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 18.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(localizedString(if (isEditing) "Edit" else "Create"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+            HermexPillButton(localizedString("Cancel"), onCancel, enabled = !managementState.blocksWrites)
+            Spacer(Modifier.size(8.dp))
+            HermexPillButton(
+                localizedString("Save"),
+                {
+                    val trimmedSlug = slug.trim()
+                    val trimmedName = name.trim()
+                    showSlugError = trimmedSlug.isEmpty()
+                    showNameError = trimmedName.isEmpty()
+                    if (!showSlugError && !showNameError) {
+                        if (isEditing) {
+                            onEdit(trimmedSlug, trimmedName, description, icon, color)
+                        } else {
+                            onCreate(trimmedSlug, trimmedName, description, icon, color)
+                        }
+                    }
+                },
+                enabled = canSave,
+                filled = true,
+                modifier = Modifier.testTag("kanban_save_board"),
+            )
+        }
+        OutlinedTextField(
+            value = slug,
+            onValueChange = { slug = it; showSlugError = false },
+            modifier = Modifier.fillMaxWidth().testTag("kanban_board_slug"),
+            label = { Text(localizedString("Slug")) },
+            enabled = !isEditing && !managementState.blocksWrites,
+            isError = showSlugError,
+            supportingText = { if (showSlugError) Text(localizedString("Required")) },
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it; showNameError = false },
+            modifier = Modifier.fillMaxWidth().testTag("kanban_board_name"),
+            label = { Text(localizedString("Name")) },
+            enabled = !managementState.blocksWrites,
+            isError = showNameError,
+            supportingText = { if (showNameError) Text(localizedString("Required")) },
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = description,
+            onValueChange = { description = it },
+            modifier = Modifier.fillMaxWidth().testTag("kanban_board_description"),
+            label = { Text(localizedString("Description")) },
+            enabled = !managementState.blocksWrites,
+            minLines = 2,
+            maxLines = 5,
+        )
+        OutlinedTextField(
+            value = icon,
+            onValueChange = { icon = it },
+            modifier = Modifier.fillMaxWidth().testTag("kanban_board_icon"),
+            label = { Text(localizedString("Icon")) },
+            enabled = !managementState.blocksWrites,
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = color,
+            onValueChange = { color = it },
+            modifier = Modifier.fillMaxWidth().testTag("kanban_board_color"),
+            label = { Text(localizedString("Color")) },
+            enabled = !managementState.blocksWrites,
+            singleLine = true,
+        )
+        Text(
+            localizedString("Creating a Board does not make it active."),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.secondary,
+        )
+        if (managementState.mutation?.kind?.slug == slug.trim()) {
+            managementState.mutation.let { mutation ->
+                if (mutation.phase in setOf(KanbanCardMutationPhase.Failed, KanbanCardMutationPhase.OutcomeUncertain)) {
+                    Text(
+                        localizedString(if (mutation.phase == KanbanCardMutationPhase.Failed) "Failed" else "Outcome Uncertain"),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Text(localizedString("Refresh the Board before trying again."), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        Spacer(Modifier.size(16.dp))
     }
 }
 

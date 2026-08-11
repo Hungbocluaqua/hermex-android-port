@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.uzairansar.hermex.core.model.KanbanAssigneeHistory
 import com.uzairansar.hermex.core.model.KanbanBoardSnapshot
 import com.uzairansar.hermex.core.model.KanbanBoardSummary
+import com.uzairansar.hermex.core.model.KanbanBoardsResponse
 import com.uzairansar.hermex.core.model.KanbanCompatibilityReport
 import com.uzairansar.hermex.core.model.KanbanCompatibilityWarning
 import com.uzairansar.hermex.core.model.KanbanConfiguration
@@ -66,7 +67,10 @@ internal data class KanbanLabUiState(
     val availability: KanbanAvailability = KanbanAvailability.Loading,
     val configuration: KanbanConfiguration? = null,
     val boards: List<KanbanBoardSummary> = emptyList(),
+    val sharedActiveBoardSlug: String? = null,
+    val boardsReadOnly: Boolean? = false,
     val selectedBoardSlug: String? = null,
+    val boardSelectionNotice: String? = null,
     val snapshot: KanbanBoardSnapshot? = null,
     val stats: KanbanStats? = null,
     val assigneeHistory: KanbanAssigneeHistory? = null,
@@ -100,16 +104,22 @@ internal data class KanbanLabUiState(
         get() = searchQuery.isNotBlank() || filters.hasServerFilters
 
     val canMutateCards: Boolean
+        get() = canUseWrites &&
+            KanbanCardEditorViewModel.CREATE_STATUSES.all { it in configuration?.columns.orEmpty() }
+
+    val canUseWrites: Boolean
         get() = availability == KanbanAvailability.Content &&
             !isOffline &&
             !isRefreshing &&
+            !refreshFailed &&
+            configuration?.readOnly == false &&
+            boardsReadOnly == false &&
             snapshot?.readOnly == false &&
             selectedBoard?.readOnly != true &&
             warnings.none {
                 it == KanbanCompatibilityWarning.ReadOnly ||
                     it == KanbanCompatibilityWarning.WriteCapabilityUnavailable
-            } &&
-            KanbanCardEditorViewModel.CREATE_STATUSES.all { it in configuration?.columns.orEmpty() }
+            }
 
     val canUseCardWorkflow: Boolean
         get() = canMutateCards && !workflowCapabilityUnavailable
@@ -147,7 +157,7 @@ internal class KanbanLabViewModel(
                         it == KanbanCompatibilityWarning.WriteCapabilityUnavailable
                 }
         },
-        hasOtherBoardActivity = ::hasActiveWorkflowMutation,
+        hasOtherBoardActivity = { hasActiveWorkflowMutation() || boardMutationBlocksWrites() },
         cardInSnapshot = ::cardInCurrentSnapshot,
         replaceCard = ::replaceCardInCurrentSnapshot,
         refreshBoard = ::refreshAfterBulkAction,
@@ -162,6 +172,7 @@ internal class KanbanLabViewModel(
         canMutate = { card ->
             mutableState.value.canUseCardWorkflow &&
                 bulkController.state.value.phase == null &&
+                !boardMutationBlocksWrites() &&
                 card.hasSupportedStatus
         },
         cardInSnapshot = ::cardInCurrentSnapshot,
@@ -180,6 +191,18 @@ internal class KanbanLabViewModel(
         },
     )
     val workflowState: StateFlow<KanbanWorkflowUiState> = workflowController.state
+    private val boardController = KanbanBoardManagementController(
+        repository = repository,
+        scope = viewModelScope,
+        baseAllowsMutation = { mutableState.value.canUseWrites },
+        hasOtherBoardActivity = {
+            hasActiveWorkflowMutation() || bulkController.state.value.phase != null
+        },
+        boardExists = { slug -> mutableState.value.boards.any { it.slug?.trim() == slug } },
+        applyBoardsResponse = ::applyBoardsResponse,
+    )
+    val boardState: StateFlow<KanbanBoardManagementUiState>
+        get() = boardController.state
 
     private var loadGeneration = 0
     private var liveGeneration = 0
@@ -216,48 +239,61 @@ internal class KanbanLabViewModel(
                     previousFilters.copy(includeArchived = report.configuration.includeArchivedByDefault == true)
                 }
                 val previousSlug = previous.selectedBoardSlug
-                val selectedSlug = previousSlug
-                    ?.takeIf { slug -> report.boards.any { it.slug?.trim() == slug } }
-                    ?: report.currentBoard.slug?.trim().orEmpty()
-                val needsFilteredSnapshot = selectedSlug != report.currentBoard.slug?.trim() || filters.hasServerFilters
-                val snapshot = if (needsFilteredSnapshot) {
-                    repository.boardSnapshot(selectedSlug, filters.request())
+                val previousBoardWasRemoved = previous.availability == KanbanAvailability.Content &&
+                    previousSlug != null && report.boards.none { it.slug?.trim() == previousSlug }
+                val selectedSlug = if (previousBoardWasRemoved) {
+                    null
                 } else {
-                    report.snapshot
+                    previousSlug
+                        ?.takeIf { slug -> report.boards.any { it.slug?.trim() == slug } }
+                        ?: report.currentBoard.slug?.trim().orEmpty()
                 }
-                val supplementary = loadSupplementary(selectedSlug)
+                val snapshot = selectedSlug?.let { slug ->
+                    val needsFilteredSnapshot = slug != report.currentBoard.slug?.trim() || filters.hasServerFilters
+                    if (needsFilteredSnapshot) repository.boardSnapshot(slug, filters.request()) else report.snapshot
+                }
+                val supplementary = selectedSlug?.let { loadSupplementary(it) } ?: (null to null)
                 if (generation != loadGeneration) return@launch
                 val boardChanged = previous.selectedBoardSlug != null && previous.selectedBoardSlug != selectedSlug
                 workflowController.acknowledgeCanonicalBoardLoad(boardChanged)
-                val protectedSnapshot = if (boardChanged) snapshot else workflowController.protectSnapshot(snapshot)
+                val protectedSnapshot = snapshot?.let {
+                    if (boardChanged) it else workflowController.protectSnapshot(it)
+                }
                 val statuses = availableKanbanStatuses(protectedSnapshot, filters.includeArchived)
                 val selectedStatus = previous.selectedStatus.takeIf(statuses::contains)
                     ?: "triage".takeIf(statuses::contains)
                     ?: statuses.firstOrNull().orEmpty()
-                liveCursor = snapshot.latestEventId?.coerceAtLeast(0) ?: 0
+                liveCursor = snapshot?.latestEventId?.coerceAtLeast(0) ?: 0
                 streamFailureCount = 0
                 mutableState.value = KanbanLabUiState(
                     availability = KanbanAvailability.Content,
                     configuration = report.configuration,
                     boards = report.boards,
+                    sharedActiveBoardSlug = report.currentBoard.slug?.trim(),
+                    boardsReadOnly = report.boardsReadOnly,
                     selectedBoardSlug = selectedSlug,
+                    boardSelectionNotice = if (previousBoardWasRemoved) {
+                        previous.selectedBoard?.name?.trim()?.takeIf(String::isNotEmpty) ?: previousSlug
+                    } else {
+                        null
+                    },
                     snapshot = protectedSnapshot,
                     stats = supplementary.first,
                     assigneeHistory = supplementary.second,
-                    warnings = warningsFor(report, selectedSlug, protectedSnapshot),
+                    warnings = if (selectedSlug != null && protectedSnapshot != null) {
+                        warningsFor(report, selectedSlug, protectedSnapshot)
+                    } else {
+                        emptyList()
+                    },
                     filters = filters,
                     selectedStatus = selectedStatus,
                     searchQuery = previous.searchQuery,
                     isOffline = false,
                     liveUpdatesDelayed = false,
                     detailRefreshRevision = previous.detailRefreshRevision + 1,
-                    workflowCapabilityUnavailable = previous.workflowCapabilityUnavailable,
                 )
-                if (boardChanged) {
-                    bulkController.resetForBoardChange()
-                } else {
-                    bulkController.acknowledgeSnapshot(protectedSnapshot.allCards())
-                }
+                bulkController.acknowledgeFullReload(protectedSnapshot?.allCards().orEmpty(), boardChanged)
+                boardController.acknowledgeFullReload()
                 startLiveUpdatesIfReady()
             } catch (error: CancellationException) {
                 throw error
@@ -303,9 +339,26 @@ internal class KanbanLabViewModel(
     fun selectBoard(slug: String) {
         val normalized = slug.trim().takeIf(String::isNotEmpty) ?: return
         if (normalized == mutableState.value.selectedBoardSlug) return
+        mutableState.value = mutableState.value.copy(boardSelectionNotice = null)
         bulkController.resetForBoardChange()
         loadBoard(normalized, mutableState.value.filters)
     }
+
+    fun canManageBoards(): Boolean = boardController.canManageBoards()
+
+    fun createBoard(slug: String, name: String, description: String, icon: String, color: String) =
+        boardController.create(slug, name, description, icon, color)
+
+    fun editBoard(slug: String, name: String, description: String, icon: String, color: String) =
+        boardController.edit(slug, name, description, icon, color)
+
+    fun archiveBoard(slug: String) = boardController.archive(slug)
+
+    fun makeBoardActive(slug: String) = boardController.makeActive(slug)
+
+    fun checkBoardMutationResult() = boardController.checkResult()
+
+    fun dismissBoardMutationResult() = boardController.dismissResult()
 
     fun applyFilters(filters: KanbanFilterState) {
         val state = mutableState.value
@@ -379,7 +432,7 @@ internal class KanbanLabViewModel(
                     isOffline = false,
                     liveUpdatesDelayed = false,
                     detailRefreshRevision = current.detailRefreshRevision + 1,
-                    workflowCapabilityUnavailable = current.workflowCapabilityUnavailable,
+                    workflowCapabilityUnavailable = if (boardChanged) false else current.workflowCapabilityUnavailable,
                 )
                 if (boardChanged) {
                     bulkController.resetForBoardChange()
@@ -715,6 +768,45 @@ internal class KanbanLabViewModel(
 
     private fun hasActiveWorkflowMutation(): Boolean =
         workflowController.state.value.activeCardIds.isNotEmpty()
+
+    private fun boardMutationBlocksWrites(): Boolean =
+        boardController.state.value.blocksWrites
+
+    private fun applyBoardsResponse(response: KanbanBoardsResponse) {
+        val availableBoards = response.boards.orEmpty()
+        val current = mutableState.value
+        val selectedSlug = current.selectedBoardSlug
+        val selectedWasRemoved = selectedSlug != null && availableBoards.none { it.slug?.trim() == selectedSlug }
+        if (selectedWasRemoved) {
+            loadGeneration += 1
+            suspendLiveUpdates()
+            workflowController.acknowledgeCanonicalBoardLoad(boardChanged = true)
+            bulkController.resetForBoardChange()
+            val removedName = current.selectedBoard?.name?.trim()?.takeIf(String::isNotEmpty) ?: selectedSlug
+            mutableState.value = current.copy(
+                boards = availableBoards,
+                sharedActiveBoardSlug = response.current?.trim(),
+                boardsReadOnly = response.readOnly,
+                selectedBoardSlug = null,
+                boardSelectionNotice = removedName,
+                snapshot = null,
+                stats = null,
+                assigneeHistory = null,
+                warnings = emptyList(),
+                isRefreshing = false,
+                refreshFailed = false,
+                isOffline = false,
+                liveUpdatesDelayed = false,
+            )
+            return
+        }
+        mutableState.value = current.copy(
+            boards = availableBoards,
+            sharedActiveBoardSlug = response.current?.trim(),
+            boardsReadOnly = response.readOnly,
+            isOffline = false,
+        )
+    }
 
     private suspend fun refreshAfterBulkAction() {
         val requestState = mutableState.value

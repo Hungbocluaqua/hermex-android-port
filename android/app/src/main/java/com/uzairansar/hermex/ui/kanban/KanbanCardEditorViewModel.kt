@@ -264,7 +264,7 @@ internal class KanbanCardEditorViewModel(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                if (isMissingWriteCapability(error)) {
+                if (isMissingKanbanCapability(error)) {
                     mutableState.value = mutableState.value.copy(capabilityUnavailable = true)
                 }
                 if (isDefinitiveWriteFailure(error)) {
@@ -433,9 +433,6 @@ internal class KanbanCardEditorViewModel(
         is ApiError.Http -> error.statusCode in 400..499 && error.statusCode != 408
         else -> false
     }
-
-    private fun isMissingWriteCapability(error: Throwable): Boolean =
-        error is ApiError.Http && error.statusCode in setOf(404, 405, 501)
 
     private sealed interface EditorMutationIntent {
         data class Create(val body: KanbanCreateCardRequestBody) : EditorMutationIntent

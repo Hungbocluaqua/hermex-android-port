@@ -271,6 +271,25 @@ class HermesApiClient(
     suspend fun cronDeliveryOptions(): CronDeliveryOptionsResponse = get(Endpoint.CronDeliveryOptions)
     suspend fun kanbanConfiguration(): KanbanConfiguration = get(Endpoint.KanbanConfig)
     suspend fun kanbanBoards(): KanbanBoardsResponse = get(Endpoint.KanbanBoards)
+    suspend fun createKanbanBoard(body: KanbanCreateBoardRequest): KanbanBoardMutationEnvelope =
+        post(Endpoint.KanbanBoards, body)
+    suspend fun editKanbanBoard(body: KanbanEditBoardRequest): KanbanBoardMutationEnvelope {
+        val payload = buildJsonObject {
+            put("name", body.name)
+            put("description", body.description)
+            put("icon", body.icon)
+            put("color", body.color)
+        }
+        return request(
+            Endpoint.KanbanBoardBySlug(body.slug),
+            "PATCH",
+            json.encodeToString(payload).toRequestBody(jsonMediaType),
+        )
+    }
+    suspend fun archiveKanbanBoard(slug: String): KanbanBoardMutationEnvelope =
+        request(Endpoint.KanbanBoardBySlug(slug), "DELETE", null)
+    suspend fun makeKanbanBoardActive(slug: String): KanbanBoardMutationEnvelope =
+        request(Endpoint.KanbanBoardSwitch(slug), "POST", ByteArray(0).toRequestBody())
     suspend fun kanbanBoard(
         board: String,
         tenant: String? = null,

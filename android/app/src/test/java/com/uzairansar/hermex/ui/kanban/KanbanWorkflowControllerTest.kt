@@ -166,7 +166,7 @@ class KanbanWorkflowControllerTest {
     @Test
     fun missingWorkflowEndpointClosesOnlyWorkflowGate() = runTest {
         val repository = FakeWorkflowDataSource().apply {
-            statusLoader = { _, _ -> throw ApiError.Http(404, "missing") }
+            statusLoader = { _, _ -> throw ApiError.Http(404, "{\"error\":\"Unknown Kanban endpoint; refresh the client\"}") }
         }
         val harness = harness(repository)
 

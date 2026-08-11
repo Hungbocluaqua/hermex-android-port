@@ -4,6 +4,9 @@ import com.uzairansar.hermex.MainDispatcherRule
 import com.uzairansar.hermex.core.model.KanbanAssigneeHistory
 import com.uzairansar.hermex.core.model.KanbanBoardSnapshot
 import com.uzairansar.hermex.core.model.KanbanBoardSummary
+import com.uzairansar.hermex.core.model.KanbanBoardsResponse
+import com.uzairansar.hermex.core.model.KanbanBoardMutationEnvelope
+import com.uzairansar.hermex.core.model.KanbanCreateBoardRequest
 import com.uzairansar.hermex.core.model.KanbanCardSummary
 import com.uzairansar.hermex.core.model.KanbanCardDetailEnvelope
 import com.uzairansar.hermex.core.model.KanbanBulkActionEnvelope
@@ -51,7 +54,7 @@ class KanbanLabViewModelTest {
     @Test
     fun missingWorkflowEndpointLeavesCardEditorCapabilityAvailable() = runTest {
         val repository = FakeKanbanBrowseDataSource().apply {
-            statusFailure = ApiError.Http(404, "missing")
+            statusFailure = ApiError.Http(404, "{\"error\":\"Unknown Kanban endpoint; refresh the client\"}")
         }
         val viewModel = KanbanLabViewModel(repository)
         val card = requireNotNull(viewModel.state.value.snapshot?.allCards()?.first())
@@ -63,7 +66,7 @@ class KanbanLabViewModelTest {
         assertEquals(KanbanCardMutationPhase.Failed, viewModel.workflowState.value.mutations[card.cardId]?.phase)
 
         viewModel.load()
-        assertFalse(viewModel.state.value.canUseCardWorkflow)
+        assertTrue(viewModel.state.value.canUseCardWorkflow)
     }
 
     @Test
@@ -88,7 +91,7 @@ class KanbanLabViewModelTest {
     @Test
     fun missingBulkEndpointClosesOnlyBulkActionsAfterCanonicalReconciliation() = runTest {
         val repository = FakeKanbanBrowseDataSource().apply {
-            bulkFailure = ApiError.Http(404, "missing")
+            bulkFailure = ApiError.Http(404, "{\"error\":\"Unknown Kanban endpoint; refresh the client\"}")
         }
         val viewModel = KanbanLabViewModel(repository)
         val card = requireNotNull(viewModel.state.value.snapshot?.allCards()?.first())
@@ -102,6 +105,10 @@ class KanbanLabViewModelTest {
         assertTrue(viewModel.state.value.canMutateCards)
         assertTrue(viewModel.state.value.canUseCardWorkflow)
         assertEquals(1, viewModel.bulkState.value.summary?.failedCount)
+
+        viewModel.load()
+        assertFalse(viewModel.bulkState.value.capabilityUnavailable)
+        assertTrue(viewModel.canUseBulkActions())
     }
 
     @Test
@@ -124,6 +131,77 @@ class KanbanLabViewModelTest {
         deferred.complete(KanbanBulkActionEnvelope(readOnly = false))
         assertEquals(null, viewModel.bulkState.value.phase)
         assertEquals(1, repository.bulkCalls.size)
+    }
+
+    @Test
+    fun makingBoardActiveChangesSharedStateWithoutNavigatingTheLocalBoard() = runTest {
+        val repository = FakeKanbanBrowseDataSource()
+        val viewModel = KanbanLabViewModel(repository)
+        viewModel.selectBoard("fast")
+        repository.sharedActive = "beta"
+
+        viewModel.makeBoardActive("beta")
+
+        assertEquals("fast", viewModel.state.value.selectedBoardSlug)
+        assertEquals("beta", viewModel.state.value.sharedActiveBoardSlug)
+        assertEquals(listOf("beta"), repository.activatedBoards)
+        assertEquals(KanbanCardMutationPhase.Succeeded, viewModel.boardState.value.mutation?.phase)
+    }
+
+    @Test
+    fun archivingTheBrowsedBoardTearsDownBoardStateAndRequiresASelection() = runTest {
+        val repository = FakeKanbanBrowseDataSource()
+        val viewModel = KanbanLabViewModel(repository)
+        viewModel.selectBoard("fast")
+        val card = requireNotNull(viewModel.state.value.snapshot?.allCards()?.first())
+        viewModel.beginSelectingCards()
+        viewModel.toggleCardSelection(card)
+        repository.boardSlugs.remove("fast")
+
+        viewModel.archiveBoard("fast")
+
+        assertEquals(null, viewModel.state.value.selectedBoardSlug)
+        assertEquals(null, viewModel.state.value.snapshot)
+        assertEquals("fast", viewModel.state.value.boardSelectionNotice)
+        assertTrue(viewModel.bulkState.value.selectedCardIds.isEmpty())
+        assertEquals(KanbanCardMutationPhase.Succeeded, viewModel.boardState.value.mutation?.phase)
+    }
+
+    @Test
+    fun boardMutationBlocksCardWorkflowUntilCanonicalReconciliation() = runTest {
+        val pending = CompletableDeferred<KanbanBoardMutationEnvelope>()
+        val repository = FakeKanbanBrowseDataSource().apply {
+            createBoardLoader = { pending.await() }
+            boardSlugs += "release"
+        }
+        val viewModel = KanbanLabViewModel(repository)
+        val card = requireNotNull(viewModel.state.value.snapshot?.allCards()?.first())
+
+        viewModel.createBoard("release", "Release", "", "", "")
+        assertTrue(viewModel.boardState.value.blocksWrites)
+        viewModel.completeCard(card)
+        assertEquals(0, repository.statusCalls)
+
+        pending.complete(KanbanBoardMutationEnvelope(readOnly = false))
+        assertEquals(KanbanCardMutationPhase.Succeeded, viewModel.boardState.value.mutation?.phase)
+    }
+
+    @Test
+    fun fullReloadInvalidatesAnInFlightBoardMutation() = runTest {
+        val pending = CompletableDeferred<KanbanBoardMutationEnvelope>()
+        val repository = FakeKanbanBrowseDataSource().apply {
+            createBoardLoader = { pending.await() }
+            boardSlugs += "release"
+        }
+        val viewModel = KanbanLabViewModel(repository)
+
+        viewModel.createBoard("release", "Release", "", "", "")
+        assertEquals(KanbanCardMutationPhase.Updating, viewModel.boardState.value.mutation?.phase)
+        viewModel.load()
+        assertEquals(null, viewModel.boardState.value.mutation)
+
+        pending.complete(KanbanBoardMutationEnvelope(readOnly = false))
+        assertEquals(null, viewModel.boardState.value.mutation)
     }
 
     @Test
@@ -234,19 +312,43 @@ class KanbanLabViewModelTest {
         val bulkCalls = mutableListOf<KanbanBulkActionRequestBody>()
         var statusCalls = 0
         var boardLoader: suspend (String, KanbanBrowseFilters) -> KanbanBoardSnapshot = { board, _ -> snapshot(board) }
+        val boardSlugs = mutableListOf(current, "main", "slow", "fast", "alpha", "beta").distinct().toMutableList()
+        var sharedActive: String = current
+        var createBoardLoader: suspend (KanbanCreateBoardRequest) -> KanbanBoardMutationEnvelope = {
+            KanbanBoardMutationEnvelope(readOnly = false)
+        }
+        val activatedBoards = mutableListOf<String>()
 
         override suspend fun compatibilityHandshake(): KanbanCompatibilityReport {
             handshakeFailure?.let { throw it }
-            val boards = listOf(current, "main", "slow", "fast", "alpha", "beta")
-                .distinct()
+            val boards = boardSlugs
                 .map { KanbanBoardSummary(slug = it, name = it, readOnly = false) }
             return KanbanCompatibilityReport(
                 configuration = KanbanConfiguration(columns = listOf("triage", "todo", "blocked", "ready", "running", "done"), readOnly = false),
                 boards = boards,
-                currentBoard = requireNotNull(boards.firstOrNull { it.slug == current }),
-                snapshot = snapshot(current),
+                currentBoard = requireNotNull(boards.firstOrNull { it.slug == sharedActive }),
+                snapshot = snapshot(sharedActive),
                 warnings = emptyList(),
+                boardsReadOnly = false,
             )
+        }
+
+        override suspend fun boards(): KanbanBoardsResponse = KanbanBoardsResponse(
+            boards = boardSlugs.map { KanbanBoardSummary(slug = it, name = it, readOnly = false) },
+            current = sharedActive,
+            readOnly = false,
+        )
+
+        override suspend fun createBoard(body: KanbanCreateBoardRequest): KanbanBoardMutationEnvelope =
+            createBoardLoader(body)
+
+        override suspend fun archiveBoard(slug: String): KanbanBoardMutationEnvelope =
+            KanbanBoardMutationEnvelope(readOnly = false)
+
+        override suspend fun makeBoardActive(slug: String): KanbanBoardMutationEnvelope {
+            activatedBoards += slug
+            sharedActive = slug
+            return KanbanBoardMutationEnvelope(readOnly = false)
         }
 
         override suspend fun boardSnapshot(board: String, filters: KanbanBrowseFilters): KanbanBoardSnapshot {
