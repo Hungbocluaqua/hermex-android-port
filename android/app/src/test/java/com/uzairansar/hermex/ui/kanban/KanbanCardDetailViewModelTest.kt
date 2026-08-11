@@ -11,6 +11,7 @@ import com.uzairansar.hermex.core.model.KanbanWorkerLog
 import com.uzairansar.hermex.data.repository.KanbanBrowseDataSource
 import com.uzairansar.hermex.data.repository.KanbanBrowseFilters
 import com.uzairansar.hermex.core.model.KanbanStats
+import com.uzairansar.hermex.core.network.ApiError
 import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -131,6 +132,42 @@ class KanbanCardDetailViewModelTest {
         assertEquals(KanbanCommentSubmissionState.Failed, viewModel.state.value.commentSubmission)
         assertFalse(viewModel.state.value.parentAllowsWrites)
         assertFalse(viewModel.state.value.canComment)
+    }
+
+    @Test
+    fun missingCommentEndpointClosesOnlyCommentsUntilCanonicalReload() = runTest {
+        val repository = FakeDetailDataSource()
+        repository.commentLoader = { _, _, _ ->
+            throw ApiError.Http(404, "{\"error\":\"Unknown Kanban endpoint; refresh the client\"}")
+        }
+        val viewModel = model(repository)
+
+        viewModel.updateCommentDraft("Blocked")
+        viewModel.submitComment()
+
+        assertTrue(viewModel.state.value.commentCapabilityUnavailable)
+        assertFalse(viewModel.state.value.canComment)
+        assertTrue(viewModel.state.value.parentAllowsWrites)
+        assertEquals(KanbanCommentSubmissionState.Failed, viewModel.state.value.commentSubmission)
+        assertEquals(1, repository.commentCalls)
+        assertEquals(1, repository.detailCalls)
+
+        viewModel.load()
+        assertFalse(viewModel.state.value.commentCapabilityUnavailable)
+        assertTrue(viewModel.state.value.canComment)
+    }
+
+    @Test
+    fun taskNotFoundDoesNotMisclassifyTheCommentsCapability() = runTest {
+        val repository = FakeDetailDataSource()
+        repository.commentLoader = { _, _, _ -> throw ApiError.Http(404, "{\"error\":\"task not found\"}") }
+        val viewModel = model(repository)
+
+        viewModel.updateCommentDraft("Maybe")
+        viewModel.submitComment()
+
+        assertFalse(viewModel.state.value.commentCapabilityUnavailable)
+        assertEquals(2, repository.detailCalls)
     }
 
     @Test

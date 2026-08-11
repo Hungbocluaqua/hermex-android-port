@@ -2,6 +2,7 @@ package com.uzairansar.hermex.ui
 
 import android.content.Intent
 import android.net.Uri
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -15,6 +16,11 @@ class HermexDeepLinkTest {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("hermes-agent://kanban-lab"))
 
         assertEquals("kanban-lab", intent.hermexRoute())
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        assertEquals(
+            "com.uzairansar.hermex.MainActivity",
+            intent.resolveActivity(context.packageManager)?.className,
+        )
     }
 
     @Test
