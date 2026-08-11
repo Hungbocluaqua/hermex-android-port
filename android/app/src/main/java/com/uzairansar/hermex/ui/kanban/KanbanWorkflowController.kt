@@ -364,7 +364,7 @@ internal class KanbanWorkflowController(
                 throw error
             } catch (error: Throwable) {
                 if (activeMutationIds[cardId] != mutationId) return@launch
-                if (isMissingWorkflowCapability(error)) onCapabilityUnavailable()
+                if (isMissingKanbanCapability(error)) onCapabilityUnavailable()
                 if (isDefinitiveWriteFailure(error)) {
                     restoreStatusMutation(cardId, baseline, kind, KanbanCardMutationPhase.Failed)
                 } else {
@@ -497,7 +497,7 @@ internal class KanbanWorkflowController(
                 throw error
             } catch (error: Throwable) {
                 if (activeMutationIds[cardId] != mutationId) return@launch
-                if (isMissingWorkflowCapability(error)) onCapabilityUnavailable()
+                if (isMissingKanbanCapability(error)) onCapabilityUnavailable()
                 if (isDefinitiveWriteFailure(error)) {
                     clearPendingDependency(cardId)
                     finishMutation(cardId, kind, KanbanCardMutationPhase.Failed)
@@ -592,9 +592,6 @@ private fun isDefinitiveWriteFailure(error: Throwable): Boolean = when (error) {
     is ApiError.Http -> error.statusCode in 400..499 && error.statusCode != 408
     else -> false
 }
-
-private fun isMissingWorkflowCapability(error: Throwable): Boolean =
-    error is ApiError.Http && error.statusCode in setOf(404, 405, 501)
 
 private fun isNotFound(error: Throwable): Boolean = error is ApiError.Http && error.statusCode == 404
 

@@ -164,6 +164,15 @@ internal class KanbanBulkActionController(
         mutableState.value = KanbanBulkUiState(capabilityUnavailable = mutableState.value.capabilityUnavailable)
     }
 
+    fun acknowledgeFullReload(cards: List<KanbanCardSummary>, boardChanged: Boolean) {
+        if (boardChanged) {
+            resetForBoardChange()
+        } else {
+            acknowledgeSnapshot(cards)
+        }
+        updateState { it.copy(capabilityUnavailable = false) }
+    }
+
     fun perform(
         action: KanbanBulkAction,
         confirmedRunningExit: Boolean = false,
@@ -264,7 +273,7 @@ internal class KanbanBulkActionController(
                 throw error
             } catch (error: Throwable) {
                 if (!isCurrent(board, generation, submissionId)) return@launch
-                if (isMissingBulkCapability(error)) updateState { it.copy(capabilityUnavailable = true) }
+                if (isMissingKanbanCapability(error)) updateState { it.copy(capabilityUnavailable = true) }
             }
 
             if (!isCurrent(board, generation, submissionId)) return@launch
@@ -414,8 +423,5 @@ private fun KanbanBulkAction.matches(card: KanbanCardSummary): Boolean = when (t
     is KanbanBulkAction.SetPriority -> (card.priority ?: 0) == priority
     KanbanBulkAction.ArchiveCards -> card.status.normalized()?.lowercase() == "archived"
 }
-
-private fun isMissingBulkCapability(error: Throwable): Boolean =
-    error is ApiError.Http && error.statusCode in setOf(404, 405, 501)
 
 private fun String?.normalized(): String? = this?.trim()?.takeIf(String::isNotEmpty)

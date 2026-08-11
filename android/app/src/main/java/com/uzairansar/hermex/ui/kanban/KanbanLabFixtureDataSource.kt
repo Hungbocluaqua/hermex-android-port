@@ -4,6 +4,10 @@ import com.uzairansar.hermex.core.model.KanbanAssigneeHistory
 import com.uzairansar.hermex.core.model.KanbanAssigneeValue
 import com.uzairansar.hermex.core.model.KanbanBoardSnapshot
 import com.uzairansar.hermex.core.model.KanbanBoardSummary
+import com.uzairansar.hermex.core.model.KanbanBoardsResponse
+import com.uzairansar.hermex.core.model.KanbanBoardMutationEnvelope
+import com.uzairansar.hermex.core.model.KanbanCreateBoardRequest
+import com.uzairansar.hermex.core.model.KanbanEditBoardRequest
 import com.uzairansar.hermex.core.model.KanbanCardSummary
 import com.uzairansar.hermex.core.model.KanbanCardDetailEnvelope
 import com.uzairansar.hermex.core.model.KanbanComment
@@ -44,10 +48,11 @@ internal class KanbanLabFixtureDataSource(
     private val mutatedCards = linkedMapOf<String, KanbanCardSummary>()
     private val mutatedPrerequisites = linkedMapOf<String, MutableSet<String>>()
     private val partialBulkRefusals = mutableSetOf("CARD-3")
-    private val boards = listOf(
-        KanbanBoardSummary(slug = "default", name = "Default Board", total = 5, readOnly = scenario == "read-only"),
-        KanbanBoardSummary(slug = "release", name = "Release Board", total = 1, readOnly = scenario == "read-only"),
+    private val storedBoards = linkedMapOf(
+        "default" to KanbanBoardSummary(slug = "default", name = "Default Board", total = 5, readOnly = scenario == "read-only"),
+        "release" to KanbanBoardSummary(slug = "release", name = "Release Board", total = 1, readOnly = scenario == "read-only"),
     )
+    private var sharedActiveBoard = "default"
 
     override suspend fun compatibilityHandshake(): KanbanCompatibilityReport {
         if (scenario == "incompatible") throw KanbanContractViolation.MissingConfigurationColumns
@@ -57,16 +62,67 @@ internal class KanbanLabFixtureDataSource(
             readOnly = scenario == "read-only",
         )
         val snapshot = snapshot("default", KanbanBrowseFilters())
+        val boards = storedBoards.values.toList()
         return KanbanCompatibilityReport(
             configuration = configuration,
             boards = boards,
-            currentBoard = boards.first(),
+            currentBoard = requireNotNull(storedBoards[sharedActiveBoard]),
             snapshot = snapshot,
             warnings = buildList {
                 if (scenario == "read-only") add(KanbanCompatibilityWarning.ReadOnly)
                 if (scenario != "empty") add(KanbanCompatibilityWarning.UnsupportedStatus("future"))
             },
+            boardsReadOnly = scenario == "read-only",
         )
+    }
+
+    override suspend fun boards(): KanbanBoardsResponse = KanbanBoardsResponse(
+        boards = storedBoards.values.toList(),
+        current = sharedActiveBoard,
+        readOnly = scenario == "read-only",
+    )
+
+    override suspend fun createBoard(body: KanbanCreateBoardRequest): KanbanBoardMutationEnvelope {
+        if (scenario == "read-only") return KanbanBoardMutationEnvelope(readOnly = true)
+        val board = KanbanBoardSummary(
+            slug = body.slug,
+            name = body.name,
+            description = body.description,
+            icon = body.icon,
+            color = body.color,
+            total = 0,
+            readOnly = false,
+        )
+        storedBoards[body.slug] = board
+        return KanbanBoardMutationEnvelope(board = board, current = sharedActiveBoard, readOnly = false)
+    }
+
+    override suspend fun editBoard(body: KanbanEditBoardRequest): KanbanBoardMutationEnvelope {
+        if (scenario == "read-only") return KanbanBoardMutationEnvelope(readOnly = true)
+        val existing = storedBoards[body.slug] ?: throw ApiError.Http(404, "{\"error\":\"board not found\"}")
+        val board = existing.copy(
+            name = body.name,
+            description = body.description,
+            icon = body.icon,
+            color = body.color,
+        )
+        storedBoards[body.slug] = board
+        return KanbanBoardMutationEnvelope(board = board, current = sharedActiveBoard, readOnly = false)
+    }
+
+    override suspend fun archiveBoard(slug: String): KanbanBoardMutationEnvelope {
+        if (scenario == "read-only") return KanbanBoardMutationEnvelope(readOnly = true)
+        if (slug == "default") throw ApiError.Http(400, "{\"error\":\"default board cannot be archived\"}")
+        storedBoards.remove(slug) ?: throw ApiError.Http(404, "{\"error\":\"board not found\"}")
+        if (sharedActiveBoard == slug) sharedActiveBoard = "default"
+        return KanbanBoardMutationEnvelope(current = sharedActiveBoard, readOnly = false)
+    }
+
+    override suspend fun makeBoardActive(slug: String): KanbanBoardMutationEnvelope {
+        if (scenario == "read-only") return KanbanBoardMutationEnvelope(readOnly = true)
+        val board = storedBoards[slug] ?: throw ApiError.Http(404, "{\"error\":\"board not found\"}")
+        sharedActiveBoard = slug
+        return KanbanBoardMutationEnvelope(board = board, current = sharedActiveBoard, readOnly = false)
     }
 
     override suspend fun boardSnapshot(board: String, filters: KanbanBrowseFilters): KanbanBoardSnapshot =

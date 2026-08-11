@@ -87,6 +87,30 @@ data class KanbanBoardSummary(
 )
 
 @Serializable
+data class KanbanCreateBoardRequest(
+    val slug: String,
+    val name: String,
+    val description: String,
+    val icon: String,
+    val color: String,
+)
+
+data class KanbanEditBoardRequest(
+    val slug: String,
+    val name: String,
+    val description: String,
+    val icon: String,
+    val color: String,
+)
+
+@Serializable
+data class KanbanBoardMutationEnvelope(
+    val board: KanbanBoardSummary? = null,
+    val current: String? = null,
+    @SerialName("read_only") val readOnly: Boolean? = null,
+)
+
+@Serializable
 data class KanbanBoardSnapshot(
     @Serializable(with = LossyNullableKanbanColumnListSerializer::class)
     val columns: List<KanbanColumn>? = null,
@@ -462,6 +486,7 @@ data class KanbanCompatibilityReport(
     val currentBoard: KanbanBoardSummary,
     val snapshot: KanbanBoardSnapshot,
     val warnings: List<KanbanCompatibilityWarning>,
+    val boardsReadOnly: Boolean? = false,
 )
 
 sealed interface KanbanCompatibilityWarning {

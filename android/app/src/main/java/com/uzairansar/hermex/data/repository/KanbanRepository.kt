@@ -15,6 +15,10 @@ import com.uzairansar.hermex.core.model.KanbanDependencyMutationEnvelope
 import com.uzairansar.hermex.core.model.KanbanDependencyRequestBody
 import com.uzairansar.hermex.core.model.KanbanBulkActionEnvelope
 import com.uzairansar.hermex.core.model.KanbanBulkActionRequestBody
+import com.uzairansar.hermex.core.model.KanbanBoardsResponse
+import com.uzairansar.hermex.core.model.KanbanBoardMutationEnvelope
+import com.uzairansar.hermex.core.model.KanbanCreateBoardRequest
+import com.uzairansar.hermex.core.model.KanbanEditBoardRequest
 import com.uzairansar.hermex.core.model.KanbanStats
 import com.uzairansar.hermex.core.model.KanbanAssigneeHistory
 import com.uzairansar.hermex.core.network.HermesApiClient
@@ -35,6 +39,8 @@ data class KanbanBrowseFilters(
 interface KanbanBrowseDataSource {
     suspend fun compatibilityHandshake(): KanbanCompatibilityReport
     suspend fun boardSnapshot(board: String, filters: KanbanBrowseFilters): KanbanBoardSnapshot
+    suspend fun boards(): KanbanBoardsResponse =
+        throw UnsupportedOperationException("Kanban Board management is unavailable.")
     suspend fun stats(board: String): KanbanStats
     suspend fun assignees(board: String): KanbanAssigneeHistory
     suspend fun events(board: String, since: Int, limit: Int = 200): KanbanEventsEnvelope =
@@ -76,6 +82,18 @@ interface KanbanBrowseDataSource {
 
     suspend fun performBulkAction(board: String, body: KanbanBulkActionRequestBody): KanbanBulkActionEnvelope =
         throw UnsupportedOperationException("Kanban Bulk Actions are unavailable.")
+
+    suspend fun createBoard(body: KanbanCreateBoardRequest): KanbanBoardMutationEnvelope =
+        throw UnsupportedOperationException("Kanban Board management is unavailable.")
+
+    suspend fun editBoard(body: KanbanEditBoardRequest): KanbanBoardMutationEnvelope =
+        throw UnsupportedOperationException("Kanban Board management is unavailable.")
+
+    suspend fun archiveBoard(slug: String): KanbanBoardMutationEnvelope =
+        throw UnsupportedOperationException("Kanban Board management is unavailable.")
+
+    suspend fun makeBoardActive(slug: String): KanbanBoardMutationEnvelope =
+        throw UnsupportedOperationException("Kanban Board management is unavailable.")
 }
 
 class KanbanRepository(
@@ -91,7 +109,6 @@ class KanbanRepository(
         val boards = boardsResponse.boards.orEmpty()
         if (boards.any { it.slug.isNullOrBlank() }) throw KanbanContractViolation.MissingBoardIdentity
         val currentSlug = boardsResponse.current?.trim()?.takeIf(String::isNotEmpty)
-            ?: boards.firstOrNull { it.isCurrent == true }?.slug?.trim()?.takeIf(String::isNotEmpty)
             ?: throw KanbanContractViolation.MissingCurrentBoard
         val currentBoard = boards.firstOrNull { it.slug?.trim() == currentSlug }
             ?: throw KanbanContractViolation.MissingCurrentBoard
@@ -106,8 +123,10 @@ class KanbanRepository(
             snapshot = snapshot,
             configuredColumns = configuredColumns,
         )
-        return KanbanCompatibilityReport(configuration, boards, currentBoard, snapshot, warnings)
+        return KanbanCompatibilityReport(configuration, boards, currentBoard, snapshot, warnings, boardsResponse.readOnly)
     }
+
+    override suspend fun boards(): KanbanBoardsResponse = client.kanbanBoards().also(::validateBoardsResponse)
 
     override suspend fun boardSnapshot(board: String, filters: KanbanBrowseFilters): KanbanBoardSnapshot =
         client.kanbanBoard(
@@ -197,6 +216,26 @@ class KanbanRepository(
         board: String,
         body: KanbanBulkActionRequestBody,
     ): KanbanBulkActionEnvelope = client.performKanbanBulkAction(board, body)
+
+    override suspend fun createBoard(body: KanbanCreateBoardRequest): KanbanBoardMutationEnvelope =
+        client.createKanbanBoard(body)
+
+    override suspend fun editBoard(body: KanbanEditBoardRequest): KanbanBoardMutationEnvelope =
+        client.editKanbanBoard(body)
+
+    override suspend fun archiveBoard(slug: String): KanbanBoardMutationEnvelope =
+        client.archiveKanbanBoard(slug)
+
+    override suspend fun makeBoardActive(slug: String): KanbanBoardMutationEnvelope =
+        client.makeKanbanBoardActive(slug)
+
+    private fun validateBoardsResponse(response: KanbanBoardsResponse) {
+        val boards = response.boards ?: throw KanbanContractViolation.MissingBoardIdentity
+        if (boards.any { it.slug.isNullOrBlank() }) throw KanbanContractViolation.MissingBoardIdentity
+        val current = response.current?.trim()?.takeIf(String::isNotEmpty)
+            ?: throw KanbanContractViolation.MissingCurrentBoard
+        if (boards.none { it.slug?.trim() == current }) throw KanbanContractViolation.MissingCurrentBoard
+    }
 
     private fun validateSnapshot(snapshot: KanbanBoardSnapshot) {
         val columns = snapshot.columns
