@@ -13,6 +13,8 @@ import com.uzairansar.hermex.core.model.KanbanCreateCardRequestBody
 import com.uzairansar.hermex.core.model.KanbanEditCardRequestBody
 import com.uzairansar.hermex.core.model.KanbanDependencyMutationEnvelope
 import com.uzairansar.hermex.core.model.KanbanDependencyRequestBody
+import com.uzairansar.hermex.core.model.KanbanBulkActionEnvelope
+import com.uzairansar.hermex.core.model.KanbanBulkActionRequestBody
 import com.uzairansar.hermex.core.model.KanbanStats
 import com.uzairansar.hermex.core.model.KanbanAssigneeHistory
 import com.uzairansar.hermex.core.network.HermesApiClient
@@ -71,6 +73,9 @@ interface KanbanBrowseDataSource {
 
     suspend fun removeDependency(board: String, body: KanbanDependencyRequestBody): KanbanDependencyMutationEnvelope =
         throw UnsupportedOperationException("Kanban Card workflow is unavailable.")
+
+    suspend fun performBulkAction(board: String, body: KanbanBulkActionRequestBody): KanbanBulkActionEnvelope =
+        throw UnsupportedOperationException("Kanban Bulk Actions are unavailable.")
 }
 
 class KanbanRepository(
@@ -187,6 +192,11 @@ class KanbanRepository(
     ): KanbanDependencyMutationEnvelope = client.removeKanbanDependency(board, body).also { envelope ->
         if (envelope.readOnly != true) validateDependencyMutation(envelope, body)
     }
+
+    override suspend fun performBulkAction(
+        board: String,
+        body: KanbanBulkActionRequestBody,
+    ): KanbanBulkActionEnvelope = client.performKanbanBulkAction(board, body)
 
     private fun validateSnapshot(snapshot: KanbanBoardSnapshot) {
         val columns = snapshot.columns

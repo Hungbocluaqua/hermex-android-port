@@ -18,16 +18,88 @@
     <string name="l10n_bc576900b6f6e566" formatted="false">"%@, שרת פעיל"</string>
     <string name="l10n_16070acfe08366e8" formatted="false">"%lld"</string>
     <string name="l10n_ec77970ef773212e" formatted="false">"%lld כרטיסים"</string>
+    <plurals name="l10n_ec77970ef773212e">
+        <item quantity="zero">"%d כרטיסים"</item>
+        <item quantity="one">"כרטיס %d"</item>
+        <item quantity="two">"%d כרטיסים"</item>
+        <item quantity="few">"%d כרטיסים"</item>
+        <item quantity="many">"%d כרטיסים"</item>
+        <item quantity="other">"%d כרטיסים"</item>
+    </plurals>
     <string name="l10n_8d777c131031fa2e" formatted="false">"%lld כרטיסים תלויים"</string>
+    <plurals name="l10n_8d777c131031fa2e">
+        <item quantity="zero">"%d כרטיסים תלויים"</item>
+        <item quantity="one">"כרטיס תלוי %d"</item>
+        <item quantity="two">"%d כרטיסים תלויים"</item>
+        <item quantity="few">"%d כרטיסים תלויים"</item>
+        <item quantity="many">"%d כרטיסים תלויים"</item>
+        <item quantity="other">"%d כרטיסים תלויים"</item>
+    </plurals>
     <string name="l10n_66a4be0dc2595729" formatted="false">"%lld תנאים מוקדמים"</string>
+    <plurals name="l10n_66a4be0dc2595729">
+        <item quantity="zero">"%d תנאים מוקדמים"</item>
+        <item quantity="one">"תנאי מוקדם %d"</item>
+        <item quantity="two">"%d תנאים מוקדמים"</item>
+        <item quantity="few">"%d תנאים מוקדמים"</item>
+        <item quantity="many">"%d תנאים מוקדמים"</item>
+        <item quantity="other">"%d תנאים מוקדמים"</item>
+    </plurals>
     <string name="l10n_f6450a6cc043203f" formatted="false">"%lld נוספו"</string>
     <string name="l10n_5e99075a998414f8" formatted="false">"%lld תגובות"</string>
+    <plurals name="l10n_5e99075a998414f8">
+        <item quantity="zero">"%d תגובות"</item>
+        <item quantity="one">"תגובה %d"</item>
+        <item quantity="two">"%d תגובות"</item>
+        <item quantity="few">"%d תגובות"</item>
+        <item quantity="many">"%d תגובות"</item>
+        <item quantity="other">"%d תגובות"</item>
+    </plurals>
     <string name="l10n_06c13ef4292ad119" formatted="false">"%lld קבצים השתנו"</string>
+    <plurals name="l10n_06c13ef4292ad119">
+        <item quantity="zero">"%d קבצים השתנו"</item>
+        <item quantity="one">"%d קובץ השתנה"</item>
+        <item quantity="two">"%d קבצים השתנו"</item>
+        <item quantity="few">"%d קבצים השתנו"</item>
+        <item quantity="many">"%d קבצים השתנו"</item>
+        <item quantity="other">"%d קבצים השתנו"</item>
+    </plurals>
     <string name="l10n_c4b7ead9d1bf1471" formatted="false">"%lld שורות"</string>
+    <plurals name="l10n_c4b7ead9d1bf1471">
+        <item quantity="zero">"%d שורות"</item>
+        <item quantity="one">"%d שורה"</item>
+        <item quantity="two">"%d שורות"</item>
+        <item quantity="few">"%d שורות"</item>
+        <item quantity="many">"%d שורות"</item>
+        <item quantity="other">"%d שורות"</item>
+    </plurals>
     <string name="l10n_2efcf5438a29b31f" formatted="false">"%lld הודעות"</string>
+    <plurals name="l10n_2efcf5438a29b31f">
+        <item quantity="zero">"%d הודעות"</item>
+        <item quantity="one">"%d הודעה"</item>
+        <item quantity="two">"%d הודעות"</item>
+        <item quantity="few">"%d הודעות"</item>
+        <item quantity="many">"%d הודעות"</item>
+        <item quantity="other">"%d הודעות"</item>
+    </plurals>
     <string name="l10n_ced88678ac893dde" formatted="false">"%lld הוסרו"</string>
     <string name="l10n_232aab9f8671f81d" formatted="false">"%lld מפגשים"</string>
+    <plurals name="l10n_232aab9f8671f81d">
+        <item quantity="zero">"%d מפגשים"</item>
+        <item quantity="one">"%d מפגש"</item>
+        <item quantity="two">"%d מפגשים"</item>
+        <item quantity="few">"%d מפגשים"</item>
+        <item quantity="many">"%d מפגשים"</item>
+        <item quantity="other">"%d מפגשים"</item>
+    </plurals>
     <string name="l10n_66137dc5d00d671d" formatted="false">"%lld מיומנויות"</string>
+    <plurals name="l10n_66137dc5d00d671d">
+        <item quantity="zero">"%d מיומנויות"</item>
+        <item quantity="one">"%d מיומנות"</item>
+        <item quantity="two">"%d מיומנויות"</item>
+        <item quantity="few">"%d מיומנויות"</item>
+        <item quantity="many">"%d מיומנויות"</item>
+        <item quantity="other">"%d מיומנויות"</item>
+    </plurals>
     <string name="l10n_78cd57f9892157b8" formatted="false">"%lld%% הקשר"</string>
     <string name="l10n_6ab06c5fe8caa9fa" formatted="false">"%lld%% נתח"</string>
     <string name="l10n_a5b19753b0ff34b9" formatted="false">", מתבצע מעבר"</string>
@@ -47,6 +119,14 @@
     <string name="l10n_d74340399e2a5b1d" formatted="false">"פרופיל פעיל"</string>
     <string name="l10n_81c0d915fa6d82fd" formatted="false">"פעילות"</string>
     <string name="l10n_03f7eb4fcb825734" formatted="false">"פעילות: %lld כלים"</string>
+    <plurals name="l10n_03f7eb4fcb825734">
+        <item quantity="zero">"פעילות: %d כלים"</item>
+        <item quantity="one">"פעילות: %d כלי"</item>
+        <item quantity="two">"פעילות: %d כלים"</item>
+        <item quantity="few">"פעילות: %d כלים"</item>
+        <item quantity="many">"פעילות: %d כלים"</item>
+        <item quantity="other">"פעילות: %d כלים"</item>
+    </plurals>
     <string name="l10n_61cc55aa04531847" formatted="false">"הוסף"</string>
     <string name="l10n_ea65bead2508867e" formatted="false">"הוסף את %@ למועדפים"</string>
     <string name="l10n_42b949077d2f4201" formatted="false">"הוסף כותרת"</string>
@@ -337,6 +417,14 @@
     <string name="l10n_2ee30cf2c2908397" formatted="false">"ערוך הודעה"</string>
     <string name="l10n_9d0e05d653ce25e7" formatted="false">"ערוך משימה"</string>
     <string name="l10n_b0179bbf23f36576" formatted="false">"עריכת הודעה זו תמחק %lld הודעות מאוחרות יותר."</string>
+    <plurals name="l10n_b0179bbf23f36576">
+        <item quantity="zero">"עריכת הודעה זו תמחק %d הודעות מאוחרות יותר."</item>
+        <item quantity="one">"עריכת הודעה זו תמחק %d הודעה מאוחרת יותר."</item>
+        <item quantity="two">"עריכת הודעה זו תמחק %d הודעות מאוחרות יותר."</item>
+        <item quantity="few">"עריכת הודעה זו תמחק %d הודעות מאוחרות יותר."</item>
+        <item quantity="many">"עריכת הודעה זו תמחק %d הודעות מאוחרות יותר."</item>
+        <item quantity="other">"עריכת הודעה זו תמחק %d הודעות מאוחרות יותר."</item>
+    </plurals>
     <string name="l10n_5fc97790c6a8d0d3" formatted="false">"חלף"</string>
     <string name="l10n_755ad4f73ca41dd5" formatted="false">"פלט ריק"</string>
     <string name="l10n_aa1092d775fca059" formatted="false">"אפשר גלישת שורות בקוד"</string>
@@ -714,6 +802,14 @@
     <string name="l10n_5b7bdb61fdbc48d5" formatted="false">"מרענן..."</string>
     <string name="l10n_12798652dee90c23" formatted="false">"צור תשובה מחדש"</string>
     <string name="l10n_e57e8f39b6e8ce1b" formatted="false">"יצירה מחדש של תגובה זו תמחק %lld הודעות מאוחרות יותר."</string>
+    <plurals name="l10n_e57e8f39b6e8ce1b">
+        <item quantity="zero">"יצירה מחדש של תגובה זו תמחק %d הודעות מאוחרות יותר."</item>
+        <item quantity="one">"יצירה מחדש של תגובה זו תמחק %d הודעה מאוחרת יותר."</item>
+        <item quantity="two">"יצירה מחדש של תגובה זו תמחק %d הודעות מאוחרות יותר."</item>
+        <item quantity="few">"יצירה מחדש של תגובה זו תמחק %d הודעות מאוחרות יותר."</item>
+        <item quantity="many">"יצירה מחדש של תגובה זו תמחק %d הודעות מאוחרות יותר."</item>
+        <item quantity="other">"יצירה מחדש של תגובה זו תמחק %d הודעות מאוחרות יותר."</item>
+    </plurals>
     <string name="l10n_cce7155371fc2668" formatted="false">"לִטעוֹן מִחָדָשׁ"</string>
     <string name="l10n_8b1c557db10dc346" formatted="false">"טען מחדש את גרסת השרת"</string>
     <string name="l10n_76cc25831dafa135" formatted="false">"לטעון מחדש את גרסת השרת?"</string>

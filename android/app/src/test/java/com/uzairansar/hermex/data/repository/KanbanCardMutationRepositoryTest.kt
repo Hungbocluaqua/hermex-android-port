@@ -4,6 +4,7 @@ import com.uzairansar.hermex.core.model.KanbanContractViolation
 import com.uzairansar.hermex.core.model.KanbanCreateCardRequestBody
 import com.uzairansar.hermex.core.model.KanbanEditCardRequestBody
 import com.uzairansar.hermex.core.model.KanbanDependencyRequestBody
+import com.uzairansar.hermex.core.model.KanbanBulkActionRequestBody
 import com.uzairansar.hermex.core.network.HermesApiClient
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
@@ -210,6 +211,94 @@ class KanbanCardMutationRepositoryTest {
                 repository.addDependency("main", KanbanDependencyRequestBody("CARD-0", "CARD-1"))
             }.exceptionOrNull()
             assertTrue(dependencyError is KanbanContractViolation.MissingDependencyIdentity)
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun bulkActionsUseExactVerifiedRouteAndBodies() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            repeat(4) {
+                server.enqueue(json("""{"results":[{"id":"CARD-1","ok":true}],"read_only":false}"""))
+            }
+            val repository = repository(server)
+            val ids = listOf("CARD-1", "CARD-2")
+
+            repository.performBulkAction("release board", KanbanBulkActionRequestBody(ids, status = "done"))
+            repository.performBulkAction("release board", KanbanBulkActionRequestBody(ids, assignee = ""))
+            repository.performBulkAction("release board", KanbanBulkActionRequestBody(ids, priority = 4))
+            repository.performBulkAction("release board", KanbanBulkActionRequestBody(ids, archive = true))
+
+            val expectedBodies = listOf(
+                """{"ids":["CARD-1","CARD-2"],"status":"done"}""",
+                """{"ids":["CARD-1","CARD-2"],"assignee":""}""",
+                """{"ids":["CARD-1","CARD-2"],"priority":4}""",
+                """{"ids":["CARD-1","CARD-2"],"archive":true}""",
+            )
+            expectedBodies.forEach { expectedBody ->
+                val request = server.takeRequest()
+                assertEquals("POST", request.method)
+                assertEquals("/api/kanban/tasks/bulk", request.url.encodedPath)
+                assertEquals("release board", request.url.queryParameter("board"))
+                assertEquals(expectedBody, request.body?.utf8())
+                assertEquals(null, request.headers["Authorization"])
+            }
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun bulkResultsTolerateUnknownFieldsLossyValuesAndMalformedMembers() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            server.enqueue(json("""{"results":[{"id":"CARD-1","ok":"true","future":1},42,{"id":{"bad":true},"ok":false}],"read_only":"false","future":true}"""))
+
+            val envelope = repository(server).performBulkAction(
+                "main",
+                KanbanBulkActionRequestBody(ids = listOf("CARD-1"), status = "done"),
+            )
+
+            assertEquals(false, envelope.readOnly)
+            assertEquals(3, envelope.results?.size)
+            assertEquals("CARD-1", envelope.results?.first()?.cardId)
+            assertEquals(true, envelope.results?.first()?.ok)
+            assertEquals(null, envelope.results?.get(1)?.cardId)
+            assertEquals(null, envelope.results?.get(2)?.cardId)
+            assertEquals(false, envelope.results?.get(2)?.ok)
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun bulkTransportRejectsEmptyIdsRunningAndAmbiguousActionsBeforeNetwork() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            val repository = repository(server)
+
+            val errors = listOf(
+                runCatching {
+                    repository.performBulkAction("main", KanbanBulkActionRequestBody(emptyList(), status = "done"))
+                }.exceptionOrNull(),
+                runCatching {
+                    repository.performBulkAction("main", KanbanBulkActionRequestBody(listOf("CARD-1"), status = "running"))
+                }.exceptionOrNull(),
+                runCatching {
+                    repository.performBulkAction(
+                        "main",
+                        KanbanBulkActionRequestBody(listOf("CARD-1"), status = "done", priority = 2),
+                    )
+                }.exceptionOrNull(),
+            )
+
+            assertTrue(errors.all { it is IllegalArgumentException })
+            assertEquals(0, server.requestCount)
         } finally {
             server.close()
         }

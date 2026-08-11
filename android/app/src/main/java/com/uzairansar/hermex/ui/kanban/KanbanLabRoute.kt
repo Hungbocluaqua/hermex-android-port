@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -36,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,7 +48,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +70,7 @@ import com.uzairansar.hermex.core.model.KanbanCardSummary
 import com.uzairansar.hermex.core.model.KanbanCompatibilityWarning
 import com.uzairansar.hermex.data.repository.KanbanBrowseDataSource
 import com.uzairansar.hermex.ui.localization.localizedString
+import com.uzairansar.hermex.ui.localization.localizedPluralString
 import com.uzairansar.hermex.ui.theme.HermexCardShape
 import com.uzairansar.hermex.ui.theme.HermexIconButton
 import com.uzairansar.hermex.ui.theme.HermexPillButton
@@ -88,12 +96,16 @@ internal fun KanbanLabRoute(
     val viewModel: KanbanLabViewModel = viewModel(key = viewModelKey, factory = factory)
     val state by viewModel.state.collectAsStateWithLifecycle()
     val workflowState by viewModel.workflowState.collectAsStateWithLifecycle()
+    val bulkState by viewModel.bulkState.collectAsStateWithLifecycle()
     var showsFilters by rememberSaveable { mutableStateOf(false) }
+    var showsBulkActions by rememberSaveable { mutableStateOf(false) }
     var cardNavigationStack by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var editorOpen by rememberSaveable { mutableStateOf(false) }
     var editorCardId by rememberSaveable { mutableStateOf<String?>(null) }
     var editorSessionId by rememberSaveable { mutableStateOf(0) }
     var pendingRunningAction by remember { mutableStateOf<KanbanPendingRunningAction?>(null) }
+    var pendingRunningBulkAction by remember { mutableStateOf<KanbanBulkAction?>(null) }
+    var confirmsBulkArchive by rememberSaveable { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(lifecycleOwner, viewModel) {
@@ -121,6 +133,7 @@ internal fun KanbanLabRoute(
     val showsCardDetail = selectedCardId != null &&
         selectedBoardSlug != null &&
         state.availability == KanbanAvailability.Content
+    val cardWritesAllowed = state.canMutateCards && bulkState.phase == null
     val performWorkflowAction: (KanbanCardSummary, KanbanCardWorkflowAction, Boolean) -> Unit =
         { card, action, confirmingRunningExit ->
             when (action) {
@@ -147,6 +160,12 @@ internal fun KanbanLabRoute(
         }
     }
 
+    if (!showsEditor && !showsCardDetail) {
+        BackHandler(enabled = bulkState.isSelectingCards && bulkState.phase == null) {
+            viewModel.clearCardSelection()
+        }
+    }
+
     if (showsEditor) {
         KanbanCardEditorRoute(
             repository = repository,
@@ -157,7 +176,7 @@ internal fun KanbanLabRoute(
             tenantOptions = state.tenantOptions,
             prerequisiteOptions = state.snapshot?.allCards().orEmpty().filter { it.cardId != editorCardId },
             baselineCards = state.snapshot?.allCards().orEmpty(),
-            allowsMutation = state.canMutateCards,
+            allowsMutation = cardWritesAllowed,
             onCancel = { editorOpen = false },
             onSaved = {
                 editorOpen = false
@@ -175,7 +194,7 @@ internal fun KanbanLabRoute(
             board = selectedBoardSlug,
             cardId = checkNotNull(selectedCardId),
             parentOffline = state.isOffline,
-            parentAllowsWrites = state.canMutateCards,
+            parentAllowsWrites = cardWritesAllowed,
             refreshRevision = state.detailRefreshRevision,
             onBack = { cardNavigationStack = cardNavigationStack.dropLast(1) },
             onOpenRelatedCard = { related ->
@@ -188,7 +207,7 @@ internal fun KanbanLabRoute(
             },
             workflowState = workflowState,
             allCards = state.snapshot?.allCards().orEmpty(),
-            canUseWorkflow = state.canUseCardWorkflow,
+            canUseWorkflow = state.canUseCardWorkflow && bulkState.phase == null,
             moveDestinations = viewModel::moveDestinations,
             displayedCard = viewModel::displayedCard,
             displayedPrerequisites = viewModel::displayedPrerequisites,
@@ -208,11 +227,17 @@ internal fun KanbanLabRoute(
                 onRefresh = viewModel::load,
                 onSelectBoard = viewModel::selectBoard,
                 onShowFilters = { showsFilters = true },
-                canCreateCard = state.canMutateCards,
+                canCreateCard = cardWritesAllowed,
                 onCreateCard = {
                     editorSessionId += 1
                     editorCardId = null
                     editorOpen = true
+                },
+                isSelectingCards = bulkState.isSelectingCards,
+                canSelectCards = viewModel.canUseBulkActions(),
+                boardWriteInProgress = bulkState.phase != null,
+                onToggleSelectingCards = {
+                    if (bulkState.isSelectingCards) viewModel.clearCardSelection() else viewModel.beginSelectingCards()
                 },
             )
             when (state.availability) {
@@ -231,6 +256,16 @@ internal fun KanbanLabRoute(
                     onRetryMutation = retryMutation,
                     onCheckMutation = viewModel::checkUncertainMutation,
                     onUndoArchive = viewModel::undoArchive,
+                    bulkState = bulkState,
+                    bulkAvailability = viewModel.bulkActionsAvailability(),
+                    canRetryFailedBulk = viewModel.canRetryFailedBulkAction(),
+                    canCheckUncertainBulk = viewModel.canCheckUncertainBulkAction(),
+                    onToggleCardSelection = viewModel::toggleCardSelection,
+                    onShowBulkActions = { showsBulkActions = true },
+                    onClearSelection = viewModel::clearCardSelection,
+                    onDismissBulkSummary = viewModel::dismissBulkActionSummary,
+                    onRetryFailedBulk = viewModel::retryFailedBulkAction,
+                    onCheckUncertainBulk = viewModel::checkUncertainBulkAction,
                 )
                 else -> KanbanUnavailable(state.availability, viewModel::load)
             }
@@ -252,6 +287,32 @@ internal fun KanbanLabRoute(
         )
     }
 
+    if (showsBulkActions && !showsEditor && !showsCardDetail && state.availability == KanbanAvailability.Content) {
+        KanbanBulkActionsSheet(
+            selectedCount = bulkState.selectedCardCount,
+            statuses = state.configuration?.columns.orEmpty().filter { it != "running" },
+            profiles = state.profileOptions,
+            canSubmit = viewModel::canSubmitBulkAction,
+            onDismiss = { if (bulkState.phase == null) showsBulkActions = false },
+            onSubmit = { action ->
+                when {
+                    action is KanbanBulkAction.ArchiveCards -> {
+                        showsBulkActions = false
+                        confirmsBulkArchive = true
+                    }
+                    action is KanbanBulkAction.ChangeStatus && viewModel.bulkSelectionContainsRunning() -> {
+                        showsBulkActions = false
+                        pendingRunningBulkAction = action
+                    }
+                    else -> {
+                        showsBulkActions = false
+                        viewModel.performBulkAction(action)
+                    }
+                }
+            },
+        )
+    }
+
     pendingRunningAction?.let { pending ->
         AlertDialog(
             onDismissRequest = { pendingRunningAction = null },
@@ -268,6 +329,60 @@ internal fun KanbanLabRoute(
             },
             dismissButton = {
                 TextButton(onClick = { pendingRunningAction = null }) { Text(localizedString("Cancel")) }
+            },
+        )
+    }
+
+
+    pendingRunningBulkAction?.let { action ->
+        AlertDialog(
+            onDismissRequest = { pendingRunningBulkAction = null },
+            title = { Text(localizedString("Leave Running?")) },
+            text = { Text(localizedString("Leaving Running may clear the Card's claim and worker state.")) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingRunningBulkAction = null
+                        viewModel.performBulkAction(action, confirmedRunningExit = true)
+                    },
+                    modifier = Modifier.testTag("kanban_bulk_confirm_running_exit"),
+                ) { Text(localizedString("Continue")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRunningBulkAction = null }) { Text(localizedString("Cancel")) }
+            },
+        )
+    }
+
+    if (confirmsBulkArchive) {
+        val containsRunning = viewModel.bulkSelectionContainsRunning()
+        AlertDialog(
+            onDismissRequest = { confirmsBulkArchive = false },
+            title = { Text(localizedString("Archive Cards")) },
+            text = {
+                Text(
+                    if (containsRunning) {
+                        "${localizedString("The selected Cards will be moved to the archive.")} ${localizedString("Leaving Running may clear the Card's claim and worker state.")}"
+                    } else {
+                        localizedString("The selected Cards will be moved to the archive.")
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmsBulkArchive = false
+                        viewModel.performBulkAction(
+                            KanbanBulkAction.ArchiveCards,
+                            confirmedRunningExit = containsRunning,
+                            confirmedArchive = true,
+                        )
+                    },
+                    modifier = Modifier.testTag("kanban_bulk_confirm_archive"),
+                ) { Text(localizedString("Archive Cards"), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmsBulkArchive = false }) { Text(localizedString("Cancel")) }
             },
         )
     }
@@ -294,6 +409,10 @@ private fun KanbanTopBar(
     onShowFilters: () -> Unit,
     canCreateCard: Boolean,
     onCreateCard: () -> Unit,
+    isSelectingCards: Boolean,
+    canSelectCards: Boolean,
+    boardWriteInProgress: Boolean,
+    onToggleSelectingCards: () -> Unit,
 ) {
     var boardMenuExpanded by remember { mutableStateOf(false) }
     Row(
@@ -309,7 +428,7 @@ private fun KanbanTopBar(
             HermexPillButton(
                 label = state.selectedBoard?.name ?: state.selectedBoardSlug ?: localizedString("Kanban"),
                 onClick = { if (state.boards.isNotEmpty()) boardMenuExpanded = true },
-                enabled = state.boards.isNotEmpty() && !state.isRefreshing,
+                enabled = state.boards.isNotEmpty() && !state.isRefreshing && !boardWriteInProgress,
                 modifier = Modifier.fillMaxWidth().testTag("kanban_board_picker"),
             )
             DropdownMenu(
@@ -334,6 +453,13 @@ private fun KanbanTopBar(
                 }
             }
         }
+        HermexIconButton(
+            localizedString(if (isSelectingCards) "Cancel" else "Select Cards"),
+            if (isSelectingCards) "×" else "✓",
+            onToggleSelectingCards,
+            enabled = !boardWriteInProgress && (canSelectCards || isSelectingCards),
+            modifier = Modifier.testTag("kanban_select_cards"),
+        )
         HermexIconButton(
             localizedString("New Card"),
             "+",
@@ -405,6 +531,16 @@ internal fun KanbanBoardContent(
     onRetryMutation: (KanbanCardSummary) -> Unit = {},
     onCheckMutation: (KanbanCardSummary) -> Unit = {},
     onUndoArchive: () -> Unit = {},
+    bulkState: KanbanBulkUiState = KanbanBulkUiState(),
+    bulkAvailability: KanbanBulkActionsAvailability = KanbanBulkActionsAvailability.NoSelection,
+    canRetryFailedBulk: Boolean = false,
+    canCheckUncertainBulk: Boolean = false,
+    onToggleCardSelection: (KanbanCardSummary) -> Unit = {},
+    onShowBulkActions: () -> Unit = {},
+    onClearSelection: () -> Unit = {},
+    onDismissBulkSummary: () -> Unit = {},
+    onRetryFailedBulk: () -> Unit = {},
+    onCheckUncertainBulk: () -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
         when {
@@ -444,6 +580,27 @@ internal fun KanbanBoardContent(
                 Text(localizedString("Unavailable"), modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
                 HermexPillButton(localizedString("Retry"), onRefresh)
             }
+        }
+        bulkState.phase?.let { KanbanBulkProgressBanner(it) }
+        if (bulkState.phase == null) {
+            bulkState.summary?.let { summary ->
+                KanbanBulkSummaryBanner(
+                    summary = summary,
+                    canRetryFailed = canRetryFailedBulk,
+                    canCheckUncertain = canCheckUncertainBulk,
+                    onDismiss = onDismissBulkSummary,
+                    onRetryFailed = onRetryFailedBulk,
+                    onCheckUncertain = onCheckUncertainBulk,
+                )
+            }
+        }
+        if (bulkState.isSelectingCards) {
+            KanbanSelectionControls(
+                selectedCount = bulkState.selectedCardCount,
+                availability = bulkAvailability,
+                onShowBulkActions = onShowBulkActions,
+                onDone = onClearSelection,
+            )
         }
         OutlinedTextField(
             value = state.searchQuery,
@@ -490,6 +647,9 @@ internal fun KanbanBoardContent(
                     onWorkflowAction = onWorkflowAction,
                     onRetryMutation = onRetryMutation,
                     onCheckMutation = onCheckMutation,
+                    isSelectingCards = bulkState.isSelectingCards,
+                    selectedCardIds = bulkState.selectedCardIds,
+                    onToggleCardSelection = onToggleCardSelection,
                 )
             }
         }
@@ -541,6 +701,149 @@ private fun KanbanCompatibilityBanner(warnings: List<KanbanCompatibilityWarning>
 }
 
 @Composable
+private fun KanbanBulkProgressBanner(phase: KanbanBulkActionPhase) {
+    val message = localizedString(
+        if (phase == KanbanBulkActionPhase.Submitting) "Updating task..." else "Checking Result",
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .semantics { contentDescription = message }
+            .testTag("kanban_bulk_progress"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+        Text(message, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun KanbanBulkSummaryBanner(
+    summary: KanbanBulkActionSummary,
+    canRetryFailed: Boolean,
+    canCheckUncertain: Boolean,
+    onDismiss: () -> Unit,
+    onRetryFailed: () -> Unit,
+    onCheckUncertain: () -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(summary) { focusRequester.requestFocus() }
+    val needsAttention = summary.needsAttention.isNotEmpty()
+    val resultDescription = listOf(
+        "${summary.succeededCount} ${localizedString("Complete")}",
+        "${summary.failedCount} ${localizedString("Failed")}",
+        "${summary.uncertainCount} ${localizedString("Outcome Uncertain")}",
+    ).joinToString()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                if (needsAttention) MaterialTheme.colorScheme.tertiaryContainer
+                else MaterialTheme.colorScheme.secondaryContainer,
+            )
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .focusRequester(focusRequester)
+            .focusable()
+            .semantics { contentDescription = resultDescription }
+            .testTag("kanban_bulk_summary"),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                localizedString(if (needsAttention) "Needs Attention" else "Complete"),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            HermexPillButton(localizedString("Dismiss"), onDismiss)
+        }
+        Text(resultDescription, style = MaterialTheme.typography.bodySmall)
+        summary.needsAttention.forEach { member ->
+            Text(
+                "${member.cardTitle} · ${localizedString(if (member.outcome == KanbanBulkMemberOutcome.Failed) "Failed" else "Outcome Uncertain")}",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.testTag("kanban_bulk_member_${member.cardId}"),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (canRetryFailed) {
+                HermexPillButton(
+                    localizedString("Retry Failed"),
+                    onRetryFailed,
+                    modifier = Modifier.testTag("kanban_bulk_retry_failed"),
+                )
+            }
+            if (canCheckUncertain) {
+                HermexPillButton(
+                    localizedString("Refresh"),
+                    onCheckUncertain,
+                    modifier = Modifier.testTag("kanban_bulk_check_uncertain"),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun KanbanSelectionControls(
+    selectedCount: Int,
+    availability: KanbanBulkActionsAvailability,
+    onShowBulkActions: () -> Unit,
+    onDone: () -> Unit,
+) {
+    val count = localizedPluralString("%lld Cards", selectedCount)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .testTag("kanban_selection_controls"),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "$count · ${localizedString("Selected")}",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            HermexPillButton(
+                localizedString("Bulk Actions"),
+                onShowBulkActions,
+                enabled = availability == KanbanBulkActionsAvailability.Available,
+                filled = true,
+                modifier = Modifier.testTag("kanban_bulk_actions"),
+            )
+            HermexPillButton(
+                localizedString("Done"),
+                onDone,
+                enabled = availability != KanbanBulkActionsAvailability.BoardBusy,
+            )
+        }
+        bulkDisabledExplanation(availability)?.let { explanation ->
+            Text(explanation, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+        }
+    }
+}
+
+@Composable
+private fun bulkDisabledExplanation(availability: KanbanBulkActionsAvailability): String? = when (availability) {
+    KanbanBulkActionsAvailability.Available,
+    KanbanBulkActionsAvailability.NoSelection -> null
+    KanbanBulkActionsAvailability.Offline -> localizedString("Offline—showing previously loaded data")
+    KanbanBulkActionsAvailability.Incompatible -> localizedString("Unavailable")
+    KanbanBulkActionsAvailability.ReadOnly -> localizedString("Read-only")
+    KanbanBulkActionsAvailability.Refreshing -> localizedString("The Board is refreshing.")
+    KanbanBulkActionsAvailability.BoardBusy -> localizedString("Updating task...")
+    KanbanBulkActionsAvailability.InvalidSelection ->
+        localizedString("The selection is no longer available. Refresh the Board and select the Cards again.")
+    KanbanBulkActionsAvailability.UnknownStatus -> localizedString("Unknown Status")
+}
+
+@Composable
 private fun KanbanCardList(
     state: KanbanLabUiState,
     cards: List<KanbanCardSummary>,
@@ -551,6 +854,9 @@ private fun KanbanCardList(
     onWorkflowAction: (KanbanCardSummary, KanbanCardWorkflowAction) -> Unit,
     onRetryMutation: (KanbanCardSummary) -> Unit,
     onCheckMutation: (KanbanCardSummary) -> Unit,
+    isSelectingCards: Boolean,
+    selectedCardIds: Set<String>,
+    onToggleCardSelection: (KanbanCardSummary) -> Unit,
 ) {
     val groups = if (state.filters.groupByProfile) groupedKanbanCards(cards) else listOf(KanbanCardGroup(null, cards))
     LazyColumn(
@@ -581,6 +887,9 @@ private fun KanbanCardList(
                     onWorkflowAction = onWorkflowAction,
                     onRetryMutation = onRetryMutation,
                     onCheckMutation = onCheckMutation,
+                    isSelectingCards = isSelectingCards,
+                    isSelected = card.cardId in selectedCardIds,
+                    onToggleSelection = onToggleCardSelection,
                 )
             }
         }
@@ -597,6 +906,9 @@ private fun KanbanCardRow(
     onWorkflowAction: (KanbanCardSummary, KanbanCardWorkflowAction) -> Unit,
     onRetryMutation: (KanbanCardSummary) -> Unit,
     onCheckMutation: (KanbanCardSummary) -> Unit,
+    isSelectingCards: Boolean,
+    isSelected: Boolean,
+    onToggleSelection: (KanbanCardSummary) -> Unit,
 ) {
     val title = card.title?.trim().takeUnless { it.isNullOrEmpty() } ?: localizedString("Card")
     val id = card.cardId ?: localizedString("Unknown")
@@ -606,6 +918,7 @@ private fun KanbanCardRow(
     val age = card.ageSeconds?.let(::kanbanAgeAbbreviation)
     val statusTitle = localizedString(kanbanStatusTitleKey(card.status.orEmpty()))
     val staleness = kanbanStaleness(card)
+    val selectedLabel = localizedString("Selected")
     val stalenessColor = when (staleness) {
         KanbanStaleness.Warning -> Color(0xFFFF9800)
         KanbanStaleness.Critical -> MaterialTheme.colorScheme.error
@@ -615,7 +928,9 @@ private fun KanbanCardRow(
         modifier = Modifier
             .fillMaxWidth()
             .hermexGlass(shape = HermexCardShape, castsShadow = false, surfaceLevel = HermexSurfaceLevel.Raised)
-            .clickable(enabled = card.cardId != null) { card.cardId?.let(onOpenCard) }
+            .clickable(enabled = card.cardId != null) {
+                if (isSelectingCards) onToggleSelection(card) else card.cardId?.let(onOpenCard)
+            }
             .semantics {
                 contentDescription = listOfNotNull(
                     id,
@@ -623,13 +938,22 @@ private fun KanbanCardRow(
                     statusTitle,
                     profile,
                     card.tenant,
+                    selectedLabel.takeIf { isSelected },
                 ).joinToString()
+                selected = isSelected
             }
             .padding(14.dp)
             .testTag("kanban_card_${card.cardId}"),
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (isSelectingCards) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = null,
+                    modifier = Modifier.testTag("kanban_selection_${card.cardId}"),
+                )
+            }
             card.priority?.let { priority ->
                 Text(
                     "P$priority",
@@ -642,7 +966,7 @@ private fun KanbanCardRow(
             Text(id, style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.secondary)
             Spacer(Modifier.weight(1f))
             age?.let { Text("◷ $it", style = MaterialTheme.typography.labelSmall, color = stalenessColor) }
-            KanbanCardActionsMenu(card, destinations, actionsEnabled, onWorkflowAction)
+            if (!isSelectingCards) KanbanCardActionsMenu(card, destinations, actionsEnabled, onWorkflowAction)
         }
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         card.body?.takeIf(String::isNotBlank)?.let { body ->
@@ -825,6 +1149,161 @@ private fun KanbanEmptyState(hasFilters: Boolean, onClearFilters: () -> Unit) {
                 color = MaterialTheme.colorScheme.secondary,
             )
             if (hasFilters) HermexPillButton(localizedString("Clear Filters"), onClearFilters)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun KanbanBulkActionsSheet(
+    selectedCount: Int,
+    statuses: List<String>,
+    profiles: List<String>,
+    canSubmit: (KanbanBulkAction) -> Boolean,
+    onDismiss: () -> Unit,
+    onSubmit: (KanbanBulkAction) -> Unit,
+) {
+    var status by rememberSaveable(statuses) {
+        mutableStateOf("todo".takeIf(statuses::contains) ?: statuses.firstOrNull().orEmpty())
+    }
+    var profile by rememberSaveable { mutableStateOf<String?>(null) }
+    var priorityText by rememberSaveable { mutableStateOf("0") }
+    val priority = priorityText.toIntOrNull()
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(localizedString("Bulk Actions"), style = MaterialTheme.typography.titleLarge)
+            Text(localizedPluralString("%lld Cards", selectedCount), style = MaterialTheme.typography.titleSmall)
+
+            Text(localizedString("Change Status"), style = MaterialTheme.typography.titleSmall)
+            KanbanBulkChoiceRow(
+                label = localizedString("Status"),
+                selected = status,
+                options = statuses,
+                optionLabel = { localizedString(kanbanStatusTitleKey(it)) },
+                testTag = "kanban_bulk_status_picker",
+                onSelect = { status = it },
+            )
+            HermexPillButton(
+                localizedString("Change Status"),
+                { onSubmit(KanbanBulkAction.ChangeStatus(status)) },
+                enabled = canSubmit(KanbanBulkAction.ChangeStatus(status)),
+                filled = true,
+                modifier = Modifier.fillMaxWidth().testTag("kanban_bulk_change_status"),
+            )
+
+            HorizontalDivider()
+            Text(localizedString("Assign Profile"), style = MaterialTheme.typography.titleSmall)
+            KanbanBulkNullableChoiceRow(
+                label = localizedString("Profile"),
+                selected = profile,
+                options = profiles,
+                nullLabel = localizedString("Unassigned"),
+                testTag = "kanban_bulk_profile_picker",
+                onSelect = { profile = it },
+            )
+            HermexPillButton(
+                localizedString("Assign Profile"),
+                { onSubmit(KanbanBulkAction.AssignProfile(profile)) },
+                enabled = canSubmit(KanbanBulkAction.AssignProfile(profile)),
+                filled = true,
+                modifier = Modifier.fillMaxWidth().testTag("kanban_bulk_assign_profile"),
+            )
+
+            HorizontalDivider()
+            Text(localizedString("Set Priority"), style = MaterialTheme.typography.titleSmall)
+            OutlinedTextField(
+                value = priorityText,
+                onValueChange = { input ->
+                    if (input.isEmpty() || input == "-" || input.toIntOrNull() != null) priorityText = input
+                },
+                modifier = Modifier.fillMaxWidth().testTag("kanban_bulk_priority_input"),
+                label = { Text(localizedString("Priority")) },
+                supportingText = { Text(localizedString("A whole number from -100 through 100.")) },
+                singleLine = true,
+            )
+            HermexPillButton(
+                localizedString("Set Priority"),
+                { priority?.let { onSubmit(KanbanBulkAction.SetPriority(it)) } },
+                enabled = priority != null && canSubmit(KanbanBulkAction.SetPriority(priority)),
+                filled = true,
+                modifier = Modifier.fillMaxWidth().testTag("kanban_bulk_set_priority"),
+            )
+
+            HorizontalDivider()
+            TextButton(
+                onClick = { onSubmit(KanbanBulkAction.ArchiveCards) },
+                enabled = canSubmit(KanbanBulkAction.ArchiveCards),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).testTag("kanban_bulk_archive"),
+            ) {
+                Text(localizedString("Archive Cards"), color = MaterialTheme.colorScheme.error)
+            }
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+            ) { Text(localizedString("Cancel")) }
+            Spacer(Modifier.size(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun KanbanBulkChoiceRow(
+    label: String,
+    selected: String,
+    options: List<String>,
+    optionLabel: @Composable (String) -> String,
+    testTag: String,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        Box {
+            HermexPillButton(optionLabel(selected), { expanded = true }, modifier = Modifier.testTag(testTag))
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(optionLabel(option)) },
+                        onClick = { expanded = false; onSelect(option) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun KanbanBulkNullableChoiceRow(
+    label: String,
+    selected: String?,
+    options: List<String>,
+    nullLabel: String,
+    testTag: String,
+    onSelect: (String?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        Box {
+            HermexPillButton(selected ?: nullLabel, { expanded = true }, modifier = Modifier.testTag(testTag))
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(nullLabel) },
+                    onClick = { expanded = false; onSelect(null) },
+                )
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option) },
+                        onClick = { expanded = false; onSelect(option) },
+                    )
+                }
+            }
         }
     }
 }

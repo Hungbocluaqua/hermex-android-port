@@ -18,16 +18,88 @@
     <string name="l10n_bc576900b6f6e566" formatted="false">"%@, активный сервер"</string>
     <string name="l10n_16070acfe08366e8" formatted="false">"%lld"</string>
     <string name="l10n_ec77970ef773212e" formatted="false">"%lld карточки"</string>
+    <plurals name="l10n_ec77970ef773212e">
+        <item quantity="zero">"%d карточки"</item>
+        <item quantity="one">"%d карточка"</item>
+        <item quantity="two">"%d карточки"</item>
+        <item quantity="few">"%d карточки"</item>
+        <item quantity="many">"%d карточки"</item>
+        <item quantity="other">"%d карточки"</item>
+    </plurals>
     <string name="l10n_8d777c131031fa2e" formatted="false">"%lld зависимые карточки"</string>
+    <plurals name="l10n_8d777c131031fa2e">
+        <item quantity="zero">"%d зависимые карточки"</item>
+        <item quantity="one">"%d зависимая карточка"</item>
+        <item quantity="two">"%d зависимые карточки"</item>
+        <item quantity="few">"%d зависимые карточки"</item>
+        <item quantity="many">"%d зависимые карточки"</item>
+        <item quantity="other">"%d зависимые карточки"</item>
+    </plurals>
     <string name="l10n_66a4be0dc2595729" formatted="false">"%lld предварительных условия"</string>
+    <plurals name="l10n_66a4be0dc2595729">
+        <item quantity="zero">"%d предварительных условия"</item>
+        <item quantity="one">"%d предварительное условие"</item>
+        <item quantity="two">"%d предварительных условия"</item>
+        <item quantity="few">"%d предварительных условия"</item>
+        <item quantity="many">"%d предварительных условия"</item>
+        <item quantity="other">"%d предварительных условия"</item>
+    </plurals>
     <string name="l10n_f6450a6cc043203f" formatted="false">"%lld добавлено"</string>
     <string name="l10n_5e99075a998414f8" formatted="false">"%lld комментария"</string>
+    <plurals name="l10n_5e99075a998414f8">
+        <item quantity="zero">"%d комментария"</item>
+        <item quantity="one">"%d комментарий"</item>
+        <item quantity="two">"%d комментария"</item>
+        <item quantity="few">"%d комментария"</item>
+        <item quantity="many">"%d комментария"</item>
+        <item quantity="other">"%d комментария"</item>
+    </plurals>
     <string name="l10n_06c13ef4292ad119" formatted="false">"%lld измененного файла"</string>
+    <plurals name="l10n_06c13ef4292ad119">
+        <item quantity="zero">"%d измененного файла"</item>
+        <item quantity="one">"%d измененный файл"</item>
+        <item quantity="two">"%d измененного файла"</item>
+        <item quantity="few">"%d измененных файла"</item>
+        <item quantity="many">"%d измененных файлов"</item>
+        <item quantity="other">"%d измененного файла"</item>
+    </plurals>
     <string name="l10n_c4b7ead9d1bf1471" formatted="false">"%lld строки"</string>
+    <plurals name="l10n_c4b7ead9d1bf1471">
+        <item quantity="zero">"%d строки"</item>
+        <item quantity="one">"%d строка"</item>
+        <item quantity="two">"%d строки"</item>
+        <item quantity="few">"%d строки"</item>
+        <item quantity="many">"%d строк"</item>
+        <item quantity="other">"%d строки"</item>
+    </plurals>
     <string name="l10n_2efcf5438a29b31f" formatted="false">"%lld сообщения"</string>
+    <plurals name="l10n_2efcf5438a29b31f">
+        <item quantity="zero">"%d сообщения"</item>
+        <item quantity="one">"%d сообщение"</item>
+        <item quantity="two">"%d сообщения"</item>
+        <item quantity="few">"%d сообщения"</item>
+        <item quantity="many">"%d сообщений"</item>
+        <item quantity="other">"%d сообщения"</item>
+    </plurals>
     <string name="l10n_ced88678ac893dde" formatted="false">"%lld удалено"</string>
     <string name="l10n_232aab9f8671f81d" formatted="false">"%lld сессии"</string>
+    <plurals name="l10n_232aab9f8671f81d">
+        <item quantity="zero">"%d сессии"</item>
+        <item quantity="one">"%d сессия"</item>
+        <item quantity="two">"%d сессии"</item>
+        <item quantity="few">"%d сессии"</item>
+        <item quantity="many">"%d сессий"</item>
+        <item quantity="other">"%d сессии"</item>
+    </plurals>
     <string name="l10n_66137dc5d00d671d" formatted="false">"%lld навыка"</string>
+    <plurals name="l10n_66137dc5d00d671d">
+        <item quantity="zero">"%d навыка"</item>
+        <item quantity="one">"%d навык"</item>
+        <item quantity="two">"%d навыка"</item>
+        <item quantity="few">"%d навыка"</item>
+        <item quantity="many">"%d навыков"</item>
+        <item quantity="other">"%d навыка"</item>
+    </plurals>
     <string name="l10n_78cd57f9892157b8" formatted="false">"контекст %lld%%"</string>
     <string name="l10n_6ab06c5fe8caa9fa" formatted="false">"доля %lld%%"</string>
     <string name="l10n_a5b19753b0ff34b9" formatted="false">", выполняется переключение"</string>
@@ -47,6 +119,14 @@
     <string name="l10n_d74340399e2a5b1d" formatted="false">"Активный профиль"</string>
     <string name="l10n_81c0d915fa6d82fd" formatted="false">"Активность"</string>
     <string name="l10n_03f7eb4fcb825734" formatted="false">"Активность: %lld инструмента"</string>
+    <plurals name="l10n_03f7eb4fcb825734">
+        <item quantity="zero">"Активность: %d инструмента"</item>
+        <item quantity="one">"Активность: %d инструмент"</item>
+        <item quantity="two">"Активность: %d инструмента"</item>
+        <item quantity="few">"Активность: %d инструмента"</item>
+        <item quantity="many">"Активность: %d инструментов"</item>
+        <item quantity="other">"Активность: %d инструмента"</item>
+    </plurals>
     <string name="l10n_61cc55aa04531847" formatted="false">"Добавить"</string>
     <string name="l10n_ea65bead2508867e" formatted="false">"Добавить %@ в избранное"</string>
     <string name="l10n_42b949077d2f4201" formatted="false">"Добавить заголовок"</string>
@@ -337,6 +417,14 @@
     <string name="l10n_2ee30cf2c2908397" formatted="false">"Изменить сообщение"</string>
     <string name="l10n_9d0e05d653ce25e7" formatted="false">"Изменить задачу"</string>
     <string name="l10n_b0179bbf23f36576" formatted="false">"При изменении этого сообщения будет удалено %lld последующих сообщения."</string>
+    <plurals name="l10n_b0179bbf23f36576">
+        <item quantity="zero">"При изменении этого сообщения будет удалено %d последующих сообщения."</item>
+        <item quantity="one">"При изменении этого сообщения будет удалено %d последующее сообщение."</item>
+        <item quantity="two">"При изменении этого сообщения будет удалено %d последующих сообщения."</item>
+        <item quantity="few">"При изменении этого сообщения будет удалено %d последующих сообщения."</item>
+        <item quantity="many">"При изменении этого сообщения будет удалено %d последующих сообщений."</item>
+        <item quantity="other">"При изменении этого сообщения будет удалено %d последующих сообщения."</item>
+    </plurals>
     <string name="l10n_5fc97790c6a8d0d3" formatted="false">"Прошло"</string>
     <string name="l10n_755ad4f73ca41dd5" formatted="false">"Пустой вывод"</string>
     <string name="l10n_aa1092d775fca059" formatted="false">"Включить перенос строк в коде"</string>
@@ -714,6 +802,14 @@
     <string name="l10n_5b7bdb61fdbc48d5" formatted="false">"Освежающий..."</string>
     <string name="l10n_12798652dee90c23" formatted="false">"Сгенерировать ответ заново"</string>
     <string name="l10n_e57e8f39b6e8ce1b" formatted="false">"При повторной генерации этого ответа будет удалено %lld последующих сообщения."</string>
+    <plurals name="l10n_e57e8f39b6e8ce1b">
+        <item quantity="zero">"При повторной генерации этого ответа будет удалено %d последующих сообщения."</item>
+        <item quantity="one">"При повторной генерации этого ответа будет удалено %d последующее сообщение."</item>
+        <item quantity="two">"При повторной генерации этого ответа будет удалено %d последующих сообщения."</item>
+        <item quantity="few">"При повторной генерации этого ответа будет удалено %d последующих сообщения."</item>
+        <item quantity="many">"При повторной генерации этого ответа будет удалено %d последующих сообщений."</item>
+        <item quantity="other">"При повторной генерации этого ответа будет удалено %d последующих сообщения."</item>
+    </plurals>
     <string name="l10n_cce7155371fc2668" formatted="false">"Перезагрузить"</string>
     <string name="l10n_8b1c557db10dc346" formatted="false">"Перезагрузить версию сервера"</string>
     <string name="l10n_76cc25831dafa135" formatted="false">"Перезагрузить версию сервера?"</string>

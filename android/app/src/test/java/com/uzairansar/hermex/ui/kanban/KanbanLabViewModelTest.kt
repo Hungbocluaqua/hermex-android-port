@@ -5,6 +5,9 @@ import com.uzairansar.hermex.core.model.KanbanAssigneeHistory
 import com.uzairansar.hermex.core.model.KanbanBoardSnapshot
 import com.uzairansar.hermex.core.model.KanbanBoardSummary
 import com.uzairansar.hermex.core.model.KanbanCardSummary
+import com.uzairansar.hermex.core.model.KanbanCardDetailEnvelope
+import com.uzairansar.hermex.core.model.KanbanBulkActionEnvelope
+import com.uzairansar.hermex.core.model.KanbanBulkActionRequestBody
 import com.uzairansar.hermex.core.model.KanbanCardMutationEnvelope
 import com.uzairansar.hermex.core.model.KanbanColumn
 import com.uzairansar.hermex.core.model.KanbanCompatibilityReport
@@ -42,6 +45,7 @@ class KanbanLabViewModelTest {
         assertEquals(listOf("triage", "todo", "blocked", "ready", "running", "done"), viewModel.state.value.availableStatuses)
         assertTrue(viewModel.state.value.canMutateCards)
         assertTrue(viewModel.state.value.canUseCardWorkflow)
+        assertTrue(viewModel.canUseBulkActions())
     }
 
     @Test
@@ -57,6 +61,69 @@ class KanbanLabViewModelTest {
         assertFalse(viewModel.state.value.canUseCardWorkflow)
         assertTrue(viewModel.state.value.canMutateCards)
         assertEquals(KanbanCardMutationPhase.Failed, viewModel.workflowState.value.mutations[card.cardId]?.phase)
+
+        viewModel.load()
+        assertFalse(viewModel.state.value.canUseCardWorkflow)
+    }
+
+    @Test
+    fun selectionSurvivesFiltersAndRefreshButClearsBeforeBoardSwitch() = runTest {
+        val repository = FakeKanbanBrowseDataSource()
+        val viewModel = KanbanLabViewModel(repository)
+        val card = requireNotNull(viewModel.state.value.snapshot?.allCards()?.first())
+
+        viewModel.beginSelectingCards()
+        viewModel.toggleCardSelection(card)
+        viewModel.applyFilters(KanbanFilterState(tenant = "app"))
+        viewModel.load()
+
+        assertTrue(viewModel.bulkState.value.isSelectingCards)
+        assertEquals(setOf("CARD-main"), viewModel.bulkState.value.selectedCardIds)
+
+        viewModel.selectBoard("fast")
+        assertFalse(viewModel.bulkState.value.isSelectingCards)
+        assertTrue(viewModel.bulkState.value.selectedCardIds.isEmpty())
+    }
+
+    @Test
+    fun missingBulkEndpointClosesOnlyBulkActionsAfterCanonicalReconciliation() = runTest {
+        val repository = FakeKanbanBrowseDataSource().apply {
+            bulkFailure = ApiError.Http(404, "missing")
+        }
+        val viewModel = KanbanLabViewModel(repository)
+        val card = requireNotNull(viewModel.state.value.snapshot?.allCards()?.first())
+        viewModel.beginSelectingCards()
+        viewModel.toggleCardSelection(card)
+
+        viewModel.performBulkAction(KanbanBulkAction.ChangeStatus("done"))
+
+        assertTrue(viewModel.bulkState.value.capabilityUnavailable)
+        assertFalse(viewModel.canUseBulkActions())
+        assertTrue(viewModel.state.value.canMutateCards)
+        assertTrue(viewModel.state.value.canUseCardWorkflow)
+        assertEquals(1, viewModel.bulkState.value.summary?.failedCount)
+    }
+
+    @Test
+    fun bulkSubmissionBlocksCardWorkflowUntilReconciliationFinishes() = runTest {
+        val deferred = CompletableDeferred<KanbanBulkActionEnvelope>()
+        val repository = FakeKanbanBrowseDataSource().apply {
+            bulkLoader = { deferred.await() }
+        }
+        val viewModel = KanbanLabViewModel(repository)
+        val card = requireNotNull(viewModel.state.value.snapshot?.allCards()?.first())
+        viewModel.beginSelectingCards()
+        viewModel.toggleCardSelection(card)
+
+        viewModel.performBulkAction(KanbanBulkAction.ChangeStatus("done"))
+        assertEquals(KanbanBulkActionPhase.Submitting, viewModel.bulkState.value.phase)
+        assertFalse(viewModel.canMutateCard(card))
+        viewModel.completeCard(card)
+        assertEquals(0, repository.statusCalls)
+
+        deferred.complete(KanbanBulkActionEnvelope(readOnly = false))
+        assertEquals(null, viewModel.bulkState.value.phase)
+        assertEquals(1, repository.bulkCalls.size)
     }
 
     @Test
@@ -162,6 +229,10 @@ class KanbanLabViewModelTest {
         var handshakeFailure: Throwable? = null
         var lastFilters: KanbanBrowseFilters? = null
         var statusFailure: Throwable? = null
+        var bulkFailure: Throwable? = null
+        var bulkLoader: suspend () -> KanbanBulkActionEnvelope = { KanbanBulkActionEnvelope(readOnly = false) }
+        val bulkCalls = mutableListOf<KanbanBulkActionRequestBody>()
+        var statusCalls = 0
         var boardLoader: suspend (String, KanbanBrowseFilters) -> KanbanBoardSnapshot = { board, _ -> snapshot(board) }
 
         override suspend fun compatibilityHandshake(): KanbanCompatibilityReport {
@@ -190,12 +261,28 @@ class KanbanLabViewModelTest {
             board: String,
             status: String,
         ): KanbanCardMutationEnvelope {
+            statusCalls += 1
             statusFailure?.let { throw it }
             return KanbanCardMutationEnvelope(
                 card = KanbanCardSummary(cardId = cardId, title = cardId, status = status),
                 readOnly = false,
             )
         }
+
+        override suspend fun performBulkAction(
+            board: String,
+            body: KanbanBulkActionRequestBody,
+        ): KanbanBulkActionEnvelope {
+            bulkCalls += body
+            bulkFailure?.let { throw it }
+            return bulkLoader()
+        }
+
+        override suspend fun cardDetail(cardId: String, board: String): KanbanCardDetailEnvelope =
+            KanbanCardDetailEnvelope(
+                card = snapshot(board).allCards().first().copy(cardId = cardId),
+                readOnly = false,
+            )
     }
 
     private companion object {

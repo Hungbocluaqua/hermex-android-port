@@ -18,16 +18,88 @@
     <string name="l10n_bc576900b6f6e566" formatted="false">"%@、アクティブなサーバ"</string>
     <string name="l10n_16070acfe08366e8" formatted="false">"%lld"</string>
     <string name="l10n_ec77970ef773212e" formatted="false">"%lld件のカード"</string>
+    <plurals name="l10n_ec77970ef773212e">
+        <item quantity="zero">"%d件のカード"</item>
+        <item quantity="one">"%d件のカード"</item>
+        <item quantity="two">"%d件のカード"</item>
+        <item quantity="few">"%d件のカード"</item>
+        <item quantity="many">"%d件のカード"</item>
+        <item quantity="other">"%d件のカード"</item>
+    </plurals>
     <string name="l10n_8d777c131031fa2e" formatted="false">"依存カード%lld件"</string>
+    <plurals name="l10n_8d777c131031fa2e">
+        <item quantity="zero">"依存カード%d件"</item>
+        <item quantity="one">"依存カード%d件"</item>
+        <item quantity="two">"依存カード%d件"</item>
+        <item quantity="few">"依存カード%d件"</item>
+        <item quantity="many">"依存カード%d件"</item>
+        <item quantity="other">"依存カード%d件"</item>
+    </plurals>
     <string name="l10n_66a4be0dc2595729" formatted="false">"前提条件%lld件"</string>
+    <plurals name="l10n_66a4be0dc2595729">
+        <item quantity="zero">"前提条件%d件"</item>
+        <item quantity="one">"前提条件%d件"</item>
+        <item quantity="two">"前提条件%d件"</item>
+        <item quantity="few">"前提条件%d件"</item>
+        <item quantity="many">"前提条件%d件"</item>
+        <item quantity="other">"前提条件%d件"</item>
+    </plurals>
     <string name="l10n_f6450a6cc043203f" formatted="false">"%lld 件追加"</string>
     <string name="l10n_5e99075a998414f8" formatted="false">"コメント%lld件"</string>
+    <plurals name="l10n_5e99075a998414f8">
+        <item quantity="zero">"コメント%d件"</item>
+        <item quantity="one">"コメント%d件"</item>
+        <item quantity="two">"コメント%d件"</item>
+        <item quantity="few">"コメント%d件"</item>
+        <item quantity="many">"コメント%d件"</item>
+        <item quantity="other">"コメント%d件"</item>
+    </plurals>
     <string name="l10n_06c13ef4292ad119" formatted="false">"%lld 件のファイルが変更されました"</string>
+    <plurals name="l10n_06c13ef4292ad119">
+        <item quantity="zero">"%d 件のファイルが変更されました"</item>
+        <item quantity="one">"%d 件のファイルが変更されました"</item>
+        <item quantity="two">"%d 件のファイルが変更されました"</item>
+        <item quantity="few">"%d 件のファイルが変更されました"</item>
+        <item quantity="many">"%d 件のファイルが変更されました"</item>
+        <item quantity="other">"%d 件のファイルが変更されました"</item>
+    </plurals>
     <string name="l10n_c4b7ead9d1bf1471" formatted="false">"%lld行"</string>
+    <plurals name="l10n_c4b7ead9d1bf1471">
+        <item quantity="zero">"%d行"</item>
+        <item quantity="one">"%d行"</item>
+        <item quantity="two">"%d行"</item>
+        <item quantity="few">"%d行"</item>
+        <item quantity="many">"%d行"</item>
+        <item quantity="other">"%d行"</item>
+    </plurals>
     <string name="l10n_2efcf5438a29b31f" formatted="false">"%lld件のメッセージ"</string>
+    <plurals name="l10n_2efcf5438a29b31f">
+        <item quantity="zero">"%d件のメッセージ"</item>
+        <item quantity="one">"%d件のメッセージ"</item>
+        <item quantity="two">"%d件のメッセージ"</item>
+        <item quantity="few">"%d件のメッセージ"</item>
+        <item quantity="many">"%d件のメッセージ"</item>
+        <item quantity="other">"%d件のメッセージ"</item>
+    </plurals>
     <string name="l10n_ced88678ac893dde" formatted="false">"%lld 件削除"</string>
     <string name="l10n_232aab9f8671f81d" formatted="false">"%lld件のセッション"</string>
+    <plurals name="l10n_232aab9f8671f81d">
+        <item quantity="zero">"%d件のセッション"</item>
+        <item quantity="one">"%d件のセッション"</item>
+        <item quantity="two">"%d件のセッション"</item>
+        <item quantity="few">"%d件のセッション"</item>
+        <item quantity="many">"%d件のセッション"</item>
+        <item quantity="other">"%d件のセッション"</item>
+    </plurals>
     <string name="l10n_66137dc5d00d671d" formatted="false">"%lld個のスキル"</string>
+    <plurals name="l10n_66137dc5d00d671d">
+        <item quantity="zero">"%d個のスキル"</item>
+        <item quantity="one">"%d個のスキル"</item>
+        <item quantity="two">"%d個のスキル"</item>
+        <item quantity="few">"%d個のスキル"</item>
+        <item quantity="many">"%d個のスキル"</item>
+        <item quantity="other">"%d個のスキル"</item>
+    </plurals>
     <string name="l10n_78cd57f9892157b8" formatted="false">"コンテキスト %lld%%"</string>
     <string name="l10n_6ab06c5fe8caa9fa" formatted="false">"シェア %lld%%"</string>
     <string name="l10n_a5b19753b0ff34b9" formatted="false">"、切り替え中"</string>
@@ -47,6 +119,14 @@
     <string name="l10n_d74340399e2a5b1d" formatted="false">"アクティブなプロファイル"</string>
     <string name="l10n_81c0d915fa6d82fd" formatted="false">"アクティビティ"</string>
     <string name="l10n_03f7eb4fcb825734" formatted="false">"アクティビティ: %lld個のツール"</string>
+    <plurals name="l10n_03f7eb4fcb825734">
+        <item quantity="zero">"アクティビティ: %d個のツール"</item>
+        <item quantity="one">"アクティビティ: %d個のツール"</item>
+        <item quantity="two">"アクティビティ: %d個のツール"</item>
+        <item quantity="few">"アクティビティ: %d個のツール"</item>
+        <item quantity="many">"アクティビティ: %d個のツール"</item>
+        <item quantity="other">"アクティビティ: %d個のツール"</item>
+    </plurals>
     <string name="l10n_61cc55aa04531847" formatted="false">"追加"</string>
     <string name="l10n_ea65bead2508867e" formatted="false">"%@ をお気に入りに追加"</string>
     <string name="l10n_42b949077d2f4201" formatted="false">"ヘッダーを追加"</string>
@@ -337,6 +417,14 @@
     <string name="l10n_2ee30cf2c2908397" formatted="false">"メッセージを編集"</string>
     <string name="l10n_9d0e05d653ce25e7" formatted="false">"タスクを編集"</string>
     <string name="l10n_b0179bbf23f36576" formatted="false">"このメッセージを編集すると、後続の%lld件のメッセージが破棄されます。"</string>
+    <plurals name="l10n_b0179bbf23f36576">
+        <item quantity="zero">"このメッセージを編集すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="one">"このメッセージを編集すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="two">"このメッセージを編集すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="few">"このメッセージを編集すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="many">"このメッセージを編集すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="other">"このメッセージを編集すると、後続の%d件のメッセージが破棄されます。"</item>
+    </plurals>
     <string name="l10n_5fc97790c6a8d0d3" formatted="false">"経過時間"</string>
     <string name="l10n_755ad4f73ca41dd5" formatted="false">"出力なし"</string>
     <string name="l10n_aa1092d775fca059" formatted="false">"コードの行折り返しを有効にする"</string>
@@ -714,6 +802,14 @@
     <string name="l10n_5b7bdb61fdbc48d5" formatted="false">"爽やかな..."</string>
     <string name="l10n_12798652dee90c23" formatted="false">"応答を再生成"</string>
     <string name="l10n_e57e8f39b6e8ce1b" formatted="false">"この応答を再生成すると、後続の%lld件のメッセージが破棄されます。"</string>
+    <plurals name="l10n_e57e8f39b6e8ce1b">
+        <item quantity="zero">"この応答を再生成すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="one">"この応答を再生成すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="two">"この応答を再生成すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="few">"この応答を再生成すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="many">"この応答を再生成すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="other">"この応答を再生成すると、後続の%d件のメッセージが破棄されます。"</item>
+    </plurals>
     <string name="l10n_cce7155371fc2668" formatted="false">"リロード"</string>
     <string name="l10n_8b1c557db10dc346" formatted="false">"サーバーのバージョンをリロードする"</string>
     <string name="l10n_76cc25831dafa135" formatted="false">"サーバーのバージョンをリロードしますか?"</string>

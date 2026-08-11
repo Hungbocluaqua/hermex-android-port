@@ -18,16 +18,88 @@
     <string name="l10n_bc576900b6f6e566" formatted="false">"%@، الخادم النشط"</string>
     <string name="l10n_16070acfe08366e8" formatted="false">"%lld"</string>
     <string name="l10n_ec77970ef773212e" formatted="false">"%lld بطاقات"</string>
+    <plurals name="l10n_ec77970ef773212e">
+        <item quantity="zero">"%d بطاقات"</item>
+        <item quantity="one">"%d بطاقة"</item>
+        <item quantity="two">"%d بطاقات"</item>
+        <item quantity="few">"%d بطاقات"</item>
+        <item quantity="many">"%d بطاقات"</item>
+        <item quantity="other">"%d بطاقات"</item>
+    </plurals>
     <string name="l10n_8d777c131031fa2e" formatted="false">"%lld بطاقات تابعة"</string>
+    <plurals name="l10n_8d777c131031fa2e">
+        <item quantity="zero">"%d بطاقات تابعة"</item>
+        <item quantity="one">"%d بطاقة تابعة"</item>
+        <item quantity="two">"%d بطاقات تابعة"</item>
+        <item quantity="few">"%d بطاقات تابعة"</item>
+        <item quantity="many">"%d بطاقات تابعة"</item>
+        <item quantity="other">"%d بطاقات تابعة"</item>
+    </plurals>
     <string name="l10n_66a4be0dc2595729" formatted="false">"%lld متطلبات مسبقة"</string>
+    <plurals name="l10n_66a4be0dc2595729">
+        <item quantity="zero">"%d متطلبات مسبقة"</item>
+        <item quantity="one">"%d متطلب مسبق"</item>
+        <item quantity="two">"%d متطلبات مسبقة"</item>
+        <item quantity="few">"%d متطلبات مسبقة"</item>
+        <item quantity="many">"%d متطلبات مسبقة"</item>
+        <item quantity="other">"%d متطلبات مسبقة"</item>
+    </plurals>
     <string name="l10n_f6450a6cc043203f" formatted="false">"تمت إضافة %lld"</string>
     <string name="l10n_5e99075a998414f8" formatted="false">"%lld تعليقات"</string>
+    <plurals name="l10n_5e99075a998414f8">
+        <item quantity="zero">"%d تعليقات"</item>
+        <item quantity="one">"%d تعليق"</item>
+        <item quantity="two">"%d تعليقات"</item>
+        <item quantity="few">"%d تعليقات"</item>
+        <item quantity="many">"%d تعليقات"</item>
+        <item quantity="other">"%d تعليقات"</item>
+    </plurals>
     <string name="l10n_06c13ef4292ad119" formatted="false">"%lld ملف متغير"</string>
+    <plurals name="l10n_06c13ef4292ad119">
+        <item quantity="zero">"%d ملف متغير"</item>
+        <item quantity="one">"%d ملف متغير"</item>
+        <item quantity="two">"%d ملفان متغيران"</item>
+        <item quantity="few">"%d ملفات متغيرة"</item>
+        <item quantity="many">"%d ملفًا متغيرًا"</item>
+        <item quantity="other">"%d ملف متغير"</item>
+    </plurals>
     <string name="l10n_c4b7ead9d1bf1471" formatted="false">"%lld سطر"</string>
+    <plurals name="l10n_c4b7ead9d1bf1471">
+        <item quantity="zero">"%d سطر"</item>
+        <item quantity="one">"%d سطر"</item>
+        <item quantity="two">"%d سطران"</item>
+        <item quantity="few">"%d أسطر"</item>
+        <item quantity="many">"%d سطرًا"</item>
+        <item quantity="other">"%d سطر"</item>
+    </plurals>
     <string name="l10n_2efcf5438a29b31f" formatted="false">"%lld رسالة"</string>
+    <plurals name="l10n_2efcf5438a29b31f">
+        <item quantity="zero">"%d رسالة"</item>
+        <item quantity="one">"%d رسالة"</item>
+        <item quantity="two">"%d رسالتان"</item>
+        <item quantity="few">"%d رسائل"</item>
+        <item quantity="many">"%d رسالةً"</item>
+        <item quantity="other">"%d رسالة"</item>
+    </plurals>
     <string name="l10n_ced88678ac893dde" formatted="false">"تمت إزالة %lld"</string>
     <string name="l10n_232aab9f8671f81d" formatted="false">"%lld جلسة"</string>
+    <plurals name="l10n_232aab9f8671f81d">
+        <item quantity="zero">"%d جلسة"</item>
+        <item quantity="one">"%d جلسة"</item>
+        <item quantity="two">"%d جلستان"</item>
+        <item quantity="few">"%d جلسات"</item>
+        <item quantity="many">"%d جلسةً"</item>
+        <item quantity="other">"%d جلسة"</item>
+    </plurals>
     <string name="l10n_66137dc5d00d671d" formatted="false">"%lld مهارة"</string>
+    <plurals name="l10n_66137dc5d00d671d">
+        <item quantity="zero">"%d مهارة"</item>
+        <item quantity="one">"%d مهارة"</item>
+        <item quantity="two">"%d مهارتان"</item>
+        <item quantity="few">"%d مهارات"</item>
+        <item quantity="many">"%d مهارةً"</item>
+        <item quantity="other">"%d مهارة"</item>
+    </plurals>
     <string name="l10n_78cd57f9892157b8" formatted="false">"%lld%% من السياق"</string>
     <string name="l10n_6ab06c5fe8caa9fa" formatted="false">"%lld%% حصة"</string>
     <string name="l10n_a5b19753b0ff34b9" formatted="false">"، التبديل قيد التنفيذ"</string>
@@ -47,6 +119,14 @@
     <string name="l10n_d74340399e2a5b1d" formatted="false">"ملف التعريف النشط"</string>
     <string name="l10n_81c0d915fa6d82fd" formatted="false">"النشاط"</string>
     <string name="l10n_03f7eb4fcb825734" formatted="false">"النشاط: %lld أداة"</string>
+    <plurals name="l10n_03f7eb4fcb825734">
+        <item quantity="zero">"النشاط: %d أداة"</item>
+        <item quantity="one">"النشاط: %d أداة"</item>
+        <item quantity="two">"النشاط: %d أداتان"</item>
+        <item quantity="few">"النشاط: %d أدوات"</item>
+        <item quantity="many">"النشاط: %d أداةً"</item>
+        <item quantity="other">"النشاط: %d أداة"</item>
+    </plurals>
     <string name="l10n_61cc55aa04531847" formatted="false">"إضافة"</string>
     <string name="l10n_ea65bead2508867e" formatted="false">"إضافة %@ إلى المفضلة"</string>
     <string name="l10n_42b949077d2f4201" formatted="false">"إضافة ترويسة"</string>
@@ -337,6 +417,14 @@
     <string name="l10n_2ee30cf2c2908397" formatted="false">"تحرير الرسالة"</string>
     <string name="l10n_9d0e05d653ce25e7" formatted="false">"تحرير المهمة"</string>
     <string name="l10n_b0179bbf23f36576" formatted="false">"سيؤدي تحرير هذه الرسالة إلى تجاهل %lld رسالة لاحقة."</string>
+    <plurals name="l10n_b0179bbf23f36576">
+        <item quantity="zero">"سيؤدي تحرير هذه الرسالة إلى تجاهل %d رسالة لاحقة."</item>
+        <item quantity="one">"سيؤدي تحرير هذه الرسالة إلى تجاهل %d رسالة لاحقة."</item>
+        <item quantity="two">"سيؤدي تحرير هذه الرسالة إلى تجاهل %d رسالتين لاحقتين."</item>
+        <item quantity="few">"سيؤدي تحرير هذه الرسالة إلى تجاهل %d رسائل لاحقة."</item>
+        <item quantity="many">"سيؤدي تحرير هذه الرسالة إلى تجاهل %d رسالةً لاحقةً."</item>
+        <item quantity="other">"سيؤدي تحرير هذه الرسالة إلى تجاهل %d رسالة لاحقة."</item>
+    </plurals>
     <string name="l10n_5fc97790c6a8d0d3" formatted="false">"المنقضي"</string>
     <string name="l10n_755ad4f73ca41dd5" formatted="false">"مخرجات فارغة"</string>
     <string name="l10n_aa1092d775fca059" formatted="false">"تمكين التفاف أسطر التعليمات البرمجية"</string>
@@ -714,6 +802,14 @@
     <string name="l10n_5b7bdb61fdbc48d5" formatted="false">"جارٍ التحديث..."</string>
     <string name="l10n_12798652dee90c23" formatted="false">"إعادة إنشاء الردّ"</string>
     <string name="l10n_e57e8f39b6e8ce1b" formatted="false">"سيؤدي إعادة إنشاء هذا الرد إلى تجاهل %lld رسالة لاحقة."</string>
+    <plurals name="l10n_e57e8f39b6e8ce1b">
+        <item quantity="zero">"سيؤدي إعادة إنشاء هذا الرد إلى تجاهل %d رسالة لاحقة."</item>
+        <item quantity="one">"سيؤدي إعادة إنشاء هذا الرد إلى تجاهل %d رسالة لاحقة."</item>
+        <item quantity="two">"سيؤدي إعادة إنشاء هذا الرد إلى تجاهل %d رسالتين لاحقتين."</item>
+        <item quantity="few">"سيؤدي إعادة إنشاء هذا الرد إلى تجاهل %d رسائل لاحقة."</item>
+        <item quantity="many">"سيؤدي إعادة إنشاء هذا الرد إلى تجاهل %d رسالةً لاحقةً."</item>
+        <item quantity="other">"سيؤدي إعادة إنشاء هذا الرد إلى تجاهل %d رسالة لاحقة."</item>
+    </plurals>
     <string name="l10n_cce7155371fc2668" formatted="false">"إعادة تحميل"</string>
     <string name="l10n_8b1c557db10dc346" formatted="false">"إعادة تحميل إصدار الخادم"</string>
     <string name="l10n_76cc25831dafa135" formatted="false">"إعادة تحميل نسخة الخادم؟"</string>
