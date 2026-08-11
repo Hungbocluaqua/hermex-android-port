@@ -320,6 +320,7 @@ private fun MarkdownAndroidView(
                 textSize = 15f
                 setTextColor(textColor)
                 setLinkTextColor(linkColor)
+                setTextIsSelectable(true)
                 movementMethod = LinkMovementMethod.getInstance()
                 tag = StreamingMarkdownViewState()
             }

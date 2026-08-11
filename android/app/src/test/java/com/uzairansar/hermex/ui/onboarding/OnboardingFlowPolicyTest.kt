@@ -39,7 +39,13 @@ class OnboardingFlowPolicyTest {
     fun promptAndTailscaleTargetAreAndroidSpecific() {
         assertTrue(OnboardingFlowPolicy.AgentSetupPrompt.contains("Android phone"))
         assertTrue(OnboardingFlowPolicy.AgentSetupPrompt.contains("HERMES_WEBUI_PASSWORD"))
+        assertTrue(OnboardingFlowPolicy.AgentSetupPrompt.contains("Keep the WebUI bound to `127.0.0.1:8787`"))
+        assertTrue(OnboardingFlowPolicy.AgentSetupPrompt.contains("tailscale serve status"))
+        assertTrue(OnboardingFlowPolicy.AgentSetupPrompt.contains("tailscale funnel status"))
         assertTrue(OnboardingFlowPolicy.AgentSetupPrompt.contains("tailscale serve --bg 8787"))
+        assertTrue(OnboardingFlowPolicy.AgentSetupPrompt.contains("Never enable Funnel"))
+        assertTrue(OnboardingFlowPolicy.AgentSetupPrompt.contains("explicit manual fallback only"))
+        assertFalse(OnboardingFlowPolicy.AgentSetupPrompt.contains("If Tailscale Serve is disabled"))
         assertTrue(OnboardingFlowPolicy.TailscalePlayStoreUri.contains("com.tailscale.ipn"))
         assertEquals(OnboardingFlowPolicy.PageCount - 1, OnboardingFlowPolicy.ConnectPageIndex)
     }

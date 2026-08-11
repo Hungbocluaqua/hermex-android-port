@@ -432,7 +432,7 @@
     <string name="l10n_598b3a1a236fcb2e" formatted="false">"제출하기 전에 응답을 입력하세요."</string>
     <string name="l10n_6f7c983d3b97261c" formatted="false">"세션 제목을 입력하세요."</string>
     <string name="l10n_e64bedf7e5b25d1f" formatted="false">"유효한 서버 URL을 입력하세요. 예: https://hermes.yourdomain.com 또는 http://&lt;server-tailscale-ip&gt;:8787."</string>
-    <string name="l10n_8230a28313458046" formatted="false">"에이전트가 반환한 Tailscale URL을 입력하세요. 예: `http://&lt;tailnet-ip&gt;:8787`."</string>
+    <string name="l10n_6332c9abaf956af9" formatted="false">"에이전트가 반환한 정확한 Tailscale Serve HTTPS URL을 입력하세요. 예: `https://server.tailnet-name.ts.net`."</string>
     <string name="l10n_8f6e7265b4a4d570" formatted="false">"서버 비밀번호를 입력하세요."</string>
     <string name="l10n_7f2f6a15cf8da2b2" formatted="false">"오류"</string>
     <string name="l10n_09c1adde10c57e5f" formatted="false">"오류: %@"</string>
@@ -906,7 +906,7 @@
     <string name="l10n_d7446f460992044a" formatted="false">"이 스킬을 사용하려면 `/%@ &lt;message&gt;`을(를) 보내세요."</string>
     <string name="l10n_8b2c12c5d4d5965d" formatted="false">"대화를 시작하려면 메시지를 보내세요."</string>
     <string name="l10n_b57718ffcace839f" formatted="false">"응답 후 보내기"</string>
-    <string name="l10n_16ccc931b1910648" formatted="false">"이 프롬프트를 Hermes 에이전트에게 보내세요. Hermes Web UI를 설치하고 비밀번호 인증을 활성화하며 Tailscale 접근을 구성해요."</string>
+    <string name="l10n_fb8e5450e7708ea1" formatted="false">"이 프롬프트를 Hermes 에이전트에게 보내세요. 기존 상태를 점검하고 Hermes Web UI를 localhost에 유지하며 Tailscale Serve로 비공개 HTTPS를 구성해요."</string>
     <string name="l10n_13e251839c1cbadc" formatted="false">"미디어와 라이브 스트림을 포함해 서버로 보내는 모든 요청에 함께 전송돼요. 리버스 프록시(예: Authentik)나 Authorization 헤더 같은 토큰 인증에 사용하세요."</string>
     <string name="l10n_97dda3da38b6e1bf" formatted="false">"스킬 이름은 쉼표로 구분하세요."</string>
     <string name="l10n_cb0cb170d106f8e8" formatted="false">"서버"</string>
@@ -1298,7 +1298,6 @@
     <string name="l10n_567f51fd4b4b8a0d" formatted="false">"변경할 수 없음"</string>
     <string name="l10n_d3f0b43f65ef5ed5" formatted="false">"이후 메시지를 폐기할까요?"</string>
     <string name="l10n_1a2b1cb567321e7c" formatted="false">"신원"</string>
-    <string name="l10n_8b39616698372de0" formatted="false">"에이전트가 반환한 Tailscale URL을 입력하세요. 예: `http://&lt;tailnet-ip&gt;:8787`."</string>
     <string name="l10n_f54ec593076806df" formatted="false">"HTML로 내보내기"</string>
     <string name="l10n_bc399052d4204298" formatted="false">"JSON으로 내보내기"</string>
     <string name="l10n_03d5d80199276349" formatted="false">"서버 제거"</string>

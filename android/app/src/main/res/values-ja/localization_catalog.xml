@@ -432,7 +432,7 @@
     <string name="l10n_598b3a1a236fcb2e" formatted="false">"送信する前に応答を入力してください。"</string>
     <string name="l10n_6f7c983d3b97261c" formatted="false">"セッションのタイトルを入力してください。"</string>
     <string name="l10n_e64bedf7e5b25d1f" formatted="false">"有効なサーバURLを入力してください。例：https://hermes.yourdomain.com または http://&lt;server-tailscale-ip&gt;:8787。"</string>
-    <string name="l10n_8230a28313458046" formatted="false">"エージェントが返したTailscale URLを入力してください。例：`http://&lt;tailnet-ip&gt;:8787`。"</string>
+    <string name="l10n_6332c9abaf956af9" formatted="false">"エージェントが返した正確な Tailscale Serve の HTTPS URL を入力してください。例：`https://server.tailnet-name.ts.net`。"</string>
     <string name="l10n_8f6e7265b4a4d570" formatted="false">"サーバのパスワードを入力してください。"</string>
     <string name="l10n_7f2f6a15cf8da2b2" formatted="false">"エラー"</string>
     <string name="l10n_09c1adde10c57e5f" formatted="false">"エラー：%@"</string>
@@ -906,7 +906,7 @@
     <string name="l10n_d7446f460992044a" formatted="false">"このスキルを使うには `/%@ &lt;message&gt;` を送信してください。"</string>
     <string name="l10n_8b2c12c5d4d5965d" formatted="false">"メッセージを送信して会話を始めましょう。"</string>
     <string name="l10n_b57718ffcace839f" formatted="false">"応答後に送信"</string>
-    <string name="l10n_16ccc931b1910648" formatted="false">"このプロンプトを Hermes エージェントに送信してください。Hermes Web UI のインストール、パスワード認証の有効化、Tailscale アクセスの設定を行います。"</string>
+    <string name="l10n_fb8e5450e7708ea1" formatted="false">"このプロンプトを Hermes エージェントに送信してください。既存の状態を確認し、Hermes Web UI を localhost に保ち、Tailscale Serve でプライベート HTTPS を設定します。"</string>
     <string name="l10n_13e251839c1cbadc" formatted="false">"メディアやライブストリームを含む、サーバへのすべてのリクエストとともに送信されます。リバースプロキシ（例: Authentik）や、Authorization ヘッダーなどのトークン認証に使用します。"</string>
     <string name="l10n_97dda3da38b6e1bf" formatted="false">"スキル名はカンマで区切ります。"</string>
     <string name="l10n_cb0cb170d106f8e8" formatted="false">"サーバ"</string>
@@ -1298,7 +1298,6 @@
     <string name="l10n_567f51fd4b4b8a0d" formatted="false">"変更は利用できません"</string>
     <string name="l10n_d3f0b43f65ef5ed5" formatted="false">"以降のメッセージを破棄しますか？"</string>
     <string name="l10n_1a2b1cb567321e7c" formatted="false">"アイデンティティ"</string>
-    <string name="l10n_8b39616698372de0" formatted="false">"エージェントが返したTailscale URLを入力してください。例：`http://&lt;tailnet-ip&gt;:8787`。"</string>
     <string name="l10n_f54ec593076806df" formatted="false">"HTMLとしてエクスポート"</string>
     <string name="l10n_bc399052d4204298" formatted="false">"JSONとしてエクスポート"</string>
     <string name="l10n_03d5d80199276349" formatted="false">"サーバを削除"</string>

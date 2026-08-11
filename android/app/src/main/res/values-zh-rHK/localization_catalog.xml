@@ -432,7 +432,7 @@
     <string name="l10n_598b3a1a236fcb2e" formatted="false">"提交前請先輸入回覆。"</string>
     <string name="l10n_6f7c983d3b97261c" formatted="false">"請輸入工作階段標題。"</string>
     <string name="l10n_e64bedf7e5b25d1f" formatted="false">"請輸入有效的伺服器 URL，例如 https://hermes.yourdomain.com 或 http://&lt;server-tailscale-ip&gt;:8787。"</string>
-    <string name="l10n_8230a28313458046" formatted="false">"請輸入你的代理返回的 Tailscale URL，例如 `http://&lt;tailnet-ip&gt;:8787`。"</string>
+    <string name="l10n_6332c9abaf956af9" formatted="false">"請輸入代理傳回的確切 Tailscale Serve HTTPS URL，例如 `https://server.tailnet-name.ts.net`。"</string>
     <string name="l10n_8f6e7265b4a4d570" formatted="false">"請輸入伺服器密碼。"</string>
     <string name="l10n_7f2f6a15cf8da2b2" formatted="false">"錯誤"</string>
     <string name="l10n_09c1adde10c57e5f" formatted="false">"錯誤：%@"</string>
@@ -906,7 +906,7 @@
     <string name="l10n_d7446f460992044a" formatted="false">"傳送 `/%@ &lt;message&gt;` 以使用此技能。"</string>
     <string name="l10n_8b2c12c5d4d5965d" formatted="false">"傳送訊息以開始對話。"</string>
     <string name="l10n_b57718ffcace839f" formatted="false">"回應後傳送"</string>
-    <string name="l10n_16ccc931b1910648" formatted="false">"將此提示傳送給你的 Hermes 代理。它會安裝 Hermes Web UI、啟用密碼驗證並設定 Tailscale 存取權限。"</string>
+    <string name="l10n_fb8e5450e7708ea1" formatted="false">"將此提示傳送給你的 Hermes 代理。它會檢查現有狀態、讓 Hermes Web UI 保持在 localhost，並使用 Tailscale Serve 設定私人 HTTPS。"</string>
     <string name="l10n_13e251839c1cbadc" formatted="false">"隨發往伺服器的每個請求一併傳送，包括媒體和即時串流。可用於反向代理（如 Authentik）或權杖驗證，例如 Authorization 標頭。"</string>
     <string name="l10n_97dda3da38b6e1bf" formatted="false">"技能名稱之間以逗號分隔。"</string>
     <string name="l10n_cb0cb170d106f8e8" formatted="false">"伺服器"</string>
@@ -1298,7 +1298,6 @@
     <string name="l10n_567f51fd4b4b8a0d" formatted="false">"無法更改"</string>
     <string name="l10n_d3f0b43f65ef5ed5" formatted="false">"捨棄之後的訊息？"</string>
     <string name="l10n_1a2b1cb567321e7c" formatted="false">"身份"</string>
-    <string name="l10n_8b39616698372de0" formatted="false">"請輸入你的代理返回的 Tailscale URL，例如 `http://&lt;tailnet-ip&gt;:8787`。"</string>
     <string name="l10n_f54ec593076806df" formatted="false">"匯出為 HTML"</string>
     <string name="l10n_bc399052d4204298" formatted="false">"匯出為 JSON"</string>
     <string name="l10n_03d5d80199276349" formatted="false">"移除伺服器"</string>

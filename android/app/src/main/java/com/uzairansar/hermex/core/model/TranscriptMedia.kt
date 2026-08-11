@@ -2,6 +2,7 @@ package com.uzairansar.hermex.core.model
 
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import java.net.URI
 
 sealed interface TranscriptMediaSource {
     data class LocalPath(val path: String) : TranscriptMediaSource
@@ -214,14 +215,42 @@ object TranscriptMediaParser {
     private fun appendMediaSegments(line: String, segments: MutableList<TranscriptMediaSegment>) {
         var cursor = 0
         var textStart = 0
+        val inlineCodeRanges = inlineCodeRanges(line)
 
         while (cursor < line.length) {
             if (line.startsWith("MEDIA:", cursor)) {
-                val range = referenceRange(line, markerStart = cursor, start = cursor + 6)
+                val range = referenceRange(
+                    line = line,
+                    markerStart = cursor,
+                    start = cursor + 6,
+                    syntax = ReferenceSyntax.MediaToken,
+                )
                 if (range != null) {
                     appendText(line.substring(textStart, cursor), segments)
                     segments += TranscriptMediaSegment.Media(
                         TranscriptMediaReference(line.substring(range.first, range.last)),
+                    )
+                    cursor = range.last
+                    textStart = cursor
+                    continue
+                }
+            }
+            if (
+                line.startsWith(FILE_URL_MARKER, cursor) &&
+                isBareFileUrlStart(cursor, line) &&
+                inlineCodeRanges.none { range -> cursor >= range.first && cursor < range.last }
+            ) {
+                val range = referenceRange(
+                    line = line,
+                    markerStart = cursor,
+                    start = cursor + FILE_URL_MARKER.length,
+                    syntax = ReferenceSyntax.FileUrl,
+                )
+                if (range != null) {
+                    appendText(line.substring(textStart, cursor), segments)
+                    val rawUrl = line.substring(cursor, range.last)
+                    segments += TranscriptMediaSegment.Media(
+                        TranscriptMediaReference(normalizedLocalPath(rawUrl)),
                     )
                     cursor = range.last
                     textStart = cursor
@@ -244,10 +273,15 @@ object TranscriptMediaParser {
         }
     }
 
-    private fun referenceRange(line: String, markerStart: Int, start: Int): IntRangeBounds? {
+    private fun referenceRange(
+        line: String,
+        markerStart: Int,
+        start: Int,
+        syntax: ReferenceSyntax,
+    ): IntRangeBounds? {
         if (start >= line.length) return null
         var end = start
-        while (end < line.length && !isReferenceTerminator(line[end])) {
+        while (end < line.length && !isReferenceTerminator(line[end], syntax)) {
             end += 1
         }
 
@@ -255,12 +289,14 @@ object TranscriptMediaParser {
         while (trimmedEnd > start && line[trimmedEnd - 1] in trailingPunctuation) {
             trimmedEnd -= 1
         }
-        emphasisDelimiter(line, markerStart)?.let { delimiter ->
-            if (
-                trimmedEnd - delimiter.length >= start &&
-                line.regionMatches(trimmedEnd - delimiter.length, delimiter, 0, delimiter.length)
-            ) {
-                trimmedEnd -= delimiter.length
+        if (syntax == ReferenceSyntax.MediaToken) {
+            emphasisDelimiter(line, markerStart)?.let { delimiter ->
+                if (
+                    trimmedEnd - delimiter.length >= start &&
+                    line.regionMatches(trimmedEnd - delimiter.length, delimiter, 0, delimiter.length)
+                ) {
+                    trimmedEnd -= delimiter.length
+                }
             }
         }
 
@@ -273,8 +309,59 @@ object TranscriptMediaParser {
                 line.regionMatches(markerStart - delimiter.length, delimiter, 0, delimiter.length)
         }
 
-    private fun isReferenceTerminator(character: Char): Boolean =
-        character.isWhitespace() || character == ')' || character == ']'
+    private fun isReferenceTerminator(character: Char, syntax: ReferenceSyntax): Boolean =
+        character.isWhitespace() ||
+            character == ')' ||
+            character == ']' ||
+            (syntax == ReferenceSyntax.FileUrl && character in fileUrlTerminators)
+
+    private fun isBareFileUrlStart(index: Int, line: String): Boolean =
+        index == 0 || line[index - 1].isWhitespace()
+
+    private fun normalizedLocalPath(rawUrl: String): String {
+        val decodedPath = runCatching { URI(rawUrl).path }
+            .getOrNull()
+            ?.takeIf { it.isNotEmpty() }
+        return decodedPath ?: rawUrl.removePrefix(FILE_URL_MARKER)
+    }
+
+    private fun inlineCodeRanges(line: String): List<IntRangeBounds> {
+        val ranges = mutableListOf<IntRangeBounds>()
+        var cursor = 0
+        while (cursor < line.length) {
+            if (line[cursor] != '`') {
+                cursor += 1
+                continue
+            }
+            val openingStart = cursor
+            val openingEnd = backtickRunEnd(line, cursor)
+            val delimiterLength = openingEnd - openingStart
+            var search = openingEnd
+            var closingEnd: Int? = null
+            while (search < line.length) {
+                if (line[search] != '`') {
+                    search += 1
+                    continue
+                }
+                val candidateEnd = backtickRunEnd(line, search)
+                if (candidateEnd - search == delimiterLength) {
+                    closingEnd = candidateEnd
+                    break
+                }
+                search = candidateEnd
+            }
+            if (closingEnd == null) break
+            ranges += IntRangeBounds(openingStart, closingEnd)
+            cursor = closingEnd
+        }
+        return ranges
+    }
+
+    private fun backtickRunEnd(line: String, start: Int): Int {
+        var end = start
+        while (end < line.length && line[end] == '`') end += 1
+        return end
+    }
 
     private fun fenceMarker(line: String): FenceMarker? {
         var index = 0
@@ -295,8 +382,15 @@ object TranscriptMediaParser {
     private data class FenceMarker(val character: Char, val length: Int, val trailingText: String)
     private data class IntRangeBounds(val first: Int, val last: Int)
 
+    private enum class ReferenceSyntax {
+        MediaToken,
+        FileUrl,
+    }
+
     private val trailingPunctuation = setOf('.', ',', ';', ':', '!', '?')
+    private val fileUrlTerminators = setOf('<', '>', '"', '\'')
     private val emphasisDelimiters = listOf("***", "___", "**", "__", "*", "_")
+    private const val FILE_URL_MARKER = "file://"
 }
 
 private fun String.lastPathComponent(): String =

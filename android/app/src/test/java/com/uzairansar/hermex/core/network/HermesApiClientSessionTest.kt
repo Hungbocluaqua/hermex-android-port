@@ -3,6 +3,8 @@ package com.uzairansar.hermex.core.network
 import com.uzairansar.hermex.core.model.ChatStartRequest
 import com.uzairansar.hermex.core.model.NewSessionRequest
 import com.uzairansar.hermex.core.model.SessionExportFormat
+import com.uzairansar.hermex.core.model.TranscriptMediaParser
+import com.uzairansar.hermex.core.model.TranscriptMediaSegment
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -594,6 +596,30 @@ class HermesApiClientSessionTest {
             assertEquals("GET", request.method)
             assertNull(request.headers["Origin"])
             assertNull(request.headers["Referer"])
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun parsedFileUrlUsesSessionMediaEndpointAndDecodedPath() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            server.enqueue(MockResponse.Builder().code(200).body("PNG").build())
+            val reference = TranscriptMediaParser.segments(
+                "Created file:///tmp/final%20chart.png",
+            ).filterIsInstance<TranscriptMediaSegment.Media>().single().reference
+
+            val bytes = HermesApiClient(server.url("/"), OkHttpClient())
+                .transcriptMediaData(reference, "session-file-url")
+
+            val request = server.takeRequest()
+            assertEquals("PNG", bytes.decodeToString())
+            assertEquals("/api/media", request.url.encodedPath)
+            assertEquals("session-file-url", request.url.queryParameter("session_id"))
+            assertEquals("/tmp/final chart.png", request.url.queryParameter("path"))
+            assertEquals("final chart.png", reference.displayName)
         } finally {
             server.close()
         }

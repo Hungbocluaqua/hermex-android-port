@@ -7,6 +7,15 @@ import org.junit.Test
 
 class WorkspaceFilePreviewPolicyTest {
     @Test
+    fun recognizesIosMarkdownPreviewExtensions() {
+        assertTrue(WorkspaceFilePreviewPolicy.isMarkdown("README.md"))
+        assertTrue(WorkspaceFilePreviewPolicy.isMarkdown("guide.MARKDOWN"))
+        assertTrue(WorkspaceFilePreviewPolicy.isMarkdown("notes.mdown"))
+        assertTrue(WorkspaceFilePreviewPolicy.isMarkdown("draft.mkd"))
+        assertFalse(WorkspaceFilePreviewPolicy.isMarkdown("notes.txt"))
+    }
+
+    @Test
     fun classifiesRasterImagesLikeIosPreview() {
         assertTrue(WorkspaceFilePreviewPolicy.isRasterImage("/repo/image.PNG"))
         assertTrue(WorkspaceFilePreviewPolicy.isRasterImage("icon.ico"))

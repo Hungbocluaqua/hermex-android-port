@@ -36,12 +36,14 @@ class StreamingMarkdownInstrumentedTest {
         }
 
         val renderedStructuredText = AtomicBoolean(false)
+        val renderedSelectableText = AtomicBoolean(false)
         composeRule.waitUntil(timeoutMillis = 5_000) {
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 val textView = rootView.get()?.descendantTextViews()?.firstOrNull { view ->
                     view.text.toString().contains("Streaming heading")
                 }
                 val text = textView?.text as? Spanned
+                renderedSelectableText.set(textView?.isTextSelectable == true)
                 renderedStructuredText.set(
                     text != null && text.getSpans(0, text.length, Any::class.java).isNotEmpty(),
                 )
@@ -50,6 +52,7 @@ class StreamingMarkdownInstrumentedTest {
         }
 
         assertTrue(renderedStructuredText.get())
+        assertTrue(renderedSelectableText.get())
     }
 
     private fun View.descendantTextViews(): List<TextView> = buildList {

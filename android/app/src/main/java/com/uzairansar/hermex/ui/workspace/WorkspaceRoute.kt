@@ -1,6 +1,8 @@
 package com.uzairansar.hermex.ui.workspace
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -67,6 +69,7 @@ import androidx.core.content.ContextCompat
 import com.uzairansar.hermex.core.model.WorkspaceEntry
 import com.uzairansar.hermex.core.model.WorkspaceRoot
 import com.uzairansar.hermex.data.repository.WorkspaceRepository
+import com.uzairansar.hermex.ui.chat.MarkdownText
 import com.uzairansar.hermex.ui.createExportDirectory
 import com.uzairansar.hermex.ui.theme.HermexCardShape
 import com.uzairansar.hermex.ui.theme.HermexIconButton
@@ -482,6 +485,7 @@ private fun FilePreview(
     var isSavingImage by remember(binaryPreview?.path) { mutableStateOf(false) }
     var saveImageMessage by remember(binaryPreview?.path) { mutableStateOf<String?>(null) }
     val displayPath = title ?: binaryPreview?.path ?: "Preview"
+    val copiedMessage = localizedString("Copied")
     val metadata = remember(content, textSizeBytes, textLineCount, binaryPreview) {
         previewMetadata(
             content = content,
@@ -554,6 +558,17 @@ private fun FilePreview(
                     onShare,
                     enabled = !isLoading && (content != null || binaryPreview?.bytes != null),
                 )
+                if (content != null) {
+                    HermexPillButton(
+                        localizedString("Copy"),
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText(displayPath, content))
+                            Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
+                        },
+                        enabled = !isLoading,
+                    )
+                }
                 HermexPillButton(localizedString("Close"), onClose)
             }
         }
@@ -615,13 +630,20 @@ private fun FilePreview(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 FilePreviewHeader(displayPath, metadata)
-                SelectionContainer {
-                    Text(
-                        text = content ?: "Preview is not available for this file.",
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall,
+                if (content != null && WorkspaceFilePreviewPolicy.isMarkdown(displayPath)) {
+                    MarkdownText(
+                        markdown = content,
+                        modifier = Modifier.fillMaxWidth(),
                     )
+                } else {
+                    SelectionContainer {
+                        Text(
+                            text = content ?: "Preview is not available for this file.",
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
             }
         }
