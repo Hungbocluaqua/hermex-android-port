@@ -15,6 +15,7 @@ import com.uzairansar.hermex.core.model.KanbanDetailEvent
 import com.uzairansar.hermex.core.model.KanbanDetailEventPayload
 import com.uzairansar.hermex.core.model.KanbanDependencyLinks
 import com.uzairansar.hermex.core.model.KanbanDispatchRun
+import com.uzairansar.hermex.core.model.KanbanDispatchResult
 import com.uzairansar.hermex.core.model.KanbanWorkerLog
 import com.uzairansar.hermex.core.model.KanbanAddCommentResponse
 import com.uzairansar.hermex.core.model.KanbanCardMutationEnvelope
@@ -123,6 +124,16 @@ internal class KanbanLabFixtureDataSource(
         val board = storedBoards[slug] ?: throw ApiError.Http(404, "{\"error\":\"board not found\"}")
         sharedActiveBoard = slug
         return KanbanBoardMutationEnvelope(board = board, current = sharedActiveBoard, readOnly = false)
+    }
+
+    override suspend fun dispatch(board: String, dryRun: Boolean): KanbanDispatchResult {
+        if (scenario == "partial") throw ApiError.Http(404, null)
+        if (scenario == "offline") throw ApiError.Network(IOException("Fixture is offline."))
+        return if (dryRun) {
+            KanbanDispatchResult(spawned = 2, promoted = 1, reclaimed = 0, skippedUnassigned = 1, skippedNonspawnable = 0, autoBlocked = 1, timedOut = 0, crashed = 0)
+        } else {
+            KanbanDispatchResult(spawned = 1, promoted = 1, reclaimed = 1, skippedUnassigned = 0, skippedNonspawnable = 0, autoBlocked = 0, timedOut = 0, crashed = 0)
+        }
     }
 
     override suspend fun boardSnapshot(board: String, filters: KanbanBrowseFilters): KanbanBoardSnapshot =

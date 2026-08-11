@@ -720,6 +720,34 @@ class KanbanLabInstrumentedTest {
         composeRule.onNodeWithText("This Board no longer exists. Choose another Board.").assertIsDisplayed()
     }
 
+    @Test
+    fun dispatcherPreviewsBecomesStaleAndRunRequiresConfirmation() {
+        composeRule.setContent {
+            HermexTheme {
+                KanbanLabRoute(
+                    repository = KanbanLabFixtureDataSource("dense"),
+                    onBack = {},
+                    viewModelKey = "kanban-dispatcher-device",
+                )
+            }
+        }
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("CARD-1").fetchSemanticsNodes().isNotEmpty() }
+
+        composeRule.onNodeWithTag("kanban_dispatcher").performClick()
+        composeRule.onNodeWithTag("kanban_preview_dispatch").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_dispatch_summary").fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithText("Spawned: 2").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag("kanban_run_dispatcher").performClick()
+        composeRule.onNodeWithTag("kanban_confirm_run_dispatcher").assertIsDisplayed().performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("Spawned: 1").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_dispatch_summary").assertIsDisplayed()
+    }
+
     private fun liveUiState(
         isOffline: Boolean = false,
         liveUpdatesDelayed: Boolean = false,

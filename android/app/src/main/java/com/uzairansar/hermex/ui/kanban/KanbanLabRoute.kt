@@ -98,9 +98,12 @@ internal fun KanbanLabRoute(
     val workflowState by viewModel.workflowState.collectAsStateWithLifecycle()
     val bulkState by viewModel.bulkState.collectAsStateWithLifecycle()
     val boardState by viewModel.boardState.collectAsStateWithLifecycle()
+    val dispatchState by viewModel.dispatchState.collectAsStateWithLifecycle()
     var showsFilters by rememberSaveable { mutableStateOf(false) }
     var showsBulkActions by rememberSaveable { mutableStateOf(false) }
     var showsBoardManagement by rememberSaveable { mutableStateOf(false) }
+    var showsDispatcher by rememberSaveable { mutableStateOf(false) }
+    var confirmsRunDispatcher by rememberSaveable { mutableStateOf(false) }
     var cardNavigationStack by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var editorOpen by rememberSaveable { mutableStateOf(false) }
     var editorCardId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -143,7 +146,7 @@ internal fun KanbanLabRoute(
     val showsCardDetail = selectedCardId != null &&
         selectedBoardSlug != null &&
         state.availability == KanbanAvailability.Content
-    val cardWritesAllowed = state.canMutateCards && bulkState.phase == null && !boardState.blocksWrites
+    val cardWritesAllowed = state.canMutateCards && bulkState.phase == null && !boardState.blocksWrites && dispatchState?.isInFlight != true
     val performWorkflowAction: (KanbanCardSummary, KanbanCardWorkflowAction, Boolean) -> Unit =
         { card, action, confirmingRunningExit ->
             when (action) {
@@ -238,6 +241,9 @@ internal fun KanbanLabRoute(
                 onSelectBoard = viewModel::selectBoard,
                 onShowFilters = { showsFilters = true },
                 onManageBoards = { showsBoardManagement = true },
+                onShowDispatcher = { showsDispatcher = true },
+                dispatcherNeedsAttention = dispatchState?.phase == KanbanDispatchPhase.OutcomeUncertain && dispatchState?.result == null,
+                dispatcherHasResult = dispatchState?.result != null,
                 canCreateCard = cardWritesAllowed,
                 onCreateCard = {
                     editorSessionId += 1
@@ -341,6 +347,34 @@ internal fun KanbanLabRoute(
         )
     }
 
+    if (showsDispatcher && !showsEditor && !showsCardDetail && state.availability == KanbanAvailability.Content) {
+        KanbanDispatcherSheet(
+            dispatch = dispatchState,
+            availability = viewModel.dispatcherAvailability(),
+            previewIsStale = viewModel.isPreviewStale(),
+            onDismiss = { showsDispatcher = false },
+            onPreview = viewModel::previewDispatch,
+            onRequestRun = { confirmsRunDispatcher = true },
+            onDismissResult = viewModel::dismissDispatchResult,
+            onRefresh = viewModel::refreshUncertainDispatchOutcome,
+        )
+    }
+
+    if (confirmsRunDispatcher) {
+        AlertDialog(
+            onDismissRequest = { confirmsRunDispatcher = false },
+            title = { Text(localizedString("Run Dispatcher")) },
+            text = { Text(localizedString("This may start up to %lld workers and consume API budget.").replace("%lld", "8")) },
+            confirmButton = {
+                TextButton(
+                    onClick = { confirmsRunDispatcher = false; viewModel.runDispatcher() },
+                    modifier = Modifier.testTag("kanban_confirm_run_dispatcher"),
+                ) { Text(localizedString("Run Dispatcher"), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmsRunDispatcher = false }) { Text(localizedString("Cancel")) } },
+        )
+    }
+
     pendingRunningAction?.let { pending ->
         AlertDialog(
             onDismissRequest = { pendingRunningAction = null },
@@ -436,6 +470,9 @@ private fun KanbanTopBar(
     onSelectBoard: (String) -> Unit,
     onShowFilters: () -> Unit,
     onManageBoards: () -> Unit,
+    onShowDispatcher: () -> Unit,
+    dispatcherNeedsAttention: Boolean,
+    dispatcherHasResult: Boolean,
     canCreateCard: Boolean,
     onCreateCard: () -> Unit,
     isSelectingCards: Boolean,
@@ -482,6 +519,14 @@ private fun KanbanTopBar(
                 }
                 HorizontalDivider()
                 DropdownMenuItem(
+                    text = { Text(localizedString("Refresh")) },
+                    onClick = {
+                        boardMenuExpanded = false
+                        onRefresh()
+                    },
+                    modifier = Modifier.testTag("kanban_refresh"),
+                )
+                DropdownMenuItem(
                     text = { Text(localizedString("Manage")) },
                     onClick = {
                         boardMenuExpanded = false
@@ -505,7 +550,19 @@ private fun KanbanTopBar(
             enabled = canCreateCard,
             modifier = Modifier.testTag("kanban_new_card"),
         )
-        HermexIconButton(localizedString("Refresh"), "↻", onRefresh, enabled = !state.isRefreshing)
+        HermexIconButton(
+            localizedString(
+                when {
+                    dispatcherNeedsAttention -> "Dispatcher, attention required"
+                    dispatcherHasResult -> "Dispatcher, result available"
+                    else -> "Dispatcher"
+                },
+            ),
+            if (dispatcherNeedsAttention) "!" else "⚡",
+            onShowDispatcher,
+            enabled = state.availability == KanbanAvailability.Content,
+            modifier = Modifier.testTag("kanban_dispatcher"),
+        )
         HermexIconButton(
             localizedString("Filters"),
             if (state.hasActiveFilters) "●" else "≡",
@@ -1442,6 +1499,120 @@ private fun ToggleRow(label: String, checked: Boolean, onCheckedChange: (Boolean
         Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun KanbanDispatcherSheet(
+    dispatch: KanbanDispatchState?,
+    availability: KanbanDispatcherAvailability,
+    previewIsStale: Boolean,
+    onDismiss: () -> Unit,
+    onPreview: () -> Unit,
+    onRequestRun: () -> Unit,
+    onDismissResult: () -> Unit,
+    onRefresh: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("kanban_dispatcher_sheet")) {
+        Column(
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(localizedString("Dispatcher"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                HermexPillButton(localizedString("Done"), onDismiss, modifier = Modifier.testTag("kanban_done_dispatcher"))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                HermexPillButton(
+                    localizedString("Preview Dispatch"), onPreview,
+                    enabled = availability == KanbanDispatcherAvailability.Available,
+                    modifier = Modifier.weight(1f).testTag("kanban_preview_dispatch"),
+                )
+                HermexPillButton(
+                    localizedString("Run Dispatcher"), onRequestRun,
+                    enabled = availability == KanbanDispatcherAvailability.Available,
+                    filled = true,
+                    modifier = Modifier.weight(1f).testTag("kanban_run_dispatcher"),
+                )
+            }
+            Text(localizedString("Preview is advisory and may become stale. It never starts workers."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+            dispatcherUnavailableReason(availability)?.takeIf { dispatch?.isInFlight != true }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+            }
+            dispatch?.let { KanbanDispatchSummary(it, previewIsStale, onDismissResult, onRefresh) }
+            Spacer(Modifier.size(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun KanbanDispatchSummary(
+    dispatch: KanbanDispatchState,
+    previewIsStale: Boolean,
+    onDismiss: () -> Unit,
+    onRefresh: () -> Unit,
+) {
+    val phase = when (dispatch.phase) {
+        KanbanDispatchPhase.Submitting -> localizedString("Running Dispatcher...")
+        KanbanDispatchPhase.Reconciling -> localizedString("Checking Result")
+        KanbanDispatchPhase.Succeeded -> localizedString("Done")
+        KanbanDispatchPhase.Refused, KanbanDispatchPhase.Failed -> localizedString("Failed")
+        KanbanDispatchPhase.OutcomeUncertain -> localizedString("Outcome Uncertain")
+        KanbanDispatchPhase.BoardUnavailable -> localizedString("Unavailable")
+    }
+    Column(
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)).padding(12.dp).testTag("kanban_dispatch_summary"),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(localizedString(if (dispatch.mode == KanbanDispatchMode.Preview) "Preview Dispatch" else "Run Dispatcher"), modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+            if (!dispatch.isInFlight && dispatch.phase != KanbanDispatchPhase.OutcomeUncertain) {
+                HermexPillButton(localizedString("Dismiss"), onDismiss)
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (dispatch.isInFlight) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            Text(phase, fontWeight = FontWeight.SemiBold)
+        }
+        if (previewIsStale) Text(localizedString("This Preview is stale. Run Preview Dispatch again before relying on it."), color = Color(0xFFFF9800), style = MaterialTheme.typography.bodySmall)
+        dispatch.result?.let { result ->
+            listOf(
+                "Spawned" to result.spawned, "Promoted" to result.promoted, "Reclaimed" to result.reclaimed,
+                "Skipped—No Assignee" to result.skippedUnassigned, "Skipped—Unknown Profile" to result.skippedNonspawnable,
+                "Auto-blocked" to result.autoBlocked, "Timed Out" to result.timedOut, "Crashed" to result.crashed,
+            ).chunked(2).forEach { row ->
+                Row(Modifier.fillMaxWidth()) {
+                    row.forEach { (label, count) ->
+                        Text("${localizedString(label)}: ${count ?: localizedString("Unknown")}", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+        when (dispatch.phase) {
+            KanbanDispatchPhase.OutcomeUncertain -> {
+                Text(localizedString("Hermex refreshed the Board, but cannot prove whether workers started. Review the current Board before running Dispatcher again."), style = MaterialTheme.typography.bodySmall)
+                if (dispatch.canAcknowledgeUncertainOutcome) {
+                    HermexPillButton(localizedString("I Reviewed the Board"), onDismiss, modifier = Modifier.testTag("kanban_acknowledge_dispatch"))
+                }
+                HermexPillButton(localizedString("Refresh"), onRefresh, modifier = Modifier.testTag("kanban_refresh_dispatch"))
+            }
+            KanbanDispatchPhase.Refused -> Text(localizedString("The server refused this Dispatcher request. Hermex did not retry it."), style = MaterialTheme.typography.bodySmall)
+            KanbanDispatchPhase.BoardUnavailable -> Text(localizedString("This Board no longer exists. Choose another Board."), style = MaterialTheme.typography.bodySmall)
+            else -> Unit
+        }
+    }
+}
+
+@Composable
+private fun dispatcherUnavailableReason(availability: KanbanDispatcherAvailability): String? = when (availability) {
+    KanbanDispatcherAvailability.Available -> null
+    KanbanDispatcherAvailability.Busy -> localizedString("Another Board action is in progress.")
+    KanbanDispatcherAvailability.OutcomeUncertain -> localizedString("Outcome Uncertain")
+    KanbanDispatcherAvailability.Offline -> localizedString("Offline—showing previously loaded data")
+    KanbanDispatcherAvailability.Incompatible -> localizedString("Dispatcher is unavailable on this server.")
+    KanbanDispatcherAvailability.ReadOnly -> localizedString("Read-only")
+    KanbanDispatcherAvailability.Refreshing -> localizedString("The Board is refreshing.")
+    KanbanDispatcherAvailability.RefreshFailed -> localizedString("Refresh failed. Try again before using Dispatcher.")
 }
 
 @Composable

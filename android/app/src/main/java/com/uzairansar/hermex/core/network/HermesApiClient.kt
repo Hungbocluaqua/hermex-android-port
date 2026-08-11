@@ -290,6 +290,9 @@ class HermesApiClient(
         request(Endpoint.KanbanBoardBySlug(slug), "DELETE", null)
     suspend fun makeKanbanBoardActive(slug: String): KanbanBoardMutationEnvelope =
         request(Endpoint.KanbanBoardSwitch(slug), "POST", ByteArray(0).toRequestBody())
+    suspend fun dispatchKanban(board: String, dryRun: Boolean): KanbanDispatchResult =
+        request<KanbanDispatchResult>(Endpoint.KanbanDispatch(board, dryRun, maximum = 8), "POST", ByteArray(0).toRequestBody())
+            .also { if (!it.hasKnownCategory) throw KanbanContractViolation.MissingDispatchResult }
     suspend fun kanbanBoard(
         board: String,
         tenant: String? = null,
