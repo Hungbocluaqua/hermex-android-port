@@ -52,11 +52,13 @@ internal data class KanbanCardDetailUiState(
     val workerLog: KanbanWorkerLogState = KanbanWorkerLogState.Idle,
     val commentDraft: String = "",
     val commentSubmission: KanbanCommentSubmissionState = KanbanCommentSubmissionState.Idle,
+    val commentCapabilityUnavailable: Boolean = false,
 ) {
     val canComment: Boolean
         get() = availability == KanbanCardDetailAvailability.Content &&
             parentAllowsWrites &&
             detail?.readOnly == false &&
+            !commentCapabilityUnavailable &&
             !isStale &&
             commentSubmission !in setOf(
                 KanbanCommentSubmissionState.Submitting,
@@ -102,6 +104,15 @@ internal class KanbanCardDetailViewModel(
                     detail = detail,
                     isRefreshing = false,
                     isStale = false,
+                    commentCapabilityUnavailable = false,
+                    commentSubmission = if (
+                        mutableState.value.commentCapabilityUnavailable &&
+                        mutableState.value.commentSubmission == KanbanCommentSubmissionState.Failed
+                    ) {
+                        KanbanCommentSubmissionState.Idle
+                    } else {
+                        mutableState.value.commentSubmission
+                    },
                 )
             } catch (error: CancellationException) {
                 throw error
@@ -182,8 +193,15 @@ internal class KanbanCardDetailViewModel(
                 }
             } catch (error: CancellationException) {
                 throw error
-            } catch (_: Throwable) {
-                reconcileComment(previousComments, body)
+            } catch (error: Throwable) {
+                if (isMissingKanbanCapability(error)) {
+                    mutableState.value = mutableState.value.copy(
+                        commentCapabilityUnavailable = true,
+                        commentSubmission = KanbanCommentSubmissionState.Failed,
+                    )
+                } else {
+                    reconcileComment(previousComments, body)
+                }
             }
         }
     }
