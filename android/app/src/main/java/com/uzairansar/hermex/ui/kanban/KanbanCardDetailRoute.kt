@@ -65,6 +65,7 @@ internal fun KanbanCardDetailRoute(
     refreshRevision: Int,
     onBack: () -> Unit,
     onOpenRelatedCard: (String) -> Unit,
+    onEdit: (String) -> Unit,
 ) {
     val factory = remember(repository, board, cardId, parentAllowsWrites) {
         object : ViewModelProvider.Factory {
@@ -97,6 +98,15 @@ internal fun KanbanCardDetailRoute(
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
                 maxLines = 1,
+            )
+            HermexPillButton(
+                localizedString("Edit"),
+                { state.detail?.card?.cardId?.let(onEdit) },
+                enabled = state.availability == KanbanCardDetailAvailability.Content &&
+                    state.parentAllowsWrites &&
+                    state.detail?.readOnly == false &&
+                    !state.isStale,
+                modifier = Modifier.testTag("kanban_edit_card"),
             )
             HermexIconButton(
                 localizedString("Refresh"),

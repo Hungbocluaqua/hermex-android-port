@@ -96,6 +96,18 @@ internal data class KanbanLabUiState(
 
     val hasActiveFilters: Boolean
         get() = searchQuery.isNotBlank() || filters.hasServerFilters
+
+    val canMutateCards: Boolean
+        get() = availability == KanbanAvailability.Content &&
+            !isOffline &&
+            !isRefreshing &&
+            snapshot?.readOnly == false &&
+            selectedBoard?.readOnly != true &&
+            warnings.none {
+                it == KanbanCompatibilityWarning.ReadOnly ||
+                    it == KanbanCompatibilityWarning.WriteCapabilityUnavailable
+            } &&
+            KanbanCardEditorViewModel.CREATE_STATUSES.all { it in configuration?.columns.orEmpty() }
 }
 
 internal class KanbanLabViewModel(

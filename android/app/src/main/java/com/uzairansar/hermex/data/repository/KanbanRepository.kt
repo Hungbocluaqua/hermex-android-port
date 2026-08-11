@@ -8,6 +8,9 @@ import com.uzairansar.hermex.core.model.KanbanBoardSnapshot
 import com.uzairansar.hermex.core.model.KanbanCardDetailEnvelope
 import com.uzairansar.hermex.core.model.KanbanWorkerLog
 import com.uzairansar.hermex.core.model.KanbanAddCommentResponse
+import com.uzairansar.hermex.core.model.KanbanCardMutationEnvelope
+import com.uzairansar.hermex.core.model.KanbanCreateCardRequestBody
+import com.uzairansar.hermex.core.model.KanbanEditCardRequestBody
 import com.uzairansar.hermex.core.model.KanbanStats
 import com.uzairansar.hermex.core.model.KanbanAssigneeHistory
 import com.uzairansar.hermex.core.network.HermesApiClient
@@ -45,6 +48,12 @@ interface KanbanBrowseDataSource {
 
     suspend fun addComment(cardId: String, board: String, body: String): KanbanAddCommentResponse =
         throw UnsupportedOperationException("Kanban comments are unavailable.")
+
+    suspend fun createCard(board: String, body: KanbanCreateCardRequestBody): KanbanCardMutationEnvelope =
+        throw UnsupportedOperationException("Kanban Card creation is unavailable.")
+
+    suspend fun editCard(cardId: String, board: String, body: KanbanEditCardRequestBody): KanbanCardMutationEnvelope =
+        throw UnsupportedOperationException("Kanban Card editing is unavailable.")
 }
 
 class KanbanRepository(
@@ -113,6 +122,17 @@ class KanbanRepository(
     override suspend fun addComment(cardId: String, board: String, body: String): KanbanAddCommentResponse =
         client.addKanbanComment(cardId, board, body)
 
+    override suspend fun createCard(board: String, body: KanbanCreateCardRequestBody): KanbanCardMutationEnvelope =
+        client.createKanbanCard(board, body).also { validateMutationCard(it, expectedCardId = null) }
+
+    override suspend fun editCard(
+        cardId: String,
+        board: String,
+        body: KanbanEditCardRequestBody,
+    ): KanbanCardMutationEnvelope = client.editKanbanCard(cardId, board, body).also {
+        validateMutationCard(it, expectedCardId = cardId)
+    }
+
     private fun validateSnapshot(snapshot: KanbanBoardSnapshot) {
         val columns = snapshot.columns
         if (snapshot.changed != true || columns.isNullOrEmpty()) throw KanbanContractViolation.MissingBoardSnapshot
@@ -120,6 +140,16 @@ class KanbanRepository(
         val cards = columns.flatMap { it.cards.orEmpty() }
         if (cards.any { it.cardId.isNullOrBlank() }) throw KanbanContractViolation.MissingCardIdentity
         if (cards.any { it.status.isNullOrBlank() }) throw KanbanContractViolation.MissingCardStatus
+    }
+
+    private fun validateMutationCard(envelope: KanbanCardMutationEnvelope, expectedCardId: String?) {
+        val card = envelope.card ?: throw KanbanContractViolation.MissingCardIdentity
+        val cardId = card.cardId?.trim()?.takeIf(String::isNotEmpty)
+            ?: throw KanbanContractViolation.MissingCardIdentity
+        if (expectedCardId != null && cardId != expectedCardId.trim()) {
+            throw KanbanContractViolation.MissingCardIdentity
+        }
+        if (card.status.isNullOrBlank()) throw KanbanContractViolation.MissingCardStatus
     }
 
     private fun compatibilityWarnings(

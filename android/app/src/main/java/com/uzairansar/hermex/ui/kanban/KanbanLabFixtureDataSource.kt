@@ -13,6 +13,9 @@ import com.uzairansar.hermex.core.model.KanbanDependencyLinks
 import com.uzairansar.hermex.core.model.KanbanDispatchRun
 import com.uzairansar.hermex.core.model.KanbanWorkerLog
 import com.uzairansar.hermex.core.model.KanbanAddCommentResponse
+import com.uzairansar.hermex.core.model.KanbanCardMutationEnvelope
+import com.uzairansar.hermex.core.model.KanbanCreateCardRequestBody
+import com.uzairansar.hermex.core.model.KanbanEditCardRequestBody
 import com.uzairansar.hermex.core.model.KanbanColumn
 import com.uzairansar.hermex.core.model.KanbanCompatibilityReport
 import com.uzairansar.hermex.core.model.KanbanCompatibilityWarning
@@ -33,6 +36,7 @@ import kotlinx.coroutines.flow.flow
 internal class KanbanLabFixtureDataSource(
     private val scenario: String,
 ) : KanbanBrowseDataSource {
+    private val mutatedCards = linkedMapOf<String, KanbanCardSummary>()
     private val boards = listOf(
         KanbanBoardSummary(slug = "default", name = "Default Board", total = 5, readOnly = scenario == "read-only"),
         KanbanBoardSummary(slug = "release", name = "Release Board", total = 1, readOnly = scenario == "read-only"),
@@ -142,8 +146,48 @@ internal class KanbanLabFixtureDataSource(
     override suspend fun addComment(cardId: String, board: String, body: String): KanbanAddCommentResponse =
         KanbanAddCommentResponse(ok = true, commentId = "fixture-new", readOnly = scenario == "read-only")
 
+    override suspend fun createCard(board: String, body: KanbanCreateCardRequestBody): KanbanCardMutationEnvelope {
+        val cardId = "CARD-NEW-${mutatedCards.size + 1}"
+        val created = KanbanCardSummary(
+            cardId = cardId,
+            title = body.title,
+            body = body.body,
+            status = body.status,
+            priority = body.priority ?: 0,
+            assignee = body.assignee,
+            tenant = body.tenant,
+            workspaceKind = body.workspaceKind,
+            workspacePath = body.workspacePath,
+            skills = body.skills,
+            maxRuntimeSeconds = body.maxRuntimeSeconds,
+            ageSeconds = 0.0,
+        )
+        mutatedCards["$board:$cardId"] = created
+        return KanbanCardMutationEnvelope(card = created, readOnly = scenario == "read-only")
+    }
+
+    override suspend fun editCard(
+        cardId: String,
+        board: String,
+        body: KanbanEditCardRequestBody,
+    ): KanbanCardMutationEnvelope {
+        val existing = snapshot(board, KanbanBrowseFilters(includeArchived = true)).allCards()
+            .firstOrNull { it.cardId == cardId }
+            ?: throw ApiError.Http(404, null)
+        val edited = existing.copy(
+            title = body.title,
+            body = body.body,
+            tenant = body.tenant,
+            priority = body.priority,
+            assignee = body.assignee,
+            status = body.status ?: existing.status,
+        )
+        mutatedCards["$board:$cardId"] = edited
+        return KanbanCardMutationEnvelope(card = edited, readOnly = scenario == "read-only")
+    }
+
     private fun snapshot(board: String, filters: KanbanBrowseFilters): KanbanBoardSnapshot {
-        val cards = when {
+        val baseCards = when {
             scenario == "empty" -> emptyList()
             board == "release" -> listOf(
                 card("CARD-REL", "Prepare release evidence", "todo", "reviewer", 1, 1_800.0),
@@ -155,7 +199,13 @@ internal class KanbanLabFixtureDataSource(
                 card("CARD-4", "Monitor active worker", "running", "builder", 1, 3_900.0),
                 card("CARD-5", "Future server workflow", "future", "reviewer", 3, 400.0),
             )
-        }.filter { card ->
+        }
+        val cards = (baseCards.associateBy { it.cardId } + mutatedCards
+            .filterKeys { it.startsWith("$board:") }
+            .values
+            .associateBy { it.cardId })
+            .values
+            .filter { card ->
             (filters.profile == null || card.assignee == filters.profile) &&
                 (filters.tenant == null || card.tenant == filters.tenant) &&
                 (!filters.onlyMine || card.assignee == "reviewer") &&

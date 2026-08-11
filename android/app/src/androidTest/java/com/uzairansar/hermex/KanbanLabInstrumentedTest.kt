@@ -4,12 +4,14 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.runtime.getValue
@@ -22,6 +24,7 @@ import com.uzairansar.hermex.ui.kanban.KanbanLabRoute
 import com.uzairansar.hermex.ui.kanban.KanbanAvailability
 import com.uzairansar.hermex.ui.kanban.KanbanBoardContent
 import com.uzairansar.hermex.ui.kanban.KanbanLabUiState
+import com.uzairansar.hermex.ui.kanban.KanbanLabFixtureDataSource
 import com.uzairansar.hermex.ui.kanban.KanbanCardDetailContent
 import com.uzairansar.hermex.ui.kanban.KanbanCardDetailAvailability
 import com.uzairansar.hermex.ui.kanban.KanbanCardDetailUiState
@@ -356,6 +359,87 @@ class KanbanLabInstrumentedTest {
         composeRule.onNodeWithTag("kanban_operational_history").performClick()
         composeRule.onNodeWithTag("kanban_card_detail").performScrollToNode(hasTestTag("kanban_load_worker_log"))
         composeRule.onNodeWithTag("kanban_load_worker_log").assertIsNotEnabled()
+    }
+
+    @Test
+    fun createCardEditorSavesAndReconcilesTheBoard() {
+        composeRule.setContent {
+            HermexTheme {
+                KanbanLabRoute(
+                    repository = KanbanLabFixtureDataSource("dense"),
+                    onBack = {},
+                    viewModelKey = "kanban-create-device",
+                )
+            }
+        }
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("CARD-1").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag("kanban_new_card").performClick()
+        composeRule.onNodeWithTag("kanban_editor_title").performTextInput("Created on Android")
+        composeRule.onNodeWithTag("kanban_editor_save").performClick()
+
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("Created on Android").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("Created on Android").assertIsDisplayed()
+    }
+
+    @Test
+    fun editCardEditorPreflightsSavesAndRefreshesDetail() {
+        composeRule.setContent {
+            HermexTheme {
+                KanbanLabRoute(
+                    repository = KanbanLabFixtureDataSource("dense"),
+                    onBack = {},
+                    viewModelKey = "kanban-edit-device",
+                )
+            }
+        }
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("CARD-1").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag("kanban_card_CARD-1").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_edit_card").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_edit_card").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_editor_title").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_editor_title").performTextClearance()
+        composeRule.onNodeWithTag("kanban_editor_title").performTextInput("Edited on Android")
+        composeRule.onNodeWithTag("kanban_editor_save").performClick()
+
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("Edited on Android").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("Edited on Android").assertIsDisplayed()
+    }
+
+    @Test
+    fun readOnlyBoardDisablesCreateAndEditActions() {
+        composeRule.setContent {
+            HermexTheme {
+                KanbanLabRoute(
+                    repository = KanbanLabFixtureDataSource("read-only"),
+                    onBack = {},
+                    viewModelKey = "kanban-read-only-editor-device",
+                )
+            }
+        }
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("CARD-1").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag("kanban_new_card").assertIsNotEnabled()
+        composeRule.onNodeWithTag("kanban_card_CARD-1").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("kanban_edit_card").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("kanban_edit_card").assertIsNotEnabled()
     }
 
     private fun liveUiState(

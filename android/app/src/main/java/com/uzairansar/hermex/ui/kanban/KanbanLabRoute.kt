@@ -87,6 +87,9 @@ internal fun KanbanLabRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showsFilters by rememberSaveable { mutableStateOf(false) }
     var cardNavigationStack by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var editorOpen by rememberSaveable { mutableStateOf(false) }
+    var editorCardId by rememberSaveable { mutableStateOf<String?>(null) }
+    var editorSessionId by rememberSaveable { mutableStateOf(0) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(lifecycleOwner, viewModel) {
@@ -110,25 +113,49 @@ internal fun KanbanLabRoute(
 
     val selectedBoardSlug = state.selectedBoardSlug
     val selectedCardId = cardNavigationStack.lastOrNull()
+    val showsEditor = editorOpen && selectedBoardSlug != null && state.availability == KanbanAvailability.Content
     val showsCardDetail = selectedCardId != null &&
         selectedBoardSlug != null &&
         state.availability == KanbanAvailability.Content
-    BackHandler(enabled = showsCardDetail) { cardNavigationStack = cardNavigationStack.dropLast(1) }
 
-    if (showsCardDetail) {
+    if (showsEditor) {
+        KanbanCardEditorRoute(
+            repository = repository,
+            board = selectedBoardSlug,
+            mode = editorCardId?.let(KanbanCardEditorMode::Edit) ?: KanbanCardEditorMode.Create,
+            sessionId = editorSessionId,
+            profileOptions = state.profileOptions,
+            tenantOptions = state.tenantOptions,
+            prerequisiteOptions = state.snapshot?.allCards().orEmpty().filter { it.cardId != editorCardId },
+            baselineCards = state.snapshot?.allCards().orEmpty(),
+            allowsMutation = state.canMutateCards,
+            onCancel = { editorOpen = false },
+            onSaved = {
+                editorOpen = false
+                viewModel.load()
+            },
+            onRefreshAndClose = {
+                editorOpen = false
+                viewModel.load()
+            },
+        )
+    } else if (showsCardDetail) {
+        BackHandler { cardNavigationStack = cardNavigationStack.dropLast(1) }
         KanbanCardDetailRoute(
             repository = repository,
             board = selectedBoardSlug,
             cardId = checkNotNull(selectedCardId),
             parentOffline = state.isOffline,
-            parentAllowsWrites = state.snapshot?.readOnly == false && state.warnings.none {
-                it == KanbanCompatibilityWarning.ReadOnly ||
-                    it == KanbanCompatibilityWarning.WriteCapabilityUnavailable
-            },
+            parentAllowsWrites = state.canMutateCards,
             refreshRevision = state.detailRefreshRevision,
             onBack = { cardNavigationStack = cardNavigationStack.dropLast(1) },
             onOpenRelatedCard = { related ->
                 if (related != cardNavigationStack.lastOrNull()) cardNavigationStack = cardNavigationStack + related
+            },
+            onEdit = { cardId ->
+                editorSessionId += 1
+                editorCardId = cardId
+                editorOpen = true
             },
         )
     } else {
@@ -139,6 +166,12 @@ internal fun KanbanLabRoute(
                 onRefresh = viewModel::load,
                 onSelectBoard = viewModel::selectBoard,
                 onShowFilters = { showsFilters = true },
+                canCreateCard = state.canMutateCards,
+                onCreateCard = {
+                    editorSessionId += 1
+                    editorCardId = null
+                    editorOpen = true
+                },
             )
             when (state.availability) {
                 KanbanAvailability.Loading -> KanbanLoading()
@@ -155,7 +188,7 @@ internal fun KanbanLabRoute(
         }
     }
 
-    if (showsFilters && !showsCardDetail && state.availability == KanbanAvailability.Content) {
+    if (showsFilters && !showsEditor && !showsCardDetail && state.availability == KanbanAvailability.Content) {
         KanbanFiltersSheet(
             state = state,
             onDismiss = { showsFilters = false },
@@ -178,6 +211,8 @@ private fun KanbanTopBar(
     onRefresh: () -> Unit,
     onSelectBoard: (String) -> Unit,
     onShowFilters: () -> Unit,
+    canCreateCard: Boolean,
+    onCreateCard: () -> Unit,
 ) {
     var boardMenuExpanded by remember { mutableStateOf(false) }
     Row(
@@ -218,6 +253,13 @@ private fun KanbanTopBar(
                 }
             }
         }
+        HermexIconButton(
+            localizedString("New Card"),
+            "+",
+            onCreateCard,
+            enabled = canCreateCard,
+            modifier = Modifier.testTag("kanban_new_card"),
+        )
         HermexIconButton(localizedString("Refresh"), "↻", onRefresh, enabled = !state.isRefreshing)
         HermexIconButton(
             localizedString("Filters"),

@@ -361,6 +361,39 @@ data class KanbanCommentRequest(
     val body: String,
 )
 
+@Serializable
+data class KanbanCardMutationEnvelope(
+    @SerialName("task") val card: KanbanCardSummary? = null,
+    @SerialName("read_only")
+    @Serializable(with = LossyNullableBooleanSerializer::class)
+    val readOnly: Boolean? = null,
+)
+
+@Serializable
+data class KanbanCreateCardRequestBody(
+    val title: String,
+    val body: String? = null,
+    val status: String,
+    val priority: Int? = null,
+    val assignee: String? = null,
+    val tenant: String? = null,
+    @SerialName("workspace_kind") val workspaceKind: String,
+    @SerialName("workspace_path") val workspacePath: String? = null,
+    val skills: List<String>? = null,
+    @SerialName("max_runtime_seconds") val maxRuntimeSeconds: Int? = null,
+    val parents: List<String>? = null,
+    @SerialName("idempotency_key") val idempotencyKey: String,
+)
+
+data class KanbanEditCardRequestBody(
+    val title: String,
+    val body: String,
+    val tenant: String?,
+    val priority: Int,
+    val assignee: String?,
+    val status: String?,
+)
+
 data class KanbanCompatibilityReport(
     val configuration: KanbanConfiguration,
     val boards: List<KanbanBoardSummary>,

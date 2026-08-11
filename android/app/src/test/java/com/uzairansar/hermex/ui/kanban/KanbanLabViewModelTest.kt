@@ -39,6 +39,7 @@ class KanbanLabViewModelTest {
         assertEquals("main", viewModel.state.value.selectedBoardSlug)
         assertEquals(listOf("CARD-main"), viewModel.state.value.visibleCards.map { it.cardId })
         assertEquals(listOf("triage", "todo", "blocked", "ready", "running", "done"), viewModel.state.value.availableStatuses)
+        assertTrue(viewModel.state.value.canMutateCards)
     }
 
     @Test
@@ -96,6 +97,7 @@ class KanbanLabViewModelTest {
         assertEquals("main", viewModel.state.value.selectedBoardSlug)
         assertFalse(viewModel.state.value.refreshFailed)
         assertTrue(viewModel.state.value.isOffline)
+        assertFalse(viewModel.state.value.canMutateCards)
         assertFalse(viewModel.state.value.isRefreshing)
     }
 

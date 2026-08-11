@@ -7,6 +7,10 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.serialization.json.Json
 import okhttp3.Call
 import okhttp3.Callback
@@ -286,6 +290,23 @@ class HermesApiClient(
         get(Endpoint.KanbanCardLog(cardId, board, tailBytes))
     suspend fun addKanbanComment(cardId: String, board: String, body: String): KanbanAddCommentResponse =
         post(Endpoint.KanbanCardComments(cardId, board), KanbanCommentRequest(body))
+    suspend fun createKanbanCard(board: String, body: KanbanCreateCardRequestBody): KanbanCardMutationEnvelope =
+        post(Endpoint.KanbanCards(board), body)
+    suspend fun editKanbanCard(cardId: String, board: String, body: KanbanEditCardRequestBody): KanbanCardMutationEnvelope {
+        val payload = buildJsonObject {
+            put("title", body.title)
+            put("body", body.body)
+            put("tenant", body.tenant?.let(::JsonPrimitive) ?: JsonNull)
+            put("priority", body.priority)
+            put("assignee", body.assignee?.let(::JsonPrimitive) ?: JsonNull)
+            body.status?.let { put("status", it) }
+        }
+        return request(
+            Endpoint.KanbanCard(cardId, board),
+            "PATCH",
+            json.encodeToString(payload).toRequestBody(jsonMediaType),
+        )
+    }
     suspend fun skills(): SkillsResponse = get(Endpoint.Skills)
     suspend fun skillContent(name: String, file: String? = null): SkillContentResponse = get(Endpoint.SkillContent(name, file))
     suspend fun toggleSkill(name: String, enabled: Boolean): ToggleSkillResponse = post(Endpoint.ToggleSkill, ToggleSkillRequest(name, enabled))
