@@ -91,19 +91,15 @@ Because the hostname is publicly reachable, use a strong `HERMES_WEBUI_PASSWORD`
 
 ### Tailscale
 
-Tailscale keeps the server off the public internet and works directly with the Android port.
+Tailscale Serve provides private HTTPS without exposing `hermes-webui` on every network interface.
 
 1. Install Tailscale on the server and Android device and sign both into the same tailnet.
-2. Start the server on all interfaces with authentication:
+2. Keep the authenticated server bound to `127.0.0.1:8787` and verify `http://127.0.0.1:8787/health` locally.
+3. Inspect `tailscale serve status` and `tailscale funnel status`. Preserve every existing route and never enable Funnel for this setup.
+4. Only when HTTPS port 443 at the root path is unused, run `tailscale serve --bg 8787`.
+5. Read back `tailscale serve status`, verify `https://<actual-ts.net-hostname>/health`, and enter that exact HTTPS URL in Hermex.
 
-   ```bash
-   HERMES_WEBUI_HOST=0.0.0.0 HERMES_WEBUI_PASSWORD=your-secret ./start.sh
-   ```
-
-3. Find the server address with `tailscale ip -4`.
-4. Connect Hermex to `http://<tailnet-ip>:8787`.
-
-Hermex permits plain HTTP for local, private-network, and Tailscale destinations, but rejects insecure HTTP connections to public internet hosts.
+Do not reset or overwrite an occupied Serve route. Binding to `0.0.0.0` or connecting to a Tailscale IP over plain HTTP is an explicit manual fallback with broader exposure, not the default setup.
 
 ### Connection troubleshooting
 
