@@ -57,12 +57,15 @@ class SseStreamClient(
                             return
                         }
                         try {
-                            response.body.source().readSseEvents { id, type, data ->
-                                val event = SseEventDecoder.decode(type, data)
-                                if (trySendBlocking(event).isSuccess) {
-                                    id?.trim()?.takeIf { it.isNotEmpty() }?.let(onEventId)
-                                }
-                            }
+                            response.body.source().readSseEvents(
+                                onComment = { trySendBlocking(SseEvent.Heartbeat) },
+                                onEvent = { id, type, data ->
+                                    val event = SseEventDecoder.decode(type, data)
+                                    if (trySendBlocking(event).isSuccess) {
+                                        id?.trim()?.takeIf { it.isNotEmpty() }?.let(onEventId)
+                                    }
+                                },
+                            )
                             close()
                         } catch (error: SseEventTooLargeException) {
                             trySendBlocking(SseEvent.TransportError("SSE event exceeded the stream safety limit."))
@@ -92,6 +95,7 @@ private fun HttpUrl.isSameOriginAs(other: HttpUrl): Boolean =
 private class SseEventTooLargeException : IOException()
 
 private fun BufferedSource.readSseEvents(
+    onComment: () -> Unit,
     onEvent: (id: String?, type: String?, data: String) -> Unit,
 ) {
     var eventId: String? = null
@@ -119,7 +123,10 @@ private fun BufferedSource.readSseEvents(
             dispatch()
             continue
         }
-        if (line.startsWith(':')) continue
+        if (line.startsWith(':')) {
+            onComment()
+            continue
+        }
 
         val delimiter = line.indexOf(':')
         val field = if (delimiter >= 0) line.substring(0, delimiter) else line

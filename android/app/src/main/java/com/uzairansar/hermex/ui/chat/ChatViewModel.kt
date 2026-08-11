@@ -60,6 +60,7 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -368,6 +369,13 @@ class ChatViewModel internal constructor(
     private var pendingStreamingAssistantText: String = ""
     private var streamRecoveryJob: Job? = null
     private var streamRecoveryAttempt = 0
+    private var streamLivenessJob: Job? = null
+    private var streamLivenessGeneration = 0L
+    private var streamActivityGeneration = 0L
+    private var streamConnectionStartedAtMillis = 0L
+    private var lastStreamProgressAtMillis: Long? = null
+    private var lastStreamTransportActivityAtMillis: Long? = null
+    private var lastStreamStatusCheckAtMillis: Long? = null
     private var completedResponseStreamId: String? = null
     private var completedResponseTokensPerSecond: Double? = null
     private var completedResponseTitleOverride: String? = null
@@ -441,6 +449,7 @@ class ChatViewModel internal constructor(
         streamJob?.cancel()
         streamPacingJob?.cancel()
         streamRecoveryJob?.cancel()
+        streamLivenessJob?.cancel()
         completedTranscriptRefreshJob?.cancel()
         composerConfigJob?.cancel()
         modelSwitchJob?.cancel()
@@ -2683,6 +2692,7 @@ class ChatViewModel internal constructor(
                     is SseEvent.PendingSteerLeftover,
                     is SseEvent.ApprovalPending,
                     is SseEvent.ClarificationPending,
+                    SseEvent.Heartbeat,
                     SseEvent.Ignored -> Unit
                 }
             }
@@ -3084,6 +3094,7 @@ class ChatViewModel internal constructor(
         var assistantText = _state.value.streamingAssistantText()
         val replayBaseText = assistantText
         var replayMatchedPrefixLength = if (replayAfterSeq == 0) 0 else replayBaseText.length
+        startStreamLivenessMonitoring(streamId, isReplayConnection = replayAfterSeq != null)
         streamJob = viewModelScope.launch {
             repository.stream(streamId, replayAfterSeq)
                 .onCompletion { cause ->
@@ -3104,6 +3115,9 @@ class ChatViewModel internal constructor(
                 }
                 .collect { event ->
                 if (!ownsStreamTransport(streamId)) return@collect
+                if (event !is SseEvent.TransportError) {
+                    recordStreamTransportActivity(demoteChecking = event == SseEvent.Heartbeat)
+                }
                 when (event) {
                     is SseEvent.Token -> {
                         val tokenText = if (replayAfterSeq == 0) {
@@ -3113,8 +3127,8 @@ class ChatViewModel internal constructor(
                         } else {
                             event.text
                         }
-                        clearStreamRecoveryState()
                         if (tokenText.isNotEmpty()) {
+                            markStreamProgress()
                             assistantText += tokenText
                             enqueueStreamingAssistantText(streamId, tokenText)
                         }
@@ -3123,26 +3137,27 @@ class ChatViewModel internal constructor(
                         flushPendingStreamingAssistant()
                         val interim = event.text.trim()
                         if (event.alreadyStreamed != true && interim.isNotBlank() && !assistantText.endsWith(interim)) {
+                            markStreamProgress()
                             assistantText = if (assistantText.isBlank()) interim else "$assistantText\n\n$interim"
                             upsertStreamingAssistant(assistantText)
                         }
                     }
                     is SseEvent.Reasoning -> {
-                        clearStreamRecoveryState()
+                        markStreamProgress()
                         _state.update { it.copy(liveReasoning = it.liveReasoning + event.text) }
                     }
                     is SseEvent.ToolStarted -> {
-                        clearStreamRecoveryState()
+                        markStreamProgress()
                         _state.update { it.copy(liveToolActivity = event.event.name ?: "Tool running") }
                     }
                     is SseEvent.ToolCompleted -> {
-                        clearStreamRecoveryState()
+                        markStreamProgress()
                         _state.update { it.copy(liveToolActivity = null) }
                     }
                     is SseEvent.Title -> {
-                        clearStreamRecoveryState()
                         if (event.sessionId.isNullOrBlank() || event.sessionId == sessionId) {
                             event.title?.trim()?.takeIf { it.isNotBlank() }?.let { title ->
+                                markStreamProgress()
                                 completedResponseTitleOverride = title
                                 _state.update { it.copy(sessionTitle = title) }
                             }
@@ -3185,25 +3200,200 @@ class ChatViewModel internal constructor(
                         handleStreamTransportError(streamId, event.message)
                     }
                     is SseEvent.PendingSteerLeftover -> {
-                        clearStreamRecoveryState()
+                        markStreamProgress()
                         enqueuePendingSteerLeftover(event.text)
                     }
                     is SseEvent.ApprovalPending -> {
-                        clearStreamRecoveryState()
+                        markStreamProgress()
                         applyApprovalPending(event.response)
                     }
                     is SseEvent.ClarificationPending -> {
-                        clearStreamRecoveryState()
+                        markStreamProgress()
                         applyClarificationPending(event.response)
                     }
+                    SseEvent.Heartbeat -> Unit
                     SseEvent.Ignored -> Unit
                 }
             }
         }
     }
 
+    private fun startStreamLivenessMonitoring(streamId: String, isReplayConnection: Boolean) {
+        streamLivenessJob?.cancel()
+        streamLivenessGeneration += 1
+        streamActivityGeneration += 1
+        val generation = streamLivenessGeneration
+        val startedAt = monotonicMillis()
+        streamConnectionStartedAtMillis = startedAt
+        lastStreamProgressAtMillis = startedAt.takeIf { isReplayConnection }
+        lastStreamTransportActivityAtMillis = startedAt
+        lastStreamStatusCheckAtMillis = null
+        streamLivenessJob = viewModelScope.launch {
+            while (
+                currentCoroutineContext().isActive &&
+                streamLivenessGeneration == generation &&
+                ownsStreamTransport(streamId)
+            ) {
+                delay(STREAM_LIVENESS_TICK_MS)
+                if (streamLivenessGeneration != generation || !ownsStreamTransport(streamId)) break
+                val current = _state.value
+                val hasPendingPrompt = current.pendingApproval != null ||
+                    current.pendingClarification != null ||
+                    current.isRespondingToPendingPrompt
+                if (hasPendingPrompt) {
+                    if (current.activeStreamRecoveryState == ActiveStreamRecoveryState.Checking) {
+                        _state.update {
+                            it.copy(activeStreamRecoveryState = ActiveStreamRecoveryState.Idle, notice = null)
+                        }
+                    }
+                    continue
+                }
+                when (
+                    ChatStreamLivenessPolicy.action(
+                        nowMillis = monotonicMillis(),
+                        connectionStartedAtMillis = streamConnectionStartedAtMillis,
+                        lastProgressAtMillis = lastStreamProgressAtMillis,
+                        lastTransportActivityAtMillis = lastStreamTransportActivityAtMillis,
+                        lastStatusCheckAtMillis = lastStreamStatusCheckAtMillis,
+                        hasPendingPrompt = false,
+                        hasRunningTool = current.liveToolActivity != null,
+                    )
+                ) {
+                    ChatStreamLivenessAction.CheckStatus -> recoverTransportQuietStream(
+                        streamId = streamId,
+                        generation = generation,
+                        forceReconnect = false,
+                    )
+                    ChatStreamLivenessAction.ForceReconnect -> recoverTransportQuietStream(
+                        streamId = streamId,
+                        generation = generation,
+                        forceReconnect = true,
+                    )
+                    ChatStreamLivenessAction.None -> {
+                        if (_state.value.activeStreamRecoveryState == ActiveStreamRecoveryState.Checking &&
+                            lastStreamTransportActivityAtMillis != null &&
+                            monotonicMillis() - requireNotNull(lastStreamTransportActivityAtMillis) <
+                            ChatStreamLivenessTiming().transportFreshIntervalMillis
+                        ) {
+                            _state.update {
+                                it.copy(
+                                    activeStreamRecoveryState = ActiveStreamRecoveryState.Idle,
+                                    notice = null,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun recoverTransportQuietStream(
+        streamId: String,
+        generation: Long,
+        forceReconnect: Boolean,
+    ) {
+        if (streamLivenessGeneration != generation || !ownsStreamTransport(streamId)) return
+        val activityGeneration = streamActivityGeneration
+        lastStreamStatusCheckAtMillis = monotonicMillis()
+        _state.update {
+            it.copy(
+                activeStreamRecoveryState = ActiveStreamRecoveryState.Checking,
+                notice = ActiveStreamRecoveryState.Checking.label,
+                error = null,
+            )
+        }
+
+        val statusResult = runSuspendCatching { repository.chatStreamStatus(streamId) }
+        if (
+            streamLivenessGeneration != generation ||
+            streamActivityGeneration != activityGeneration ||
+            !ownsStreamTransport(streamId) ||
+            _state.value.activeStreamRecoveryState != ActiveStreamRecoveryState.Checking
+        ) {
+            return
+        }
+
+        statusResult
+            .onSuccess { status ->
+                if (!status.isActiveFor(streamId)) {
+                    streamLivenessGeneration += 1
+                    streamJob?.cancel()
+                    streamJob = null
+                    repository.clearStreamCursor(streamId)
+                    stopPendingPromptPolling(clearPrompts = true)
+                    _state.update {
+                        it.copy(
+                            isStreaming = false,
+                            activeStreamRecoveryState = ActiveStreamRecoveryState.Idle,
+                            activeStreamId = null,
+                            liveReasoning = "",
+                            liveToolActivity = null,
+                            notice = null,
+                            error = status.error.nonBlank(),
+                        )
+                    }
+                    refreshAfterInactiveStream()
+                } else if (forceReconnect) {
+                    reconnectTransportQuietStream(streamId, replayAfterSeq(status, streamId))
+                }
+            }
+            .onFailure {
+                if (forceReconnect) {
+                    reconnectTransportQuietStream(streamId, repository.replayAfterSeq(streamId))
+                }
+            }
+    }
+
+    private fun reconnectTransportQuietStream(streamId: String, replayAfterSeq: Int?) {
+        if (!ownsStreamTransport(streamId) || _state.value.activeStreamRecoveryState != ActiveStreamRecoveryState.Checking) return
+        if (replayAfterSeq == null) reconcileFinalTranscriptForStreamId = streamId
+        _state.update {
+            it.copy(
+                isStreaming = true,
+                activeStreamRecoveryState = ActiveStreamRecoveryState.Reconnecting,
+                activeStreamId = streamId,
+                notice = null,
+                error = null,
+            )
+        }
+        attachStream(streamId, replayAfterSeq = replayAfterSeq, cancelRecovery = false)
+        startPendingPromptPolling()
+    }
+
+    private fun recordStreamTransportActivity(demoteChecking: Boolean) {
+        lastStreamTransportActivityAtMillis = monotonicMillis()
+        if (demoteChecking) {
+            val nextState = ChatStreamLivenessPolicy.stateAfterHeartbeat(_state.value.activeStreamRecoveryState)
+            if (nextState != _state.value.activeStreamRecoveryState) {
+                streamActivityGeneration += 1
+                _state.update { it.copy(activeStreamRecoveryState = nextState, notice = null) }
+            }
+        }
+    }
+
+    private fun markStreamProgress() {
+        val now = monotonicMillis()
+        lastStreamProgressAtMillis = now
+        lastStreamTransportActivityAtMillis = now
+        lastStreamStatusCheckAtMillis = null
+        streamActivityGeneration += 1
+        clearStreamRecoveryState()
+    }
+
+    private fun stopStreamLivenessMonitoring() {
+        streamLivenessGeneration += 1
+        streamActivityGeneration += 1
+        streamLivenessJob?.cancel()
+        streamLivenessJob = null
+        lastStreamProgressAtMillis = null
+        lastStreamTransportActivityAtMillis = null
+        lastStreamStatusCheckAtMillis = null
+    }
+
     private fun handleStreamTransportError(streamId: String, message: String) {
         if (!ChatStreamOwnershipPolicy.stillOwnsStream(streamId, _state.value.activeStreamId)) return
+        stopStreamLivenessMonitoring()
         streamRecoveryJob?.cancel()
         streamRecoveryAttempt += 1
         val attempt = streamRecoveryAttempt
@@ -3896,6 +4086,7 @@ private fun File.isInside(directory: File): Boolean {
         const val STREAM_RECOVERY_RETRY_DELAY_MS = 750L
         const val STREAM_RECOVERY_MAX_DELAY_MS = 12_000L
         const val MAXIMUM_STREAM_RECOVERY_ATTEMPTS = 6
+        const val STREAM_LIVENESS_TICK_MS = 1_000L
         const val MAXIMUM_STREAM_ERROR_CHARACTERS = 4_000
         const val COMPLETED_TRANSCRIPT_REFRESH_DELAY_MS = 500L
         const val COMPLETED_TRANSCRIPT_REFRESH_ATTEMPTS = 6
@@ -3980,6 +4171,8 @@ private fun File.isInside(directory: File): Boolean {
         """.trimIndent()
     }
 }
+
+private fun monotonicMillis(): Long = System.nanoTime() / 1_000_000L
 
 private suspend fun <T> resultOrNullPreservingCancellation(block: suspend () -> T): T? = try {
     block()

@@ -13,6 +13,31 @@ import org.junit.Test
 
 class SseStreamClientIntegrationTest {
     @Test
+    fun forwardsHeartbeatCommentsAsTransportActivity() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            server.enqueue(
+                MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "text/event-stream")
+                    .body(": heartbeat\n\n")
+                    .build(),
+            )
+
+            val events = withTimeout(5_000) {
+                SseStreamClient(server.url("/"), OkHttpClient()) { emptyList() }
+                    .stream(server.url("/api/chat/stream?stream_id=stream-1"))
+                    .toList()
+            }
+
+            assertEquals(listOf(SseEvent.Heartbeat), events)
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
     fun continuesDeliveringMetadataUntilStreamEndAfterDone() = runBlocking {
         val server = MockWebServer()
         try {

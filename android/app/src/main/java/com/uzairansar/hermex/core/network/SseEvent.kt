@@ -43,6 +43,7 @@ sealed interface SseEvent {
         val details: String? = null,
     ) : SseEvent
     data class TransportError(val message: String) : SseEvent
+    data object Heartbeat : SseEvent
     data object Ignored : SseEvent
 }
 
