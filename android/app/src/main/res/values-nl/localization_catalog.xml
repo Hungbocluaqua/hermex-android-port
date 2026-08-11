@@ -344,7 +344,7 @@
     <string name="l10n_598b3a1a236fcb2e" formatted="false">"Voer een antwoord in voordat u verstuurt."</string>
     <string name="l10n_6f7c983d3b97261c" formatted="false">"Voer een sessietitel in."</string>
     <string name="l10n_e64bedf7e5b25d1f" formatted="false">"Voer een geldige server-URL in, bijvoorbeeld https://hermes.yourdomain.com of http://&lt;server-tailscale-ip&gt;:8787."</string>
-    <string name="l10n_8230a28313458046" formatted="false">"Voer de Tailscale-URL in die uw agent heeft teruggegeven, bijvoorbeeld `http://&lt;tailnet-ip&gt;:8787`."</string>
+    <string name="l10n_6332c9abaf956af9" formatted="false">"Voer de exacte HTTPS-URL van Tailscale Serve in die uw agent heeft teruggegeven, bijvoorbeeld `https://server.tailnet-name.ts.net`."</string>
     <string name="l10n_8f6e7265b4a4d570" formatted="false">"Voer het serverwachtwoord in."</string>
     <string name="l10n_7f2f6a15cf8da2b2" formatted="false">"Fout"</string>
     <string name="l10n_09c1adde10c57e5f" formatted="false">"Fout: %@"</string>
@@ -810,7 +810,7 @@
     <string name="l10n_d7446f460992044a" formatted="false">"Verzend `/%@ &lt;message&gt;` om deze vaardigheid te gebruiken."</string>
     <string name="l10n_8b2c12c5d4d5965d" formatted="false">"Verzend een bericht om het gesprek te starten."</string>
     <string name="l10n_b57718ffcace839f" formatted="false">"Verzenden na antwoord"</string>
-    <string name="l10n_16ccc931b1910648" formatted="false">"Verzend deze prompt naar uw Hermes-agent. Deze installeert Hermes Web UI, schakelt wachtwoordverificatie in en configureert Tailscale-toegang."</string>
+    <string name="l10n_fb8e5450e7708ea1" formatted="false">"Verzend deze prompt naar uw Hermes-agent. Deze controleert de bestaande staat, houdt Hermes Web UI op localhost en configureert privé-HTTPS met Tailscale Serve."</string>
     <string name="l10n_13e251839c1cbadc" formatted="false">"Wordt met elk verzoek naar uw server meegestuurd, inclusief media en livestreams. Gebruik dit voor een reverse proxy (bijv. Authentik) of tokenverificatie, zoals een Authorization-header."</string>
     <string name="l10n_97dda3da38b6e1bf" formatted="false">"Scheid de namen van vaardigheden met komma's."</string>
     <string name="l10n_cb0cb170d106f8e8" formatted="false">"Server"</string>
@@ -1202,7 +1202,6 @@
     <string name="l10n_567f51fd4b4b8a0d" formatted="false">"Wijzigingen niet beschikbaar"</string>
     <string name="l10n_d3f0b43f65ef5ed5" formatted="false">"Latere berichten negeren?"</string>
     <string name="l10n_1a2b1cb567321e7c" formatted="false">"Identiteit"</string>
-    <string name="l10n_8b39616698372de0" formatted="false">"Voer de Tailscale-URL in die uw agent heeft teruggegeven, bijvoorbeeld `http://&lt;tailnet-ip&gt;:8787`."</string>
     <string name="l10n_f54ec593076806df" formatted="false">"Exporteren als HTML"</string>
     <string name="l10n_bc399052d4204298" formatted="false">"Exporteren als JSON"</string>
     <string name="l10n_03d5d80199276349" formatted="false">"Server verwijderen"</string>

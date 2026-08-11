@@ -2250,6 +2250,8 @@ class HermexUiFlowTest {
         composeRule.onNodeWithText("README.md").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Share") }
         composeRule.onNodeWithText("Share").assertIsDisplayed()
+        composeRule.onNodeWithText("Copy").assertIsDisplayed()
+        composeRule.onNode(hasSemanticsText("# Hermex", substring = true)).assertIsDisplayed()
         composeRule.onNodeWithText("Close").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("report.pdf") }
         composeRule.onNodeWithText("report.pdf").performClick()

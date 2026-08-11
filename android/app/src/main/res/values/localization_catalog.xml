@@ -344,7 +344,7 @@
     <string name="l10n_598b3a1a236fcb2e" formatted="false">"Enter a response before submitting."</string>
     <string name="l10n_6f7c983d3b97261c" formatted="false">"Enter a session title."</string>
     <string name="l10n_e64bedf7e5b25d1f" formatted="false">"Enter a valid server URL, for example https://hermes.yourdomain.com or http://&lt;server-tailscale-ip&gt;:8787."</string>
-    <string name="l10n_8230a28313458046" formatted="false">"Enter the Tailscale URL your agent returned, for example `http://&lt;tailnet-ip&gt;:8787`."</string>
+    <string name="l10n_6332c9abaf956af9" formatted="false">"Enter the exact HTTPS Tailscale Serve URL your agent returned, for example `https://server.tailnet-name.ts.net`."</string>
     <string name="l10n_8f6e7265b4a4d570" formatted="false">"Enter the server password."</string>
     <string name="l10n_7f2f6a15cf8da2b2" formatted="false">"Error"</string>
     <string name="l10n_09c1adde10c57e5f" formatted="false">"Error: %@"</string>
@@ -810,7 +810,7 @@
     <string name="l10n_d7446f460992044a" formatted="false">"Send `/%@ &lt;message&gt;` to use this skill."</string>
     <string name="l10n_8b2c12c5d4d5965d" formatted="false">"Send a message to start the conversation."</string>
     <string name="l10n_b57718ffcace839f" formatted="false">"Send after response"</string>
-    <string name="l10n_16ccc931b1910648" formatted="false">"Send this prompt to your Hermes Agent. It installs Hermes Web UI, enables password auth, and configures Tailscale access."</string>
+    <string name="l10n_fb8e5450e7708ea1" formatted="false">"Send this prompt to your Hermes Agent. It audits existing state, keeps Hermes Web UI on localhost, and configures private HTTPS with Tailscale Serve."</string>
     <string name="l10n_13e251839c1cbadc" formatted="false">"Sent with every request to your server, including media and live streams. Use for a reverse proxy (e.g. Authentik) or token auth, such as an Authorization header."</string>
     <string name="l10n_97dda3da38b6e1bf" formatted="false">"Separate skill names with commas."</string>
     <string name="l10n_cb0cb170d106f8e8" formatted="false">"Server"</string>
@@ -1202,7 +1202,6 @@
     <string name="l10n_567f51fd4b4b8a0d" formatted="false">"Diff was large; message may be partial."</string>
     <string name="l10n_d3f0b43f65ef5ed5" formatted="false">"Discard changes?"</string>
     <string name="l10n_1a2b1cb567321e7c" formatted="false">"Edit Identity"</string>
-    <string name="l10n_8b39616698372de0" formatted="false">"Enter the Tailscale URL your agent returned, for example http://&lt;tailnet-ip&gt;:8787."</string>
     <string name="l10n_f54ec593076806df" formatted="false">"Export HTML"</string>
     <string name="l10n_bc399052d4204298" formatted="false">"Export JSON"</string>
     <string name="l10n_03d5d80199276349" formatted="false">"Forget"</string>

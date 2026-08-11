@@ -344,7 +344,7 @@
     <string name="l10n_598b3a1a236fcb2e" formatted="false">"Введите ответ перед отправкой."</string>
     <string name="l10n_6f7c983d3b97261c" formatted="false">"Введите название сессии."</string>
     <string name="l10n_e64bedf7e5b25d1f" formatted="false">"Введите корректный URL сервера, например https://hermes.yourdomain.com или http://&lt;server-tailscale-ip&gt;:8787."</string>
-    <string name="l10n_8230a28313458046" formatted="false">"Введите URL Tailscale, который вернул ваш агент, например `http://&lt;tailnet-ip&gt;:8787`."</string>
+    <string name="l10n_6332c9abaf956af9" formatted="false">"Введите точный HTTPS-адрес Tailscale Serve, который вернул ваш агент, например `https://server.tailnet-name.ts.net`."</string>
     <string name="l10n_8f6e7265b4a4d570" formatted="false">"Введите пароль сервера."</string>
     <string name="l10n_7f2f6a15cf8da2b2" formatted="false">"Ошибка"</string>
     <string name="l10n_09c1adde10c57e5f" formatted="false">"Ошибка: %@"</string>
@@ -810,7 +810,7 @@
     <string name="l10n_d7446f460992044a" formatted="false">"Отправьте `/%@ &lt;message&gt;`, чтобы использовать этот навык."</string>
     <string name="l10n_8b2c12c5d4d5965d" formatted="false">"Отправьте сообщение, чтобы начать разговор."</string>
     <string name="l10n_b57718ffcace839f" formatted="false">"Отправить после ответа"</string>
-    <string name="l10n_16ccc931b1910648" formatted="false">"Отправьте этот промпт вашему агенту Hermes. Он устанавливает Hermes Web UI, включает аутентификацию по паролю и настраивает доступ через Tailscale."</string>
+    <string name="l10n_fb8e5450e7708ea1" formatted="false">"Отправьте этот промпт вашему агенту Hermes. Он проверит текущее состояние, оставит Hermes Web UI на localhost и настроит приватный HTTPS через Tailscale Serve."</string>
     <string name="l10n_13e251839c1cbadc" formatted="false">"Отправляется с каждым запросом к вашему серверу, включая медиа и прямые трансляции. Используйте для обратного прокси (например, Authentik) или аутентификации по токену, такой как заголовок Authorization."</string>
     <string name="l10n_97dda3da38b6e1bf" formatted="false">"Разделяйте названия навыков запятыми."</string>
     <string name="l10n_cb0cb170d106f8e8" formatted="false">"Сервер"</string>
@@ -1202,7 +1202,6 @@
     <string name="l10n_567f51fd4b4b8a0d" formatted="false">"Изменения недоступны"</string>
     <string name="l10n_d3f0b43f65ef5ed5" formatted="false">"Отменить последующие сообщения?"</string>
     <string name="l10n_1a2b1cb567321e7c" formatted="false">"Идентификация"</string>
-    <string name="l10n_8b39616698372de0" formatted="false">"Введите URL Tailscale, который вернул ваш агент, например `http://&lt;tailnet-ip&gt;:8787`."</string>
     <string name="l10n_f54ec593076806df" formatted="false">"Экспортировать как HTML"</string>
     <string name="l10n_bc399052d4204298" formatted="false">"Экспортировать как JSON"</string>
     <string name="l10n_03d5d80199276349" formatted="false">"Удалить сервер"</string>

@@ -593,7 +593,7 @@ private fun OnboardingAgentPromptPage(
             stepNumber = 1,
             icon = R.drawable.ic_hermex_ellipsis,
             title = "Set up Hermes Web UI",
-            description = "Send this prompt to your Hermes Agent. It installs Hermes Web UI, enables password auth, and configures Tailscale access.",
+            description = "Send this prompt to your Hermes Agent. It audits existing state, keeps Hermes Web UI on localhost, and configures private HTTPS with Tailscale Serve.",
         )
         Column(
             modifier = Modifier
@@ -779,7 +779,7 @@ private fun OnboardingConnectPage(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                localizedString("Enter the Tailscale URL your agent returned, for example http://<tailnet-ip>:8787."),
+                localizedString("Enter the exact HTTPS Tailscale Serve URL your agent returned, for example `https://server.tailnet-name.ts.net`."),
                 color = Color.White.copy(alpha = 0.5f),
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -790,7 +790,7 @@ private fun OnboardingConnectPage(
                 icon = R.drawable.ic_hermex_external_link,
                 value = state.serverUrl,
                 onValueChange = onServerUrlChange,
-                placeholder = "http://100.64.0.1:8787",
+                placeholder = "https://server.tailnet-name.ts.net",
                 keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri),
                 enabled = !state.isBusy,
             )
