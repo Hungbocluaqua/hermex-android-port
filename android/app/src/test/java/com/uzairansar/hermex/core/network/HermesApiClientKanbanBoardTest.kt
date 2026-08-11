@@ -25,6 +25,10 @@ class HermesApiClientKanbanBoardTest {
                         .build(),
                 )
             }
+            server.enqueue(
+                MockResponse.Builder().code(200).addHeader("Content-Type", "application/json")
+                    .body("{\"spawned\":[{\"id\":\"secret\"},{}],\"promoted\":\"1\",\"future\":true}").build(),
+            )
             val client = HermesApiClient(server.url("/"), OkHttpClient())
 
             client.createKanbanBoard(
@@ -35,6 +39,7 @@ class HermesApiClientKanbanBoardTest {
             )
             client.archiveKanbanBoard("../release")
             client.makeKanbanBoardActive("../release")
+            val dispatchResult = client.dispatchKanban("release/team", dryRun = true)
 
             val create = server.takeRequest()
             assertEquals("POST", create.method)
@@ -64,7 +69,17 @@ class HermesApiClientKanbanBoardTest {
             assertNull(activate.url.query)
             assertEquals(0L, activate.bodySize)
 
-            listOf(create, edit, archive, activate).forEach { request ->
+            val dispatch = server.takeRequest()
+            assertEquals("POST", dispatch.method)
+            assertEquals("/api/kanban/dispatch", dispatch.url.encodedPath)
+            assertEquals("release/team", dispatch.url.queryParameter("board"))
+            assertEquals("true", dispatch.url.queryParameter("dry_run"))
+            assertEquals("8", dispatch.url.queryParameter("max"))
+            assertEquals(0L, dispatch.bodySize)
+            assertEquals(2, dispatchResult.spawned)
+            assertEquals(1, dispatchResult.promoted)
+
+            listOf(create, edit, archive, activate, dispatch).forEach { request ->
                 assertNull(request.headers["Authorization"])
                 assertNull(request.headers["Origin"])
                 assertNull(request.headers["Referer"])

@@ -157,7 +157,7 @@ internal class KanbanLabViewModel(
                         it == KanbanCompatibilityWarning.WriteCapabilityUnavailable
                 }
         },
-        hasOtherBoardActivity = { hasActiveWorkflowMutation() || boardMutationBlocksWrites() },
+        hasOtherBoardActivity = { hasActiveWorkflowMutation() || boardMutationBlocksWrites() || dispatchBlocksWrites() },
         cardInSnapshot = ::cardInCurrentSnapshot,
         replaceCard = ::replaceCardInCurrentSnapshot,
         refreshBoard = ::refreshAfterBulkAction,
@@ -173,6 +173,7 @@ internal class KanbanLabViewModel(
             mutableState.value.canUseCardWorkflow &&
                 bulkController.state.value.phase == null &&
                 !boardMutationBlocksWrites() &&
+                !dispatchBlocksWrites() &&
                 card.hasSupportedStatus
         },
         cardInSnapshot = ::cardInCurrentSnapshot,
@@ -196,18 +197,31 @@ internal class KanbanLabViewModel(
         scope = viewModelScope,
         baseAllowsMutation = { mutableState.value.canUseWrites },
         hasOtherBoardActivity = {
-            hasActiveWorkflowMutation() || bulkController.state.value.phase != null
+            hasActiveWorkflowMutation() || bulkController.state.value.phase != null || dispatchBlocksWrites()
         },
         boardExists = { slug -> mutableState.value.boards.any { it.slug?.trim() == slug } },
         applyBoardsResponse = ::applyBoardsResponse,
     )
     val boardState: StateFlow<KanbanBoardManagementUiState>
         get() = boardController.state
+    private val dispatcherController = KanbanDispatcherController(
+        repository = repository,
+        scope = viewModelScope,
+        selectedBoard = { mutableState.value.selectedBoardSlug },
+        availability = ::dispatcherAvailability,
+        boardActivityGeneration = { boardActivityGeneration },
+        markBoardActivity = ::markBoardActivity,
+        applyBoards = ::reconcileBoardCollectionForDispatch,
+        refreshBoard = ::refreshBoardForDispatch,
+        onOffline = { mutableState.value = mutableState.value.copy(isOffline = true, refreshFailed = false) },
+    )
+    val dispatchState: StateFlow<KanbanDispatchState?> = dispatcherController.state
 
     private var loadGeneration = 0
     private var liveGeneration = 0
     private var liveCursor = 0
     private var streamFailureCount = 0
+    private var boardActivityGeneration = 0
     private var isVisible = false
     private var lifecycleActive = false
     private var hasBeenLifecycleActive = false
@@ -294,6 +308,8 @@ internal class KanbanLabViewModel(
                 )
                 bulkController.acknowledgeFullReload(protectedSnapshot?.allCards().orEmpty(), boardChanged)
                 boardController.acknowledgeFullReload()
+                dispatcherController.acknowledgeFullReload()
+                markBoardActivity()
                 startLiveUpdatesIfReady()
             } catch (error: CancellationException) {
                 throw error
@@ -359,6 +375,36 @@ internal class KanbanLabViewModel(
     fun checkBoardMutationResult() = boardController.checkResult()
 
     fun dismissBoardMutationResult() = boardController.dismissResult()
+
+    fun previewDispatch() = dispatcherController.preview()
+    fun runDispatcher() = dispatcherController.run()
+    fun dismissDispatchResult() = dispatcherController.dismiss()
+    fun refreshUncertainDispatchOutcome() = dispatcherController.refreshUncertain()
+    fun isPreviewStale(): Boolean = dispatcherController.isPreviewStale()
+
+    fun dispatcherAvailability(): KanbanDispatcherAvailability {
+        val dispatch = dispatcherController.state.value
+        if (dispatch?.isInFlight == true || boardMutationBlocksWrites() || bulkController.state.value.phase != null || hasActiveWorkflowMutation()) {
+            return KanbanDispatcherAvailability.Busy
+        }
+        val state = mutableState.value
+        if (state.isOffline) return KanbanDispatcherAvailability.Offline
+        if (state.isRefreshing) return KanbanDispatcherAvailability.Refreshing
+        if (state.refreshFailed) return KanbanDispatcherAvailability.RefreshFailed
+        if (dispatch?.mode == KanbanDispatchMode.Run && dispatch.phase == KanbanDispatchPhase.OutcomeUncertain) {
+            return KanbanDispatcherAvailability.OutcomeUncertain
+        }
+        if (dispatcherController.capabilityIncompatible || state.availability != KanbanAvailability.Content || state.snapshot == null || state.selectedBoardSlug == null) {
+            return KanbanDispatcherAvailability.Incompatible
+        }
+        if (state.configuration?.readOnly == true || state.boardsReadOnly == true || state.snapshot.readOnly == true || state.selectedBoard?.readOnly == true) {
+            return KanbanDispatcherAvailability.ReadOnly
+        }
+        if (state.configuration?.readOnly != false || state.boardsReadOnly != false || state.snapshot.readOnly != false) {
+            return KanbanDispatcherAvailability.Incompatible
+        }
+        return KanbanDispatcherAvailability.Available
+    }
 
     fun applyFilters(filters: KanbanFilterState) {
         val state = mutableState.value
@@ -434,6 +480,7 @@ internal class KanbanLabViewModel(
                     detailRefreshRevision = current.detailRefreshRevision + 1,
                     workflowCapabilityUnavailable = if (boardChanged) false else current.workflowCapabilityUnavailable,
                 )
+                markBoardActivity()
                 if (boardChanged) {
                     bulkController.resetForBoardChange()
                 } else {
@@ -752,6 +799,7 @@ internal class KanbanLabViewModel(
         mutableState.value = current.copy(
             snapshot = snapshot.replacingKanbanCard(card, current.filters.includeArchived),
         )
+        markBoardActivity()
     }
 
     private fun removeCardFromCurrentSnapshot(cardId: String) {
@@ -764,6 +812,7 @@ internal class KanbanLabViewModel(
                 },
             ),
         )
+        markBoardActivity()
     }
 
     private fun hasActiveWorkflowMutation(): Boolean =
@@ -772,7 +821,44 @@ internal class KanbanLabViewModel(
     private fun boardMutationBlocksWrites(): Boolean =
         boardController.state.value.blocksWrites
 
+    private fun dispatchBlocksWrites(): Boolean =
+        dispatcherController.blocksBoardActions()
+
+    private fun markBoardActivity() { boardActivityGeneration += 1 }
+
+    private suspend fun reconcileBoardCollectionForDispatch(): Boolean = try {
+        applyBoardsResponse(repository.boards())
+        true
+    } catch (error: Throwable) {
+        if (isOfflineError(error)) mutableState.value = mutableState.value.copy(isOffline = true, refreshFailed = false)
+        false
+    }
+
+    private suspend fun refreshBoardForDispatch(board: String): Boolean = try {
+        if (mutableState.value.selectedBoardSlug != board) return false
+        val snapshot = repository.boardSnapshot(board, mutableState.value.filters.request())
+        val supplementary = loadSupplementary(board)
+        if (mutableState.value.selectedBoardSlug != board) return false
+        val current = mutableState.value
+        mutableState.value = current.copy(
+            snapshot = snapshot,
+            stats = supplementary.first,
+            assigneeHistory = supplementary.second,
+            isRefreshing = false,
+            refreshFailed = false,
+            isOffline = false,
+            detailRefreshRevision = current.detailRefreshRevision + 1,
+        )
+        bulkController.acknowledgeSnapshot(snapshot.allCards())
+        markBoardActivity()
+        true
+    } catch (error: Throwable) {
+        if (isOfflineError(error)) mutableState.value = mutableState.value.copy(isOffline = true, refreshFailed = false)
+        false
+    }
+
     private fun applyBoardsResponse(response: KanbanBoardsResponse) {
+        markBoardActivity()
         val availableBoards = response.boards.orEmpty()
         val current = mutableState.value
         val selectedSlug = current.selectedBoardSlug

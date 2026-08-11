@@ -110,6 +110,50 @@ data class KanbanBoardMutationEnvelope(
     @SerialName("read_only") val readOnly: Boolean? = null,
 )
 
+@Serializable(with = KanbanDispatchResultSerializer::class)
+data class KanbanDispatchResult(
+    val spawned: Int? = null,
+    val promoted: Int? = null,
+    val reclaimed: Int? = null,
+    val skippedUnassigned: Int? = null,
+    val skippedNonspawnable: Int? = null,
+    val autoBlocked: Int? = null,
+    val timedOut: Int? = null,
+    val crashed: Int? = null,
+) {
+    val hasKnownCategory: Boolean
+        get() = listOf(spawned, promoted, reclaimed, skippedUnassigned, skippedNonspawnable, autoBlocked, timedOut, crashed)
+            .any { it != null }
+}
+
+object KanbanDispatchResultSerializer : KSerializer<KanbanDispatchResult> {
+    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("KanbanDispatchResult")
+
+    override fun deserialize(decoder: Decoder): KanbanDispatchResult {
+        val objectValue = (decoder as? JsonDecoder)?.decodeJsonElement() as? JsonObject ?: return KanbanDispatchResult()
+        fun count(key: String): Int? = when (val value = objectValue[key]) {
+            is JsonArray -> value.size
+            is JsonPrimitive -> value.intOrNull ?: value.contentOrNull?.trim()?.toIntOrNull()
+            else -> null
+        }
+        return KanbanDispatchResult(
+            spawned = count("spawned"), promoted = count("promoted"), reclaimed = count("reclaimed"),
+            skippedUnassigned = count("skipped_unassigned"), skippedNonspawnable = count("skipped_nonspawnable"),
+            autoBlocked = count("auto_blocked"), timedOut = count("timed_out"), crashed = count("crashed"),
+        )
+    }
+
+    override fun serialize(encoder: Encoder, value: KanbanDispatchResult) {
+        val jsonEncoder = encoder as? JsonEncoder ?: return
+        jsonEncoder.encodeJsonElement(buildJsonObject {
+            value.spawned?.let { put("spawned", it) }; value.promoted?.let { put("promoted", it) }
+            value.reclaimed?.let { put("reclaimed", it) }; value.skippedUnassigned?.let { put("skipped_unassigned", it) }
+            value.skippedNonspawnable?.let { put("skipped_nonspawnable", it) }; value.autoBlocked?.let { put("auto_blocked", it) }
+            value.timedOut?.let { put("timed_out", it) }; value.crashed?.let { put("crashed", it) }
+        })
+    }
+}
+
 @Serializable
 data class KanbanBoardSnapshot(
     @Serializable(with = LossyNullableKanbanColumnListSerializer::class)
@@ -504,6 +548,7 @@ sealed class KanbanContractViolation(message: String) : IllegalStateException(me
     data object MissingCardIdentity : KanbanContractViolation("The server returned a Kanban card without an identity.")
     data object MissingCardStatus : KanbanContractViolation("The server returned a Kanban card without a status.")
     data object MissingDependencyIdentity : KanbanContractViolation("The server returned an invalid Kanban dependency result.")
+    data object MissingDispatchResult : KanbanContractViolation("The server returned an invalid Kanban Dispatcher result.")
 }
 
 val supportedKanbanStatuses = setOf("triage", "todo", "blocked", "ready", "running", "done", "archived")

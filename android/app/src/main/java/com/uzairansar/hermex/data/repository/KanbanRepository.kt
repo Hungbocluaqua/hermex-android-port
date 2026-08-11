@@ -19,6 +19,7 @@ import com.uzairansar.hermex.core.model.KanbanBoardsResponse
 import com.uzairansar.hermex.core.model.KanbanBoardMutationEnvelope
 import com.uzairansar.hermex.core.model.KanbanCreateBoardRequest
 import com.uzairansar.hermex.core.model.KanbanEditBoardRequest
+import com.uzairansar.hermex.core.model.KanbanDispatchResult
 import com.uzairansar.hermex.core.model.KanbanStats
 import com.uzairansar.hermex.core.model.KanbanAssigneeHistory
 import com.uzairansar.hermex.core.network.HermesApiClient
@@ -94,6 +95,9 @@ interface KanbanBrowseDataSource {
 
     suspend fun makeBoardActive(slug: String): KanbanBoardMutationEnvelope =
         throw UnsupportedOperationException("Kanban Board management is unavailable.")
+
+    suspend fun dispatch(board: String, dryRun: Boolean): KanbanDispatchResult =
+        throw UnsupportedOperationException("Kanban Dispatcher is unavailable.")
 }
 
 class KanbanRepository(
@@ -228,6 +232,9 @@ class KanbanRepository(
 
     override suspend fun makeBoardActive(slug: String): KanbanBoardMutationEnvelope =
         client.makeKanbanBoardActive(slug)
+
+    override suspend fun dispatch(board: String, dryRun: Boolean): KanbanDispatchResult =
+        client.dispatchKanban(board, dryRun)
 
     private fun validateBoardsResponse(response: KanbanBoardsResponse) {
         val boards = response.boards ?: throw KanbanContractViolation.MissingBoardIdentity
