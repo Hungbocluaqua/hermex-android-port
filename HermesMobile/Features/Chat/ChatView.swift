@@ -775,14 +775,7 @@ struct ChatView: View {
             }
             .alert(
                 "Message Action Failed",
-                isPresented: Binding(
-                    get: { viewModel.messageActionErrorMessage != nil },
-                    set: { isPresented in
-                        if !isPresented {
-                            viewModel.clearMessageActionError()
-                        }
-                    }
-                )
+                isPresented: messageActionErrorIsPresented
             ) {
                 Button("OK") {
                     viewModel.clearMessageActionError()
@@ -790,6 +783,17 @@ struct ChatView: View {
             } message: {
                 Text(viewModel.messageActionErrorMessage ?? "")
             }
+    }
+
+    private var messageActionErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { viewModel.messageActionErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    viewModel.clearMessageActionError()
+                }
+            }
+        )
     }
 
     @ViewBuilder
