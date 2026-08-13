@@ -522,7 +522,7 @@ struct ChatView: View {
         "\(server.absoluteString)|\(transcriptMediaSessionID ?? "local:\(session.id)")"
     }
 
-    var body: some View {
+    private var chatLayout: some View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
                 if viewModel.isViewingCachedData {
@@ -575,6 +575,10 @@ struct ChatView: View {
         .navigationTitle(displayTitle)
         .navigationBarTitleDisplayMode(.inline)
         .accessibilityIdentifier("chat-detail:\(viewModel.displayTitle)")
+    }
+
+    var body: some View {
+        chatLayout
         .task(id: didCompleteInitialAppearance) {
             await handleInitialAppearanceTask()
         }
