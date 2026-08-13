@@ -1,1 +1,1 @@
-Adds a collapsible scheduled-sessions section with search and a full-list view, recognizes cron-prefixed sessions, and replaces task delivery free text with server-provided choices while preserving custom and legacy targets.
+Introduces production Kanban with Boards, Cards, live updates, workflow and bulk actions, Board management, Dispatcher, offline safety, and full iOS parity. Also improves streaming recovery, workspace Markdown previews, file artifacts, and safe private-network onboarding.
