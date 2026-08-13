@@ -577,7 +577,7 @@ struct ChatView: View {
         .accessibilityIdentifier("chat-detail:\(viewModel.displayTitle)")
     }
 
-    var body: some View {
+    private var lifecycleManagedChat: some View {
         chatLayout
         .task(id: didCompleteInitialAppearance) {
             await handleInitialAppearanceTask()
@@ -630,6 +630,10 @@ struct ChatView: View {
                 guard viewModel.responseCompletionHapticTrigger > 0 else { return }
                 handleResponseCompletionSideEffects()
             }
+    }
+
+    private var navigableChat: some View {
+        lifecycleManagedChat
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     ChatToolbarTitleLabel(
@@ -695,6 +699,10 @@ struct ChatView: View {
                     restoreComposerFocusAfterPreviewIfNeeded()
                 }
             }
+    }
+
+    private var presentedChat: some View {
+        navigableChat
             .sheet(item: $transcriptMediaPreviewItem, content: transcriptMediaPreviewView)
             .sheet(item: $activeGitSheet, content: gitSheet)
             .sheet(item: $turnDiffPresentation, content: turnDiffSheet)
@@ -787,6 +795,10 @@ struct ChatView: View {
             } message: {
                 Text(viewModel.messageActionErrorMessage ?? "")
             }
+    }
+
+    var body: some View {
+        presentedChat
     }
 
     private var messageActionErrorIsPresented: Binding<Bool> {
