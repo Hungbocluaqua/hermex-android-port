@@ -345,6 +345,7 @@ fun HermexApp(
                             },
                             onOpenPanels = { navController.navigateSingleTop("panels") },
                             onOpenPanel = { section -> navController.navigateSingleTop("panels?section=$section") },
+                            onOpenKanban = { navController.navigateSingleTop("kanban") },
                             onOpenSettings = { navController.navigateSingleTop("settings") },
                             onNeedsOnboarding = {
                                 navController.navigate("onboarding") {
@@ -492,6 +493,22 @@ fun HermexApp(
                                 navController.navigate("onboarding") {
                                     popUpTo(navController.graph.id) { inclusive = true }
                                 }
+                            }
+                        }
+                    }
+                }
+                composable(route = "kanban") {
+                    val server = (authState as? AuthState.LoggedIn)?.server
+                    if (server != null) {
+                        KanbanLabRoute(
+                            repository = container.kanbanRepository(server),
+                            viewModelKey = "kanban:$activeServerKey",
+                            onBack = { navController.popBackStack() },
+                        )
+                    } else {
+                        LaunchedEffect(Unit) {
+                            navController.navigate("onboarding") {
+                                popUpTo(navController.graph.id) { inclusive = true }
                             }
                         }
                     }

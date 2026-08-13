@@ -331,6 +331,7 @@ class HermexUiFlowTest {
             initials = "MH",
         )
         var openedPanel: String? = null
+        var openedKanban = false
         var openedChat: String? = null
 
         composeRule.setContent {
@@ -344,6 +345,7 @@ class HermexUiFlowTest {
                     onOpenSharedDraft = {},
                     onOpenPanels = {},
                     onOpenPanel = { openedPanel = it },
+                    onOpenKanban = { openedKanban = true },
                     onOpenSettings = {},
                     onNeedsOnboarding = {},
                 )
@@ -378,6 +380,7 @@ class HermexUiFlowTest {
         assertTrue(branchBody.contains(""""session_id":"s1""""))
         assertTrue(branchBody.contains(""""title":"Android Port (copy)""""))
         composeRule.onNodeWithText("Tasks").assertIsDisplayed()
+        composeRule.onNodeWithText("Kanban").assertIsDisplayed()
         composeRule.onNodeWithText("Skills").assertIsDisplayed()
         composeRule.onNodeWithText("Memory").assertIsDisplayed()
         composeRule.onNodeWithText("Insights").assertIsDisplayed()
@@ -385,6 +388,8 @@ class HermexUiFlowTest {
         assertTrue(composeRule.onAllNodesWithText("Tool").fetchSemanticsNodes().isEmpty())
         assertTrue(composeRule.onAllNodesWithText("Mem").fetchSemanticsNodes().isEmpty())
         assertTrue(composeRule.onAllNodesWithText("Chart").fetchSemanticsNodes().isEmpty())
+        composeRule.onNodeWithText("Kanban").performClick()
+        composeRule.runOnIdle { assertTrue(openedKanban) }
         composeRule.onNodeWithText("Projects").assertIsDisplayed()
         assertTrue(composeRule.onAllNodesWithText("Mobile").fetchSemanticsNodes().isEmpty())
         assertTrue(composeRule.onAllNodesWithText("New project").fetchSemanticsNodes().isEmpty())
@@ -466,6 +471,7 @@ class HermexUiFlowTest {
                     onOpenVoiceChat = {},
                     onOpenSharedDraft = {},
                     onOpenPanels = {},
+                    onOpenKanban = {},
                     onOpenSettings = {},
                     onNeedsOnboarding = {},
                 )
@@ -544,6 +550,7 @@ class HermexUiFlowTest {
                         onOpenVoiceChat = {},
                         onOpenSharedDraft = {},
                         onOpenPanels = {},
+                        onOpenKanban = {},
                         onOpenSettings = {},
                         onNeedsOnboarding = {},
                     )
@@ -2130,6 +2137,7 @@ class HermexUiFlowTest {
         composeRule.onNodeWithTag("settings_list").performScrollToNode(hasSemanticsText("MAIN PAGE"))
         composeRule.onNodeWithText("MAIN PAGE").assertIsDisplayed()
         composeRule.onNodeWithText("Tasks").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Kanban").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Active Profile").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("settings_list").performScrollToNode(hasSemanticsText("ACTIVE SERVER"))
         composeRule.onNodeWithText("ACTIVE SERVER").assertIsDisplayed()

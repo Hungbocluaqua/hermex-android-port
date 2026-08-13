@@ -13,6 +13,7 @@
     <string name="widget_new_session">新增工作階段</string>
     <string name="widget_new_voice">語音輸入</string>
     <string name="nav_tasks">工作</string>
+    <string name="nav_kanban">看板</string>
     <string name="nav_skills">技能</string>
     <string name="nav_memory">記憶</string>
     <string name="nav_insights">分析</string>

@@ -441,6 +441,11 @@ fun SettingsRoute(
                         onValueChange = viewModel::setShowTasksSection,
                     )
                     SettingsToggleRow(
+                        label = localizedString("Kanban"),
+                        value = state.mainPageDisplaySettings.showKanban,
+                        onValueChange = viewModel::setShowKanbanSection,
+                    )
+                    SettingsToggleRow(
                         label = localizedString("Skills"),
                         value = state.mainPageDisplaySettings.showSkills,
                         onValueChange = viewModel::setShowSkillsSection,

@@ -141,6 +141,7 @@ fun SessionListRoute(
     onOpenSharedDraft: (String) -> Unit,
     onOpenPanels: () -> Unit,
     onOpenPanel: (String) -> Unit = { onOpenPanels() },
+    onOpenKanban: () -> Unit,
     onOpenSettings: () -> Unit,
     onNeedsOnboarding: () -> Unit,
 ) {
@@ -357,6 +358,7 @@ fun SessionListRoute(
                             UtilityRows(
                                 settings = state.mainPageDisplaySettings,
                                 onOpenPanel = onOpenPanel,
+                                onOpenKanban = onOpenKanban,
                             )
                         }
                         if (state.mainPageDisplaySettings.showActiveProfile && !state.isSingleProfileMode) {
@@ -915,6 +917,7 @@ private fun NewChatFloatingButton(
 private fun UtilityRows(
     settings: com.uzairansar.hermex.data.preferences.MainPageDisplaySettings,
     onOpenPanel: (String) -> Unit,
+    onOpenKanban: () -> Unit,
 ) {
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     Column(
@@ -924,27 +927,34 @@ private fun UtilityRows(
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         val rows = buildList {
-            if (settings.showTasks) add(Triple(R.string.nav_tasks, R.drawable.ic_lucide_calendar_clock, "tasks"))
-            if (settings.showSkills) add(Triple(R.string.nav_skills, R.drawable.ic_lucide_hammer, "skills"))
-            if (settings.showMemory) add(Triple(R.string.nav_memory, R.drawable.ic_lucide_brain, "memory"))
-            if (settings.showInsights) add(Triple(R.string.nav_insights, R.drawable.ic_lucide_chart_column_increasing, "insights"))
+            if (settings.showTasks) add(UtilityDestination(R.string.nav_tasks, R.drawable.ic_lucide_calendar_clock) { onOpenPanel("tasks") })
+            if (settings.showKanban) add(UtilityDestination(R.string.nav_kanban, R.drawable.ic_lucide_columns_3, onOpenKanban))
+            if (settings.showSkills) add(UtilityDestination(R.string.nav_skills, R.drawable.ic_lucide_hammer) { onOpenPanel("skills") })
+            if (settings.showMemory) add(UtilityDestination(R.string.nav_memory, R.drawable.ic_lucide_brain) { onOpenPanel("memory") })
+            if (settings.showInsights) add(UtilityDestination(R.string.nav_insights, R.drawable.ic_lucide_chart_column_increasing) { onOpenPanel("insights") })
         }
         if (isLandscape) {
             rows.chunked(2).forEach { pair ->
                 Row(Modifier.fillMaxWidth()) {
-                    pair.forEach { (label, icon, destination) ->
-                        UtilityRow(stringResource(label), icon, destination, onOpenPanel, Modifier.weight(1f))
+                    pair.forEach { destination ->
+                        UtilityRow(stringResource(destination.label), destination.icon, destination.onOpen, Modifier.weight(1f))
                     }
                     if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
         } else {
-            rows.forEach { (label, icon, destination) ->
-                UtilityRow(stringResource(label), icon, destination, onOpenPanel)
+            rows.forEach { destination ->
+                UtilityRow(stringResource(destination.label), destination.icon, destination.onOpen)
             }
         }
     }
 }
+
+private data class UtilityDestination(
+    @param:androidx.annotation.StringRes val label: Int,
+    @param:DrawableRes val icon: Int,
+    val onOpen: () -> Unit,
+)
 
 @Composable
 private fun ActiveProfileSection(
@@ -1098,15 +1108,14 @@ private fun SelectedSubrowIndicator(contentDescription: String? = null) {
 private fun UtilityRow(
     title: String,
     @DrawableRes iconRes: Int,
-    destination: String,
-    onOpenPanel: (String) -> Unit,
+    onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(HermexCardShape)
-            .clickable { onOpenPanel(destination) }
+            .clickable(onClick = onOpen)
             .heightIn(min = 44.dp)
             .padding(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp),

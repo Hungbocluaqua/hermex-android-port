@@ -13,6 +13,7 @@
     <string name="widget_new_session">새 세션</string>
     <string name="widget_new_voice">음성 입력</string>
     <string name="nav_tasks">작업</string>
+    <string name="nav_kanban">칸반</string>
     <string name="nav_skills">스킬</string>
     <string name="nav_memory">메모리</string>
     <string name="nav_insights">인사이트</string>

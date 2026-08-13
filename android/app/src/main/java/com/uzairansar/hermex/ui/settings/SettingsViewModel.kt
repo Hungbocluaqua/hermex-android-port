@@ -758,6 +758,10 @@ class SettingsViewModel(
         localSettingsRepository.setShowTasksSection(enabled)
     }
 
+    fun setShowKanbanSection(enabled: Boolean) = updateMainPageDisplay {
+        localSettingsRepository.setShowKanbanSection(enabled)
+    }
+
     fun setShowSkillsSection(enabled: Boolean) = updateMainPageDisplay {
         localSettingsRepository.setShowSkillsSection(enabled)
     }

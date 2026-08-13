@@ -54,6 +54,7 @@ class ChatDisplaySettingsTest {
 
         val mainPage = MainPageDisplaySettings()
         assertTrue(mainPage.showTasks)
+        assertTrue(mainPage.showKanban)
         assertTrue(mainPage.showSkills)
         assertTrue(mainPage.showMemory)
         assertTrue(mainPage.showInsights)

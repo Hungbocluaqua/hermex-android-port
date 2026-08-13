@@ -60,6 +60,7 @@ data class SessionRowDisplaySettings(
 
 data class MainPageDisplaySettings(
     val showTasks: Boolean = true,
+    val showKanban: Boolean = true,
     val showSkills: Boolean = true,
     val showMemory: Boolean = true,
     val showInsights: Boolean = true,
@@ -135,6 +136,7 @@ class LocalSettingsRepository(context: Context) {
     val mainPageDisplaySettings: Flow<MainPageDisplaySettings> = dataStore.data.map { preferences ->
         MainPageDisplaySettings(
             showTasks = preferences[MAIN_PAGE_SHOW_TASKS] ?: true,
+            showKanban = preferences[MAIN_PAGE_SHOW_KANBAN] ?: true,
             showSkills = preferences[MAIN_PAGE_SHOW_SKILLS] ?: true,
             showMemory = preferences[MAIN_PAGE_SHOW_MEMORY] ?: true,
             showInsights = preferences[MAIN_PAGE_SHOW_INSIGHTS] ?: true,
@@ -353,6 +355,8 @@ class LocalSettingsRepository(context: Context) {
 
     suspend fun setShowTasksSection(enabled: Boolean) = setBoolean(MAIN_PAGE_SHOW_TASKS, enabled)
 
+    suspend fun setShowKanbanSection(enabled: Boolean) = setBoolean(MAIN_PAGE_SHOW_KANBAN, enabled)
+
     suspend fun setShowSkillsSection(enabled: Boolean) = setBoolean(MAIN_PAGE_SHOW_SKILLS, enabled)
 
     suspend fun setShowMemorySection(enabled: Boolean) = setBoolean(MAIN_PAGE_SHOW_MEMORY, enabled)
@@ -451,6 +455,7 @@ class LocalSettingsRepository(context: Context) {
         val SESSION_ROW_SHOW_CRON_SESSIONS = booleanPreferencesKey("sessionRow.showCronSessions")
         val SESSION_ROW_SHOW_SUBAGENT_SESSIONS = booleanPreferencesKey("sessionRow.showSubagentSessions")
         val MAIN_PAGE_SHOW_TASKS = booleanPreferencesKey("mainPage.showTasks")
+        val MAIN_PAGE_SHOW_KANBAN = booleanPreferencesKey("mainPage.showKanban")
         val MAIN_PAGE_SHOW_SKILLS = booleanPreferencesKey("mainPage.showSkills")
         val MAIN_PAGE_SHOW_MEMORY = booleanPreferencesKey("mainPage.showMemory")
         val MAIN_PAGE_SHOW_INSIGHTS = booleanPreferencesKey("mainPage.showInsights")

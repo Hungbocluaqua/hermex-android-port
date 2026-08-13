@@ -13,6 +13,7 @@
     <string name="widget_new_session">Nueva sesión</string>
     <string name="widget_new_voice">Entrada de voz</string>
     <string name="nav_tasks">Tareas</string>
+    <string name="nav_kanban">Kanban</string>
     <string name="nav_skills">Habilidades</string>
     <string name="nav_memory">Memoria</string>
     <string name="nav_insights">Estadísticas</string>

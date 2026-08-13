@@ -13,6 +13,7 @@
     <string name="widget_new_session">Новая сессия</string>
     <string name="widget_new_voice">Голосовой ввод</string>
     <string name="nav_tasks">Задачи</string>
+    <string name="nav_kanban">Канбан</string>
     <string name="nav_skills">Навыки</string>
     <string name="nav_memory">Память</string>
     <string name="nav_insights">Статистика</string>
