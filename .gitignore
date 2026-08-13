@@ -36,6 +36,8 @@ node_modules/
 .sc/
 .claude/
 .codegraph/
+.codex/
+.cursor/
 
 # App packaging
 *.ipa

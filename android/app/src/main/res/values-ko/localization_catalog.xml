@@ -4,6 +4,7 @@
     <string name="l10n_da39a3ee5e6b4b0d" formatted="false">""</string>
     <string name="l10n_c5f4841e88283b20" formatted="false">"%@ "</string>
     <string name="l10n_f4bf1c5a87391cee" formatted="false">"%@ (복사본)"</string>
+    <string name="l10n_2ca3ef88d532a8ea" formatted="false">"%@ (사용자 지정)"</string>
     <string name="l10n_65f24878983ab599" formatted="false">"캐시 %@"</string>
     <string name="l10n_d5e871cae9c94743" formatted="false">"%@ 헤더 로고 색상"</string>
     <string name="l10n_ceccebb4580279f7" formatted="false">"입력 %1$@ / 출력 %2$@"</string>
@@ -16,13 +17,89 @@
     <string name="l10n_101047989486fe1e" formatted="false">"%1$@, %2$@, 활성 서버"</string>
     <string name="l10n_bc576900b6f6e566" formatted="false">"%@, 활성 서버"</string>
     <string name="l10n_16070acfe08366e8" formatted="false">"%lld"</string>
+    <string name="l10n_ec77970ef773212e" formatted="false">"카드 %lld개"</string>
+    <plurals name="l10n_ec77970ef773212e">
+        <item quantity="zero">"카드 %d개"</item>
+        <item quantity="one">"카드 %d개"</item>
+        <item quantity="two">"카드 %d개"</item>
+        <item quantity="few">"카드 %d개"</item>
+        <item quantity="many">"카드 %d개"</item>
+        <item quantity="other">"카드 %d개"</item>
+    </plurals>
+    <string name="l10n_8d777c131031fa2e" formatted="false">"종속 카드 %lld개"</string>
+    <plurals name="l10n_8d777c131031fa2e">
+        <item quantity="zero">"종속 카드 %d개"</item>
+        <item quantity="one">"종속 카드 %d개"</item>
+        <item quantity="two">"종속 카드 %d개"</item>
+        <item quantity="few">"종속 카드 %d개"</item>
+        <item quantity="many">"종속 카드 %d개"</item>
+        <item quantity="other">"종속 카드 %d개"</item>
+    </plurals>
+    <string name="l10n_66a4be0dc2595729" formatted="false">"선행 조건 %lld개"</string>
+    <plurals name="l10n_66a4be0dc2595729">
+        <item quantity="zero">"선행 조건 %d개"</item>
+        <item quantity="one">"선행 조건 %d개"</item>
+        <item quantity="two">"선행 조건 %d개"</item>
+        <item quantity="few">"선행 조건 %d개"</item>
+        <item quantity="many">"선행 조건 %d개"</item>
+        <item quantity="other">"선행 조건 %d개"</item>
+    </plurals>
     <string name="l10n_f6450a6cc043203f" formatted="false">"%lld 추가됨"</string>
+    <string name="l10n_5e99075a998414f8" formatted="false">"댓글 %lld개"</string>
+    <plurals name="l10n_5e99075a998414f8">
+        <item quantity="zero">"댓글 %d개"</item>
+        <item quantity="one">"댓글 %d개"</item>
+        <item quantity="two">"댓글 %d개"</item>
+        <item quantity="few">"댓글 %d개"</item>
+        <item quantity="many">"댓글 %d개"</item>
+        <item quantity="other">"댓글 %d개"</item>
+    </plurals>
     <string name="l10n_06c13ef4292ad119" formatted="false">"%lld개 파일 변경됨"</string>
+    <plurals name="l10n_06c13ef4292ad119">
+        <item quantity="zero">"%d개 파일 변경됨"</item>
+        <item quantity="one">"%d개 파일 변경됨"</item>
+        <item quantity="two">"%d개 파일 변경됨"</item>
+        <item quantity="few">"%d개 파일 변경됨"</item>
+        <item quantity="many">"%d개 파일 변경됨"</item>
+        <item quantity="other">"%d개 파일 변경됨"</item>
+    </plurals>
     <string name="l10n_c4b7ead9d1bf1471" formatted="false">"%lld줄"</string>
+    <plurals name="l10n_c4b7ead9d1bf1471">
+        <item quantity="zero">"%d줄"</item>
+        <item quantity="one">"%d줄"</item>
+        <item quantity="two">"%d줄"</item>
+        <item quantity="few">"%d줄"</item>
+        <item quantity="many">"%d줄"</item>
+        <item quantity="other">"%d줄"</item>
+    </plurals>
     <string name="l10n_2efcf5438a29b31f" formatted="false">"메시지 %lld개"</string>
+    <plurals name="l10n_2efcf5438a29b31f">
+        <item quantity="zero">"메시지 %d개"</item>
+        <item quantity="one">"메시지 %d개"</item>
+        <item quantity="two">"메시지 %d개"</item>
+        <item quantity="few">"메시지 %d개"</item>
+        <item quantity="many">"메시지 %d개"</item>
+        <item quantity="other">"메시지 %d개"</item>
+    </plurals>
     <string name="l10n_ced88678ac893dde" formatted="false">"%lld 제거됨"</string>
     <string name="l10n_232aab9f8671f81d" formatted="false">"세션 %lld개"</string>
+    <plurals name="l10n_232aab9f8671f81d">
+        <item quantity="zero">"세션 %d개"</item>
+        <item quantity="one">"세션 %d개"</item>
+        <item quantity="two">"세션 %d개"</item>
+        <item quantity="few">"세션 %d개"</item>
+        <item quantity="many">"세션 %d개"</item>
+        <item quantity="other">"세션 %d개"</item>
+    </plurals>
     <string name="l10n_66137dc5d00d671d" formatted="false">"스킬 %lld개"</string>
+    <plurals name="l10n_66137dc5d00d671d">
+        <item quantity="zero">"스킬 %d개"</item>
+        <item quantity="one">"스킬 %d개"</item>
+        <item quantity="two">"스킬 %d개"</item>
+        <item quantity="few">"스킬 %d개"</item>
+        <item quantity="many">"스킬 %d개"</item>
+        <item quantity="other">"스킬 %d개"</item>
+    </plurals>
     <string name="l10n_78cd57f9892157b8" formatted="false">"컨텍스트 %lld%%"</string>
     <string name="l10n_6ab06c5fe8caa9fa" formatted="false">"점유율 %lld%%"</string>
     <string name="l10n_a5b19753b0ff34b9" formatted="false">", 전환 중"</string>
@@ -31,6 +108,7 @@
     <string name="l10n_1099d51b36a7e832" formatted="false">"/btw는 WebUI 세션에서만 사용할 수 있어요."</string>
     <string name="l10n_449db9ef04232fc8" formatted="false">"파일 1개 변경됨"</string>
     <string name="l10n_4a5c7117b6d4d5cb" formatted="false">"%lld개 중 1개 대기 중"</string>
+    <string name="l10n_59f764ccfb926ae5" formatted="false">"-100부터 100까지의 정수입니다."</string>
     <string name="l10n_64d3c82b910a7784" formatted="false">"작업 공간의 로컬 파일이 전역 프로젝트 컨텍스트를 재정의하고 있습니다."</string>
     <string name="l10n_cf678cab87dc1f7d" formatted="false">"API 키"</string>
     <string name="l10n_85dfa32c97d8618d" formatted="false">"계정"</string>
@@ -41,11 +119,22 @@
     <string name="l10n_d74340399e2a5b1d" formatted="false">"활성 프로필"</string>
     <string name="l10n_81c0d915fa6d82fd" formatted="false">"활동"</string>
     <string name="l10n_03f7eb4fcb825734" formatted="false">"활동: 도구 %lld개"</string>
+    <plurals name="l10n_03f7eb4fcb825734">
+        <item quantity="zero">"활동: 도구 %d개"</item>
+        <item quantity="one">"활동: 도구 %d개"</item>
+        <item quantity="two">"활동: 도구 %d개"</item>
+        <item quantity="few">"활동: 도구 %d개"</item>
+        <item quantity="many">"활동: 도구 %d개"</item>
+        <item quantity="other">"활동: 도구 %d개"</item>
+    </plurals>
     <string name="l10n_61cc55aa04531847" formatted="false">"추가"</string>
     <string name="l10n_ea65bead2508867e" formatted="false">"%@을(를) 즐겨찾기에 추가"</string>
     <string name="l10n_42b949077d2f4201" formatted="false">"헤더 추가"</string>
+    <string name="l10n_d8ceee085e884024" formatted="false">"전제 조건 추가"</string>
     <string name="l10n_99044355f0319f6b" formatted="false">"서버 추가"</string>
     <string name="l10n_c378a1c16565ceba" formatted="false">"서버 추가…"</string>
+    <string name="l10n_a603825bf2c876ef" formatted="false">"작업 공간 추가"</string>
+    <string name="l10n_a245782af7f0aa40" formatted="false">"세션을 시작할 때 사용할 수 있도록 작업 공간을 추가하세요."</string>
     <string name="l10n_cf845d10129ecb8c" formatted="false">"사용자 지정 모델을 즐겨찾기에 추가"</string>
     <string name="l10n_d5a110d69bfeccca" formatted="false">"헤더 추가"</string>
     <string name="l10n_2470e8667bfae527" formatted="false">"프로젝트 추가"</string>
@@ -70,6 +159,7 @@
     <string name="l10n_902793b227093e34" formatted="false">"항상 밝은 아이콘 사용"</string>
     <string name="l10n_06ee5beccc033b61" formatted="false">"항상 어두운 모노크롬 아이콘 사용"</string>
     <string name="l10n_4d538a18a87dcd64" formatted="false">"항상 밝은 모노크롬 아이콘 사용"</string>
+    <string name="l10n_fa07652b57d3d7c1" formatted="false">"다른 보드 작업이 진행 중입니다."</string>
     <string name="l10n_fc4a695f02a8a53a" formatted="false">"앱"</string>
     <string name="l10n_f54c8357ef4e5fab" formatted="false">"앱 아이콘"</string>
     <string name="l10n_41def7a0febe741d" formatted="false">"화면 표시"</string>
@@ -78,15 +168,21 @@
     <string name="l10n_b8d012c2004fa7b4" formatted="false">"승인 필요"</string>
     <string name="l10n_7b2c7f146abacedd" formatted="false">"승인"</string>
     <string name="l10n_2621c6fd51a58e1d" formatted="false">"보관"</string>
+    <string name="l10n_2b86e5bc4a2034f2" formatted="false">"카드 보관"</string>
+    <string name="l10n_eddc813f35b12589" formatted="false">"보관됨"</string>
     <string name="l10n_14eca073e39a5015" formatted="false">"보관된 세션"</string>
     <string name="l10n_cbb9fa252e60809e" formatted="false">"인수"</string>
     <string name="l10n_ee677f2109607e18" formatted="false">"곁가지 질문하기"</string>
     <string name="l10n_e94537390527ef92" formatted="false">"무엇이든 물어보세요... /commands"</string>
+    <string name="l10n_288fbe21f70e35a2" formatted="false">"프로필 할당"</string>
+    <string name="l10n_e55df441e8955746" formatted="false">"과제"</string>
     <string name="l10n_8010d1f4d0696ce1" formatted="false">"어시스턴트"</string>
     <string name="l10n_5157af6823af43d5" formatted="false">"어시스턴트, %@"</string>
     <string name="l10n_1afff0157ce3602c" formatted="false">"첨부"</string>
     <string name="l10n_469aeebeecf2f62d" formatted="false">"파일 첨부"</string>
     <string name="l10n_a75411ec9700b4b1" formatted="false">"서버에 다시 연결하고 세션을 다시 불러와요."</string>
+    <string name="l10n_d53e7a421e8fccd3" formatted="false">"인증 오류: %@"</string>
+    <string name="l10n_3cf616bff8d00643" formatted="false">"자동 차단됨"</string>
     <string name="l10n_61f543ec018634c1" formatted="false">"사용 가능한 모바일 명령:\n\n`/help` - 이 명령 목록을 표시해요.\n`/clear` - 로컬 기록을 지워요.\n`/stop` - 현재 응답을 중지해요.\n`/new` - 새 세션을 열어요.\n`/model &lt;id&gt;` - 이 세션의 모델을 전환해요.\n`/workspace &lt;path&gt;` - 이 세션의 작업 공간을 전환해요.\n`/reasoning &lt;level&gt;` - 추론 표시 또는 강도를 설정해요.\n`/title &lt;text&gt;` - 이 세션의 이름을 변경해요.\n`/personality &lt;name&gt;` - 이 세션의 성격을 설정하거나 해제해요.\n`/skills [query]` - 사용 가능한 스킬을 검색해요.\n`/queue &lt;message&gt;` - 다음 차례를 위해 메시지를 대기열에 넣어요.\n`/steer &lt;message&gt;` - 활성 응답을 조정해요.\n`/interrupt &lt;message&gt;` - 활성 응답을 중지하고 새 메시지를 보내요.\n`/status` - 세션 상태를 표시해요.\n`/btw &lt;question&gt;` - 이 채팅을 바꾸지 않고 곁가지 질문을 해요.\n`/background &lt;prompt&gt;` - 병렬 작업을 실행하고 결과를 여기에 올려요.\n`/bg &lt;prompt&gt;` - `/background`의 별칭.\n`/branch [name]` - 이 대화를 분기해요.\n`/fork [name]` - `/branch`의 별칭.\n`/compress [focus]` - 이 세션의 컨텍스트를 압축해요.\n`/compact [focus]` - `/compress`의 별칭.\n`/undo` - 마지막 주고받기를 실행 취소해요.\n`/retry` - 마지막 차례를 다시 시도해요."</string>
     <string name="l10n_7aabf6c8fafcc129" formatted="false">"사용 가능한 성격:\n\n%@\n\n`/personality &lt;name&gt;` 또는 `/personality none`을 사용하세요."</string>
     <string name="l10n_d3a12fb079d32731" formatted="false">"사용 가능한 스킬:"</string>
@@ -96,41 +192,66 @@
     <string name="l10n_2c71547af580e72a" formatted="false">"%lld 뒤처짐"</string>
     <string name="l10n_f48462d8ff141190" formatted="false">"바이너리 파일"</string>
     <string name="l10n_27441b0fa1b44e2e" formatted="false">"바이너리 파일이 변경됨"</string>
+    <string name="l10n_82dd2cdf36f9436d" formatted="false">"차단"</string>
+    <string name="l10n_99613c74ce010d98" formatted="false">"차단됨"</string>
     <string name="l10n_7d44bc449c2a2637" formatted="false">"파랑"</string>
+    <string name="l10n_e879b0be0190766a" formatted="false">"보드"</string>
+    <string name="l10n_4f6778977945bd63" formatted="false">"%@ 보드 작업"</string>
     <string name="l10n_1627510b242fdd96" formatted="false">"지점"</string>
     <string name="l10n_f578227926a03a85" formatted="false">"지점"</string>
+    <string name="l10n_ca37515a9638c19a" formatted="false">"보드 탐색"</string>
+    <string name="l10n_76163bd10c654bd7" formatted="false">"보드 탐색: %@"</string>
     <string name="l10n_1e810b2f9f05b51a" formatted="false">"작업 공간을 둘러보고 에이전트 작업을 놓치지 마세요."</string>
+    <string name="l10n_95ae28be3160a877" formatted="false">"탐색 중"</string>
+    <string name="l10n_6a57d83c47ce5b34" formatted="false">"보드 탐색은 Hermex에만 적용됩니다. 보드를 활성화하면 공유 서버 상태가 변경됩니다."</string>
     <string name="l10n_bbd80cf7e2ded5ef" formatted="false">"빌드"</string>
+    <string name="l10n_7e18229655968fa8" formatted="false">"일괄 작업"</string>
     <string name="l10n_e179e26271f3e00f" formatted="false">"CLI 세션"</string>
-    <string name="l10n_533083941cb59936" formatted="false">"CLI 세션 표시 여부는 이 서버와 동기화되므로 WebUI도 이를 따릅니다."</string>
     <string name="l10n_467ec180e1789d63" formatted="false">"캐시 적중률"</string>
     <string name="l10n_a495afbf7ab54ca6" formatted="false">"캐시 읽기 토큰"</string>
     <string name="l10n_b169be9668e92fe8" formatted="false">"캐시됨"</string>
     <string name="l10n_c6b74ced31b9e9ca" formatted="false">"캐시된 세션과 메시지는 오프라인 보기를 위해 보관돼요. 지우기를 하면 이 서버의 캐시만 제거되며, 다른 서버와 Hermes 서버는 영향을 받지 않아요."</string>
+    <string name="l10n_4da9c9af9631e294" formatted="false">"카메라"</string>
     <string name="l10n_77dfd2135f4db726" formatted="false">"취소"</string>
     <string name="l10n_a1bf92eff40dd4ad" formatted="false">"취소됨"</string>
     <string name="l10n_68994ea613a15e32" formatted="false">"서버에 연결할 수 없음"</string>
+    <string name="l10n_4d4ce73b15660f20" formatted="false">"카드"</string>
+    <string name="l10n_e011b9a5e6fe45c8" formatted="false">"카드 작업"</string>
+    <string name="l10n_473759c32956a5bf" formatted="false">"카드 ID"</string>
+    <string name="l10n_8f302a05ee377243" formatted="false">"상태 변경"</string>
     <string name="l10n_aeba935e2a155528" formatted="false">"변경된 파일"</string>
     <string name="l10n_8aa57de6dce6ee1c" formatted="false">"변경 사항"</string>
     <string name="l10n_9bcc895764d8fc8a" formatted="false">"변경할 수 없음"</string>
     <string name="l10n_2ced57f125910a9e" formatted="false">"채팅"</string>
     <string name="l10n_79667edb08454169" formatted="false">"iPhone에서 Hermes 에이전트와 채팅하세요"</string>
+    <string name="l10n_8174723b9172fdb9" formatted="false">"결과 확인"</string>
     <string name="l10n_4f4bd16d4664cb10" formatted="false">"Mac이 깨어 있고 cloudflared가 실행 중인지 확인하세요."</string>
+    <string name="l10n_a4e79b38317485a5" formatted="false">"Checking Result"</string>
     <string name="l10n_5b5d3108125e92ca" formatted="false">"서버 확인 중..."</string>
     <string name="l10n_ccc506047a3d5fa7" formatted="false">"서버 확인 중…"</string>
     <string name="l10n_ebb571babefc16e0" formatted="false">"스트림 확인 중"</string>
+    <string name="l10n_6d3627f04cb4b2c9" formatted="false">"보드 선택"</string>
+    <string name="l10n_adaf4eb9ab13e461" formatted="false">"카드 선택"</string>
     <string name="l10n_0e3df8f396036c89" formatted="false">"모델 선택"</string>
+    <string name="l10n_74eda4a4630fe67d" formatted="false">"전제 조건을 선택하세요"</string>
+    <string name="l10n_adf2074a73ebd128" formatted="false">"테넌트 선택"</string>
     <string name="l10n_a7fe92a51df09be3" formatted="false">"작업 공간 선택"</string>
     <string name="l10n_508b9e1565ffaab6" formatted="false">"슬래시 명령을 선택하거나 계속 입력하세요."</string>
+    <string name="l10n_6775ed40b855410b" formatted="false">"지원되는 상태를 선택하세요."</string>
+    <string name="l10n_3754370042b5bbe9" formatted="false">"유효한 전제조건을 선택하십시오."</string>
     <string name="l10n_94992b7ac22aa32d" formatted="false">"이 새 프로필에 사용할 구성된 제공업체와 모델 중에서 선택하세요."</string>
     <string name="l10n_98e5c453451ff290" formatted="false">"프로필 선택"</string>
     <string name="l10n_75268994292e5b16" formatted="false">"제공자 ID 선택"</string>
     <string name="l10n_0e50f45864ab0e78" formatted="false">"작업 공간 경로 선택"</string>
+    <string name="l10n_d143882689eb110e" formatted="false">"Claim Expires"</string>
+    <string name="l10n_b3b4124cf95844d1" formatted="false">"Claim ID"</string>
     <string name="l10n_e43b8a0a8cf76b80" formatted="false">"설명 필요"</string>
     <string name="l10n_171aff153045c26f" formatted="false">"설명 만료"</string>
     <string name="l10n_3e0fb17cab21c94b" formatted="false">"설명하기"</string>
+    <string name="l10n_0b721df83e6cbaaa" formatted="false">"Claude Code 세션"</string>
     <string name="l10n_719ea396ad92e01b" formatted="false">"지우기"</string>
     <string name="l10n_522175083f0bf50b" formatted="false">"캐시 지우기"</string>
+    <string name="l10n_381c4bf1d409c027" formatted="false">"필터 지우기"</string>
     <string name="l10n_436424aa905192bb" formatted="false">"오프라인 캐시 지우기"</string>
     <string name="l10n_2803e2a8fdc2a018" formatted="false">"파일 검색 지우기"</string>
     <string name="l10n_6e69351c3627d949" formatted="false">"모델 검색 지우기"</string>
@@ -148,8 +269,12 @@
     <string name="l10n_adac69379a626c24" formatted="false">"코드"</string>
     <string name="l10n_b1c9e2299e9d7ee4" formatted="false">"활성 프로필 선택기 접기"</string>
     <string name="l10n_57b446fe95841712" formatted="false">"프로젝트 접기"</string>
+    <string name="l10n_f54ba11307e1765f" formatted="false">"예약된 세션 접기"</string>
     <string name="l10n_10544603c5d0fa0a" formatted="false">"섹션 접기"</string>
     <string name="l10n_1d0c8304baedcf8e" formatted="false">"색상"</string>
+    <string name="l10n_153d7a58b3a3e898" formatted="false">"댓글"</string>
+    <string name="l10n_ad76b4babd667300" formatted="false">"Comment cannot be blank."</string>
+    <string name="l10n_cacb504956b073be" formatted="false">"Comments cannot be edited or deleted after sending."</string>
     <string name="l10n_1f5a1abf2f08ec18" formatted="false">"완료"</string>
     <string name="l10n_1798b3ba42ee08ea" formatted="false">"완료됨"</string>
     <string name="l10n_5ff40a15003f2322" formatted="false">"터치 우선 컨트롤로 자연스럽게 작성하세요."</string>
@@ -170,11 +295,12 @@
     <string name="l10n_203c28bd65a53e4f" formatted="false">"컨텍스트가 압축됐어요.\n\n%@"</string>
     <string name="l10n_2e02623966f9391f" formatted="false">"계속"</string>
     <string name="l10n_170889a98c72a890" formatted="false">"그래도 계속"</string>
-    <string name="l10n_842175d421b50dc2" formatted="false">"iPhone에서 Hermes 에이전트를 제어하세요."</string>
+    <string name="l10n_09250307eb1db720" formatted="false">"iPhone 또는 iPad에서 Hermes 에이전트를 제어하세요."</string>
     <string name="l10n_8e3df45a49dba2b2" formatted="false">"복사됨"</string>
     <string name="l10n_32856512b1e49e91" formatted="false">"Web UI 저장소 링크 복사됨"</string>
     <string name="l10n_f90d7f30d7f1ff1d" formatted="false">"코드 복사됨"</string>
     <string name="l10n_af74f7c5362aaee9" formatted="false">"복사"</string>
+    <string name="l10n_3736d1a3b46cd58a" formatted="false">"딥 링크 복사"</string>
     <string name="l10n_dfa9c0d2596f1d9c" formatted="false">"전체 제목 복사"</string>
     <string name="l10n_1aa0e16271ee96f4" formatted="false">"Web UI 저장소 링크 복사"</string>
     <string name="l10n_abc94cbf067b91d1" formatted="false">"에이전트 설정 프롬프트 복사"</string>
@@ -207,6 +333,7 @@
     <string name="l10n_a88498840c5e3802" formatted="false">"보관된 세션을 불러올 수 없음"</string>
     <string name="l10n_4bcac1ad086ca826" formatted="false">"파일을 불러올 수 없음: %@"</string>
     <string name="l10n_591b00c12e60c326" formatted="false">"프로필을 불러올 수 없음"</string>
+    <string name="l10n_c93b287a71ae2a54" formatted="false">"제공업체를 불러올 수 없음"</string>
     <string name="l10n_94f5b73955c3ef2c" formatted="false">"세션을 불러올 수 없음"</string>
     <string name="l10n_8ac36923964f0178" formatted="false">"이 이미지를 미리 볼 수 없어요."</string>
     <string name="l10n_7d897e1d885a3b20" formatted="false">"업데이트를 시작하기 위해 서버에 연결할 수 없어요."</string>
@@ -225,13 +352,20 @@
     <string name="l10n_495ea9f2535f73a3" formatted="false">"현재 응답을 아직 중지할 수 없어서 중단 메시지를 다음 차례를 위해 대기열에 넣었어요."</string>
     <string name="l10n_0fe0eba7c7e1c659" formatted="false">"목표 명령을 제출할 수 없어요."</string>
     <string name="l10n_4138a35cf5a60e61" formatted="false">"작업을 업데이트할 수 없어요."</string>
+    <string name="l10n_08111e6efc7fc767" formatted="false">"새로 고칠 수 없습니다. 이전에 불러온 제공업체를 표시합니다."</string>
+    <string name="l10n_9985074eae8f7d8d" formatted="false">"충돌"</string>
     <string name="l10n_6e157c5da4410b7e" formatted="false">"생성"</string>
+    <string name="l10n_5a366386b114c3b4" formatted="false">"준비되었지만 할당되지 않은 카드를 만드시겠습니까?"</string>
     <string name="l10n_67c127a271b041fb" formatted="false">"현재 HEAD에서 분기를 생성하고 해당 분기로 전환합니다."</string>
+    <string name="l10n_c8d7e019182b9eb3" formatted="false">"폴더가 없으면 생성"</string>
+    <string name="l10n_accf40c89baa4fa8" formatted="false">"생성됨"</string>
     <string name="l10n_5df8f127a4af1417" formatted="false">"비어 있는 새 프로젝트를 생성해요."</string>
+    <string name="l10n_117a3202c7ad6e39" formatted="false">"보드를 만들어도 활성 보드로 변경되지 않습니다."</string>
     <string name="l10n_de17342aa8c0be17" formatted="false">"Cron 세션"</string>
     <string name="l10n_4fc0e2bc80737d78" formatted="false">"현재"</string>
     <string name="l10n_a3f54618caea86a3" formatted="false">"현재 사용자 지정"</string>
     <string name="l10n_23cb5e2e9a9493b9" formatted="false">"현재 Git 브랜치"</string>
+    <string name="l10n_551ef486ba85e4c8" formatted="false">"현재 상태: %@. 카드를 이동하려는 경우에만 허용된 상태를 선택하세요."</string>
     <string name="l10n_35ff0b484ca98ca9" formatted="false">"현재 작업 공간"</string>
     <string name="l10n_9a3c1af6c3ecfd85" formatted="false">"현재 제목: **%@**\n\n이 세션의 이름을 변경하려면 `/title &lt;text&gt;`를 사용하세요."</string>
     <string name="l10n_081ae3fdc403609c" formatted="false">"사용자 지정"</string>
@@ -252,8 +386,11 @@
     <string name="l10n_441bda6cd85689e4" formatted="false">"삭제됨"</string>
     <string name="l10n_dcac5d49c54c3c38" formatted="false">"전달"</string>
     <string name="l10n_9631af52c66f1a5c" formatted="false">"전달"</string>
+    <string name="l10n_0562f32dc56f5c70" formatted="false">"종속성"</string>
+    <string name="l10n_55f8ebc805e65b5b" formatted="false">"설명"</string>
     <string name="l10n_a04fcb7af3c9351b" formatted="false">"Diff가 너무 큼"</string>
     <string name="l10n_7aafaa23867907a5" formatted="false">"차이가 너무 커서 표시할 수 없습니다."</string>
+    <string name="l10n_4b892fe0c040fa8a" formatted="false">"예배 규칙서"</string>
     <string name="l10n_407758fed6d9cd6f" formatted="false">"코드 줄바꿈 비활성화"</string>
     <string name="l10n_995b60411b464fb4" formatted="false">"폐기 후 편집"</string>
     <string name="l10n_5d88c02b40bcad09" formatted="false">"폐기 후 다시 생성"</string>
@@ -261,6 +398,12 @@
     <string name="l10n_f467e1f839b5212d" formatted="false">"디스코"</string>
     <string name="l10n_70afe9eff3f28884" formatted="false">"해고하다"</string>
     <string name="l10n_4b6acf651b750357" formatted="false">"첨부 파일 오류 무시"</string>
+    <string name="l10n_bb5c6f77a55fc0c9" formatted="false">"디스패처 실행"</string>
+    <string name="l10n_48f91366c839e056" formatted="false">"디스패처"</string>
+    <string name="l10n_2ed4598584f8ec1f" formatted="false">"이 서버에서는 디스패처를 사용할 수 없습니다."</string>
+    <string name="l10n_f7434de84cdb30cb" formatted="false">"디스패처, 확인 필요"</string>
+    <string name="l10n_42df017cec60f8ed" formatted="false">"디스패처, 결과 있음"</string>
+    <string name="l10n_574ff9b0c49cdeb5" formatted="false">"표시"</string>
     <string name="l10n_8d6b34815ba43d25" formatted="false">"표시 이름"</string>
     <string name="l10n_e9b450d14bc2363d" formatted="false">"완료"</string>
     <string name="l10n_3c424e9b233642b3" formatted="false">"두 번 탭하여 세부 정보를 접어요."</string>
@@ -270,9 +413,18 @@
     <string name="l10n_13f7aee77892fd5f" formatted="false">"이전"</string>
     <string name="l10n_5301648dcf6b53ce" formatted="false">"편집"</string>
     <string name="l10n_36119979d7cf1f46" formatted="false">"%@ 편집"</string>
+    <string name="l10n_4596379c38365c9c" formatted="false">"카드 편집"</string>
     <string name="l10n_2ee30cf2c2908397" formatted="false">"메시지 편집"</string>
     <string name="l10n_9d0e05d653ce25e7" formatted="false">"작업 편집"</string>
     <string name="l10n_b0179bbf23f36576" formatted="false">"이 메시지를 편집하면 이후 메시지 %lld개가 삭제됩니다."</string>
+    <plurals name="l10n_b0179bbf23f36576">
+        <item quantity="zero">"이 메시지를 편집하면 이후 메시지 %d개가 삭제됩니다."</item>
+        <item quantity="one">"이 메시지를 편집하면 이후 메시지 %d개가 삭제됩니다."</item>
+        <item quantity="two">"이 메시지를 편집하면 이후 메시지 %d개가 삭제됩니다."</item>
+        <item quantity="few">"이 메시지를 편집하면 이후 메시지 %d개가 삭제됩니다."</item>
+        <item quantity="many">"이 메시지를 편집하면 이후 메시지 %d개가 삭제됩니다."</item>
+        <item quantity="other">"이 메시지를 편집하면 이후 메시지 %d개가 삭제됩니다."</item>
+    </plurals>
     <string name="l10n_5fc97790c6a8d0d3" formatted="false">"경과"</string>
     <string name="l10n_755ad4f73ca41dd5" formatted="false">"빈 출력"</string>
     <string name="l10n_aa1092d775fca059" formatted="false">"코드 줄바꿈 활성화"</string>
@@ -280,17 +432,20 @@
     <string name="l10n_598b3a1a236fcb2e" formatted="false">"제출하기 전에 응답을 입력하세요."</string>
     <string name="l10n_6f7c983d3b97261c" formatted="false">"세션 제목을 입력하세요."</string>
     <string name="l10n_e64bedf7e5b25d1f" formatted="false">"유효한 서버 URL을 입력하세요. 예: https://hermes.yourdomain.com 또는 http://&lt;server-tailscale-ip&gt;:8787."</string>
-    <string name="l10n_8230a28313458046" formatted="false">"에이전트가 반환한 Tailscale URL을 입력하세요. 예: `http://&lt;tailnet-ip&gt;:8787`."</string>
+    <string name="l10n_6332c9abaf956af9" formatted="false">"에이전트가 반환한 정확한 Tailscale Serve HTTPS URL을 입력하세요. 예: `https://server.tailnet-name.ts.net`."</string>
     <string name="l10n_8f6e7265b4a4d570" formatted="false">"서버 비밀번호를 입력하세요."</string>
     <string name="l10n_7f2f6a15cf8da2b2" formatted="false">"오류"</string>
     <string name="l10n_09c1adde10c57e5f" formatted="false">"오류: %@"</string>
     <string name="l10n_35caa4ac4630bab1" formatted="false">"예상 비용"</string>
+    <string name="l10n_c5497bca58468ae6" formatted="false">"이벤트"</string>
     <string name="l10n_6e0691470382747c" formatted="false">"정확한 모델 ID"</string>
+    <string name="l10n_6d525b71568c2d98" formatted="false">"실행"</string>
     <string name="l10n_0caa309588bbc767" formatted="false">"종료 코드: %lld"</string>
     <string name="l10n_7b74ff00367a4722" formatted="false">"기본적으로 생각 펼치기"</string>
     <string name="l10n_2525f76fc2b6b22d" formatted="false">"기본적으로 도구 펼치기"</string>
     <string name="l10n_f86dd07259eb2bbf" formatted="false">"활성 프로필 선택기 펼치기"</string>
     <string name="l10n_6a9761d620403e7d" formatted="false">"프로젝트 펼치기"</string>
+    <string name="l10n_046a1a78d9aec6a9" formatted="false">"예약된 세션 펼치기"</string>
     <string name="l10n_732f9a41fd04ae76" formatted="false">"섹션 펼치기"</string>
     <string name="l10n_a689a999a5e62055" formatted="false">"만료됨"</string>
     <string name="l10n_f3e4fadb9e370a1e" formatted="false">"내보내기"</string>
@@ -330,6 +485,7 @@
     <string name="l10n_d6870fe0b85ff5cc" formatted="false">"그라데이션 다크"</string>
     <string name="l10n_69dddc0e42ea62e2" formatted="false">"그라데이션 라이트"</string>
     <string name="l10n_933bf21afdd55a0d" formatted="false">"초록"</string>
+    <string name="l10n_e9ac611c971177b5" formatted="false">"프로필별 그룹화"</string>
     <string name="l10n_73527bcbcf1d50d3" formatted="false">"HERMEX"</string>
     <string name="l10n_98d63b116d9d718a" formatted="false">"햅틱 피드백"</string>
     <string name="l10n_c1c645cc10cc39cc" formatted="false">"헤더 로고 색상"</string>
@@ -345,10 +501,14 @@
     <string name="l10n_4f56108f827cebaf" formatted="false">"Hermes 응답 완료"</string>
     <string name="l10n_d1cadaea84c1198b" formatted="false">"Hermes 세션"</string>
     <string name="l10n_77cde96ca2d45d01" formatted="false">"Hermex"</string>
+    <string name="l10n_9a17d2db6a8055f7" formatted="false">"Hermex 앱에서는 보관된 보드를 복원할 수 없습니다."</string>
     <string name="l10n_c33659f639454811" formatted="false">"Hermex가 응답을 준비하고 있어요"</string>
+    <string name="l10n_01a030be51125242" formatted="false">"Hermex가 보드를 새로 고쳤지만 워커가 시작되었는지는 확인할 수 없습니다. 디스패처를 다시 실행하기 전에 현재 보드를 검토하세요."</string>
     <string name="l10n_bb6a69c46c4b1979" formatted="false">"첨부 파일 경로 숨기기"</string>
     <string name="l10n_2981d5547d979457" formatted="false">"보낸 메시지에 추가되는 파일 경로 줄을 숨겨요. 첨부 파일은 미리보기로 계속 표시되며, 서버는 여전히 경로를 받아요."</string>
     <string name="l10n_b1a5954a483f8f8b" formatted="false">"높음"</string>
+    <string name="l10n_c0a4bc55fa6395b6" formatted="false">"보드를 검토했습니다"</string>
+    <string name="l10n_716f63b96e0c2632" formatted="false">"아이콘"</string>
     <string name="l10n_7e5a975b6add84fd" formatted="false">"신원"</string>
     <string name="l10n_50e19fda0d5b4b74" formatted="false">"이미지"</string>
     <string name="l10n_78cf51d3d2bf067d" formatted="false">"이미지 첨부 %@"</string>
@@ -363,7 +523,9 @@
     <string name="l10n_4e73a74600447ea9" formatted="false">"iPhone에 Tailscale을 설치하고 서버와 같은 tailnet에 로그인하세요. 에이전트가 다음 화면에서 사용할 정확한 URL로 응답해요."</string>
     <string name="l10n_94dc8e4a59fafe99" formatted="false">"상호작용"</string>
     <string name="l10n_f3068db36e4be906" formatted="false">"현재 응답을 중단하고 메시지를 다음에 보내도록 대기열에 추가했어요."</string>
+    <string name="l10n_3895546730917a69" formatted="false">"칸반"</string>
     <string name="l10n_8fa296603e98b9fe" formatted="false">"Hermex 사용 중에는 Tailscale 연결을 유지하세요."</string>
+    <string name="l10n_61737de78417a6fe" formatted="false">"키 구성됨"</string>
     <string name="l10n_d1c69a859a9638b2" formatted="false">"최근"</string>
     <string name="l10n_17672aec29094ac4" formatted="false">"최근 %lld일"</string>
     <string name="l10n_6118867f212578fe" formatted="false">"최근 30일"</string>
@@ -371,6 +533,8 @@
     <string name="l10n_decd7ca800106337" formatted="false">"최신"</string>
     <string name="l10n_6f8749290307e9e2" formatted="false">"최신 상태 표시됨"</string>
     <string name="l10n_a9a621da7e8575d5" formatted="false">"아랍어, 히브리어, 페르시아어, 우르두어를 위해 메시지와 입력창을 오른쪽에서 왼쪽으로 배치합니다. 코드, 수식, 표, 도구 출력은 왼쪽에서 오른쪽으로 유지됩니다. 다른 화면에는 영향을 주지 않습니다."</string>
+    <string name="l10n_66884274e40e33f1" formatted="false">"실행 중 상태를 벗어나시겠습니까?"</string>
+    <string name="l10n_e427bdd63d4f22bd" formatted="false">"실행 중 상태를 벗어나면 카드의 클레임 및 작업자 상태가 지워질 수 있습니다."</string>
     <string name="l10n_a36ef8aba22905e2" formatted="false">"라이트"</string>
     <string name="l10n_d0517071aa376e79" formatted="false">"링크"</string>
     <string name="l10n_2b95008bb82d2573" formatted="false">"링크 미리보기"</string>
@@ -380,6 +544,8 @@
     <string name="l10n_4fc2512aa9e1d5c7" formatted="false">"듣는 중..."</string>
     <string name="l10n_65c821a596ceec1c" formatted="false">"실시간"</string>
     <string name="l10n_7b0ccb219d4d58d2" formatted="false">"라이브 액티비티 발췌"</string>
+    <string name="l10n_1d0f8dd5ce3502d2" formatted="false">"실시간 업데이트 지연됨"</string>
+    <string name="l10n_b0e0f6bd60d5e5e8" formatted="false">"Load Worker Log"</string>
     <string name="l10n_07471f3481317a16" formatted="false">"이전 메시지 불러오기"</string>
     <string name="l10n_a86c840372f0590b" formatted="false">"이 응답을 다시 생성하기 전에 이전 메시지를 불러오세요."</string>
     <string name="l10n_8f26c6520d61588a" formatted="false">"불러오는 중"</string>
@@ -396,6 +562,7 @@
     <string name="l10n_3955c8e98f47edfc" formatted="false">"출력 불러오는 중..."</string>
     <string name="l10n_7b1f2b358b54ee27" formatted="false">"프로필 불러오는 중..."</string>
     <string name="l10n_5a1c8090d0b201e5" formatted="false">"프로젝트 불러오는 중..."</string>
+    <string name="l10n_a5dcb93d831dc05a" formatted="false">"제공업체 불러오는 중…"</string>
     <string name="l10n_6ffd1b801dc3250d" formatted="false">"세션 불러오는 중"</string>
     <string name="l10n_8605605d9f479dd3" formatted="false">"스킬 불러오는 중..."</string>
     <string name="l10n_18f6342375a61986" formatted="false">"스킬 불러오는 중..."</string>
@@ -409,11 +576,17 @@
     <string name="l10n_d219c68101f532de" formatted="false">"위치"</string>
     <string name="l10n_a124947cbd2d1d92" formatted="false">"낮음"</string>
     <string name="l10n_d474fceae7ef8451" formatted="false">"소문자, 숫자, 하이픈, 밑줄만 사용할 수 있어요. 문자나 숫자로 시작해야 해요."</string>
+    <string name="l10n_6c01c3828067110b" formatted="false">"보드를 활성화"</string>
     <string name="l10n_f924c396551c216e" formatted="false">"이 서버를 활성 서버로 설정해요. 세션, 채팅, 설정이 이 서버에 맞게 다시 불러와져요."</string>
+    <string name="l10n_7d949b41b99038e7" formatted="false">"이 보드를 활성화하면 다른 Hermes 클라이언트가 공유하는 서버 상태가 변경됩니다."</string>
+    <string name="l10n_bf58d17e561b1b85" formatted="false">"관리"</string>
     <string name="l10n_1da7ac1fb66291cc" formatted="false">"서버 관리"</string>
+    <string name="l10n_d0c6a4ce42d2461a" formatted="false">"작업 공간 관리"</string>
     <string name="l10n_005313fed211856e" formatted="false">"세션, 작업, 파일을 원격으로 관리"</string>
     <string name="l10n_2ae8bf7c4fda40f7" formatted="false">"완료 표시"</string>
     <string name="l10n_25f266071c389a50" formatted="false">"기기 화면 표시에 맞춤"</string>
+    <string name="l10n_5de003582d342dba" formatted="false">"Maximum Runtime"</string>
+    <string name="l10n_527054fdad8e1c19" formatted="false">"최대 런타임은 0보다 큰 정수(초)여야 합니다."</string>
     <string name="l10n_0c77aeece8c25811" formatted="false">"미디어"</string>
     <string name="l10n_3aaf713966fafbad" formatted="false">"미디어 작업 실패"</string>
     <string name="l10n_da356f9300406f38" formatted="false">"미디어를 사용할 수 없음"</string>
@@ -424,23 +597,28 @@
     <string name="l10n_8bd1e1ee0b36f619" formatted="false">"메시지 수"</string>
     <string name="l10n_d2dbcb77dcf32674" formatted="false">"Hermex에 메시지 보내기"</string>
     <string name="l10n_f1702b4686278bec" formatted="false">"메시지"</string>
+    <string name="l10n_251edc0eb5a82064" formatted="false">"메타데이터"</string>
     <string name="l10n_e8cd6e3a402a74e8" formatted="false">"마이크 접근이 비활성화되어 있어요. 음성 입력을 사용하려면 설정에서 활성화하세요."</string>
     <string name="l10n_a711cca9a4a9ca25" formatted="false">"최소"</string>
     <string name="l10n_611aeef9f6f15ff0" formatted="false">"작업 식별자가 없어요."</string>
     <string name="l10n_68c2cc7f0ceaa3e4" formatted="false">"모델"</string>
     <string name="l10n_47442c9efd89244c" formatted="false">"모델 전환을 사용할 수 없어요."</string>
     <string name="l10n_f3798f81c7b6feca" formatted="false">"모델"</string>
+    <string name="l10n_32e3bfbf3d74721b" formatted="false">"모델 (%lld)"</string>
     <string name="l10n_19a532c8bc61c311" formatted="false">"수정됨"</string>
     <string name="l10n_d3446a31725ad27d" formatted="false">"%@ 전 수정됨"</string>
     <string name="l10n_03b280484618a09d" formatted="false">"모노크롬 다크"</string>
     <string name="l10n_febc733bb49ebbbf" formatted="false">"모노크롬 라이트"</string>
+    <string name="l10n_76cdb950721642b6" formatted="false">"이동"</string>
     <string name="l10n_96cbe7af61cc6ba3" formatted="false">"프로젝트로 이동"</string>
     <string name="l10n_60739d13df292b18" formatted="false">"내 메모"</string>
     <string name="l10n_709a23220f2c3d64" formatted="false">"이름"</string>
+    <string name="l10n_9c9f03a8394167a1" formatted="false">"이름(선택 사항)"</string>
     <string name="l10n_3dcfe8c501962b28" formatted="false">"주의 필요"</string>
     <string name="l10n_a4b628dd7e6cac30" formatted="false">"설명 필요"</string>
     <string name="l10n_80c3052d33ccdee1" formatted="false">"안 함"</string>
     <string name="l10n_2f5f0a316c665840" formatted="false">"새로운 지점"</string>
+    <string name="l10n_f24d098f37cad673" formatted="false">"새 카드"</string>
     <string name="l10n_364e701f18f5b93f" formatted="false">"새 채팅"</string>
     <string name="l10n_d01329fec0de89f0" formatted="false">"새 프로필"</string>
     <string name="l10n_fd57e65b2e31a39f" formatted="false">"새 프로젝트"</string>
@@ -467,6 +645,7 @@
     <string name="l10n_9bc37a73e52685de" formatted="false">"카탈로그 모델 없음"</string>
     <string name="l10n_24a6191f274fcd49" formatted="false">"변경사항 없음"</string>
     <string name="l10n_fe598959ce0d3df9" formatted="false">"\"%@\"과(와) 일치하는 명령이나 스킬이 없음"</string>
+    <string name="l10n_38878b052a56f7c2" formatted="false">"키 없음"</string>
     <string name="l10n_758de69beca09db0" formatted="false">"\"%@\"에 대한 일치 항목 없음"</string>
     <string name="l10n_0318ea04f793d95e" formatted="false">"일치하는 세션 없음"</string>
     <string name="l10n_bcd9d0b98b51e4ac" formatted="false">"사용 가능한 마이크 입력이 없어요. 시뮬레이터 또는 기기의 마이크 설정을 확인하세요."</string>
@@ -477,6 +656,7 @@
     <string name="l10n_1f3aa7cb21ea25f7" formatted="false">"사용 가능한 프로필 없음"</string>
     <string name="l10n_c326b75775bf901d" formatted="false">"프로젝트 없음"</string>
     <string name="l10n_24a5368bbc878d8d" formatted="false">"프로젝트 없음"</string>
+    <string name="l10n_dabb4546aa93c651" formatted="false">"이 서버에서 보고된 제공업체가 없습니다."</string>
     <string name="l10n_9d7789c98756a7a1" formatted="false">"아직 세션 없음"</string>
     <string name="l10n_459ad5e22c8f13b7" formatted="false">"서버에 구성된 스킬이 없어요."</string>
     <string name="l10n_d7f0b3c347eb8c09" formatted="false">"\"%@\"과(와) 일치하는 스킬이 없어요."</string>
@@ -494,8 +674,11 @@
     <string name="l10n_8956389786fd9918" formatted="false">"오프라인 - 캐시된 버전 보는 중"</string>
     <string name="l10n_8e4f504e020069e6" formatted="false">"오프라인 데이터"</string>
     <string name="l10n_ccf06f9a4f7a50f8" formatted="false">"오프라인 — 캐시된 버전 보는 중"</string>
+    <string name="l10n_c3cb80395a6f5b01" formatted="false">"오프라인 — 이전에 불러온 데이터 표시 중"</string>
     <string name="l10n_e0049a66519cae71" formatted="false">"켬"</string>
+    <string name="l10n_db4ab04666991840" formatted="false">"내 것만"</string>
     <string name="l10n_db21418b19544341" formatted="false">"어시스턴트 메시지만 다시 생성할 수 있어요."</string>
+    <string name="l10n_a3b004fb05b4d2cd" formatted="false">"Only the last part of this log is shown."</string>
     <string name="l10n_44a2f9655a134eb7" formatted="false">"사용자 메시지만 편집할 수 있어요."</string>
     <string name="l10n_93d3335d58377959" formatted="false">"%@ 열기"</string>
     <string name="l10n_ec9649e469304224" formatted="false">"Hermex 설정 열기"</string>
@@ -510,8 +693,13 @@
     <string name="l10n_d381d212e5455e71" formatted="false">"기본 모델 선택기를 열어요."</string>
     <string name="l10n_da5bd75cb3611219" formatted="false">"기본 프로필 선택기를 열어요."</string>
     <string name="l10n_418cad179a2e9807" formatted="false">"새 프로필 양식을 열어요."</string>
+    <string name="l10n_336934f19da2f38e" formatted="false">"제공업체 상태 화면을 엽니다."</string>
+    <string name="l10n_78ce8b45d4b9bb0a" formatted="false">"운영 기록"</string>
+    <string name="l10n_c686cc0c99b6645d" formatted="false">"Operational Metadata"</string>
+    <string name="l10n_ce75929f4b0b99d9" formatted="false">"선택적 초입니다."</string>
     <string name="l10n_3fe31a00136bfaac" formatted="false">"선택 사항이에요. 기본 URL 예: http://localhost:11434"</string>
     <string name="l10n_09fb6aaba7940a7b" formatted="false">"주황색"</string>
+    <string name="l10n_6282237cfbba8a0c" formatted="false">"Outcome Uncertain"</string>
     <string name="l10n_4bed336194a9a5c8" formatted="false">"출력"</string>
     <string name="l10n_878afed57cc32819" formatted="false">"출력 토큰"</string>
     <string name="l10n_1a915e2090fc298c" formatted="false">"%2$lld페이지 중 %1$lld"</string>
@@ -533,11 +721,16 @@
     <string name="l10n_9c918414710c579b" formatted="false">"고정"</string>
     <string name="l10n_54076359fdc7f1f0" formatted="false">"분홍색"</string>
     <string name="l10n_f9312169efb2796a" formatted="false">"고정됨"</string>
+    <string name="l10n_7039fbec6d98cbb8" formatted="false">"전제 조건"</string>
     <string name="l10n_3d087feb27bed0d7" formatted="false">"보존된 작업 목록"</string>
+    <string name="l10n_b35d176a6e2dee64" formatted="false">"디스패치 미리보기"</string>
+    <string name="l10n_f67278a6b10f05b1" formatted="false">"미리보기는 참고용이며 오래된 정보가 될 수 있습니다. 워커를 시작하지 않습니다."</string>
     <string name="l10n_e8002a8beabe2288" formatted="false">"이 첨부 파일은 미리보기를 사용할 수 없어요."</string>
     <string name="l10n_e4a8cb9c4e93463c" formatted="false">"이 파일 형식은 미리보기를 사용할 수 없어요."</string>
     <string name="l10n_6af2a65d7acff443" formatted="false">"이 미디어 형식은 미리보기를 사용할 수 없어요."</string>
     <string name="l10n_8ce696a0387284a2" formatted="false">"이 미디어는 미리보기를 사용할 수 없어요."</string>
+    <string name="l10n_886cbff9d9df761e" formatted="false">"우선순위"</string>
+    <string name="l10n_4b01e21caae1beff" formatted="false">"우선순위는 -100에서 100 사이의 정수여야 합니다."</string>
     <string name="l10n_9db108ba6b7f6571" formatted="false">"개인정보 처리방침"</string>
     <string name="l10n_2fc50ca28d0af98f" formatted="false">"결과 처리 중"</string>
     <string name="l10n_ff4fc0276e960c34" formatted="false">"프로필"</string>
@@ -547,9 +740,13 @@
     <string name="l10n_72c04819df5bb6a9" formatted="false">"%@에 대한 프로젝트 작업"</string>
     <string name="l10n_ab9773fcf6b2b1d9" formatted="false">"프로젝트 이름"</string>
     <string name="l10n_53e890d5f0fffe09" formatted="false">"프로젝트"</string>
+    <string name="l10n_2eb0c3b72a3bd9bf" formatted="false">"승격됨"</string>
     <string name="l10n_a817d7eb8e0f1dab" formatted="false">"프롬프트"</string>
     <string name="l10n_db95a2972e66e135" formatted="false">"프롬프트가 필요해요."</string>
+    <string name="l10n_7ceee3f3615a2bbe" formatted="false">"제공자"</string>
     <string name="l10n_610992ef9948a19f" formatted="false">"제공자 ID"</string>
+    <string name="l10n_4eaef64dcb3c605f" formatted="false">"제공업체 키는 서버에서 관리됩니다. 이 화면은 읽기 전용입니다."</string>
+    <string name="l10n_87b7c08baed1c8e9" formatted="false">"제공업체"</string>
     <string name="l10n_5219eb9a71725226" formatted="false">"당기기"</string>
     <string name="l10n_d9a72cc74c68bbfb" formatted="false">"원격 변경 사항을 가져오시겠습니까?"</string>
     <string name="l10n_55c0e7925c2e9d6a" formatted="false">"풀 완료"</string>
@@ -571,6 +768,7 @@
     <string name="l10n_76eec760c9b6e63e" formatted="false">"최근"</string>
     <string name="l10n_8ea2086a2dbccc7b" formatted="false">"최근 일별 토큰"</string>
     <string name="l10n_73c5c034584e46ea" formatted="false">"최근 출력"</string>
+    <string name="l10n_c885890b098322a9" formatted="false">"회수됨"</string>
     <string name="l10n_d9eb6f071bf574f0" formatted="false">"메시지를 보내려면 다시 연결하세요."</string>
     <string name="l10n_b95d5bf53907b729" formatted="false">"%@하려면 서버에 다시 연결하세요."</string>
     <string name="l10n_1776302c127400bb" formatted="false">"추가 질문을 하려면 서버에 다시 연결하세요."</string>
@@ -597,31 +795,53 @@
     <string name="l10n_8667d8dd1f042e2c" formatted="false">"참조 전용 · %@"</string>
     <string name="l10n_56e3badc4e6c5cc9" formatted="false">"새로 고침"</string>
     <string name="l10n_309d274a52eca6b8" formatted="false">"프로젝트 새로 고침"</string>
+    <string name="l10n_d7b762fc3fb27d5a" formatted="false">"새로 고침에 실패했습니다. 디스패처를 사용하기 전에 다시 시도하세요."</string>
+    <string name="l10n_87d2b4ceba88de25" formatted="false">"다시 시도하기 전에 보드를 새로 고치세요."</string>
+    <string name="l10n_44ab50cbb3313634" formatted="false">"다시 시도하기 전에 카드를 새로 고쳐 서버 결과를 확인하세요."</string>
+    <string name="l10n_e87e8308cbf8a15e" formatted="false">"Refresh to check the Card before trying again."</string>
     <string name="l10n_5b7bdb61fdbc48d5" formatted="false">"상쾌하다..."</string>
     <string name="l10n_12798652dee90c23" formatted="false">"응답 다시 생성"</string>
     <string name="l10n_e57e8f39b6e8ce1b" formatted="false">"이 응답을 다시 생성하면 이후 메시지 %lld개가 삭제됩니다."</string>
+    <plurals name="l10n_e57e8f39b6e8ce1b">
+        <item quantity="zero">"이 응답을 다시 생성하면 이후 메시지 %d개가 삭제됩니다."</item>
+        <item quantity="one">"이 응답을 다시 생성하면 이후 메시지 %d개가 삭제됩니다."</item>
+        <item quantity="two">"이 응답을 다시 생성하면 이후 메시지 %d개가 삭제됩니다."</item>
+        <item quantity="few">"이 응답을 다시 생성하면 이후 메시지 %d개가 삭제됩니다."</item>
+        <item quantity="many">"이 응답을 다시 생성하면 이후 메시지 %d개가 삭제됩니다."</item>
+        <item quantity="other">"이 응답을 다시 생성하면 이후 메시지 %d개가 삭제됩니다."</item>
+    </plurals>
+    <string name="l10n_cce7155371fc2668" formatted="false">"새로고침"</string>
+    <string name="l10n_8b1c557db10dc346" formatted="false">"서버 버전 다시 로드"</string>
+    <string name="l10n_76cc25831dafa135" formatted="false">"서버 버전을 다시 로드하시겠습니까?"</string>
     <string name="l10n_ecca3ebfebb1231b" formatted="false">"지점 목록 새로고침"</string>
     <string name="l10n_c93f6536dcfbeeee" formatted="false">"원격"</string>
     <string name="l10n_95a7c84ae08947db" formatted="false">"로컬 지점보다 원격 지점이 먼저"</string>
+    <string name="l10n_e963907dac5cd5c0" formatted="false">"제거"</string>
+    <string name="l10n_74211945be6416aa" formatted="false">"%@을(를) 전제 조건에서 제거"</string>
     <string name="l10n_50abaeabec168aa3" formatted="false">"즐겨찾기에서 %@ 제거"</string>
     <string name="l10n_49c2c77417839a5d" formatted="false">"서버 제거"</string>
+    <string name="l10n_1e49097a3b6f2e45" formatted="false">"작업 공간을 제거하시겠습니까?"</string>
     <string name="l10n_8808b2840f078cfa" formatted="false">"첨부 파일 %@ 제거"</string>
     <string name="l10n_6df2166b68573bb1" formatted="false">"즐겨찾기에서 사용자 지정 모델 제거"</string>
     <string name="l10n_3e19869f4c6dd932" formatted="false">"헤더 제거"</string>
     <string name="l10n_75bfa312029037aa" formatted="false">"이 서버를 제거할까요?"</string>
     <string name="l10n_013a5d20d5696b29" formatted="false">"이 기기에서 이 서버와 저장된 설정을 제거해요. 활성 서버에는 영향을 주지 않아요."</string>
+    <string name="l10n_ce29465cad73fef0" formatted="false">"작업 공간을 제거하면 서버 목록에서 경로만 등록 해제됩니다. 파일은 삭제되지 않습니다."</string>
     <string name="l10n_d3f4cb898fbe0c7a" formatted="false">"이름 바꾸기"</string>
     <string name="l10n_2631fe63a2fe1b89" formatted="false">"프로젝트 이름 바꾸기"</string>
     <string name="l10n_d80362f6a02f697f" formatted="false">"세션 이름 바꾸기"</string>
+    <string name="l10n_37b77d35f230ff7d" formatted="false">"작업 공간 이름 변경"</string>
     <string name="l10n_ef1c7b2eb614a607" formatted="false">"현재 세션 이름 바꾸기"</string>
     <string name="l10n_e5ad1c6b966bc12c" formatted="false">"이름 변경됨"</string>
     <string name="l10n_6c2bb735a46a8ff3" formatted="false">"답장"</string>
     <string name="l10n_8b03ca3239a2d4b3" formatted="false">"저장소 상태를 사용할 수 없습니다."</string>
     <string name="l10n_9ec40b4a79f06a39" formatted="false">"최신 저장소"</string>
     <string name="l10n_4ea95c7e3ce383e5" formatted="false">"음성 권한 요청 중..."</string>
+    <string name="l10n_eed6bfb41051ed5b" formatted="false">"필수의"</string>
     <string name="l10n_7517ceebb9cbd1af" formatted="false">"앱을 전환하지 않고 에이전트 프롬프트에 응답하세요."</string>
     <string name="l10n_7fafe94e3d4ca86e" formatted="false">"응답 중"</string>
     <string name="l10n_ea7ab827fb7b09d6" formatted="false">"응답 완료 알림"</string>
+    <string name="l10n_07528719f78e54c9" formatted="false">"응답 속도"</string>
     <string name="l10n_ec2fb8b9d8a0585a" formatted="false">"응답 타임스탬프"</string>
     <string name="l10n_6b656398c39ddef4" formatted="false">"응답이 취소됨"</string>
     <string name="l10n_96423842ebcbe649" formatted="false">"응답 완료"</string>
@@ -629,17 +849,22 @@
     <string name="l10n_5faa59d4bc375604" formatted="false">"결과"</string>
     <string name="l10n_b3bd0b5a70497bec" formatted="false">"재개"</string>
     <string name="l10n_9f5cd8a2e8807d73" formatted="false">"다시 시도"</string>
+    <string name="l10n_a3303b326f2b8e0c" formatted="false">"실패 항목 재시도"</string>
     <string name="l10n_bbe728dc05ae5101" formatted="false">"다시 시도는 WebUI 세션에서만 사용할 수 있어요."</string>
     <string name="l10n_d0efe1645c15924c" formatted="false">"세션 다시 불러오기"</string>
     <string name="l10n_08fe845cce87a735" formatted="false">"마지막 턴 다시 시도"</string>
     <string name="l10n_effe5e3d4358574a" formatted="false">"업데이트 다시 시도"</string>
+    <string name="l10n_7bb8fd0794a55ded" formatted="false">"검토 및 덮어쓰기"</string>
     <string name="l10n_cde5a6be0081dff8" formatted="false">"승인과 설명을 인라인으로 검토"</string>
     <string name="l10n_0a629b6db6c76c8a" formatted="false">"오른쪽에서 왼쪽 채팅 레이아웃"</string>
     <string name="l10n_e96857c58f716104" formatted="false">"루트"</string>
+    <string name="l10n_a299989ee9a1c92e" formatted="false">"디스패처 실행"</string>
     <string name="l10n_8ab343d1eabae3ef" formatted="false">"Siri, Spotlight, 잠금 화면 또는 iPhone의 액션 버튼에서 새 채팅과 같은 Hermex 작업을 실행하세요. 액션 버튼을 사용하려면 iOS 설정을 열고 액션 버튼을 선택한 다음 단축어를 선택하고 Hermex 작업을 선택하세요."</string>
+    <string name="l10n_79adb123c5c0db44" formatted="false">"Run ID"</string>
     <string name="l10n_4ee85a626ff6183b" formatted="false">"지금 실행"</string>
     <string name="l10n_0e076478ac56474c" formatted="false">"병렬 작업 실행"</string>
     <string name="l10n_73989d9c59264da0" formatted="false">"실행 중"</string>
+    <string name="l10n_a1b88f565760f0c1" formatted="false">"디스패처 실행 중…"</string>
     <string name="l10n_b66803829687b9de" formatted="false">"명령 실행 중"</string>
     <string name="l10n_33cfd5d598aac712" formatted="false">"지금 실행 중"</string>
     <string name="l10n_93dd44cf2d1ccfaa" formatted="false">"%lld단계"</string>
@@ -649,10 +874,13 @@
     <string name="l10n_c0ae8f6ea8411149" formatted="false">"저장됨"</string>
     <string name="l10n_85cc0a3b9ae258eb" formatted="false">"저장된 사용자 지정"</string>
     <string name="l10n_6dd5ffdf0c60362e" formatted="false">"저장된 작업 공간"</string>
+    <string name="l10n_369c534df344ee14" formatted="false">"절약"</string>
     <string name="l10n_0a8adac9d6d5f4d1" formatted="false">"일정"</string>
     <string name="l10n_82f00823fbf52cac" formatted="false">"일정이 필요해요."</string>
     <string name="l10n_9ca43b04c3d2e353" formatted="false">"예약된 작업"</string>
     <string name="l10n_395c32f788a3f892" formatted="false">"Hermes 서버의 예약된 작업이 여기에 표시돼요."</string>
+    <string name="l10n_bce73c4a4b04e523" formatted="false">"예약된 세션"</string>
+    <string name="l10n_168bebddecbb0754" formatted="false">"할퀴다"</string>
     <string name="l10n_d887477630313495" formatted="false">"최신 메시지로 스크롤"</string>
     <string name="l10n_bce06414177f72ab" formatted="false">"검색"</string>
     <string name="l10n_e64891ecd1e87786" formatted="false">"사용 가능한 스킬 검색"</string>
@@ -664,6 +892,7 @@
     <string name="l10n_d4e6fa2549fd2925" formatted="false">"스킬 검색..."</string>
     <string name="l10n_436af877d210be41" formatted="false">"파일 검색 중"</string>
     <string name="l10n_c57285ac350f9afc" formatted="false">"세션 검색 중"</string>
+    <string name="l10n_bca2e803ac1c71fd" formatted="false">"카드 선택"</string>
     <string name="l10n_95cbd4cb485fce7c" formatted="false">"텍스트 선택"</string>
     <string name="l10n_7915c8a498a76d3f" formatted="false">"첨부할 파일을 선택하세요."</string>
     <string name="l10n_426e995abe3623e6" formatted="false">"모델 선택"</string>
@@ -677,11 +906,14 @@
     <string name="l10n_d7446f460992044a" formatted="false">"이 스킬을 사용하려면 `/%@ &lt;message&gt;`을(를) 보내세요."</string>
     <string name="l10n_8b2c12c5d4d5965d" formatted="false">"대화를 시작하려면 메시지를 보내세요."</string>
     <string name="l10n_b57718ffcace839f" formatted="false">"응답 후 보내기"</string>
-    <string name="l10n_16ccc931b1910648" formatted="false">"이 프롬프트를 Hermes 에이전트에게 보내세요. Hermes Web UI를 설치하고 비밀번호 인증을 활성화하며 Tailscale 접근을 구성해요."</string>
+    <string name="l10n_fb8e5450e7708ea1" formatted="false">"이 프롬프트를 Hermes 에이전트에게 보내세요. 기존 상태를 점검하고 Hermes Web UI를 localhost에 유지하며 Tailscale Serve로 비공개 HTTPS를 구성해요."</string>
     <string name="l10n_13e251839c1cbadc" formatted="false">"미디어와 라이브 스트림을 포함해 서버로 보내는 모든 요청에 함께 전송돼요. 리버스 프록시(예: Authentik)나 Authorization 헤더 같은 토큰 인증에 사용하세요."</string>
+    <string name="l10n_97dda3da38b6e1bf" formatted="false">"스킬 이름은 쉼표로 구분하세요."</string>
     <string name="l10n_cb0cb170d106f8e8" formatted="false">"서버"</string>
     <string name="l10n_3fa39b5424edd660" formatted="false">"서버 아바타"</string>
     <string name="l10n_d4b6ea00d9844a33" formatted="false">"서버 기본값"</string>
+    <string name="l10n_fd709421d2263b57" formatted="false">"서버 상태"</string>
+    <string name="l10n_bcfef50922cbb5d5" formatted="false">"서버 제목"</string>
     <string name="l10n_1d5d1effa999db57" formatted="false">"서버 URL"</string>
     <string name="l10n_c3a144c6f18ea41f" formatted="false">"서버 비밀번호"</string>
     <string name="l10n_3630b49185b9bdca" formatted="false">"서버가 HTTP %lld을(를) 반환했어요."</string>
@@ -692,11 +924,13 @@
     <string name="l10n_2985663589760d41" formatted="false">"세션 상태:\n\n- 세션 ID: %1$@\n- 제목: %2$@\n- 모델: %3$@\n- 제공자: %4$@\n- 프로필: %5$@\n- 작업 공간: %6$@\n- 에이전트 실행 중: %7$@\n- 대기 중인 메시지: %8$lld\n- 백그라운드 작업: %9$lld\n- 불러온 메시지: %10$lld\n- 토큰: %11$@"</string>
     <string name="l10n_e883c5bede310321" formatted="false">"세션 제목"</string>
     <string name="l10n_ee4c6b466195baf3" formatted="false">"대화를 나누면 세션 사용 데이터가 여기에 표시돼요."</string>
+    <string name="l10n_6dfb4de7a8af7fa8" formatted="false">"세션 표시 설정이 이 서버와 동기화되므로 WebUI에도 반영됩니다."</string>
     <string name="l10n_e11e37a9253b34ff" formatted="false">"세션"</string>
     <string name="l10n_32962ffd65d2627e" formatted="false">"세션 아바타"</string>
     <string name="l10n_f97972c3e4668e12" formatted="false">"이 프로젝트의 세션이 프로젝트 없음으로 이동돼요. 세션 자체는 삭제되지 않아요."</string>
     <string name="l10n_448ab73ba1c21e67" formatted="false">"설정"</string>
     <string name="l10n_3bd23ee0e245365c" formatted="false">"목표 설정"</string>
+    <string name="l10n_c8293bad3b7b4fb5" formatted="false">"우선순위 설정"</string>
     <string name="l10n_c52c0c7cdc76e95e" formatted="false">"설정"</string>
     <string name="l10n_d22d7bf3a71ec052" formatted="false">"지속 목표를 설정하거나 확인"</string>
     <string name="l10n_b4115b8528333061" formatted="false">"추론 노력 수준 설정"</string>
@@ -706,11 +940,14 @@
     <string name="l10n_4c619ef31f07cceb" formatted="false">"모든 프로젝트 보기"</string>
     <string name="l10n_81744b31e55f479f" formatted="false">"사용 가능한 슬래시 명령어 보기"</string>
     <string name="l10n_7097a0c314985f69" formatted="false">"세션 상태 보기"</string>
+    <string name="l10n_b47f6085ffd26585" formatted="false">"모델 %2$lld개 중 %1$lld개 표시"</string>
     <string name="l10n_3fa229fdb23ceeb3" formatted="false">"처음 500개의 변경된 파일을 표시합니다."</string>
     <string name="l10n_c019f77116648ddf" formatted="false">"처음 500개의 변경된 파일을 표시합니다."</string>
+    <string name="l10n_a3a6710b148c1660" formatted="false">"사용 가능한 보드 관리 작업을 표시합니다."</string>
     <string name="l10n_409adfda54bac8ec" formatted="false">"이 프로젝트의 이름 변경 및 삭제 작업을 표시해요."</string>
     <string name="l10n_64bdd26ae9e959e5" formatted="false">"잠금 화면과 다이내믹 아일랜드에 짧은 응답 텍스트를 표시해요."</string>
     <string name="l10n_0c19157b637bd737" formatted="false">"세션 검색 필드를 표시해요."</string>
+    <string name="l10n_9710be03d20fb3ad" formatted="false">"이 제공업체의 모델 목록을 표시합니다."</string>
     <string name="l10n_61fd08ff5c37211d" formatted="false">"로그아웃"</string>
     <string name="l10n_c5eba70bd3954c88" formatted="false">"이 서버에서 로그아웃"</string>
     <string name="l10n_f9d09fc5a91b5ed7" formatted="false">"서버에서 사용한 것과 동일한 계정으로 로그인하세요."</string>
@@ -725,12 +962,16 @@
     <string name="l10n_11930e13637cafc2" formatted="false">"Hermes 서버의 스킬이 여기에 표시돼요."</string>
     <string name="l10n_9bfe8690fb3da405" formatted="false">"`%@`과(와) 일치하는 스킬:"</string>
     <string name="l10n_4883f494deaf503e" formatted="false">"이 세션 전체 건너뛰기"</string>
+    <string name="l10n_06efe358248e1592" formatted="false">"건너뜀—담당자 없음"</string>
+    <string name="l10n_60dbead0f06505e3" formatted="false">"건너뜀—알 수 없는 프로필"</string>
     <string name="l10n_bb5430b00fb04963" formatted="false">"설정을 건너뛰고 연결 화면을 열어요."</string>
     <string name="l10n_b3d97fd6dece388a" formatted="false">"하늘색"</string>
+    <string name="l10n_094da9b95fdcee3d" formatted="false">"슬러그"</string>
     <string name="l10n_4b8bd42120d9a94c" formatted="false">"출처: 로컬 세션 메타데이터 대체."</string>
     <string name="l10n_2513e8e94b38cc59" formatted="false">"출처: 로컬 세션 메타데이터 대체. 서버 인사이트 실패: %@"</string>
     <string name="l10n_d1b96f5b62a4287b" formatted="false">"출처: 로컬 세션 메타데이터."</string>
     <string name="l10n_03d03ab0d88c3373" formatted="false">"출처: 최근 %lld일간의 서버 인사이트."</string>
+    <string name="l10n_cd5d730d53090728" formatted="false">"시작됨"</string>
     <string name="l10n_c0333d1add29d664" formatted="false">"음성 인식이 비활성화되어 있어요. 음성 입력을 사용하려면 설정에서 활성화하세요."</string>
     <string name="l10n_4bfb98bccc44ac2c" formatted="false">"현재 지역에서는 음성 인식을 사용할 수 없어요."</string>
     <string name="l10n_59246b380055b101" formatted="false">"지금은 음성 인식을 사용할 수 없어요."</string>
@@ -781,11 +1022,14 @@
     <string name="l10n_7bb0ddf9221c03b8" formatted="false">"작업"</string>
     <string name="l10n_b41eb6f08c8b078b" formatted="false">"작업 동작"</string>
     <string name="l10n_090ec5f560fc5037" formatted="false">"작업"</string>
+    <string name="l10n_3ca93c78f67175df" formatted="false">"테넌트"</string>
     <string name="l10n_43518a45c3506afe" formatted="false">"터미널은 모바일 앱에서 사용할 수 없어요."</string>
     <string name="l10n_580f6ab716ab4ca9" formatted="false">"연결 테스트"</string>
     <string name="l10n_7b514bffeae3b7d5" formatted="false">"해당 승인 요청이 이미 만료되어 에이전트가 계속 진행했어요."</string>
     <string name="l10n_d2209900784abf2a" formatted="false">"해당 설명 요청이 이미 만료되어 에이전트가 계속 진행했어요."</string>
     <string name="l10n_05d3eab3ca8f18dd" formatted="false">"해당 세션이 서버에 더 이상 존재하지 않아요. 다른 세션을 다시 열거나 새 세션을 만드세요."</string>
+    <string name="l10n_21f829338a7faa45" formatted="false">"보드를 새로 고치는 중입니다."</string>
+    <string name="l10n_1dd6da47cd03c774" formatted="false">"Dispatcher는 할당된 프로필 없이 Ready Card를 건너뜁니다."</string>
     <string name="l10n_ecfa2de70a6b9074" formatted="false">"HTTPS 연결에 실패했어요. 서버 URL과 인증서를 확인하세요."</string>
     <string name="l10n_9bbd89ecc5be6e75" formatted="false">"Hermes 서버에서 내부 오류가 발생했어요. 서버 로그를 확인한 후 다시 시도하세요."</string>
     <string name="l10n_15ea0a61edd4c28f" formatted="false">"어시스턴트가 응답을 마쳤어요."</string>
@@ -793,6 +1037,8 @@
     <string name="l10n_99bd906ebc1eccbe" formatted="false">"편집한 메시지는 비워둘 수 없어요."</string>
     <string name="l10n_81c08290cf69b27a" formatted="false">"비밀번호가 거부되었어요. 서버 비밀번호를 확인한 후 다시 시도하세요."</string>
     <string name="l10n_94f2c21b3df558b2" formatted="false">"요청이 취소되었어요."</string>
+    <string name="l10n_8bdfda19530477f9" formatted="false">"선택한 카드가 보관함으로 이동됩니다."</string>
+    <string name="l10n_cd019f1c53e3497b" formatted="false">"선택 항목을 더 이상 사용할 수 없습니다. 보드를 새로 고친 후 카드를 다시 선택하세요."</string>
     <string name="l10n_e7160301a4c0999e" formatted="false">"서버가 현재 응답을 중지할 수 없었어요."</string>
     <string name="l10n_391ddfb06a8ee962" formatted="false">"서버가 이 세션의 보관을 해제하지 못했어요."</string>
     <string name="l10n_11326745266f240a" formatted="false">"서버가 변경 사항을 확인하지 못했어요."</string>
@@ -827,11 +1073,14 @@
     <string name="l10n_ac044556e5548d3c" formatted="false">"서버가 너무 많은 요청을 받고 있어요. 잠시 기다린 후 다시 시도하세요."</string>
     <string name="l10n_2a1b7a25a5096500" formatted="false">"서버 또는 Cloudflare 터널을 사용할 수 없어요. Mac이 켜져 있고, hermes-webui가 실행 중이며, 터널이 연결되어 있는지 확인하세요."</string>
     <string name="l10n_f8d83dbb55003db9" formatted="false">"서버가 접근을 거부했어요. 서버 비밀번호와 권한을 확인하세요."</string>
+    <string name="l10n_a9c580f6eaa44ef8" formatted="false">"서버가 이 업데이트를 거부했거나 적용하지 않았습니다."</string>
+    <string name="l10n_1f649f3b878ba1a5" formatted="false">"서버가 이 디스패처 요청을 거부했습니다. Hermex는 다시 시도하지 않았습니다."</string>
     <string name="l10n_3b7efcceeff317b3" formatted="false">"서버가 요청을 거부했어요."</string>
     <string name="l10n_80e2ebb549050457" formatted="false">"서버가 요청을 거부했어요: %@"</string>
     <string name="l10n_d2a9f8cb89bf69b7" formatted="false">"서버 응답을 읽을 수 없었어요."</string>
     <string name="l10n_53e576d649d0b70e" formatted="false">"서버 응답을 읽을 수 없었어요. URL이 Hermes Web UI 서버를 가리키는지 확인하세요."</string>
     <string name="l10n_eefb8bb01beaaae1" formatted="false">"서버 응답에 너무 오래 걸렸어요. Mac이 켜져 있고 서버가 실행 중인지 확인하세요."</string>
+    <string name="l10n_afa9464df086e048" formatted="false">"보드를 만든 후에는 슬러그를 변경할 수 없습니다."</string>
     <string name="l10n_c9f0def8dcd627c9" formatted="false">"스트림이 잘못된 형식의 오류 이벤트를 반환했어요."</string>
     <string name="l10n_baa339d62041f2e5" formatted="false">"스트림이 오류를 반환했어요."</string>
     <string name="l10n_e0dfd329b1ff55a1" formatted="false">"업데이트를 적용할 수 없었어요."</string>
@@ -845,6 +1094,11 @@
     <string name="l10n_a8f4d85bf0de7c20" formatted="false">"생각 및 도구 카드"</string>
     <string name="l10n_ac9ded8ad76135f8" formatted="false">"생각 및 도구 카드가 접힌 상태 대신 펼쳐진 상태로 시작해요. 카드를 탭하면 여전히 전환할 수 있어요."</string>
     <string name="l10n_16c5d096ef4c4b52" formatted="false">"생각 중, %@"</string>
+    <string name="l10n_e151dd158050ee78" formatted="false">"이 보드는 더 이상 존재하지 않습니다. 다른 보드를 선택하세요."</string>
+    <string name="l10n_6a650636b81004aa" formatted="false">"This Board no longer exists. Return to Kanban to choose another Board."</string>
+    <string name="l10n_ca86aeb9616416a9" formatted="false">"이 카드는 에디터가 열린 후 서버에서 변경되었습니다. 초안이 보존되었습니다."</string>
+    <string name="l10n_3474c0f601ba033a" formatted="false">"This Card no longer exists on this Board. The Board has been refreshed."</string>
+    <string name="l10n_83a3dcf7fc7d62c1" formatted="false">"이 미리보기는 오래되었습니다. 이 결과를 사용하기 전에 디스패치 미리보기를 다시 실행하세요."</string>
     <string name="l10n_aba61a2ad81b8d7f" formatted="false">"이 첨부 파일에는 서버 파일 경로가 없어요."</string>
     <string name="l10n_1877e019673b82ad" formatted="false">"이 채팅의 작업 공간은 Git 저장소가 아닙니다."</string>
     <string name="l10n_a8f9e43b9a80b7bf" formatted="false">"이 명령어는 모바일 앱에서 사용할 수 없어요."</string>
@@ -853,6 +1107,7 @@
     <string name="l10n_de77c8f5ce7c5f65" formatted="false">"이 파일은 비어 있는 것 같아요."</string>
     <string name="l10n_1199f666fedc3267" formatted="false">"이 파일은 바이너리이므로 표시할 텍스트 diff가 없습니다."</string>
     <string name="l10n_83722fb0e0ca5b75" formatted="false">"이 파일은 사진에 저장할 수 있는 이미지가 아니에요."</string>
+    <string name="l10n_4914d0afde90fb6d" formatted="false">"최대 %lld개의 워커를 시작하고 API 예산을 사용할 수 있습니다."</string>
     <string name="l10n_bc15958918104240" formatted="false">"최신 Hermes 서버 버전을 받아 서버를 다시 시작해요. 진행 중인 채팅이 잠시 중단될 수 있으며, 서버가 복구되면 앱이 다시 연결돼요."</string>
     <string name="l10n_f0c6fa08d0785f19" formatted="false">"Hermes 서버에서 예약된 작업을 제거해요."</string>
     <string name="l10n_9cc29299b5a024f3" formatted="false">"이 기기에서 서버와 저장된 설정을 제거해요. 활성 서버는 영향을 받지 않아요."</string>
@@ -867,16 +1122,21 @@
     <string name="l10n_e00561c4c172b50c" formatted="false">"이 작업은 아직 출력을 생성하지 않았어요."</string>
     <string name="l10n_97b25d863d2e238a" formatted="false">"이 작업공간에는 커밋되지 않은 변경사항이 있습니다. 임시로 저장하고 분기를 전환한 다음 대상 분기에 대해 저장된 변경 사항을 복원합니다."</string>
     <string name="l10n_c51f7b72279e26fd" formatted="false">"임계값"</string>
+    <string name="l10n_7bbea3f2b3d3370d" formatted="false">"시간 초과"</string>
     <string name="l10n_85decb73d1438d2e" formatted="false">"기간"</string>
     <string name="l10n_588e8007757722e5" formatted="false">"타임아웃 %@"</string>
     <string name="l10n_abca4fe61ee1300b" formatted="false">"새 채팅 및 보내기 색조"</string>
+    <string name="l10n_768e0c1c69573fb5" formatted="false">"제목"</string>
+    <string name="l10n_d5ec4d31ee0ffb4b" formatted="false">"제목이 필요합니다."</string>
     <string name="l10n_735e4002db082f59" formatted="false">"제목이 **%@**(으)로 설정되었어요."</string>
+    <string name="l10n_353a23d95e3c0839" formatted="false">"할 일"</string>
     <string name="l10n_757011e57ad1e225" formatted="false">"토스트 알림"</string>
     <string name="l10n_0b021d5f7dac5820" formatted="false">"토스트"</string>
     <string name="l10n_24345a14377fd821" formatted="false">"오늘"</string>
     <string name="l10n_9a830c714bb2b52b" formatted="false">"도구"</string>
     <string name="l10n_fa689a2e435f8e6d" formatted="false">"상위 세션"</string>
     <string name="l10n_b662ff25f41cef30" formatted="false">"총 토큰"</string>
+    <string name="l10n_013ec284eed0cb93" formatted="false">"분류"</string>
     <string name="l10n_cef2fe093b68fa97" formatted="false">"다시 시도"</string>
     <string name="l10n_3878a498a56fa2c4" formatted="false">"다른 파일 이름이나 경로를 시도하세요."</string>
     <string name="l10n_4bb4b153f85d494e" formatted="false">"다른 모델 이름이나 ID를 시도하세요."</string>
@@ -887,14 +1147,20 @@
     <string name="l10n_426fed37b50f32c6" formatted="false">"응답 입력"</string>
     <string name="l10n_0e2d9b0777a485c1" formatted="false">"URL"</string>
     <string name="l10n_35e71c29f1185e21" formatted="false">"보관 해제"</string>
+    <string name="l10n_e57016edceec7e7b" formatted="false">"미할당"</string>
     <string name="l10n_2c9c1f79142df1b6" formatted="false">"사용 불가"</string>
+    <string name="l10n_12aabd251c4213f1" formatted="false">"차단 해제"</string>
     <string name="l10n_4ef7d73c1a83464f" formatted="false">"분류 안 됨"</string>
     <string name="l10n_10e6f533d2aaca09" formatted="false">"커밋되지 않은 변경 사항"</string>
+    <string name="l10n_39fc72124884d657" formatted="false">"실행 취소"</string>
+    <string name="l10n_e979f022d850942a" formatted="false">"보관 취소"</string>
     <string name="l10n_b3a1af021b557f01" formatted="false">"실행 취소는 WebUI 세션에서만 사용할 수 있어요."</string>
     <string name="l10n_0383fdef3915a396" formatted="false">"마지막 주고받기 실행 취소"</string>
     <string name="l10n_bc7819b34ff87570" formatted="false">"알 수 없음"</string>
     <string name="l10n_3697b1ae8e7d30a2" formatted="false">"알 수 없는 날짜"</string>
     <string name="l10n_b87bd1c1a7bca908" formatted="false">"알 수 없는 모델"</string>
+    <string name="l10n_dd1bf46d2decbcfc" formatted="false">"알 수 없는 상태"</string>
+    <string name="l10n_9a8ae21fb0d04e5a" formatted="false">"알 수 없는 제공업체"</string>
     <string name="l10n_fd61688d01169f43" formatted="false">"알 수 없는 추론 수준: %@."</string>
     <string name="l10n_d57444178b19325b" formatted="false">"이름 없는 스킬"</string>
     <string name="l10n_2eba6a03b89a9ddb" formatted="false">"고정 해제"</string>
@@ -907,9 +1173,12 @@
     <string name="l10n_82fb1d5144a846f7" formatted="false">"최신 상태"</string>
     <string name="l10n_fb91e24fa52d8d2b" formatted="false">"업데이트"</string>
     <string name="l10n_58b0f1cc44738b4e" formatted="false">"업데이트 사용 가능 · %lld개 뒤처짐"</string>
+    <string name="l10n_4de04cd91a3d954b" formatted="false">"업데이트 실패"</string>
     <string name="l10n_61c080e52b666016" formatted="false">"서버를 업데이트할까요?"</string>
+    <string name="l10n_f2f8570ddd7b1e7b" formatted="false">"Updated"</string>
     <string name="l10n_a74e190a94f85aeb" formatted="false">"세션 헤더 로고 색상을 업데이트해요."</string>
     <string name="l10n_4159ad3b0d6e5c96" formatted="false">"업데이트 및 재시작 중…"</string>
+    <string name="l10n_d6f123d4cdba5c1b" formatted="false">"보드 업데이트 중…"</string>
     <string name="l10n_37016ece9e2301b0" formatted="false">"앱 아이콘 업데이트 중"</string>
     <string name="l10n_3d07322927c7ed8c" formatted="false">"작성기 설정 업데이트 중..."</string>
     <string name="l10n_05898ca376b6c749" formatted="false">"작업 업데이트 중..."</string>
@@ -931,6 +1200,7 @@
     <string name="l10n_542f2c8e3ce7e991" formatted="false">"도구 사용 중"</string>
     <string name="l10n_8dce170de238b1fe" formatted="false">"값"</string>
     <string name="l10n_2da600bf94048431" formatted="false">"버전"</string>
+    <string name="l10n_931e1a4b152ad9d1" formatted="false">"모두 보기"</string>
     <string name="l10n_ddcd2f2e783a0ee9" formatted="false">"보라색"</string>
     <string name="l10n_0c82d065d0dd4cbf" formatted="false">"음성 명령은 모바일 앱에서 사용할 수 없어요."</string>
     <string name="l10n_c0b2cee024771a9f" formatted="false">"음성 입력"</string>
@@ -959,9 +1229,16 @@
     <string name="l10n_0a1ea5282f05b18d" formatted="false">"승인 대기 중"</string>
     <string name="l10n_8ac7aa173f261d8b" formatted="false">"받게 되는 것"</string>
     <string name="l10n_37619fc13053f82b" formatted="false">"흰색"</string>
+    <string name="l10n_da17e9bd3e2e98db" formatted="false">"Worker ID"</string>
+    <string name="l10n_e7dff0bfb1f39bad" formatted="false">"워커 로그"</string>
     <string name="l10n_4ca0a75c2b7fa7da" formatted="false">"작업 공간"</string>
+    <string name="l10n_45df1387dc17132d" formatted="false">"이 서버에서는 작업 공간 관리를 사용할 수 없습니다."</string>
+    <string name="l10n_6e0f2ba26a5e7f14" formatted="false">"작업 공간 이름"</string>
     <string name="l10n_5b8d33f220cddf4c" formatted="false">"작업 공간 경로"</string>
+    <string name="l10n_01844d97ed607c1a" formatted="false">"이 작업공간 종류에는 작업공간 경로가 필요합니다."</string>
     <string name="l10n_928ae0b86e6b313e" formatted="false">"작업 공간 전환을 사용할 수 없어요."</string>
+    <string name="l10n_dc8ab239f39b6ebf" formatted="false">"작업 영역, 기술, 최대 실행 시간 및 전제 조건은 카드가 생성될 때 설정되며 여기에서 편집할 수 없습니다."</string>
+    <string name="l10n_fad0554cb2ea2e8c" formatted="false">"작업 트리"</string>
     <string name="l10n_ebf23375246151e6" formatted="false">"코드 블록 줄 바꿈"</string>
     <string name="l10n_4855c3796b3a0f62" formatted="false">"옆으로 스크롤하는 대신 코드 블록의 긴 줄을 화면에 맞게 줄 바꿈해요. 코드 블록의 줄 바꿈 버튼을 탭해도 돼요."</string>
     <string name="l10n_4a48932789d199bb" formatted="false">"쓰다"</string>
@@ -976,6 +1253,7 @@
     <string name="l10n_22b34eb125f0f1ee" formatted="false">"구성된 다른 서버로 전환돼요. 이 서버를 사용하려면 다시 로그인하세요."</string>
     <string name="l10n_a7355287e63a4595" formatted="false">"Hermes Web UI는 사용자가 제어하는 하드웨어에 유지돼요."</string>
     <string name="l10n_0b05d4e5dfddc460" formatted="false">"Tailscale을 통해 iPhone에서 접근할 수 있는 Hermes 에이전트."</string>
+    <string name="l10n_d621853ee2b94ab0" formatted="false">"로컬 초안이 삭제됩니다."</string>
     <string name="l10n_1735ecf6cc9d21df" formatted="false">"세션이 만료되었어요. 다시 로그인하세요."</string>
     <string name="l10n_46aa126e081be313" formatted="false">"작업 트리가 깨끗합니다."</string>
     <string name="l10n_0411e4632d186d8a" formatted="false">"모델 변경"</string>
@@ -996,6 +1274,7 @@
     <string name="l10n_9c7e05e5868afcf3" formatted="false">"prompt"</string>
     <string name="l10n_7cd9148ec5a552db" formatted="false">"query"</string>
     <string name="l10n_3b2be2e26344d52b" formatted="false">"question"</string>
+    <string name="l10n_8103a6c374c589c3" formatted="false">"초당 토큰"</string>
     <string name="l10n_1937c4c28f726186" formatted="false">"tool"</string>
     <string name="l10n_c551e6cf17a561ce" formatted="false">"승인"</string>
     <string name="l10n_cfea419c3b4e8b02" formatted="false">"저장"</string>
@@ -1019,7 +1298,6 @@
     <string name="l10n_567f51fd4b4b8a0d" formatted="false">"변경할 수 없음"</string>
     <string name="l10n_d3f0b43f65ef5ed5" formatted="false">"이후 메시지를 폐기할까요?"</string>
     <string name="l10n_1a2b1cb567321e7c" formatted="false">"신원"</string>
-    <string name="l10n_8b39616698372de0" formatted="false">"에이전트가 반환한 Tailscale URL을 입력하세요. 예: `http://&lt;tailnet-ip&gt;:8787`."</string>
     <string name="l10n_f54ec593076806df" formatted="false">"HTML로 내보내기"</string>
     <string name="l10n_bc399052d4204298" formatted="false">"JSON으로 내보내기"</string>
     <string name="l10n_03d5d80199276349" formatted="false">"서버 제거"</string>
@@ -1059,7 +1337,6 @@
     <string name="l10n_bd8d3d03c9e555ba" formatted="false">"활성 서버에서 로그아웃하고 시작하기 화면으로 돌아가요."</string>
     <string name="l10n_2dacf65959849884" formatted="false">"보내기"</string>
     <string name="l10n_8b18a01cc0e805fc" formatted="false">"지점"</string>
-    <string name="l10n_768e0c1c69573fb5" formatted="false">"전체 제목"</string>
     <string name="l10n_a62dff92d4316df9" formatted="false">"토스트 알림"</string>
     <string name="l10n_7bab0e5ded8bc6f0" formatted="false">"서버가 요구하는 형식 그대로 모델 ID를 입력하세요."</string>
     <string name="l10n_1d4d43cc6f3a833e" formatted="false">"완료"</string>
@@ -1069,7 +1346,7 @@
     <string name="l10n_4995a18a7feb07d3" formatted="false">"Android 알림이 허용되었어요."</string>
     <string name="l10n_6ffbb15ebde8242f" formatted="false">"Android 알림이 비활성화되었어요."</string>
     <string name="l10n_65f5f6f5ac859134" formatted="false">"Android에서 Hermes 에이전트와 채팅하세요"</string>
-    <string name="l10n_9aae4001f785c3f9" formatted="false">"Android에서 Hermes 에이전트를 제어하세요."</string>
+    <string name="l10n_9aae4001f785c3f9" formatted="false">"iPhone 또는 iPad에서 Hermes 에이전트를 제어하세요."</string>
     <string name="l10n_988fc6350ab87756" formatted="false">"Google Play에서 Tailscale 받기"</string>
     <string name="l10n_e972ad1daa70f255" formatted="false">"Tailscale을 통해 Android에서 접근할 수 있는 Hermes 에이전트."</string>
     <string name="l10n_b9cba9b2cbc1433d" formatted="false">"%lld개의 보관된 세션"</string>
@@ -1085,7 +1362,9 @@
     <string name="l10n_dc3decbb93847518" formatted="false">"세부 정보"</string>
     <string name="l10n_36fff63ccbcd7bf9" formatted="false">"버리기"</string>
     <string name="l10n_663da9347806aa18" formatted="false">"파일 변경 사항"</string>
+    <string name="l10n_96e578211aa29531" formatted="false">"필터"</string>
     <string name="l10n_1ce5eec83a4626a6" formatted="false">"Hermex? ???? ?? ???? ? ? ????. ????? ? ??? ??? ??, ??? ?? ? ??? ?? ??? ?????."</string>
+    <string name="l10n_7f896a7c24b031ad" formatted="false">"호환되지 않는 Kanban 응답"</string>
     <string name="l10n_7a4e49bc1d9b6a0e" formatted="false">"원격 이미지 불러오기"</string>
     <string name="l10n_2563f2298c5e7405" formatted="false">"이름: 값"</string>
     <string name="l10n_cf9b77061f7b3126" formatted="false">"열기"</string>

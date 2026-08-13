@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -85,17 +86,41 @@ fun MarkdownText(
     isStreaming: Boolean = false,
     streamedTextAnimationEnabled: Boolean = false,
 ) {
-    if (isStreaming) {
-        SelectionContainer {
-            Text(
-                text = markdown,
-                modifier = modifier,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+    var usesStreamingRenderer by remember { mutableStateOf(isStreaming) }
+    LaunchedEffect(isStreaming) {
+        if (isStreaming) {
+            usesStreamingRenderer = true
+        } else if (usesStreamingRenderer) {
+            delay(STREAMING_SUFFIX_FADE_DURATION_MILLIS)
+            usesStreamingRenderer = false
         }
+    }
+    if (usesStreamingRenderer) {
+        StreamingStructuredMarkdown(
+            markdown = markdown,
+            modifier = modifier,
+            wrapsCodeBlockLines = wrapsCodeBlockLines,
+            streamedTextAnimationEnabled = streamedTextAnimationEnabled,
+        )
         return
     }
+    StructuredMarkdownText(
+        markdown = markdown,
+        modifier = modifier,
+        wrapsCodeBlockLines = wrapsCodeBlockLines,
+        isStreaming = false,
+        streamedTextAnimationEnabled = streamedTextAnimationEnabled,
+    )
+}
+
+@Composable
+private fun StructuredMarkdownText(
+    markdown: String,
+    modifier: Modifier = Modifier,
+    wrapsCodeBlockLines: Boolean = true,
+    isStreaming: Boolean,
+    streamedTextAnimationEnabled: Boolean,
+) {
     val plainTextChunks = remember(markdown) { markdownPlainTextChunksForLargeContent(markdown) }
     if (plainTextChunks != null) {
         SelectionContainer {
@@ -157,7 +182,12 @@ fun MarkdownText(
 }
 
 @Composable
-private fun StreamingPlainMarkdown(markdown: String, modifier: Modifier) {
+private fun StreamingStructuredMarkdown(
+    markdown: String,
+    modifier: Modifier,
+    wrapsCodeBlockLines: Boolean,
+    streamedTextAnimationEnabled: Boolean,
+) {
     val latestMarkdown by rememberUpdatedState(markdown)
     var renderedMarkdown by remember { mutableStateOf(markdown) }
     LaunchedEffect(Unit) {
@@ -166,13 +196,26 @@ private fun StreamingPlainMarkdown(markdown: String, modifier: Modifier) {
             delay(STREAM_RENDER_INTERVAL_MILLIS)
         }
     }
-    SelectionContainer {
-        Text(
-            text = renderedMarkdown,
-            modifier = modifier,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+    val segments = remember(renderedMarkdown) { StreamingMarkdownBlockSplitter.split(renderedMarkdown) }
+    Column(modifier = modifier) {
+        segments.stableChunks.forEach { chunk ->
+            key(chunk.id) {
+                StructuredMarkdownText(
+                    markdown = chunk.text,
+                    wrapsCodeBlockLines = wrapsCodeBlockLines,
+                    isStreaming = false,
+                    streamedTextAnimationEnabled = false,
+                )
+            }
+        }
+        if (segments.activeMarkdown.isNotEmpty()) {
+            StructuredMarkdownText(
+                markdown = segments.activeMarkdown,
+                wrapsCodeBlockLines = wrapsCodeBlockLines,
+                isStreaming = true,
+                streamedTextAnimationEnabled = streamedTextAnimationEnabled,
+            )
+        }
     }
 }
 
@@ -219,10 +262,6 @@ private fun MarkdownAndroidView(
     isStreaming: Boolean = false,
     streamedTextAnimationEnabled: Boolean = false,
 ) {
-    if (isStreaming) {
-        StreamingPlainMarkdown(markdown, modifier)
-        return
-    }
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
     val textColor = colorScheme.onSurface.toArgb()
@@ -245,7 +284,7 @@ private fun MarkdownAndroidView(
             null
         }
     }
-    var renderState by remember(markwon, markdown) { mutableStateOf<MarkdownRenderState>(MarkdownRenderState.Pending) }
+    var renderState by remember(markwon) { mutableStateOf<MarkdownRenderState>(MarkdownRenderState.Pending) }
     LaunchedEffect(markwon, markdown) {
         if (markwon == null) {
             renderState = MarkdownRenderState.Failed
@@ -281,6 +320,7 @@ private fun MarkdownAndroidView(
                 textSize = 15f
                 setTextColor(textColor)
                 setLinkTextColor(linkColor)
+                setTextIsSelectable(true)
                 movementMethod = LinkMovementMethod.getInstance()
                 tag = StreamingMarkdownViewState()
             }
@@ -308,7 +348,12 @@ private fun MarkdownAndroidView(
                     return@let
                 }
                 val displayedText = textView.text as? Spannable ?: spannable
-                if (isStreaming && streamedTextAnimationEnabled && suffixStart < displayedText.length) {
+                if (
+                    isStreaming &&
+                    streamedTextAnimationEnabled &&
+                    ValueAnimator.areAnimatorsEnabled() &&
+                    suffixStart < displayedText.length
+                ) {
                     animateStreamingSuffix(textView, displayedText, suffixStart, textColor, viewState)
                 }
                 viewState.previousText = nextText

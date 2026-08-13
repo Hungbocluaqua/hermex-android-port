@@ -15,12 +15,11 @@ struct SessionListView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var viewModel: SessionListViewModel
-    @State private var createdSession: SessionSummary?
-    @State private var pendingNewChat: PendingNewChatRoute?
-    @State private var selectedUtilityDestination: SessionListUtilityDestination?
+    @State private var navigationState: SessionNavigationState
     @State private var sessionPendingRename: SessionSummary?
     @State private var sessionPendingDeletion: SessionSummary?
     @State private var sessionPendingProjectCreation: SessionSummary?
@@ -34,19 +33,33 @@ struct SessionListView: View {
     @State private var isSearchFocused = false
     @State private var searchChromeIsExpanded = false
     @State private var selectedProjectID: String?
+    @State private var sidebarScrollPosition: String?
     @State private var didCompleteInitialLoad = false
+    @State private var returnRefreshID: UUID?
     @FocusState private var searchFieldIsFocused: Bool
     @AppStorage(SessionSidebarDisclosureSettings.profilesAreExpandedKey)
     private var profilesAreExpanded = SessionSidebarDisclosureSettings.defaultProfilesAreExpanded
     @AppStorage(SessionSidebarDisclosureSettings.projectsAreExpandedKey)
     private var projectsAreExpanded = SessionSidebarDisclosureSettings.defaultProjectsAreExpanded
+    @AppStorage(SessionSidebarDisclosureSettings.scheduledSessionsAreExpandedKey)
+    private var scheduledSessionsAreExpanded = SessionSidebarDisclosureSettings.defaultScheduledSessionsAreExpanded
     @AppStorage(SessionRowDisplaySettings.showMessageCountKey) private var showsSessionMessageCount = true
     @AppStorage(SessionRowDisplaySettings.showWorkspaceKey) private var showsSessionWorkspace = true
     @AppStorage(SessionRowDisplaySettings.showCronSessionsKey) private var showsCronSessions = true
+    @AppStorage(SessionRowDisplaySettings.showSubagentSessionsKey)
+    private var showsSubagentSessions = SessionRowDisplaySettings.defaultShowsSubagentSessions
+    @AppStorage(SectionVisibilitySettings.tasksKey) private var showsTasksSection = true
+    @AppStorage(SectionVisibilitySettings.kanbanKey) private var showsKanbanSection = true
+    @AppStorage(SectionVisibilitySettings.skillsKey) private var showsSkillsSection = true
+    @AppStorage(SectionVisibilitySettings.memoryKey) private var showsMemorySection = true
+    @AppStorage(SectionVisibilitySettings.insightsKey) private var showsInsightsSection = true
+    @AppStorage(SectionVisibilitySettings.activeProfileKey) private var showsActiveProfileSection = true
+    @AppStorage(SectionVisibilitySettings.projectsKey) private var showsProjectsSection = true
     // Per-server key (#19): the CLI toggle mirrors the active server's
     // `show_cli_sessions`, so its cached value must not leak across servers.
     // Configured in `init`, where the server URL is known.
     @AppStorage private var showsCliSessions: Bool
+    @AppStorage private var showsClaudeCodeSessions: Bool
     @AppStorage(HeaderLogoColor.storageKey) private var headerLogoColorHex = HeaderLogoColor.defaultHex
     @AppStorage(PrimaryActionTintSettings.isEnabledKey) private var tintsPrimaryActions = false
     @AppStorage(GlassPreference.isEnabledKey) private var isGlassEnabled = GlassPreference.defaultIsEnabled
@@ -67,60 +80,27 @@ struct SessionListView: View {
         _pendingDeepLinkedSessionID = pendingDeepLinkedSessionID
         _requestedNewChat = requestedNewChat
         _viewModel = State(initialValue: SessionListViewModel(server: server))
+        _navigationState = State(
+            initialValue: SessionNavigationState(
+                lastSelectedSessionID: SessionNavigationPersistence.load(for: server)
+            )
+        )
         _showsCliSessions = AppStorage(
             wrappedValue: SessionRowDisplaySettings.showsCliSessions(for: server),
             SessionRowDisplaySettings.showCliSessionsKey(for: server)
         )
+        _showsClaudeCodeSessions = AppStorage(
+            wrappedValue: SessionRowDisplaySettings.showsClaudeCodeSessions(for: server),
+            SessionRowDisplaySettings.showClaudeCodeSessionsKey(for: server)
+        )
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottomTrailing) {
-                Color(.systemBackground)
-                    .ignoresSafeArea()
-
-                content
-
-                if !isSearchingSessions {
-                    newSessionButton
-                        .padding(.trailing, 24)
-                        .padding(.bottom, 22)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-            .navigationDestination(item: $createdSession) { session in
-                ChatView(session: session, server: server, onAPIError: authManager.handleAPIError)
-            }
-            .navigationDestination(item: $pendingNewChat) { route in
-                PendingNewChatView(
-                    initialDraft: route.initialDraft,
-                    initialAttachments: route.initialAttachments,
-                    autoStartsVoiceInput: route.autoStartsVoiceInput,
-                    profileName: route.profileName,
-                    server: server,
-                    viewModel: viewModel,
-                    onAPIError: authManager.handleAPIError
-                )
-            }
-            .navigationDestination(item: $selectedUtilityDestination) { destination in
-                switch destination {
-                case .settings(let scrollTo):
-                    SettingsView(authManager: authManager, server: server, initialScrollTarget: scrollTo)
-                case .tasks:
-                    TasksView(server: server, onAPIError: authManager.handleAPIError)
-                case .skills:
-                    SkillsView(server: server, onAPIError: authManager.handleAPIError)
-                case .memory:
-                    MemoryView(server: server, onAPIError: authManager.handleAPIError)
-                case .insights:
-                    InsightsView(server: server, onAPIError: authManager.handleAPIError)
-                case .archived:
-                    ArchivedSessionsView(server: server, onAPIError: authManager.handleAPIError)
-                }
-            }
+        navigationContainer
             .sheet(item: $sessionExportShareItem) { item in
                 SessionExportShareSheet(fileURL: item.fileURL)
                     .presentationDetents([.medium, .large])
+                    .adaptiveFormPresentation()
                     .ignoresSafeArea()
                     // The temp file lives in its own UUID directory (see
                     // SessionListViewModel.export); remove the directory once
@@ -219,8 +199,23 @@ struct SessionListView: View {
                 AddServerView(authManager: authManager)
             }
             .task {
-                await refreshSessionsAndActiveProfile()
+                // Start the normal refresh immediately so a slow direct session
+                // request cannot leave the sidebar empty. Deep-link resolution still
+                // owns navigation precedence and is awaited before stored selection
+                // restoration.
+                await SessionListInitialLoad.run(
+                    resolvePendingDeepLink: {
+                        await openPendingDeepLinkedSessionIfNeeded()
+                    },
+                    refreshSessionsAndActiveProfile: {
+                        await refreshSessionsAndActiveProfile()
+                    }
+                )
+                guard !Task.isCancelled else { return }
                 didCompleteInitialLoad = true
+                // Ordered after the deep link so restoreIfNeeded() sees the explicit
+                // destination and leaves the stored selection alone.
+                restoreLastSelectedSessionIfNeeded()
             }
             .task(id: remoteSearchTaskID) {
                 await viewModel.searchSessions(query: searchText, content: true, depth: 5)
@@ -228,9 +223,12 @@ struct SessionListView: View {
             .task(id: activeSessionMonitorTaskID) {
                 await monitorActiveSessionRows()
             }
+            .task(id: returnRefreshID) {
+                guard returnRefreshID != nil else { return }
+                await refreshSessionsAndActiveProfile()
+            }
             .onAppear {
                 openPendingSharedImportIfNeeded()
-                openPendingDeepLinkedSessionIfNeeded()
                 openRequestedNewChatIfNeeded()
                 refreshAfterReturningIfNeeded()
             }
@@ -238,10 +236,25 @@ struct SessionListView: View {
                 openPendingSharedImportIfNeeded()
             }
             .onChange(of: pendingDeepLinkedSessionID) {
-                openPendingDeepLinkedSessionIfNeeded()
+                Task { await openPendingDeepLinkedSessionIfNeeded() }
             }
             .onChange(of: requestedNewChat) {
                 openRequestedNewChatIfNeeded()
+            }
+            .onChange(of: showsProjectsSection) {
+                // The "All" button that clears a project filter lives in the
+                // Projects header, so hiding the section mid-filter would strand
+                // the list on one project with no way back (#189).
+                guard !showsProjectsSection else { return }
+                selectedProjectID = nil
+            }
+            .onChange(of: navigationState.destination) { oldValue, newValue in
+                SessionListNewChatReturn.run(
+                    from: oldValue,
+                    to: newValue,
+                    suppressEmptyPlaceholders: viewModel.removeEmptySidebarPlaceholders,
+                    refreshSessions: refreshAfterReturningIfNeeded
+                )
             }
             .refreshable {
                 await refreshSessionsAndActiveProfile()
@@ -259,7 +272,129 @@ struct SessionListView: View {
                     }
                 )
             )
+            .focusedSceneValue(\.hermexSceneActions, sceneActions)
+    }
+
+    @ViewBuilder
+    private var navigationContainer: some View {
+        if horizontalSizeClass == .regular {
+            NavigationSplitView {
+                sessionListSurface
+                    .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 420)
+            } detail: {
+                NavigationStack {
+                    regularWidthDetail
+                }
+            }
+            .navigationSplitViewStyle(.balanced)
+            .id(navigationState.rootRevision)
+        } else {
+            NavigationStack {
+                sessionListSurface
+                    .navigationDestination(item: navigationDestinationBinding) { destination in
+                        navigationDestination(destination)
+                    }
+            }
         }
+    }
+
+    private var sessionListSurface: some View {
+        ZStack(alignment: .bottomTrailing) {
+            Color(.systemBackground)
+                .ignoresSafeArea()
+
+            content
+
+            if !isSearchingSessions {
+                newSessionButton
+                    .padding(.trailing, 24)
+                    .padding(.bottom, 22)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var regularWidthDetail: some View {
+        if let destination = navigationState.destination {
+            navigationDestination(destination)
+        } else {
+            ContentUnavailableView {
+                Label("Select a Chat", systemImage: "bubble.left.and.bubble.right")
+            } description: {
+                Text("Choose a session from the sidebar or start a new chat.")
+            } actions: {
+                Button("New Chat", action: openNewChat)
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func navigationDestination(_ destination: SessionNavigationDestination) -> some View {
+        switch destination {
+        case .session(let session):
+            ChatView(session: session, server: server, onAPIError: authManager.handleAPIError)
+                .id(session.id)
+        case .newChat(let route):
+            PendingNewChatView(
+                initialDraft: route.initialDraft,
+                initialAttachments: route.initialAttachments,
+                autoStartsVoiceInput: route.autoStartsVoiceInput,
+                profileName: route.profileName,
+                server: server,
+                viewModel: viewModel,
+                onAPIError: authManager.handleAPIError,
+                onSessionCreated: rememberCreatedSession
+            )
+            .id(route.id)
+        case .utility(let destination):
+            utilityDestination(destination)
+        }
+    }
+
+    @ViewBuilder
+    private func utilityDestination(_ destination: SessionListUtilityDestination) -> some View {
+        Group {
+            switch destination {
+            case .settings(let scrollTo):
+                SettingsView(authManager: authManager, server: server, initialScrollTarget: scrollTo)
+            case .tasks:
+                TasksView(server: server, onAPIError: authManager.handleAPIError)
+            case .kanban:
+                KanbanView(server: server, onAPIError: authManager.handleAPIError)
+            case .skills:
+                SkillsView(server: server, onAPIError: authManager.handleAPIError)
+            case .memory:
+                MemoryView(server: server, onAPIError: authManager.handleAPIError)
+            case .insights:
+                InsightsView(server: server, onAPIError: authManager.handleAPIError)
+            case .archived:
+                ArchivedSessionsView(server: server, onAPIError: authManager.handleAPIError)
+            case .scheduled:
+                ScheduledSessionsView(
+                    viewModel: viewModel,
+                    showsCronSessions: showsCronSessions,
+                    showsMessageCount: showsSessionMessageCount,
+                    showsWorkspace: showsSessionWorkspace,
+                    selectedSessionID: horizontalSizeClass == .regular
+                        ? navigationState.selectedSessionID
+                        : nil,
+                    actions: sessionRowActions
+                )
+            }
+        }
+        .adaptiveSecondaryNavigationTitle()
+    }
+
+    private var navigationDestinationBinding: Binding<SessionNavigationDestination?> {
+        Binding(
+            get: { navigationState.destination },
+            set: { destination in
+                guard destination == nil else { return }
+                navigationState.clearDestination()
+            }
+        )
     }
 
     private var content: some View {
@@ -278,13 +413,14 @@ struct SessionListView: View {
                     viewModel: viewModel,
                     topPadding: 10,
                     automatedVisibility: automatedSessionVisibility,
+                    sectionVisibility: sidebarSectionVisibility,
                     profilesAreExpanded: $profilesAreExpanded,
                     projectsAreExpanded: $projectsAreExpanded,
                     selectedProjectID: $selectedProjectID,
                     projectPendingDeletion: $projectPendingDeletion,
                     projectPendingRename: $projectPendingRename,
                     openDestination: { destination in
-                        selectedUtilityDestination = destination
+                        navigationState.select(destination)
                     },
                     switchActiveProfile: { profile in
                         Task { await switchActiveProfile(profile) }
@@ -295,15 +431,36 @@ struct SessionListView: View {
                 )
             }
 
+            if scheduledSessionGroups.showsDisclosure(isSearchActive: isSearchingSessions) {
+                ScheduledSessionsDisclosure(
+                    viewModel: viewModel,
+                    sessions: scheduledSessionGroups.scheduled,
+                    totalCount: scheduledSessionGroups.totalScheduledCount,
+                    isSearchActive: isSearchingSessions,
+                    showsMessageCount: showsSessionMessageCount,
+                    showsWorkspace: showsSessionWorkspace,
+                    selectedSessionID: horizontalSizeClass == .regular
+                        ? navigationState.selectedSessionID
+                        : nil,
+                    userIsExpanded: $scheduledSessionsAreExpanded,
+                    actions: sessionRowActions,
+                    viewAll: { navigationState.select(.scheduled) }
+                )
+            }
+
             SessionListRowsSection(
                 viewModel: viewModel,
-                sessions: visibleSessions,
+                sessions: scheduledSessionGroups.ordinary,
                 emptyTitle: emptySessionsTitle,
                 emptyDescription: emptySessionsDescription,
                 isSearchActive: isSearchingSessions,
                 showsMessageCount: showsSessionMessageCount,
                 showsWorkspace: showsSessionWorkspace,
-                actions: sessionRowActions
+                selectedSessionID: horizontalSizeClass == .regular
+                    ? navigationState.selectedSessionID
+                    : nil,
+                actions: sessionRowActions,
+                suppressEmptyState: !scheduledSessionGroups.scheduled.isEmpty
             )
 
             if showsArchivedEntry {
@@ -322,12 +479,14 @@ struct SessionListView: View {
         // with the tightly-packed navigation rows.
         .environment(\.defaultMinListRowHeight, 0)
         .scrollContentBackground(.hidden)
+        .scrollPosition(id: $sidebarScrollPosition)
         .background(Color(.systemBackground))
         .scrollDismissesKeyboard(.interactively)
         // Disclosure subrows are real List rows; drive their fold from the List
         // so insert/remove animates. Value-based so it works with @AppStorage.
         .animation(SessionListMotion.disclosureAnimation(reduceMotion: reduceMotion), value: profilesAreExpanded)
         .animation(SessionListMotion.disclosureAnimation(reduceMotion: reduceMotion), value: projectsAreExpanded)
+        .animation(SessionListMotion.disclosureAnimation(reduceMotion: reduceMotion), value: scheduledSessionsAreExpanded)
     }
 
     private var header: some View {
@@ -426,7 +585,7 @@ struct SessionListView: View {
             if searchChromeIsExpanded {
                 closeSearch()
             } else {
-                selectedUtilityDestination = .settings(nil)
+                navigationState.select(.settings(nil))
             }
         } label: {
             ZStack {
@@ -473,7 +632,7 @@ struct SessionListView: View {
                         authManager.switchActiveServer(to: account)
                     },
                     addServer: { isPresentingAddServer = true },
-                    manageServers: { selectedUtilityDestination = .settings(.servers) }
+                    manageServers: { navigationState.select(.settings(.servers)) }
                 )
             }
         }
@@ -481,7 +640,7 @@ struct SessionListView: View {
 
     private var newSessionButton: some View {
         HapticButton(feedbackStyle: .medium) {
-            pendingNewChat = PendingNewChatRoute()
+            openNewChat()
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "square.and.pencil")
@@ -510,7 +669,7 @@ struct SessionListView: View {
             )
         }
         .buttonStyle(SessionListFloatingChatButtonStyle())
-        .disabled(viewModel.isViewingCachedData || pendingNewChat != nil)
+        .disabled(viewModel.isViewingCachedData || navigationState.isCreatingNewChat)
         .opacity(viewModel.isViewingCachedData ? 0.45 : 1)
         .accessibilityLabel("New Session")
     }
@@ -523,8 +682,33 @@ struct SessionListView: View {
         )
     }
 
+    private var scheduledSessionGroups: ScheduledSessionGroups {
+        viewModel.scheduledSessionGroups(
+            searchText: searchText,
+            selectedProjectID: selectedProjectID,
+            automatedVisibility: automatedSessionVisibility
+        )
+    }
+
     private var automatedSessionVisibility: AutomatedSessionVisibility {
-        AutomatedSessionVisibility(showsCron: showsCronSessions, showsCli: showsCliSessions)
+        AutomatedSessionVisibility(
+            showsCron: showsCronSessions,
+            showsCli: showsCliSessions,
+            showsClaudeCode: showsClaudeCodeSessions,
+            showsSubagents: showsSubagentSessions
+        )
+    }
+
+    private var sidebarSectionVisibility: SidebarSectionVisibility {
+        SidebarSectionVisibility(
+            tasks: showsTasksSection,
+            kanban: showsKanbanSection,
+            skills: showsSkillsSection,
+            memory: showsMemorySection,
+            insights: showsInsightsSection,
+            activeProfile: showsActiveProfileSection,
+            projects: showsProjectsSection
+        )
     }
 
     /// Bottom-of-list entry to the Archived screen (issue #17). Hidden while
@@ -538,7 +722,7 @@ struct SessionListView: View {
 
     private var archivedEntryRow: some View {
         HapticButton {
-            selectedUtilityDestination = .archived
+            navigationState.select(.archived)
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "archivebox")
@@ -698,7 +882,7 @@ struct SessionListView: View {
                 Task { await refreshSessionsAndActiveProfile() }
             },
             open: { session in
-                createdSession = session
+                selectSession(session)
             },
             togglePinned: { session in
                 Task { await togglePinned(session) }
@@ -732,6 +916,7 @@ struct SessionListView: View {
 
     private func refreshSessionsAndActiveProfile() async {
         await loadSessions()
+        guard !Task.isCancelled else { return }
         await viewModel.loadActiveProfile()
     }
 
@@ -754,6 +939,32 @@ struct SessionListView: View {
         searchFieldIsFocused = true
     }
 
+    private var sceneActions: HermexSceneActions {
+        HermexSceneActions(
+            canCreateNewChat: !viewModel.isViewingCachedData && !navigationState.isCreatingNewChat,
+            createNewChat: openNewChatFromKeyboard,
+            searchSessions: openSearchFromKeyboard
+        )
+    }
+
+    private func openNewChatFromKeyboard() {
+        guard !viewModel.isViewingCachedData, !navigationState.isCreatingNewChat else { return }
+        openNewChat()
+    }
+
+    private func openSearchFromKeyboard() {
+        searchFieldIsFocused = false
+
+        if horizontalSizeClass != .regular {
+            navigationState.clearDestination()
+        }
+
+        Task { @MainActor in
+            await Task.yield()
+            openSearch()
+        }
+    }
+
     private func handleSearchFieldFocusChange(_ isFocused: Bool) {
         guard isFocused else {
             isSearchFocused = false
@@ -771,10 +982,7 @@ struct SessionListView: View {
 
     private func refreshAfterReturningIfNeeded() {
         guard didCompleteInitialLoad else { return }
-
-        Task {
-            await refreshSessionsAndActiveProfile()
-        }
+        returnRefreshID = UUID()
     }
 
     private func monitorActiveSessionRows() async {
@@ -816,10 +1024,12 @@ struct SessionListView: View {
 
     private func loadSessions() async {
         await viewModel.load(modelContext: modelContext)
+        guard !Task.isCancelled else { return }
         handleLastError()
 
         if !viewModel.isViewingCachedData {
             await viewModel.loadProjects()
+            guard !Task.isCancelled else { return }
             handleLastError()
         }
     }
@@ -847,6 +1057,7 @@ struct SessionListView: View {
         handleLastError()
 
         if didArchive {
+            removeSessionFromNavigation(session)
             SessionHaptics.archiveStateChanged(isEnabled: isHapticsEnabled)
         }
     }
@@ -860,6 +1071,7 @@ struct SessionListView: View {
         handleLastError()
 
         if didDelete {
+            removeSessionFromNavigation(session)
             SessionHaptics.sessionDeleted(isEnabled: isHapticsEnabled)
         }
     }
@@ -881,7 +1093,7 @@ struct SessionListView: View {
         handleLastError()
 
         if let duplicatedSession {
-            createdSession = duplicatedSession
+            selectSession(duplicatedSession)
         }
     }
 
@@ -932,31 +1144,46 @@ struct SessionListView: View {
             return
         }
 
-        pendingNewChat = PendingNewChatRoute(
-            initialDraft: draft,
-            initialAttachments: sharedImport.attachments
+        navigationState.select(
+            PendingNewChatRoute(
+                initialDraft: draft,
+                initialAttachments: sharedImport.attachments
+            )
         )
     }
 
-    private func openPendingDeepLinkedSessionIfNeeded() {
-        guard let sessionID = pendingDeepLinkedSessionID?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !sessionID.isEmpty
-        else {
-            return
-        }
+    /// Awaited (not fire-and-forget) so the cold-start `.task` can resolve it before
+    /// `restoreLastSelectedSessionIfNeeded()` — otherwise the restore races the deep
+    /// link's network load and wins with the previous session.
+    private func openPendingDeepLinkedSessionIfNeeded() async {
+        guard !Task.isCancelled else { return }
 
-        pendingDeepLinkedSessionID = nil
+        while let sessionID = navigationState.beginDeepLinkedSessionLoad(
+            id: pendingDeepLinkedSessionID
+        ) {
+            pendingDeepLinkedSessionID = nil
+            await openDeepLinkedSession(id: sessionID)
+            navigationState.finishDeepLinkedSessionLoad(id: sessionID)
+            guard !Task.isCancelled else { return }
+        }
+    }
+
+    private func openDeepLinkedSession(id sessionID: String) async {
         if let loadedSession = viewModel.sessions.first(where: { $0.sessionId == sessionID }) {
-            createdSession = loadedSession
+            selectSession(loadedSession)
             return
         }
 
-        Task {
-            if let session = await viewModel.loadSessionForDeepLink(id: sessionID, modelContext: modelContext) {
-                createdSession = session
-            }
-            handleLastError()
+        let session = await viewModel.loadSessionForDeepLink(id: sessionID, modelContext: modelContext)
+        // Re-checked post-await: the view (and this task) may have been torn down —
+        // e.g. dismissed, or the active server changed under `.id(server)` — while
+        // the network load was in flight. Selecting or persisting for a session
+        // whose owning view no longer exists is stale work, not a real navigation.
+        guard !Task.isCancelled else { return }
+        if let session {
+            selectSession(session)
         }
+        handleLastError()
     }
 
     /// Opens the New Chat composer in response to the "New Chat" App Intents (#337/#338),
@@ -966,12 +1193,76 @@ struct SessionListView: View {
     private func openRequestedNewChatIfNeeded() {
         guard let request = requestedNewChat else { return }
         requestedNewChat = nil
-        pendingNewChat = PendingNewChatRoute(
-            autoStartsVoiceInput: request.autoStartsVoiceInput,
-            profileName: request.profileName
+        navigationState.select(
+            PendingNewChatRoute(
+                autoStartsVoiceInput: request.autoStartsVoiceInput,
+                profileName: request.profileName
+            )
         )
     }
 
+    private func openNewChat() {
+        navigationState.select(PendingNewChatRoute())
+    }
+
+    private func selectSession(_ session: SessionSummary) {
+        navigationState.select(session)
+        persistLastSelectedSession()
+    }
+
+    private func rememberCreatedSession(_ session: SessionSummary) {
+        navigationState.remember(session)
+        persistLastSelectedSession()
+    }
+
+    private func removeSessionFromNavigation(_ session: SessionSummary) {
+        navigationState.remove(sessionID: session.sessionId)
+        persistLastSelectedSession()
+    }
+
+    private func restoreLastSelectedSessionIfNeeded() {
+        navigationState.restoreIfNeeded(
+            from: viewModel.sessions,
+            clearsMissingSelection: viewModel.sessionLoadError == nil,
+            pendingDeepLinkedSessionID: pendingDeepLinkedSessionID
+        )
+        persistLastSelectedSession()
+    }
+
+    private func persistLastSelectedSession() {
+        SessionNavigationPersistence.save(navigationState.lastSelectedSessionID, for: server)
+    }
+
+}
+
+enum SessionListInitialLoad {
+    @MainActor
+    static func run(
+        resolvePendingDeepLink: @escaping @MainActor () async -> Void,
+        refreshSessionsAndActiveProfile: @escaping @MainActor () async -> Void
+    ) async {
+        async let initialRefresh: Void = refreshSessionsAndActiveProfile()
+        await resolvePendingDeepLink()
+        await initialRefresh
+    }
+}
+
+enum SessionListNewChatReturn {
+    static func run(
+        from oldValue: SessionNavigationDestination?,
+        to newValue: SessionNavigationDestination?,
+        suppressEmptyPlaceholders: () -> Void,
+        refreshSessions: () -> Void
+    ) {
+        guard case .newChat = oldValue else { return }
+        if case .newChat = newValue { return }
+
+        // Keep this synchronous so an empty Untitled placeholder cannot flash
+        // during the navigation transition. The refresh then adopts the server's
+        // latest metadata for a new chat that has become contentful.
+        suppressEmptyPlaceholders()
+        refreshSessions()
+    }
 }
 
 struct HermesHeaderLogo: View {
@@ -1027,7 +1318,7 @@ struct NewChatRequest: Equatable {
     }
 }
 
-private struct PendingNewChatRoute: Identifiable, Hashable {
+struct PendingNewChatRoute: Identifiable, Hashable {
     let id = UUID()
     let initialDraft: String
     let initialAttachments: [SharedAttachmentImport]
@@ -1062,11 +1353,13 @@ enum SessionListUtilityDestination: Hashable, Identifiable {
     /// passes `.servers`, a plain avatar tap passes `nil` (#283).
     case settings(SettingsScrollAnchor?)
     case tasks
+    case kanban
     case skills
     case memory
     case insights
     /// Archived sessions screen (issue #17), also reachable from Settings.
     case archived
+    case scheduled
 
     var id: Self { self }
 }
@@ -1089,6 +1382,7 @@ private struct PendingNewChatView: View {
     let server: URL
     let viewModel: SessionListViewModel
     let onAPIError: (Error) -> Void
+    let onSessionCreated: (SessionSummary) -> Void
     let initialAttachments: [SharedAttachmentImport]
     let autoStartsVoiceInput: Bool
     let profileName: String?
@@ -1096,6 +1390,7 @@ private struct PendingNewChatView: View {
     @State private var createdSession: SessionSummary?
     @State private var draftMessage = ""
     @State private var didStartCreation = false
+    @State private var didRequestComposerFocus = false
     @State private var creationErrorMessage: String?
     @FocusState private var composerIsFocused: Bool
 
@@ -1106,11 +1401,13 @@ private struct PendingNewChatView: View {
         profileName: String? = nil,
         server: URL,
         viewModel: SessionListViewModel,
-        onAPIError: @escaping (Error) -> Void
+        onAPIError: @escaping (Error) -> Void,
+        onSessionCreated: @escaping (SessionSummary) -> Void = { _ in }
     ) {
         self.server = server
         self.viewModel = viewModel
         self.onAPIError = onAPIError
+        self.onSessionCreated = onSessionCreated
         self.initialAttachments = initialAttachments
         self.autoStartsVoiceInput = autoStartsVoiceInput
         self.profileName = profileName
@@ -1133,8 +1430,12 @@ private struct PendingNewChatView: View {
                 pendingContent
             }
         }
+        .background(
+            NavigationAppearanceCompletionObserver(action: requestPendingComposerFocus)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        )
         .task {
-            requestPendingComposerFocus()
             await createSessionIfNeeded()
         }
     }
@@ -1166,9 +1467,6 @@ private struct PendingNewChatView: View {
         }
         .navigationTitle("New Chat")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            requestPendingComposerFocus()
-        }
     }
 
     private var pendingComposer: some View {
@@ -1235,6 +1533,7 @@ private struct PendingNewChatView: View {
 
         if let session {
             SessionHaptics.sessionCreated(isEnabled: isHapticsEnabled)
+            onSessionCreated(session)
             createdSession = session
         } else {
             creationErrorMessage = viewModel.actionErrorMessage
@@ -1253,6 +1552,9 @@ private struct PendingNewChatView: View {
     }
 
     private func requestPendingComposerFocus() {
+        guard !didRequestComposerFocus else { return }
+        didRequestComposerFocus = true
+
         Task { @MainActor in
             await Task.yield()
             guard createdSession == nil else { return }

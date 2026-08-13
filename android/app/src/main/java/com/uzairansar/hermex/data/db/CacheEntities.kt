@@ -3,6 +3,7 @@ package com.uzairansar.hermex.data.db
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import androidx.room.ColumnInfo
 import com.uzairansar.hermex.core.model.ChatMessage
 import com.uzairansar.hermex.core.model.SessionSummary
 import com.uzairansar.hermex.core.network.HermesJson
@@ -32,6 +33,15 @@ data class CachedSessionEntity(
     val estimatedCost: Double?,
     val activeStreamId: String?,
     val isStreaming: Boolean?,
+    val isCliSession: Boolean? = null,
+    val sourceTag: String? = null,
+    val rawSource: String? = null,
+    val sessionSource: String? = null,
+    val sourceLabel: String? = null,
+    val parentSessionId: String? = null,
+    val relationshipType: String? = null,
+    @ColumnInfo(name = "readOnly") val explicitReadOnlyFlag: Boolean? = null,
+    @ColumnInfo(name = "isReadOnly") val alternateReadOnlyFlag: Boolean? = null,
     val cachedAtEpochMillis: Long,
     val expiresAtEpochMillis: Long,
 ) {
@@ -54,6 +64,15 @@ data class CachedSessionEntity(
         estimatedCost = estimatedCost,
         activeStreamId = activeStreamId,
         isStreaming = isStreaming,
+        isCliSession = isCliSession,
+        sourceTag = sourceTag,
+        rawSource = rawSource,
+        sessionSource = sessionSource,
+        sourceLabel = sourceLabel,
+        parentSessionId = parentSessionId,
+        relationshipType = relationshipType,
+        readOnly = explicitReadOnlyFlag,
+        isReadOnly = alternateReadOnlyFlag,
     )
 
     companion object {
@@ -82,6 +101,15 @@ data class CachedSessionEntity(
                 estimatedCost = session.estimatedCost,
                 activeStreamId = session.activeStreamId,
                 isStreaming = session.isStreaming,
+                isCliSession = session.isCliSession,
+                sourceTag = session.sourceTag,
+                rawSource = session.rawSource,
+                sessionSource = session.sessionSource,
+                sourceLabel = session.sourceLabel,
+                parentSessionId = session.parentSessionId,
+                relationshipType = session.relationshipType,
+                explicitReadOnlyFlag = session.readOnly,
+                alternateReadOnlyFlag = session.isReadOnly,
                 cachedAtEpochMillis = now,
                 expiresAtEpochMillis = now + ttlMillis,
             )

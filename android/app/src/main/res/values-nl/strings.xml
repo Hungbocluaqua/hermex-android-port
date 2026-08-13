@@ -13,6 +13,7 @@
     <string name="widget_new_session">Nieuwe sessie</string>
     <string name="widget_new_voice">Spraakinvoer</string>
     <string name="nav_tasks">Taken</string>
+    <string name="nav_kanban">Kanban</string>
     <string name="nav_skills">Vaardigheden</string>
     <string name="nav_memory">Geheugen</string>
     <string name="nav_insights">Statistieken</string>

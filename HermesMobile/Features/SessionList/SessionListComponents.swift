@@ -15,6 +15,31 @@ struct SessionListRowActions {
     let export: (SessionSummary, SessionExportFormat) -> Void
 }
 
+enum SessionRowActionPolicy {
+    static func offersMutationActions(for session: SessionSummary) -> Bool {
+        !session.isSessionReadOnly
+    }
+
+    static func canExport(_ session: SessionSummary, isViewingCachedData: Bool) -> Bool {
+        !isViewingCachedData && hasServerSessionID(session)
+    }
+
+    static func deepLinkURL(
+        for session: SessionSummary,
+        isViewingCachedData: Bool,
+        isMutating: Bool
+    ) -> URL? {
+        guard !isMutating,
+              canExport(session, isViewingCachedData: isViewingCachedData),
+              let sessionID = session.sessionId
+        else {
+            return nil
+        }
+
+        return HermesDeepLink.sessionURL(sessionID: sessionID)
+    }
+}
+
 enum SessionListMotion {
     static func disclosureAnimation(reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : .smooth(duration: 0.28, extraBounce: 0)
@@ -45,6 +70,35 @@ enum SessionListMotion {
     }
 }
 
+/// Which of the session list's optional navigation rows are shown, so a user can
+/// hide the parts of the app they never use (issue #189).
+struct SidebarSectionVisibility: Equatable {
+    var tasks: Bool
+    var kanban: Bool
+    var skills: Bool
+    var memory: Bool
+    var insights: Bool
+    var activeProfile: Bool
+    var projects: Bool
+
+    /// Show every row, primarily for previews and tests.
+    static let showAll = SidebarSectionVisibility(
+        tasks: true,
+        kanban: true,
+        skills: true,
+        memory: true,
+        insights: true,
+        activeProfile: true,
+        projects: true
+    )
+
+    /// The five plain links share one List row, so that row is dropped entirely
+    /// once all of them are hidden rather than leaving an empty padded gap.
+    var showsAnyUtilityLink: Bool {
+        tasks || kanban || skills || memory || insights
+    }
+}
+
 struct SessionSidebarUtilityRows: View {
     // Vertical gap between every utility row, matching the navigation rows so the
     // headers and subrows share one consistent rhythm now that each is its own row.
@@ -54,6 +108,7 @@ struct SessionSidebarUtilityRows: View {
     let viewModel: SessionListViewModel
     let topPadding: CGFloat
     let automatedVisibility: AutomatedSessionVisibility
+    let sectionVisibility: SidebarSectionVisibility
     @Binding var profilesAreExpanded: Bool
     @Binding var projectsAreExpanded: Bool
     @Binding var selectedProjectID: String?
@@ -71,15 +126,17 @@ struct SessionSidebarUtilityRows: View {
     // driven by a value-based .animation on the List in SessionListView, which
     // works even though the disclosure booleans are @AppStorage-backed.
     var body: some View {
-        utilityLinks
-            .padding(.top, topPadding)
-            .sessionsScreenListRow()
+        if sectionVisibility.showsAnyUtilityLink {
+            utilityLinks
+                .padding(.top, topPadding)
+                .sessionsScreenListRow()
+        }
 
         // In single-profile mode the server rejects switching, so the whole
         // "Active Profile" disclosure would only no-op or error — hide it (#24).
-        if !viewModel.isSingleProfileMode {
+        if showsActiveProfile {
             activeProfileHeader
-                .padding(.top, Self.rowSpacing)
+                .padding(.top, activeProfileTopPadding)
                 .sessionsScreenListRow()
 
             if profilesAreExpanded {
@@ -87,13 +144,29 @@ struct SessionSidebarUtilityRows: View {
             }
         }
 
-        projectsHeader
-            .padding(.top, Self.rowSpacing)
-            .sessionsScreenListRow()
+        if sectionVisibility.projects {
+            projectsHeader
+                .padding(.top, projectsTopPadding)
+                .sessionsScreenListRow()
 
-        if projectsAreExpanded {
-            projectOptionRows
+            if projectsAreExpanded {
+                projectOptionRows
+            }
         }
+    }
+
+    private var showsActiveProfile: Bool {
+        sectionVisibility.activeProfile && !viewModel.isSingleProfileMode
+    }
+
+    // Whichever row lands first carries the section's top padding, since #189 can
+    // hide the rows above it; the rest keep the tight inter-row spacing.
+    private var activeProfileTopPadding: CGFloat {
+        sectionVisibility.showsAnyUtilityLink ? Self.rowSpacing : topPadding
+    }
+
+    private var projectsTopPadding: CGFloat {
+        sectionVisibility.showsAnyUtilityLink || showsActiveProfile ? Self.rowSpacing : topPadding
     }
 
     private func disclosureSubrow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -106,20 +179,34 @@ struct SessionSidebarUtilityRows: View {
 
     private var utilityLinks: some View {
         VStack(alignment: .leading, spacing: Self.rowSpacing) {
-            SidebarNavButton(title: String(localized: "Tasks"), assetImage: "LucideCalendarClock") {
-                openDestination(.tasks)
+            if sectionVisibility.tasks {
+                SidebarNavButton(title: String(localized: "Tasks"), assetImage: "LucideCalendarClock") {
+                    openDestination(.tasks)
+                }
             }
 
-            SidebarNavButton(title: String(localized: "Skills"), assetImage: "LucideHammer") {
-                openDestination(.skills)
+            if sectionVisibility.kanban {
+                SidebarNavButton(title: String(localized: "Kanban"), assetImage: "LucideColumns3") {
+                    openDestination(.kanban)
+                }
             }
 
-            SidebarNavButton(title: String(localized: "Memory"), assetImage: "LucideBrain") {
-                openDestination(.memory)
+            if sectionVisibility.skills {
+                SidebarNavButton(title: String(localized: "Skills"), assetImage: "LucideHammer") {
+                    openDestination(.skills)
+                }
             }
 
-            SidebarNavButton(title: String(localized: "Insights"), assetImage: "LucideChartColumnIncreasing") {
-                openDestination(.insights)
+            if sectionVisibility.memory {
+                SidebarNavButton(title: String(localized: "Memory"), assetImage: "LucideBrain") {
+                    openDestination(.memory)
+                }
+            }
+
+            if sectionVisibility.insights {
+                SidebarNavButton(title: String(localized: "Insights"), assetImage: "LucideChartColumnIncreasing") {
+                    openDestination(.insights)
+                }
             }
         }
         .padding(.horizontal, 24)
@@ -299,7 +386,6 @@ struct SessionSidebarUtilityRows: View {
 }
 
 struct SessionListRowsSection: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let viewModel: SessionListViewModel
 
     let sessions: [SessionSummary]
@@ -308,7 +394,9 @@ struct SessionListRowsSection: View {
     let isSearchActive: Bool
     let showsMessageCount: Bool
     let showsWorkspace: Bool
+    let selectedSessionID: String?
     let actions: SessionListRowActions
+    var suppressEmptyState = false
 
     var body: some View {
         sessionsHeaderRow
@@ -320,7 +408,7 @@ struct SessionListRowsSection: View {
         } else if let errorMessage = viewModel.errorMessage, viewModel.sessions.isEmpty {
             sessionsErrorRow(message: errorMessage)
                 .sessionsScreenListRow()
-        } else if sessions.isEmpty {
+        } else if sessions.isEmpty && !suppressEmptyState {
             SessionListStatusRow(
                 title: emptyTitle,
                 description: emptyDescription,
@@ -330,7 +418,14 @@ struct SessionListRowsSection: View {
                 .sessionsScreenListRow()
         } else {
             ForEach(sessions) { session in
-                sessionListRow(for: session)
+                SessionInteractiveRow(
+                    viewModel: viewModel,
+                    session: session,
+                    showsMessageCount: showsMessageCount,
+                    showsWorkspace: showsWorkspace,
+                    selectedSessionID: selectedSessionID,
+                    actions: actions
+                )
             }
         }
     }
@@ -407,7 +502,18 @@ struct SessionListRowsSection: View {
         return (String(localized: "Could not load sessions"), fallbackMessage)
     }
 
-    private func sessionListRow(for session: SessionSummary) -> some View {
+}
+
+struct SessionInteractiveRow: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let viewModel: SessionListViewModel
+    let session: SessionSummary
+    let showsMessageCount: Bool
+    let showsWorkspace: Bool
+    let selectedSessionID: String?
+    let actions: SessionListRowActions
+
+    var body: some View {
         Button {
             actions.open(session)
         } label: {
@@ -419,6 +525,13 @@ struct SessionListRowsSection: View {
             )
         }
         .buttonStyle(.plain)
+        .id(session.id)
+        .background(
+            session.sessionId == selectedSessionID
+                ? Color.accentColor.opacity(0.12)
+                : Color.clear,
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
         .transition(SessionListMotion.sessionRowTransition(reduceMotion: reduceMotion))
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             sessionLeadingSwipeActions(for: session)
@@ -477,7 +590,143 @@ struct SessionListRowsSection: View {
     }
 
     private func canShowSessionMutationActions(for session: SessionSummary) -> Bool {
-        !viewModel.isViewingCachedData && hasServerSessionID(session)
+        SessionRowActionPolicy.offersMutationActions(for: session)
+            && !viewModel.isViewingCachedData
+            && hasServerSessionID(session)
+    }
+}
+
+struct ScheduledSessionsDisclosure: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let viewModel: SessionListViewModel
+    let sessions: [SessionSummary]
+    let totalCount: Int
+    let isSearchActive: Bool
+    let showsMessageCount: Bool
+    let showsWorkspace: Bool
+    let selectedSessionID: String?
+    @Binding var userIsExpanded: Bool
+    let actions: SessionListRowActions
+    let viewAll: () -> Void
+
+    private var isExpanded: Bool { isSearchActive || userIsExpanded }
+    private var displayedSessions: [SessionSummary] {
+        isSearchActive ? sessions : Array(sessions.prefix(5))
+    }
+
+    var body: some View {
+        SidebarDisclosureButton(
+            title: String(localized: "Scheduled sessions"),
+            assetImage: "LucideCalendarClock",
+            isExpanded: isExpanded
+        ) {
+            guard !isSearchActive else { return }
+            userIsExpanded.toggle()
+        } accessory: {
+            Text("\(totalCount)")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(.thinMaterial, in: Capsule())
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, isSearchActive ? 16 : 12)
+        .sessionsScreenListRow()
+        .accessibilityLabel(
+            isSearchActive
+                ? String(localized: "Scheduled sessions")
+                : isExpanded
+                    ? String(localized: "Collapse scheduled sessions")
+                    : String(localized: "Expand scheduled sessions")
+        )
+
+        if isExpanded {
+            ForEach(displayedSessions) { session in
+                SessionInteractiveRow(
+                    viewModel: viewModel,
+                    session: session,
+                    showsMessageCount: showsMessageCount,
+                    showsWorkspace: showsWorkspace,
+                    selectedSessionID: selectedSessionID,
+                    actions: actions
+                )
+                .transition(SessionListMotion.disclosureContentTransition(reduceMotion: reduceMotion))
+            }
+
+            if !isSearchActive && sessions.count > 5 {
+                HapticButton(action: viewAll) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "magnifyingglass")
+                            .frame(width: 24)
+                        Text("View all")
+                            .font(.subheadline.weight(.medium))
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.forward")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 24)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .sessionsScreenListRow()
+                .transition(SessionListMotion.disclosureContentTransition(reduceMotion: reduceMotion))
+            }
+        }
+    }
+}
+
+struct ScheduledSessionsView: View {
+    let viewModel: SessionListViewModel
+    let showsCronSessions: Bool
+    let showsMessageCount: Bool
+    let showsWorkspace: Bool
+    let selectedSessionID: String?
+    let actions: SessionListRowActions
+
+    @State private var searchText = ""
+
+    var body: some View {
+        List {
+            if sessions.isEmpty {
+                SessionListStatusRow(
+                    title: searchText.isEmpty
+                        ? String(localized: "No sessions yet")
+                        : String(localized: "No matching sessions"),
+                    description: searchText.isEmpty
+                        ? nil
+                        : String(localized: "Try another search or project filter."),
+                    systemImage: "calendar.badge.clock"
+                )
+                .padding(.horizontal, 24)
+                .sessionsScreenListRow()
+            } else {
+                ForEach(sessions) { session in
+                    SessionInteractiveRow(
+                        viewModel: viewModel,
+                        session: session,
+                        showsMessageCount: showsMessageCount,
+                        showsWorkspace: showsWorkspace,
+                        selectedSessionID: selectedSessionID,
+                        actions: actions
+                    )
+                }
+            }
+        }
+        .listStyle(.plain)
+        .environment(\.defaultMinListRowHeight, 0)
+        .scrollContentBackground(.hidden)
+        .navigationTitle("Scheduled sessions")
+        .searchable(text: $searchText, prompt: "Search sessions")
+    }
+
+    private var sessions: [SessionSummary] {
+        guard showsCronSessions else { return [] }
+
+        return viewModel.visibleSessions(searchText: searchText, selectedProjectID: nil)
+            .filter { $0.isCronSession && $0.archived != true }
     }
 }
 
@@ -505,44 +754,45 @@ struct SessionRowContextMenu: View {
             }
         }
 
-        Button {
-            actions.togglePinned(session)
-        } label: {
-            Label(session.pinned == true ? "Unpin" : "Pin", systemImage: "pin")
-        }
-        .disabled(!canShowSessionMutationActions || isMutating)
+        if SessionRowActionPolicy.offersMutationActions(for: session) {
+            Button {
+                actions.togglePinned(session)
+            } label: {
+                Label(session.pinned == true ? "Unpin" : "Pin", systemImage: "pin")
+            }
+            .disabled(!canShowSessionMutationActions || isMutating)
 
-        Button {
-            actions.rename(session)
-        } label: {
-            Label("Rename", systemImage: "pencil")
-        }
-        .disabled(isViewingCachedData || isRenamingSession || !hasServerSessionID(session))
+            Button {
+                actions.rename(session)
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+            .disabled(isViewingCachedData || isRenamingSession || !hasServerSessionID(session))
 
-        Button {
-            actions.duplicate(session)
-        } label: {
-            Label("Duplicate", systemImage: "doc.on.doc")
-        }
-        .disabled(isViewingCachedData || session.sessionId == nil || isMutating)
+            Button {
+                actions.duplicate(session)
+            } label: {
+                Label("Duplicate", systemImage: "doc.on.doc")
+            }
+            .disabled(isViewingCachedData || session.sessionId == nil || isMutating)
 
-        Menu {
-            SessionProjectMoveMenu(
-                session: session,
-                projects: projects,
-                isCreatingProject: isCreatingProject,
-                isMovingSession: isMovingSession,
-                isLoadingProjects: isLoadingProjects,
-                actions: actions
-            )
-        } label: {
-            Label("Move to Project", systemImage: "folder")
+            Menu {
+                SessionProjectMoveMenu(
+                    session: session,
+                    projects: projects,
+                    isCreatingProject: isCreatingProject,
+                    isMovingSession: isMovingSession,
+                    isLoadingProjects: isLoadingProjects,
+                    actions: actions
+                )
+            } label: {
+                Label("Move to Project", systemImage: "folder")
+            }
+            .disabled(isViewingCachedData || session.sessionId == nil || isMutating)
         }
-        .disabled(isViewingCachedData || session.sessionId == nil || isMutating)
 
-        // Export works for any session the server can see (incl. foreign/CLI
-        // ones — upstream's export handler only gates on the active profile),
-        // so it needs a server session ID and a live connection, like Rename.
+        // Export works for any session the server can see, including read-only
+        // and foreign/CLI rows; it only needs a live server session ID.
         Menu {
             Button {
                 actions.export(session, .html)
@@ -555,28 +805,48 @@ struct SessionRowContextMenu: View {
             } label: {
                 Label("Export as JSON", systemImage: "curlybraces")
             }
+
+            if let deepLinkURL = SessionRowActionPolicy.deepLinkURL(
+                for: session,
+                isViewingCachedData: isViewingCachedData,
+                isMutating: isMutating
+            ) {
+                Button {
+                    UIPasteboard.general.string = deepLinkURL.absoluteString
+                } label: {
+                    Label("Copy Deeplink", systemImage: "doc.on.doc")
+                }
+            }
         } label: {
             Label("Export", systemImage: "square.and.arrow.up")
         }
-        .disabled(!canShowSessionMutationActions || isMutating)
+        .disabled(!canExportSession || isMutating)
 
-        Button {
-            actions.archive(session)
-        } label: {
-            Label("Archive", systemImage: "archivebox")
-        }
-        .disabled(!canShowSessionMutationActions || isMutating)
+        if SessionRowActionPolicy.offersMutationActions(for: session) {
+            Button {
+                actions.archive(session)
+            } label: {
+                Label("Archive", systemImage: "archivebox")
+            }
+            .disabled(!canShowSessionMutationActions || isMutating)
 
-        Button(role: .destructive) {
-            actions.delete(session)
-        } label: {
-            Label("Delete", systemImage: "trash")
+            Button(role: .destructive) {
+                actions.delete(session)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            .disabled(!canShowSessionMutationActions || isMutating)
         }
-        .disabled(!canShowSessionMutationActions || isMutating)
     }
 
     private var canShowSessionMutationActions: Bool {
-        !isViewingCachedData && hasServerSessionID(session)
+        SessionRowActionPolicy.offersMutationActions(for: session)
+            && !isViewingCachedData
+            && hasServerSessionID(session)
+    }
+
+    private var canExportSession: Bool {
+        SessionRowActionPolicy.canExport(session, isViewingCachedData: isViewingCachedData)
     }
 }
 

@@ -1,5 +1,6 @@
 import XCTest
 import UIKit
+import UniformTypeIdentifiers
 @testable import HermesMobile
 
 @MainActor
@@ -13,6 +14,7 @@ final class TranscriptMediaPreviewViewModelTests: XCTestCase {
         let recorder = TranscriptMediaPreviewRequestRecorder()
         let imageData = try XCTUnwrap(Self.imageData())
         let mediaPath = "/Users/hermes/.hermes/browser_screenshots/example.png"
+        let sessionID = "session-123"
         let client = makeClient { request in
             recorder.record(request)
             XCTAssertEqual(request.httpMethod, "GET")
@@ -21,6 +23,7 @@ final class TranscriptMediaPreviewViewModelTests: XCTestCase {
         }
         let viewModel = TranscriptMediaPreviewViewModel(
             server: Self.baseURL,
+            sessionID: sessionID,
             reference: .init(rawReference: mediaPath),
             apiClient: client
         )
@@ -33,12 +36,58 @@ final class TranscriptMediaPreviewViewModelTests: XCTestCase {
         XCTAssertNotNil(viewModel.previewData)
         XCTAssertEqual(viewModel.originalByteCount, imageData.count)
         XCTAssertTrue(viewModel.canSaveImageToPhotos)
+        XCTAssertTrue(viewModel.canSaveMediaToPhotos)
+        XCTAssertTrue(viewModel.canExportMedia)
 
         let queryItems = queryItems(for: try XCTUnwrap(recorder.firstURL))
+        XCTAssertEqual(queryItems["session_id"], sessionID)
         XCTAssertEqual(queryItems["path"], mediaPath)
 
         let originalData = try await viewModel.originalImageData()
         XCTAssertEqual(originalData, imageData)
+        let payload = try await viewModel.exportPayload()
+        XCTAssertEqual(payload.data, imageData)
+        XCTAssertEqual(payload.filename, "example.png")
+        XCTAssertEqual(payload.contentType, .png)
+        XCTAssertTrue(payload.isImage)
+        XCTAssertFalse(payload.isVideo)
+        XCTAssertEqual(recorder.requestCount, 1)
+    }
+
+    func testParsedFileURLUsesSessionMediaEndpointAndDecodedExportFilename() async throws {
+        let recorder = TranscriptMediaPreviewRequestRecorder()
+        let imageData = try XCTUnwrap(Self.imageData())
+        let sessionID = "session-file-url"
+        let segments = TranscriptMediaParser.segments(
+            in: "Created file:///tmp/final%20chart.png"
+        )
+        let reference = try XCTUnwrap(segments.compactMap { segment in
+            if case let .media(reference) = segment {
+                return reference
+            }
+            return nil
+        }.first)
+        let client = makeClient { request in
+            recorder.record(request)
+            return self.response(statusCode: 200, data: imageData, for: request)
+        }
+        let viewModel = TranscriptMediaPreviewViewModel(
+            server: Self.baseURL,
+            sessionID: sessionID,
+            reference: reference,
+            apiClient: client
+        )
+
+        await viewModel.load()
+
+        XCTAssertNil(viewModel.errorMessage)
+        let queryItems = queryItems(for: try XCTUnwrap(recorder.firstURL))
+        XCTAssertEqual(queryItems["session_id"], sessionID)
+        XCTAssertEqual(queryItems["path"], "/tmp/final chart.png")
+
+        let payload = try await viewModel.exportPayload()
+        XCTAssertEqual(payload.filename, "final chart.png")
+        XCTAssertEqual(payload.data, imageData)
         XCTAssertEqual(recorder.requestCount, 1)
     }
 
@@ -57,6 +106,7 @@ final class TranscriptMediaPreviewViewModelTests: XCTestCase {
         }
         let viewModel = TranscriptMediaPreviewViewModel(
             server: Self.baseURL,
+            sessionID: "session-123",
             reference: .init(rawReference: remoteURL.absoluteString),
             apiClient: client
         )
@@ -66,6 +116,7 @@ final class TranscriptMediaPreviewViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage)
         XCTAssertNotNil(viewModel.previewData)
         XCTAssertEqual(viewModel.originalByteCount, imageData.count)
+        XCTAssertTrue(viewModel.canExportMedia)
         XCTAssertEqual(recorder.requestCount, 1)
     }
 
@@ -88,6 +139,7 @@ final class TranscriptMediaPreviewViewModelTests: XCTestCase {
         }
         let viewModel = TranscriptMediaPreviewViewModel(
             server: Self.baseURL,
+            sessionID: "session-123",
             reference: .init(rawReference: externalURL.absoluteString),
             apiClient: client
         )
@@ -97,6 +149,7 @@ final class TranscriptMediaPreviewViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage)
         XCTAssertNotNil(viewModel.previewData)
         XCTAssertEqual(viewModel.originalByteCount, imageData.count)
+        XCTAssertTrue(viewModel.canExportMedia)
         XCTAssertEqual(recorder.requestCount, 1)
     }
 
@@ -108,6 +161,7 @@ final class TranscriptMediaPreviewViewModelTests: XCTestCase {
         }
         let viewModel = TranscriptMediaPreviewViewModel(
             server: Self.baseURL,
+            sessionID: "session-123",
             reference: .init(rawReference: "/tmp/vector.svg"),
             apiClient: client
         )
@@ -119,7 +173,189 @@ final class TranscriptMediaPreviewViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.previewData)
         XCTAssertNil(viewModel.lastError)
         XCTAssertFalse(viewModel.canSaveImageToPhotos)
+        XCTAssertFalse(viewModel.canSaveMediaToPhotos)
+        XCTAssertFalse(viewModel.canExportMedia)
         XCTAssertEqual(recorder.requestCount, 0)
+    }
+
+    func testLoadLocalImageWithoutSessionIDDoesNotRequestMediaEndpoint() async {
+        let recorder = TranscriptMediaPreviewRequestRecorder()
+        let client = makeClient { request in
+            recorder.record(request)
+            return self.response(statusCode: 200, data: Data(), for: request)
+        }
+        let viewModel = TranscriptMediaPreviewViewModel(
+            server: Self.baseURL,
+            sessionID: nil,
+            reference: .init(rawReference: "/tmp/generated.png"),
+            apiClient: client
+        )
+
+        await viewModel.load()
+
+        XCTAssertFalse(viewModel.isLoading)
+        XCTAssertNil(viewModel.previewData)
+        XCTAssertNotNil(viewModel.errorMessage)
+        XCTAssertNotNil(viewModel.lastError)
+        XCTAssertEqual(recorder.requestCount, 0)
+    }
+
+    func testLoadLocalVideoUsesMediaEndpointAndCreatesPlayableFileURL() async throws {
+        let recorder = TranscriptMediaPreviewRequestRecorder()
+        let videoData = Data("video-bytes".utf8)
+        let mediaPath = "/tmp/generated/movie.mp4"
+        let sessionID = "session-123"
+        let client = makeClient { request in
+            recorder.record(request)
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.url?.path, "/api/media")
+            return self.response(statusCode: 200, data: videoData, for: request)
+        }
+        let viewModel = TranscriptMediaPreviewViewModel(
+            server: Self.baseURL,
+            sessionID: sessionID,
+            reference: .init(rawReference: mediaPath),
+            apiClient: client
+        )
+
+        await viewModel.load()
+
+        XCTAssertFalse(viewModel.isLoading)
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertNil(viewModel.lastError)
+        XCTAssertNil(viewModel.previewData)
+        let videoFileURL = try XCTUnwrap(viewModel.videoFileURL)
+        XCTAssertEqual(videoFileURL.pathExtension, "mp4")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: videoFileURL.path))
+        XCTAssertEqual(try Data(contentsOf: videoFileURL), videoData)
+        XCTAssertEqual(viewModel.originalByteCount, videoData.count)
+        XCTAssertFalse(viewModel.canSaveImageToPhotos)
+        XCTAssertTrue(viewModel.canSaveVideoToPhotos)
+        XCTAssertTrue(viewModel.canSaveMediaToPhotos)
+        XCTAssertTrue(viewModel.canExportMedia)
+
+        let payload = try await viewModel.exportPayload()
+        XCTAssertEqual(payload.data, videoData)
+        XCTAssertEqual(payload.filename, "movie.mp4")
+        XCTAssertEqual(payload.contentType, .mpeg4Movie)
+        XCTAssertFalse(payload.isImage)
+        XCTAssertTrue(payload.isVideo)
+
+        let queryItems = queryItems(for: try XCTUnwrap(recorder.firstURL))
+        XCTAssertEqual(queryItems["session_id"], sessionID)
+        XCTAssertEqual(queryItems["path"], mediaPath)
+        XCTAssertEqual(recorder.requestCount, 1)
+
+        viewModel.cleanupTemporaryFiles()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: videoFileURL.path))
+        XCTAssertNil(viewModel.videoFileURL)
+        XCTAssertFalse(viewModel.canSaveMediaToPhotos)
+    }
+
+    func testLoadLocalVideoWithoutSessionIDDoesNotRequestMediaEndpoint() async {
+        let recorder = TranscriptMediaPreviewRequestRecorder()
+        let client = makeClient { request in
+            recorder.record(request)
+            return self.response(statusCode: 200, data: Data(), for: request)
+        }
+        let viewModel = TranscriptMediaPreviewViewModel(
+            server: Self.baseURL,
+            sessionID: "   ",
+            reference: .init(rawReference: "/tmp/generated/movie.mov"),
+            apiClient: client
+        )
+
+        await viewModel.load()
+
+        XCTAssertFalse(viewModel.isLoading)
+        XCTAssertNil(viewModel.previewData)
+        XCTAssertNil(viewModel.videoFileURL)
+        XCTAssertNotNil(viewModel.errorMessage)
+        XCTAssertNotNil(viewModel.lastError)
+        XCTAssertEqual(recorder.requestCount, 0)
+    }
+
+    func testExtensionlessRemoteMediaFallsBackToVideoFileWhenImageDecodeFails() async throws {
+        let recorder = TranscriptMediaPreviewRequestRecorder()
+        let videoData = Data("video-bytes".utf8)
+        let remoteURL = try XCTUnwrap(URL(string: "https://cdn.example.test/media/abc123"))
+        let client = makeClient { request in
+            recorder.record(request)
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.url, remoteURL)
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Hermes-Test-Session"), "public")
+            return self.response(statusCode: 200, data: videoData, for: request)
+        }
+        let viewModel = TranscriptMediaPreviewViewModel(
+            server: Self.baseURL,
+            sessionID: "session-123",
+            reference: .init(rawReference: remoteURL.absoluteString),
+            apiClient: client
+        )
+
+        await viewModel.load()
+
+        XCTAssertFalse(viewModel.isLoading)
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertNil(viewModel.lastError)
+        XCTAssertNil(viewModel.previewData)
+        let videoFileURL = try XCTUnwrap(viewModel.videoFileURL)
+        XCTAssertEqual(videoFileURL.pathExtension, "mp4")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: videoFileURL.path))
+        XCTAssertEqual(try Data(contentsOf: videoFileURL), videoData)
+        XCTAssertEqual(viewModel.originalByteCount, videoData.count)
+        XCTAssertTrue(viewModel.canSaveVideoToPhotos)
+        XCTAssertTrue(viewModel.canSaveMediaToPhotos)
+        XCTAssertEqual(recorder.requestCount, 1)
+
+        let payload = try await viewModel.exportPayload()
+        XCTAssertEqual(payload.data, videoData)
+        XCTAssertEqual(payload.filename, "abc123.mp4")
+        XCTAssertEqual(payload.contentType, .mpeg4Movie)
+        XCTAssertFalse(payload.isImage)
+        XCTAssertTrue(payload.isVideo)
+
+        viewModel.cleanupTemporaryFiles()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: videoFileURL.path))
+    }
+
+    func testExtensionlessRemoteAudioUsesAudioPreviewInsteadOfVideoFallback() async throws {
+        let recorder = TranscriptMediaPreviewRequestRecorder()
+        let audioData = Self.wavData()
+        let remoteURL = try XCTUnwrap(URL(string: "https://cdn.example.test/media/voice123"))
+        let client = makeClient { request in
+            recorder.record(request)
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.url, remoteURL)
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Hermes-Test-Session"), "public")
+            return self.response(statusCode: 200, data: audioData, for: request)
+        }
+        let viewModel = TranscriptMediaPreviewViewModel(
+            server: Self.baseURL,
+            sessionID: "session-123",
+            reference: .init(rawReference: remoteURL.absoluteString),
+            apiClient: client
+        )
+
+        await viewModel.load()
+
+        XCTAssertFalse(viewModel.isLoading)
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertNil(viewModel.lastError)
+        XCTAssertNil(viewModel.previewData)
+        XCTAssertNil(viewModel.videoFileURL)
+        XCTAssertEqual(viewModel.audioData, audioData)
+        XCTAssertEqual(viewModel.originalByteCount, audioData.count)
+        XCTAssertFalse(viewModel.canSaveMediaToPhotos)
+        XCTAssertTrue(viewModel.canExportMedia)
+        XCTAssertEqual(recorder.requestCount, 1)
+
+        let payload = try await viewModel.exportPayload()
+        XCTAssertEqual(payload.data, audioData)
+        XCTAssertEqual(payload.filename, "voice123.wav")
+        XCTAssertEqual(payload.contentType, .wav)
+        XCTAssertFalse(payload.isImage)
+        XCTAssertFalse(payload.isVideo)
     }
 
     func testMediaEndpointErrorIsCaptured() async {
@@ -128,6 +364,7 @@ final class TranscriptMediaPreviewViewModelTests: XCTestCase {
         }
         let viewModel = TranscriptMediaPreviewViewModel(
             server: Self.baseURL,
+            sessionID: "session-123",
             reference: .init(rawReference: "/tmp/forbidden.png"),
             apiClient: client
         )
@@ -139,6 +376,8 @@ final class TranscriptMediaPreviewViewModelTests: XCTestCase {
         XCTAssertNotNil(viewModel.errorMessage)
         XCTAssertNotNil(viewModel.lastError)
         XCTAssertFalse(viewModel.canSaveImageToPhotos)
+        XCTAssertFalse(viewModel.canSaveMediaToPhotos)
+        XCTAssertFalse(viewModel.canExportMedia)
     }
 
     private static let baseURL = URL(string: "https://example.test")!
@@ -195,6 +434,31 @@ final class TranscriptMediaPreviewViewModelTests: XCTestCase {
             UIColor.systemBlue.setFill()
             context.fill(CGRect(x: 0, y: 0, width: 24, height: 24))
         }
+    }
+
+    private static func wavData() -> Data {
+        let sampleRate: UInt32 = 8_000
+        let channelCount: UInt16 = 1
+        let bitsPerSample: UInt16 = 16
+        let sampleCount = 800
+        let dataByteCount = sampleCount * Int(channelCount) * Int(bitsPerSample / 8)
+
+        var data = Data()
+        data.append(contentsOf: "RIFF".utf8)
+        data.appendLittleEndian(UInt32(36 + dataByteCount))
+        data.append(contentsOf: "WAVE".utf8)
+        data.append(contentsOf: "fmt ".utf8)
+        data.appendLittleEndian(UInt32(16))
+        data.appendLittleEndian(UInt16(1))
+        data.appendLittleEndian(channelCount)
+        data.appendLittleEndian(sampleRate)
+        data.appendLittleEndian(sampleRate * UInt32(channelCount) * UInt32(bitsPerSample / 8))
+        data.appendLittleEndian(channelCount * (bitsPerSample / 8))
+        data.appendLittleEndian(bitsPerSample)
+        data.append(contentsOf: "data".utf8)
+        data.appendLittleEndian(UInt32(dataByteCount))
+        data.append(Data(repeating: 0, count: dataByteCount))
+        return data
     }
 
     private static func hermesCookie(domain: String) -> HTTPCookie? {
@@ -259,4 +523,20 @@ private final class TranscriptMediaPreviewMockURLProtocol: URLProtocol {
     }
 
     override func stopLoading() {}
+}
+
+private extension Data {
+    mutating func appendLittleEndian(_ value: UInt16) {
+        var littleEndian = value.littleEndian
+        Swift.withUnsafeBytes(of: &littleEndian) { buffer in
+            append(contentsOf: buffer)
+        }
+    }
+
+    mutating func appendLittleEndian(_ value: UInt32) {
+        var littleEndian = value.littleEndian
+        Swift.withUnsafeBytes(of: &littleEndian) { buffer in
+            append(contentsOf: buffer)
+        }
+    }
 }

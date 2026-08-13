@@ -13,6 +13,7 @@
     <string name="widget_new_session">新建会话</string>
     <string name="widget_new_voice">语音输入</string>
     <string name="nav_tasks">任务</string>
+    <string name="nav_kanban">看板</string>
     <string name="nav_skills">技能</string>
     <string name="nav_memory">记忆</string>
     <string name="nav_insights">分析</string>

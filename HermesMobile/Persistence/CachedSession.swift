@@ -29,9 +29,18 @@ final class CachedSession {
     var activeStreamId: String?
     var isStreaming: Bool?
     var isCliSession: Bool?
+    var userMessageCount: Int?
+    var hasPendingUserMessage: Bool?
+    var pendingStartedAt: Double?
+    var worktreePath: String?
     var sourceTag: String?
+    var rawSource: String?
     var sessionSource: String?
     var sourceLabel: String?
+    var parentSessionId: String?
+    var relationshipType: String?
+    var readOnly: Bool?
+    var isReadOnly: Bool?
     var cachedAt: Date
     var expiresAt: Date
 
@@ -68,9 +77,18 @@ final class CachedSession {
         activeStreamId = session.activeStreamId
         isStreaming = session.isStreaming
         isCliSession = session.isCliSession
+        userMessageCount = session.userMessageCount
+        hasPendingUserMessage = session.hasPendingUserMessage
+        pendingStartedAt = session.pendingStartedAt
+        worktreePath = session.worktreePath
         sourceTag = session.sourceTag
+        rawSource = session.rawSource
         sessionSource = session.sessionSource
         sourceLabel = session.sourceLabel
+        parentSessionId = session.parentSessionId
+        relationshipType = session.relationshipType
+        readOnly = session.readOnly
+        isReadOnly = session.isReadOnly
         self.cachedAt = cachedAt
         expiresAt = cachedAt.addingTimeInterval(CachePolicy.ttl)
     }

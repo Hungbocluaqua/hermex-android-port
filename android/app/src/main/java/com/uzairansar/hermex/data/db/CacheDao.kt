@@ -11,8 +11,14 @@ interface CacheDao {
     @Query("SELECT * FROM cached_sessions WHERE serverUrl = :serverUrl AND archived IS NOT 1 AND expiresAtEpochMillis > :now ORDER BY COALESCE(lastMessageAt, updatedAt, createdAt, 0) DESC")
     suspend fun cachedSessions(serverUrl: String, now: Long): List<CachedSessionEntity>
 
-    @Query("SELECT * FROM cached_messages WHERE serverUrl = :serverUrl AND sessionId = :sessionId AND expiresAtEpochMillis > :now ORDER BY sortIndex ASC")
-    suspend fun cachedMessages(serverUrl: String, sessionId: String, now: Long): List<CachedMessageEntity>
+    @Query(
+        "SELECT * FROM (" +
+            "SELECT * FROM cached_messages " +
+            "WHERE serverUrl = :serverUrl AND sessionId = :sessionId AND expiresAtEpochMillis > :now " +
+            "ORDER BY sortIndex DESC LIMIT :limit" +
+            ") ORDER BY sortIndex ASC",
+    )
+    suspend fun cachedMessages(serverUrl: String, sessionId: String, now: Long, limit: Int): List<CachedMessageEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertSessions(sessions: List<CachedSessionEntity>)

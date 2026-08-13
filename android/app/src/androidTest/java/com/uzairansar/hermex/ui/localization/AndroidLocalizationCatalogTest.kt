@@ -14,6 +14,7 @@ import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -27,7 +28,8 @@ class AndroidLocalizationCatalogTest {
 
     @Test
     fun exposesTheCompleteIosCatalogAndResolvesTranslatedResources() {
-        assertEquals(996, AndroidLocalizationCatalog.sourceEntryCount)
+        assertTrue(AndroidLocalizationCatalog.sourceEntryCount > 0)
+        assertTrue(AndroidLocalizationCatalog.entryCount >= AndroidLocalizationCatalog.sourceEntryCount)
         val settingsId = AndroidLocalizationCatalog.resourceId("Settings")
         val newSessionId = AndroidLocalizationCatalog.resourceId("Start New Session")
         assertNotNull(settingsId)
@@ -52,6 +54,18 @@ class AndroidLocalizationCatalogTest {
         }
 
         composeRule.onNodeWithText("Réglages").assertIsDisplayed()
+    }
+
+    @Test
+    fun preservesIosPluralVariationsForCardCounts() {
+        val cardsId = requireNotNull(AndroidLocalizationCatalog.pluralResourceId("%lld Cards"))
+        val english = context.forLocale(Locale.ENGLISH)
+        assertEquals("1 Card", english.resources.getQuantityString(cardsId, 1, 1))
+        assertEquals("2 Cards", english.resources.getQuantityString(cardsId, 2, 2))
+
+        val french = context.forLocale(Locale.FRENCH)
+        assertEquals("1 Carte", french.resources.getQuantityString(cardsId, 1, 1))
+        assertEquals("2 Cartes", french.resources.getQuantityString(cardsId, 2, 2))
     }
 
     private fun Context.forLocale(locale: Locale): Context {

@@ -1,7 +1,145 @@
 import Foundation
 import AVFoundation
+import MediaPlayer
 import Observation
 import SwiftData
+
+enum ListenPlaybackPhase: Equatable {
+    case idle
+    case loading
+    case playing
+    case paused
+}
+
+enum ListenPlaybackSpeed: Double, CaseIterable, Identifiable {
+    case half = 0.5
+    case normal = 1
+    case oneAndHalf = 1.5
+    case double = 2
+
+    static let storageKey = "Chat.listenPlaybackSpeed"
+    static let defaultValue: ListenPlaybackSpeed = .normal
+
+    var id: Double { rawValue }
+
+    var title: String {
+        switch self {
+        case .half:
+            return "0.5x"
+        case .normal:
+            return "1x"
+        case .oneAndHalf:
+            return "1.5x"
+        case .double:
+            return "2x"
+        }
+    }
+
+    static func stored(in userDefaults: UserDefaults) -> ListenPlaybackSpeed {
+        let storedValue = userDefaults.double(forKey: storageKey)
+        return allCases.first { abs($0.rawValue - storedValue) < 0.001 } ?? defaultValue
+    }
+}
+
+struct ListenNowPlayingSnapshot: Equatable {
+    let title: String
+    let duration: TimeInterval
+    let elapsedTime: TimeInterval
+    let speed: ListenPlaybackSpeed
+    let isPlaying: Bool
+}
+
+@MainActor
+protocol ListenRemoteControlControlling {
+    func configure(
+        play: @escaping @MainActor () -> Void,
+        pause: @escaping @MainActor () -> Void,
+        togglePlayPause: @escaping @MainActor () -> Void,
+        changePlaybackPosition: @escaping @MainActor (TimeInterval) -> Void
+    )
+    func update(_ snapshot: ListenNowPlayingSnapshot)
+    func clear()
+}
+
+@MainActor
+final class ListenRemoteControlController: ListenRemoteControlControlling {
+    private var commandTargets: [(MPRemoteCommand, Any)] = []
+
+    deinit {
+        commandTargets.forEach { command, target in
+            command.removeTarget(target)
+            command.isEnabled = false
+        }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        MPNowPlayingInfoCenter.default().playbackState = .stopped
+    }
+
+    func configure(
+        play: @escaping @MainActor () -> Void,
+        pause: @escaping @MainActor () -> Void,
+        togglePlayPause: @escaping @MainActor () -> Void,
+        changePlaybackPosition: @escaping @MainActor (TimeInterval) -> Void
+    ) {
+        clearCommandTargets()
+
+        let commandCenter = MPRemoteCommandCenter.shared()
+        commandCenter.playCommand.isEnabled = true
+        commandTargets.append((commandCenter.playCommand, commandCenter.playCommand.addTarget { _ in
+            Task { @MainActor in play() }
+            return .success
+        }))
+
+        commandCenter.pauseCommand.isEnabled = true
+        commandTargets.append((commandCenter.pauseCommand, commandCenter.pauseCommand.addTarget { _ in
+            Task { @MainActor in pause() }
+            return .success
+        }))
+
+        commandCenter.togglePlayPauseCommand.isEnabled = true
+        commandTargets.append((commandCenter.togglePlayPauseCommand, commandCenter.togglePlayPauseCommand.addTarget { _ in
+            Task { @MainActor in togglePlayPause() }
+            return .success
+        }))
+
+        commandCenter.changePlaybackPositionCommand.isEnabled = true
+        commandTargets.append((
+            commandCenter.changePlaybackPositionCommand,
+            commandCenter.changePlaybackPositionCommand.addTarget { event in
+                guard let event = event as? MPChangePlaybackPositionCommandEvent else {
+                    return .commandFailed
+                }
+                Task { @MainActor in changePlaybackPosition(event.positionTime) }
+                return .success
+            }
+        ))
+    }
+
+    func update(_ snapshot: ListenNowPlayingSnapshot) {
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+            MPMediaItemPropertyTitle: snapshot.title,
+            MPMediaItemPropertyArtist: "Hermex",
+            MPMediaItemPropertyPlaybackDuration: max(0, snapshot.duration),
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: max(0, snapshot.elapsedTime),
+            MPNowPlayingInfoPropertyPlaybackRate: snapshot.isPlaying ? snapshot.speed.rawValue : 0,
+            MPNowPlayingInfoPropertyDefaultPlaybackRate: snapshot.speed.rawValue
+        ]
+        MPNowPlayingInfoCenter.default().playbackState = snapshot.isPlaying ? .playing : .paused
+    }
+
+    func clear() {
+        clearCommandTargets()
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        MPNowPlayingInfoCenter.default().playbackState = .stopped
+    }
+
+    private func clearCommandTargets() {
+        commandTargets.forEach { command, target in
+            command.removeTarget(target)
+            command.isEnabled = false
+        }
+        commandTargets.removeAll()
+    }
+}
 
 struct ApprovalPromptState: Equatable, Identifiable {
     var id: String {
@@ -84,6 +222,7 @@ final class ChatViewModel {
     private(set) var isViewingCachedData = false
     var activeStreamID: String? { streamCoordinator.activeStreamID }
     var activeStreamRecoveryState: ActiveStreamRecoveryState { streamCoordinator.recoveryState }
+    var liveTokensPerSecond: Double? { streamCoordinator.liveTokensPerSecond }
     private(set) var errorMessage: String?
     private(set) var sendErrorMessage: String?
     private(set) var messageActionErrorMessage: String?
@@ -98,6 +237,7 @@ final class ChatViewModel {
     /// render, so the view re-pins to the bottom on this token *without* animation —
     /// otherwise the height growth produces a visible scroll jump.
     private(set) var cacheFirstReconcileScrollToken = 0
+    private var hasPrimedInitialCachedMessages = false
     @ObservationIgnored private var pendingStreamingScrollTriggerTask: Task<Void, Never>?
     @ObservationIgnored private var pendingAssistantTokenChunks: [String] = []
     @ObservationIgnored private var pendingReasoningChunks: [String] = []
@@ -208,6 +348,8 @@ final class ChatViewModel {
     private(set) var composerConfigurationErrorMessage: String?
     var pendingAttachments: [PendingAttachment] { attachmentCoordinator.pendingAttachments }
     var isUploadingAttachment: Bool { attachmentCoordinator.isUploadingAttachment }
+    var attachmentUploadCount: Int { attachmentCoordinator.uploadInFlightCount }
+    var attachmentUploadGeneration: Int { attachmentCoordinator.uploadStartGeneration }
     var uploadAttachmentErrorMessage: String? { attachmentCoordinator.uploadAttachmentErrorMessage }
     var localAttachmentPreviews: [String: [String: Data]] { attachmentCoordinator.localAttachmentPreviews }
     private(set) var pinnedLocalNotices: [String] = []
@@ -230,7 +372,7 @@ final class ChatViewModel {
     private var currentProfile: String?
     private let isCLISession: Bool
     private let server: URL
-    private let client: APIClient
+    let client: APIClient
     private let streamCoordinator: ChatStreamCoordinator
     private let pendingActionCoordinator: ChatPendingActionCoordinator
     private let attachmentCoordinator: ChatAttachmentCoordinator
@@ -238,6 +380,8 @@ final class ChatViewModel {
     private let liveActivityManager: any AgentLiveActivityManaging
     private let speechSynthesizerFactory: () -> any ChatSpeechSynthesizing
     private let listenAudioSession: any ListenAudioSessionControlling
+    private let listenRemoteControlCenter: any ListenRemoteControlControlling
+    private let userDefaults: UserDefaults
     private let pollingIntervals: ChatPollingIntervals
     // Real-time window over which rapid streaming updates coalesce into a single
     // scroll trigger / first content flush. Injectable so tests can drive
@@ -273,6 +417,13 @@ final class ChatViewModel {
     // arriving after stop/switch carries a stale ID and is dropped instead of
     // starting audio the user no longer wants.
     private var activeListenRequestID: UUID?
+    private var listenPlaybackTitle = String(localized: "Hermex response")
+    private(set) var listenPlaybackPhase: ListenPlaybackPhase = .idle
+    private(set) var listenPlaybackElapsedTime: TimeInterval = 0
+    private(set) var listenPlaybackDuration: TimeInterval = 0
+    private(set) var listenPlaybackScrubTime: TimeInterval?
+    private(set) var listenPlaybackSpeed: ListenPlaybackSpeed
+    @ObservationIgnored private var listenPlaybackTicker: Timer?
     private var showsLiveActivityResponseExcerpts: Bool
     private var hasCompletedCurrentResponse: Bool { streamCoordinator.hasCompletedCurrentResponse }
     private var isStreamConnectionSuspended: Bool { streamCoordinator.isConnectionSuspended }
@@ -316,7 +467,9 @@ final class ChatViewModel {
         streamingMaxRevealLagNanoseconds: UInt64 = 1_000_000_000,
         speechSynthesizerFactory: @escaping () -> any ChatSpeechSynthesizing = { AVSpeechSynthesizer() },
         listenAudioSession: (any ListenAudioSessionControlling)? = nil,
-        serverTTSAudioPlayerFactory: (@MainActor (Data) throws -> any ListenAudioPlaying)? = nil
+        listenRemoteControlCenter: (any ListenRemoteControlControlling)? = nil,
+        serverTTSAudioPlayerFactory: (@MainActor (Data) throws -> any ListenAudioPlaying)? = nil,
+        userDefaults: UserDefaults = .standard
     ) {
         sessionID = session.sessionId
         currentWorkspace = session.workspace
@@ -351,6 +504,9 @@ final class ChatViewModel {
         self.streamingMaxRevealLagNanoseconds = streamingMaxRevealLagNanoseconds
         self.speechSynthesizerFactory = speechSynthesizerFactory
         self.listenAudioSession = listenAudioSession ?? ListenAudioSessionController()
+        self.listenRemoteControlCenter = listenRemoteControlCenter ?? ListenRemoteControlController()
+        self.userDefaults = userDefaults
+        self.listenPlaybackSpeed = ListenPlaybackSpeed.stored(in: userDefaults)
         self.serverTTSAudioPlayerFactory = serverTTSAudioPlayerFactory
             ?? { try ServerTTSAudioPlayer(data: $0) }
         displayTitle = Self.displayTitle(from: session.title)
@@ -364,6 +520,7 @@ final class ChatViewModel {
         pendingStreamingScrollTriggerTask?.cancel()
         pendingStreamingContentFlushTask?.cancel()
         listenPreparationTask?.cancel()
+        listenPlaybackTicker?.invalidate()
     }
 
     func setShowsLiveActivityResponseExcerpts(_ shows: Bool) {
@@ -371,6 +528,14 @@ final class ChatViewModel {
 
         showsLiveActivityResponseExcerpts = shows
         streamCoordinator.setShowsLiveActivityResponseExcerpts(shows)
+    }
+
+    var showsListenPlaybackBar: Bool {
+        listenPlaybackPhase != .idle
+    }
+
+    var listenPlaybackDisplayTime: TimeInterval {
+        listenPlaybackScrubTime ?? listenPlaybackElapsedTime
     }
 
     nonisolated static func resetActiveStreamSnapshotsForTesting() {
@@ -733,6 +898,20 @@ final class ChatViewModel {
         }
     }
 
+    /// Refetches the workspace registry after the manager sheet mutated it
+    /// (issue #22), so the picker reflects adds/removes/renames/reorders.
+    func refreshWorkspaceRoots() async {
+        guard !isViewingCachedData else { return }
+
+        do {
+            let response = try await client.workspaces()
+            workspaceRoots = response.workspaces ?? []
+            workspaceSuggestions = workspaceRoots.compactMap(\.path)
+        } catch {
+            lastError = error
+        }
+    }
+
     func loadWorkspaceSuggestions(prefix: String) async {
         guard !isViewingCachedData else {
             workspaceSuggestions = workspaceRoots.compactMap(\.path)
@@ -964,6 +1143,10 @@ final class ChatViewModel {
         await attachmentCoordinator.transcriptMediaThumbnailData(for: reference)
     }
 
+    func transcriptMediaData(for reference: TranscriptMediaReference) async -> Data? {
+        await attachmentCoordinator.transcriptMediaData(for: reference)
+    }
+
     func loadMessages(modelContext: ModelContext? = nil) async {
         guard let sessionID else {
             errorMessage = String(localized: "The server did not provide a session ID.")
@@ -985,12 +1168,16 @@ final class ChatViewModel {
         // render the cached messages immediately so the loading skeleton never shows.
         let previousMessages = messages
         let previousMessagesOffset = messagesOffset
+        let usesPrimedInitialCache = hasPrimedInitialCachedMessages && !previousMessages.isEmpty
+        hasPrimedInitialCachedMessages = false
         let cacheFirstPlaceholder: [ChatMessage]
         if previousMessages.isEmpty, let modelContext {
             cacheFirstPlaceholder = renderCachedMessagesBeforeReload(
                 sessionID: sessionID,
                 modelContext: modelContext
             )
+        } else if usesPrimedInitialCache {
+            cacheFirstPlaceholder = previousMessages
         } else {
             cacheFirstPlaceholder = []
         }
@@ -1014,7 +1201,8 @@ final class ChatViewModel {
                     let cachedMessages = try CacheStore.cachedMessages(
                         serverURL: server,
                         sessionID: sessionID,
-                        in: modelContext
+                        in: modelContext,
+                        limit: Self.messagePageLimit
                     )
                     reloadedMessages = Self.mergingLoadedMessages(
                         loadedMessages,
@@ -1087,7 +1275,8 @@ final class ChatViewModel {
                     let cachedMessages = try CacheStore.cachedMessages(
                         serverURL: server,
                         sessionID: sessionID,
-                        in: modelContext
+                        in: modelContext,
+                        limit: Self.messagePageLimit
                     )
                     if !cachedMessages.isEmpty {
                         clearCompressionAnchorMetadata()
@@ -1152,6 +1341,23 @@ final class ChatViewModel {
         }
     }
 
+    /// Performs only the fast, local portion of an existing session's first
+    /// load. The network reconcile is intentionally started by `ChatView` after
+    /// its navigation appearance completes so rendering a richer transcript
+    /// cannot stall the system push animation.
+    func prepareInitialMessageLoad(modelContext: ModelContext) {
+        guard let sessionID else { return }
+
+        isLoading = true
+        guard messages.isEmpty else { return }
+
+        let cachedMessages = renderCachedMessagesBeforeReload(
+            sessionID: sessionID,
+            modelContext: modelContext
+        )
+        hasPrimedInitialCachedMessages = !cachedMessages.isEmpty
+    }
+
     /// Cache-first render (#289): on a cold session open, paint the cached transcript
     /// immediately so the loading skeleton never appears, then let the in-flight
     /// `loadMessages` network reload reconcile silently in place. Keeps
@@ -1169,7 +1375,8 @@ final class ChatViewModel {
             cachedMessages = try CacheStore.cachedMessages(
                 serverURL: server,
                 sessionID: sessionID,
-                in: modelContext
+                in: modelContext,
+                limit: Self.messagePageLimit
             )
         } catch {
             // A cache read failure must not block the normal network load; fall back
@@ -1589,7 +1796,8 @@ final class ChatViewModel {
                 toolCalls: loadedAssistant.toolCalls ?? snapshotAssistant.toolCalls,
                 contentParts: loadedAssistant.contentParts ?? snapshotAssistant.contentParts,
                 reasoning: loadedAssistant.reasoning ?? snapshotAssistant.reasoning,
-                attachments: loadedAssistant.attachments ?? snapshotAssistant.attachments
+                attachments: loadedAssistant.attachments ?? snapshotAssistant.attachments,
+                turnTps: loadedAssistant.turnTps ?? snapshotAssistant.turnTps
             )
             return ActiveStreamMessageMerge(
                 messages: mergedMessages,
@@ -2030,6 +2238,24 @@ final class ChatViewModel {
             streamCoordinator.start(streamID: streamID)
             return true
         } catch {
+            if let streamID = (error as? APIError)?.activeStreamID {
+                rollbackOptimisticMessage(id: localMessageID)
+                cacheCurrentMessages(sessionID: sessionID, modelContext: modelContext)
+                restorePendingAttachments(attachmentsToRestoreOnFailure)
+                // The existing run may have started outside this view model. Reconcile
+                // the server transcript first so the SSE tokens attach to the persisted
+                // assistant turn instead of creating a second bubble with only the tail.
+                await loadMessages(modelContext: modelContext)
+                _ = restoreActiveStreamSnapshotIfAvailable(streamID: streamID)
+                streamingAssistantMessageID = TranscriptTurnClassifier
+                    .currentTurnAssistantAnchorIDs(in: messages, messageOffset: messagesOffset)
+                    .first
+                streamCoordinator.start(streamID: streamID)
+                // The server kept the earlier run, not this newly submitted text.
+                // Report an unaccepted send so ChatView restores the draft while
+                // the coordinator reconnects to the existing response.
+                return false
+            }
             lastError = error
             sendErrorMessage = error.localizedDescription
             rollbackOptimisticMessage(id: localMessageID)
@@ -2153,6 +2379,11 @@ final class ChatViewModel {
         } catch {
             cacheErrorMessage = error.localizedDescription
         }
+    }
+
+    func cacheCompletedResponse(modelContext: ModelContext) {
+        guard let sessionID else { return }
+        cacheCurrentMessages(sessionID: sessionID, modelContext: modelContext)
     }
 
     func clearTranscript() {
@@ -3103,7 +3334,8 @@ final class ChatViewModel {
             toolCalls: existing.toolCalls,
             contentParts: existing.contentParts,
             reasoning: existing.reasoning,
-            attachments: existing.attachments
+            attachments: existing.attachments,
+            turnTps: existing.turnTps
         )
         scheduleStreamingScrollTrigger()
     }
@@ -3419,10 +3651,12 @@ final class ChatViewModel {
         // on #35). Activation happens at the two playback-start points instead —
         // `startServerAudioPlayback` and `speakWithOnDeviceSynthesizer`.
         listeningMessageID = context.messageID
+        beginListenPlaybackPreparation(for: context)
 
         guard ServerTTSPolicy.shouldUseServerTTS(for: listenText) else {
             // Over the server's 5000-char request cap: go straight to the on-device
             // path (chunking is a non-goal of #15).
+            clearListenPlaybackState()
             speakWithOnDeviceSynthesizer(listenText)
             return
         }
@@ -3455,9 +3689,10 @@ final class ChatViewModel {
                 return
             }
 
-            if let audioData, self.startServerAudioPlayback(audioData) {
+            if let audioData, self.startServerAudioPlayback(audioData, title: self.listenPlaybackTitle) {
                 return
             }
+            self.clearListenPlaybackState()
             self.speakWithOnDeviceSynthesizer(listenText)
         }
     }
@@ -3477,6 +3712,47 @@ final class ChatViewModel {
             speechSynthesizer.stopSpeaking(at: .immediate)
         }
         finishListening()
+    }
+
+    func toggleListenPlaybackPlayPause() {
+        switch listenPlaybackPhase {
+        case .playing:
+            pauseListenPlayback()
+        case .paused:
+            resumeListenPlayback()
+        case .idle, .loading:
+            break
+        }
+    }
+
+    func setListenPlaybackSpeed(_ speed: ListenPlaybackSpeed) {
+        guard listenPlaybackSpeed != speed else { return }
+        listenPlaybackSpeed = speed
+        userDefaults.set(speed.rawValue, forKey: ListenPlaybackSpeed.storageKey)
+        listenAudioPlayer?.rate = Float(speed.rawValue)
+        updateListenNowPlaying()
+    }
+
+    func scrubListenPlayback(to time: TimeInterval) {
+        listenPlaybackScrubTime = boundedListenPlaybackTime(time)
+    }
+
+    func setListenPlaybackScrubbing(_ scrubbing: Bool) {
+        if scrubbing {
+            listenPlaybackScrubTime = listenPlaybackElapsedTime
+        } else if let target = listenPlaybackScrubTime {
+            seekListenPlayback(to: target)
+            listenPlaybackScrubTime = nil
+        }
+    }
+
+    func refreshListenPlaybackProgressAfterSceneActivation() {
+        guard listenPlaybackPhase == .playing || listenPlaybackPhase == .paused else { return }
+
+        updateListenPlaybackProgressFromPlayer()
+        if listenPlaybackPhase == .playing {
+            startListenPlaybackTicker()
+        }
     }
 
     func suspendStreamForBackground() {
@@ -3664,7 +3940,7 @@ final class ChatViewModel {
             activeBtwAnswer = "Error: \(message)"
             updateActiveBtwMessage(isLoading: false)
             finishBtwStream()
-        case .ignored, .reasoning, .toolStarted, .toolCompleted, .title, .pendingSteerLeftover:
+        case .heartbeat, .ignored, .reasoning, .toolStarted, .toolCompleted, .title, .metering, .pendingSteerLeftover:
             break
         }
     }
@@ -3785,7 +4061,8 @@ final class ChatViewModel {
                 toolCalls: existing.toolCalls,
                 contentParts: existing.contentParts,
                 reasoning: existing.reasoning,
-                attachments: existing.attachments
+                attachments: existing.attachments,
+                turnTps: existing.turnTps
             )
             scheduleStreamingScrollTrigger()
             return true
@@ -4162,7 +4439,8 @@ final class ChatViewModel {
                 toolCalls: existing.toolCalls,
                 contentParts: existing.contentParts,
                 reasoning: existing.reasoning,
-                attachments: existing.attachments
+                attachments: existing.attachments,
+                turnTps: existing.turnTps
             )
             return true
         }
@@ -4381,9 +4659,29 @@ final class ChatViewModel {
         activeListenRequestID = nil
         listenAudioPlayer = nil
         listeningMessageID = nil
+        clearListenPlaybackState()
         // Release the shared session so any audio we interrupted can resume. Safe to
         // call when nothing was speaking: `setActive(false)` no-ops via `try?`.
         listenAudioSession.deactivate()
+    }
+
+    private func beginListenPlaybackPreparation(for context: MessageActionContext) {
+        listenPlaybackTitle = String(localized: "Hermex response \(context.visibleIndex + 1)")
+        listenPlaybackPhase = .loading
+        listenPlaybackElapsedTime = 0
+        listenPlaybackDuration = 0
+        listenPlaybackScrubTime = nil
+        stopListenPlaybackTicker()
+        listenRemoteControlCenter.clear()
+    }
+
+    private func clearListenPlaybackState() {
+        listenPlaybackPhase = .idle
+        listenPlaybackElapsedTime = 0
+        listenPlaybackDuration = 0
+        listenPlaybackScrubTime = nil
+        stopListenPlaybackTicker()
+        listenRemoteControlCenter.clear()
     }
 
     /// Speaks `text` with the on-device `AVSpeechSynthesizer` — the pre-#15 Listen
@@ -4404,7 +4702,7 @@ final class ChatViewModel {
     /// Attempts to start playback of server-synthesized audio bytes. Returns
     /// `false` when the bytes can't be decoded into a player or playback fails to
     /// start, so the caller can fall back to the on-device synthesizer.
-    private func startServerAudioPlayback(_ audioData: Data) -> Bool {
+    private func startServerAudioPlayback(_ audioData: Data, title: String) -> Bool {
         guard let player = try? serverTTSAudioPlayerFactory(audioData) else {
             return false
         }
@@ -4413,6 +4711,13 @@ final class ChatViewModel {
         player.onFinish = { [weak self] in
             self?.handleListenPlayerCompletion(for: playerID)
         }
+        player.prepareToPlay()
+        player.rate = Float(listenPlaybackSpeed.rawValue)
+        listenPlaybackTitle = title
+        listenPlaybackElapsedTime = player.currentTime
+        listenPlaybackDuration = player.duration
+        listenPlaybackScrubTime = nil
+        configureListenRemoteControls()
 
         // Activate the session only once decodable audio is in hand, immediately
         // before playback, so the network wait never held it (review on #35). If
@@ -4425,7 +4730,87 @@ final class ChatViewModel {
 
         listenAudioPlayer = player
         activeListenPlayerID = playerID
+        listenPlaybackPhase = .playing
+        startListenPlaybackTicker()
+        updateListenPlaybackProgressFromPlayer()
+        updateListenNowPlaying()
         return true
+    }
+
+    private func pauseListenPlayback() {
+        guard listenPlaybackPhase == .playing, let player = listenAudioPlayer else { return }
+        player.pause()
+        updateListenPlaybackProgressFromPlayer()
+        listenPlaybackPhase = .paused
+        stopListenPlaybackTicker()
+        updateListenNowPlaying()
+    }
+
+    private func resumeListenPlayback() {
+        guard listenPlaybackPhase == .paused, let player = listenAudioPlayer else { return }
+        player.rate = Float(listenPlaybackSpeed.rawValue)
+        listenAudioSession.activate()
+        guard player.play() else { return }
+        listenPlaybackPhase = .playing
+        startListenPlaybackTicker()
+        updateListenPlaybackProgressFromPlayer()
+        updateListenNowPlaying()
+    }
+
+    private func seekListenPlayback(to time: TimeInterval) {
+        guard let player = listenAudioPlayer else { return }
+        let boundedTime = boundedListenPlaybackTime(time)
+        player.currentTime = boundedTime
+        listenPlaybackElapsedTime = boundedTime
+        updateListenNowPlaying()
+    }
+
+    private func boundedListenPlaybackTime(_ time: TimeInterval) -> TimeInterval {
+        guard time.isFinite else { return 0 }
+        let upperBound = listenPlaybackDuration > 0 ? listenPlaybackDuration : max(time, 0)
+        return min(max(0, time), upperBound)
+    }
+
+    private func startListenPlaybackTicker() {
+        stopListenPlaybackTicker()
+        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.updateListenPlaybackProgressFromPlayer()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        listenPlaybackTicker = timer
+    }
+
+    private func stopListenPlaybackTicker() {
+        listenPlaybackTicker?.invalidate()
+        listenPlaybackTicker = nil
+    }
+
+    private func updateListenPlaybackProgressFromPlayer() {
+        guard listenPlaybackScrubTime == nil, let player = listenAudioPlayer else { return }
+        listenPlaybackElapsedTime = boundedListenPlaybackTime(player.currentTime)
+        listenPlaybackDuration = max(0, player.duration)
+    }
+
+    private func configureListenRemoteControls() {
+        listenRemoteControlCenter.configure(
+            play: { [weak self] in self?.resumeListenPlayback() },
+            pause: { [weak self] in self?.pauseListenPlayback() },
+            togglePlayPause: { [weak self] in self?.toggleListenPlaybackPlayPause() },
+            changePlaybackPosition: { [weak self] position in self?.seekListenPlayback(to: position) }
+        )
+    }
+
+    private func updateListenNowPlaying() {
+        guard listenPlaybackPhase == .playing || listenPlaybackPhase == .paused else { return }
+        listenRemoteControlCenter.update(ListenNowPlayingSnapshot(
+            title: listenPlaybackTitle,
+            duration: listenPlaybackDuration,
+            elapsedTime: listenPlaybackElapsedTime,
+            speed: listenPlaybackSpeed,
+            isPlaying: listenPlaybackPhase == .playing
+        ))
     }
 
     /// Completion routed from the server-TTS audio player. Mirrors
@@ -4733,12 +5118,49 @@ extension ChatViewModel: ChatStreamCoordinatorDelegate {
     @discardableResult
     func streamCoordinatorApplyDone(_ payload: DoneStreamEvent) -> Bool {
         flushPendingStreamingContent()
+        let currentStreamingAssistantID = streamingAssistantMessageID
         let hasCompletedTranscript = payload.session?.messages?.isEmpty == false
         if let completedSession = payload.session {
             applyCompletedStreamSession(completedSession)
         }
         if let usage = payload.usage {
             contextWindowSnapshot = usage
+        }
+        if let finalTokensPerSecond = payload.usage?.tokensPerSecond,
+           finalTokensPerSecond.isFinite,
+           finalTokensPerSecond > 0,
+           let currentStreamingAssistantID {
+            let currentAssistantIndex = messages.firstIndex(where: { $0.messageId == currentStreamingAssistantID })
+                ?? TranscriptTurnClassifier
+                    .currentTurnAssistantAnchorIDs(in: messages, messageOffset: messagesOffset)
+                    .last
+                    .flatMap { currentAssistantAnchorID in
+                        messages.indices.first { index in
+                            TranscriptTurnClassifier.anchorID(
+                                for: messages[index],
+                                at: index,
+                                messageOffset: messagesOffset
+                            ) == currentAssistantAnchorID
+                        }
+                    }
+            guard let index = currentAssistantIndex else {
+                return hasCompletedTranscript
+            }
+            let message = messages[index]
+            messages[index] = ChatMessage(
+                role: message.role,
+                content: message.content,
+                timestamp: message.timestamp,
+                messageId: message.messageId,
+                name: message.name,
+                toolCallId: message.toolCallId,
+                toolUseId: message.toolUseId,
+                toolCalls: message.toolCalls,
+                contentParts: message.contentParts,
+                reasoning: message.reasoning,
+                attachments: message.attachments,
+                turnTps: finalTokensPerSecond
+            )
         }
         return hasCompletedTranscript
     }
@@ -5296,9 +5718,14 @@ protocol ListenAudioPlaying: AnyObject {
     /// Fired on the main actor when playback finishes naturally.
     /// `stop()` must not fire it.
     var onFinish: (@MainActor () -> Void)? { get set }
+    var currentTime: TimeInterval { get set }
+    var duration: TimeInterval { get }
+    var rate: Float { get set }
 
+    func prepareToPlay()
     @discardableResult
     func play() -> Bool
+    func pause()
     func stop()
 }
 
@@ -5309,16 +5736,34 @@ protocol ListenAudioPlaying: AnyObject {
 final class ServerTTSAudioPlayer: NSObject, ListenAudioPlaying {
     private let player: AVAudioPlayer
     var onFinish: (@MainActor () -> Void)?
+    var currentTime: TimeInterval {
+        get { player.currentTime }
+        set { player.currentTime = newValue }
+    }
+    var duration: TimeInterval { player.duration }
+    var rate: Float {
+        get { player.rate }
+        set { player.rate = newValue }
+    }
 
     init(data: Data) throws {
         player = try AVAudioPlayer(data: data)
         super.init()
         player.delegate = self
+        player.enableRate = true
+    }
+
+    func prepareToPlay() {
+        player.prepareToPlay()
     }
 
     @discardableResult
     func play() -> Bool {
         player.play()
+    }
+
+    func pause() {
+        player.pause()
     }
 
     func stop() {

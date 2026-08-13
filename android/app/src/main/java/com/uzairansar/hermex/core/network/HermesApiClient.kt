@@ -7,6 +7,10 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.serialization.json.Json
 import okhttp3.Call
 import okhttp3.Callback
@@ -176,15 +180,23 @@ class HermesApiClient(
         post(Endpoint.ClarifyRespond, ClarifyRespondRequest(sessionId, clarifyId, response))
     suspend fun workspaces(): WorkspacesResponse = get(Endpoint.Workspaces)
     suspend fun workspaceSuggestions(prefix: String): WorkspaceSuggestionsResponse = get(Endpoint.WorkspaceSuggestions(prefix))
+    suspend fun addWorkspace(path: String, name: String? = null, create: Boolean? = null): WorkspaceMutationResponse =
+        post(Endpoint.WorkspaceAdd, AddWorkspaceRequest(path, name, create))
+    suspend fun removeWorkspace(path: String): WorkspaceMutationResponse =
+        post(Endpoint.WorkspaceRemove, RemoveWorkspaceRequest(path))
+    suspend fun renameWorkspace(path: String, name: String): WorkspaceMutationResponse =
+        post(Endpoint.WorkspaceRename, RenameWorkspaceRequest(path, name))
+    suspend fun reorderWorkspaces(paths: List<String>): WorkspaceMutationResponse =
+        post(Endpoint.WorkspaceReorder, ReorderWorkspacesRequest(paths))
     suspend fun directoryList(sessionId: String, path: String?): DirectoryListResponse = get(Endpoint.DirectoryList(sessionId, path))
     suspend fun file(sessionId: String, path: String): FileResponse = get(Endpoint.File(sessionId, path))
     suspend fun rawFile(sessionId: String, path: String): ByteArray =
         data(Endpoint.RawFile(sessionId, path), "GET", maxResponseBytes = MAX_PREVIEW_RESPONSE_BYTES)
-    suspend fun media(path: String): ByteArray =
-        data(Endpoint.Media(path), "GET", maxResponseBytes = MAX_MEDIA_RESPONSE_BYTES)
-    suspend fun transcriptMediaData(reference: TranscriptMediaReference): ByteArray =
+    suspend fun media(sessionId: String, path: String): ByteArray =
+        data(Endpoint.Media(sessionId, path), "GET", maxResponseBytes = MAX_MEDIA_RESPONSE_BYTES)
+    suspend fun transcriptMediaData(reference: TranscriptMediaReference, sessionId: String): ByteArray =
         when (val source = reference.source) {
-            is TranscriptMediaSource.LocalPath -> media(source.path)
+            is TranscriptMediaSource.LocalPath -> media(sessionId, source.path)
             is TranscriptMediaSource.RemoteUrl -> remoteTranscriptMediaData(source.url)
         }
     suspend fun remoteTranscriptMediaData(url: HttpUrl): ByteArray {
@@ -224,16 +236,20 @@ class HermesApiClient(
             apiKey = apiKey,
         ),
     )
-    suspend fun providers(): ModelCatalogResponse = get(Endpoint.Providers)
+    suspend fun providers(): ProvidersResponse = get(Endpoint.Providers)
     suspend fun settings(): SettingsResponse = get(Endpoint.Settings)
     suspend fun updateSettings(showCliSessions: Boolean): SettingsResponse =
         post(Endpoint.Settings, UpdateSettingsRequest(showCliSessions = showCliSessions))
+    suspend fun updateClaudeCodeSessionVisibility(enabled: Boolean): SettingsResponse =
+        post(Endpoint.Settings, UpdateSettingsRequest(showClaudeCodeSessions = enabled))
     suspend fun updatesCheck(): UpdatesCheckResponse = get(Endpoint.UpdatesCheck)
     suspend fun updatesCheckForced(): UpdatesCheckResponse = post(Endpoint.UpdatesCheck, UpdatesCheckForceRequest(force = true))
     suspend fun applyUpdate(target: String = "webui"): UpdatesApplyResponse = post(Endpoint.UpdatesApply, UpdatesApplyRequest(target))
     suspend fun reasoning(model: String? = null, provider: String? = null): ReasoningResponse = get(Endpoint.Reasoning(model, provider))
     suspend fun setReasoning(effort: String, model: String? = null, provider: String? = null): ReasoningResponse =
-        post(Endpoint.Reasoning(model, provider), ReasoningRequest(effort, model, provider))
+        post(Endpoint.Reasoning(model, provider), ReasoningRequest(effort = effort, model = model, provider = provider))
+    suspend fun setReasoningDisplay(display: String): ReasoningResponse =
+        post(Endpoint.Reasoning(), ReasoningRequest(display = display))
     suspend fun personalities(): PersonalitiesResponse = get(Endpoint.Personalities)
     suspend fun setPersonality(sessionId: String, name: String): PersonalitySetResponse =
         post(Endpoint.SetPersonality, SetPersonalityRequest(sessionId, name))
@@ -253,6 +269,97 @@ class HermesApiClient(
     suspend fun cronHistory(jobId: String, offset: Int? = null, limit: Int? = 50): CronHistoryResponse =
         get(Endpoint.CronHistory(jobId, offset, limit))
     suspend fun cronDeliveryOptions(): CronDeliveryOptionsResponse = get(Endpoint.CronDeliveryOptions)
+    suspend fun kanbanConfiguration(): KanbanConfiguration = get(Endpoint.KanbanConfig)
+    suspend fun kanbanBoards(): KanbanBoardsResponse = get(Endpoint.KanbanBoards)
+    suspend fun createKanbanBoard(body: KanbanCreateBoardRequest): KanbanBoardMutationEnvelope =
+        post(Endpoint.KanbanBoards, body)
+    suspend fun editKanbanBoard(body: KanbanEditBoardRequest): KanbanBoardMutationEnvelope {
+        val payload = buildJsonObject {
+            put("name", body.name)
+            put("description", body.description)
+            put("icon", body.icon)
+            put("color", body.color)
+        }
+        return request(
+            Endpoint.KanbanBoardBySlug(body.slug),
+            "PATCH",
+            json.encodeToString(payload).toRequestBody(jsonMediaType),
+        )
+    }
+    suspend fun archiveKanbanBoard(slug: String): KanbanBoardMutationEnvelope =
+        request(Endpoint.KanbanBoardBySlug(slug), "DELETE", null)
+    suspend fun makeKanbanBoardActive(slug: String): KanbanBoardMutationEnvelope =
+        request(Endpoint.KanbanBoardSwitch(slug), "POST", ByteArray(0).toRequestBody())
+    suspend fun dispatchKanban(board: String, dryRun: Boolean): KanbanDispatchResult =
+        request<KanbanDispatchResult>(Endpoint.KanbanDispatch(board, dryRun, maximum = 8), "POST", ByteArray(0).toRequestBody())
+            .also { if (!it.hasKnownCategory) throw KanbanContractViolation.MissingDispatchResult }
+    suspend fun kanbanBoard(
+        board: String,
+        tenant: String? = null,
+        assignee: String? = null,
+        includeArchived: Boolean = false,
+        onlyMine: Boolean = false,
+        since: Int? = null,
+    ): KanbanBoardSnapshot = get(Endpoint.KanbanBoard(board, tenant, assignee, includeArchived, onlyMine, since))
+    suspend fun kanbanStats(board: String): KanbanStats = get(Endpoint.KanbanStats(board))
+    suspend fun kanbanAssignees(board: String): KanbanAssigneeHistory = get(Endpoint.KanbanAssignees(board))
+    suspend fun kanbanEvents(board: String, since: Int, limit: Int = 200): KanbanEventsEnvelope =
+        get(Endpoint.KanbanEvents(board, since, limit))
+    fun kanbanEventsStreamUrl(board: String, since: Int): HttpUrl = Endpoint.KanbanEventsStream(board, since).url(baseUrl)
+    suspend fun kanbanCardDetail(cardId: String, board: String): KanbanCardDetailEnvelope =
+        get(Endpoint.KanbanCard(cardId, board))
+    suspend fun kanbanWorkerLog(cardId: String, board: String, tailBytes: Int = 65_536): KanbanWorkerLog =
+        get(Endpoint.KanbanCardLog(cardId, board, tailBytes))
+    suspend fun addKanbanComment(cardId: String, board: String, body: String): KanbanAddCommentResponse =
+        post(Endpoint.KanbanCardComments(cardId, board), KanbanCommentRequest(body))
+    suspend fun createKanbanCard(board: String, body: KanbanCreateCardRequestBody): KanbanCardMutationEnvelope =
+        post(Endpoint.KanbanCards(board), body)
+    suspend fun editKanbanCard(cardId: String, board: String, body: KanbanEditCardRequestBody): KanbanCardMutationEnvelope {
+        val payload = buildJsonObject {
+            put("title", body.title)
+            put("body", body.body)
+            put("tenant", body.tenant?.let(::JsonPrimitive) ?: JsonNull)
+            put("priority", body.priority)
+            put("assignee", body.assignee?.let(::JsonPrimitive) ?: JsonNull)
+            body.status?.let { put("status", it) }
+        }
+        return request(
+            Endpoint.KanbanCard(cardId, board),
+            "PATCH",
+            json.encodeToString(payload).toRequestBody(jsonMediaType),
+        )
+    }
+    suspend fun setKanbanCardStatus(cardId: String, board: String, status: String): KanbanCardMutationEnvelope {
+        require(status.trim().lowercase() != "running") { "Running status requires the dispatcher." }
+        return request(
+            Endpoint.KanbanCard(cardId, board),
+            "PATCH",
+            json.encodeToString(KanbanStatusRequestBody(status)).toRequestBody(jsonMediaType),
+        )
+    }
+    suspend fun blockKanbanCard(cardId: String, board: String, reason: String?): KanbanCardMutationEnvelope =
+        post(Endpoint.KanbanCardBlock(cardId, board), KanbanCardActionRequestBody(reason))
+    suspend fun unblockKanbanCard(cardId: String, board: String): KanbanCardMutationEnvelope =
+        post(Endpoint.KanbanCardUnblock(cardId, board), KanbanCardActionRequestBody())
+    suspend fun addKanbanDependency(board: String, body: KanbanDependencyRequestBody): KanbanDependencyMutationEnvelope =
+        post(Endpoint.KanbanLinks(board), body)
+    suspend fun removeKanbanDependency(board: String, body: KanbanDependencyRequestBody): KanbanDependencyMutationEnvelope =
+        post(Endpoint.KanbanLinksDelete(board), body)
+    suspend fun performKanbanBulkAction(
+        board: String,
+        body: KanbanBulkActionRequestBody,
+    ): KanbanBulkActionEnvelope {
+        require(body.ids.isNotEmpty() && body.ids.none(String::isBlank)) { "Bulk Actions require Card IDs." }
+        val actionCount = listOf(
+            body.archive == true,
+            body.status != null,
+            body.assignee != null,
+            body.priority != null,
+        ).count { it }
+        require(actionCount == 1) { "Bulk Actions require exactly one action." }
+        require(body.status?.trim()?.lowercase() != "running") { "Running status requires the dispatcher." }
+        return post(Endpoint.KanbanCardsBulk(board), body)
+    }
     suspend fun skills(): SkillsResponse = get(Endpoint.Skills)
     suspend fun skillContent(name: String, file: String? = null): SkillContentResponse = get(Endpoint.SkillContent(name, file))
     suspend fun toggleSkill(name: String, enabled: Boolean): ToggleSkillResponse = post(Endpoint.ToggleSkill, ToggleSkillRequest(name, enabled))

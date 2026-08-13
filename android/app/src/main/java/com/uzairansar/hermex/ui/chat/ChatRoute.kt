@@ -13,9 +13,10 @@ import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import android.speech.tts.TextToSpeech
 import android.view.HapticFeedbackConstants
+import android.widget.MediaController
 import android.widget.Toast
+import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -126,7 +127,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -150,6 +153,8 @@ import com.uzairansar.hermex.core.model.ProfileSummary
 import com.uzairansar.hermex.core.model.ToolCall
 import com.uzairansar.hermex.core.model.ToolCallGroup
 import com.uzairansar.hermex.core.model.TranscriptMediaParser
+import com.uzairansar.hermex.core.model.TranscriptMediaDataClassifier
+import com.uzairansar.hermex.core.model.TranscriptMediaKind
 import com.uzairansar.hermex.core.model.TranscriptMediaReference
 import com.uzairansar.hermex.core.model.TranscriptMediaSource
 import com.uzairansar.hermex.core.model.TranscriptMediaSegment
@@ -160,9 +165,11 @@ import com.uzairansar.hermex.core.model.UploadResponse
 import com.uzairansar.hermex.core.model.WorkspaceRoot
 import com.uzairansar.hermex.core.model.shouldRenderTranscriptItem
 import com.uzairansar.hermex.data.preferences.ChatDisplaySettings
+import com.uzairansar.hermex.data.preferences.DictationProviderPreference
 import com.uzairansar.hermex.data.preferences.LocalSettingsRepository
 import com.uzairansar.hermex.data.preferences.ModelFavoriteKey
 import com.uzairansar.hermex.data.preferences.StreamingSendBehavior
+import com.uzairansar.hermex.data.repository.WorkspaceRepository
 import com.uzairansar.hermex.data.preferences.displayModelTitle
 import com.uzairansar.hermex.data.preferences.favoriteKeyOrNull
 import com.uzairansar.hermex.data.preferences.matchesSelection
@@ -190,6 +197,7 @@ import com.uzairansar.hermex.ui.theme.hermexPrimaryActionContentColor
 import com.uzairansar.hermex.ui.theme.primaryActionTintApplies
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
@@ -199,12 +207,14 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl
 import java.io.File
+import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 import com.uzairansar.hermex.ui.localization.localizedString
+import com.uzairansar.hermex.ui.workspace.WorkspaceManagerDialog
 import com.uzairansar.hermex.ui.localization.localizedStringFormat
 
 private data class TurnDiffPresentation(
@@ -224,6 +234,7 @@ fun ChatRoute(
     viewModelKey: String = "chat:$sessionId",
     repository: ChatRepository,
     gitRepository: GitRepository? = null,
+    workspaceRepository: WorkspaceRepository? = null,
     localSettingsRepository: LocalSettingsRepository? = null,
     activeHeaderColorHex: String? = null,
     sharedDraftStore: SharedDraftStore? = null,
@@ -289,6 +300,9 @@ fun ChatRoute(
     val streamingSendBehavior by remember(localSettingsRepository) {
         localSettingsRepository?.streamingSendBehavior ?: flowOf(StreamingSendBehavior.Steer)
     }.collectAsStateWithLifecycle(initialValue = StreamingSendBehavior.Steer)
+    val dictationProviderPreference by remember(localSettingsRepository) {
+        localSettingsRepository?.dictationProviderPreference ?: flowOf(DictationProviderPreference.ServerFirst)
+    }.collectAsStateWithLifecycle(initialValue = DictationProviderPreference.ServerFirst)
     val tintPrimaryActionsWithThemeColor by remember(localSettingsRepository) {
         localSettingsRepository?.tintPrimaryActionsWithThemeColor ?: flowOf(false)
     }.collectAsStateWithLifecycle(initialValue = false)
@@ -320,21 +334,15 @@ fun ChatRoute(
     val latestResponseCompletionNotificationsEnabled by rememberUpdatedState(responseCompletionNotificationsEnabled)
     val latestShowResponseExcerpts by rememberUpdatedState(chatDisplaySettings.showsStatusNotificationResponseExcerpts)
     val recorder = remember(context) { VoiceNoteRecorder(context) }
+    val dictationRecorder = remember(context) { VoiceNoteRecorder(context) }
     val dictationController = remember(context) { VoiceDictationController(context) }
     val streamNotifier = remember(context) { StreamStatusNotifier(context.applicationContext) }
-    val ttsState = remember { mutableStateOf<TextToSpeech?>(null) }
-    val isTtsReady = remember { mutableStateOf(false) }
-    val serverSpeechPlayer = remember { mutableStateOf<MediaPlayer?>(null) }
-    val serverSpeechFile = remember { mutableStateOf<File?>(null) }
+    val listenPlaybackController = remember(context) { ListenPlaybackController(context) }
+    val listenPlaybackState by listenPlaybackController.state.collectAsStateWithLifecycle()
     var speechJob by remember { mutableStateOf<Job?>(null) }
+    var dictationJob by remember { mutableStateOf<Job?>(null) }
     val speechScope = rememberCoroutineScope()
     val modelPickerScope = rememberCoroutineScope()
-    val releaseServerSpeech: () -> Unit = {
-        serverSpeechPlayer.value?.release()
-        serverSpeechPlayer.value = null
-        serverSpeechFile.value?.delete()
-        serverSpeechFile.value = null
-    }
 
     LaunchedEffect(state.openSessionId) {
         val openSessionId = state.openSessionId ?: return@LaunchedEffect
@@ -343,24 +351,15 @@ fun ChatRoute(
     }
 
     DisposableEffect(context) {
-        var tts: TextToSpeech? = null
-        tts = TextToSpeech(context) { status ->
-            if (ttsState.value === tts) {
-                isTtsReady.value = status == TextToSpeech.SUCCESS
-                if (status == TextToSpeech.SUCCESS) tts?.language = Locale.getDefault()
-            }
-        }
-        ttsState.value = tts
         onDispose {
             speechJob?.cancel()
             speechJob = null
+            dictationJob?.cancel()
+            dictationJob = null
             if (recorder.isRecording) viewModel.cancelVoiceNote(recorder)
+            dictationRecorder.stop(delete = true)
             dictationController.cancel()
-            releaseServerSpeech()
-            tts.stop()
-            tts.shutdown()
-            ttsState.value = null
-            isTtsReady.value = false
+            listenPlaybackController.close()
         }
     }
 
@@ -378,27 +377,119 @@ fun ChatRoute(
         }
         uris.take(availableSlots).forEach { uri -> viewModel.attach(context, uri) }
     }
+    var pendingCameraPath by rememberSaveable { mutableStateOf<String?>(null) }
+    val cameraPicker = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { captured ->
+        val file = pendingCameraPath?.let(::File)
+        pendingCameraPath = null
+        if (captured && file?.isFile == true && file.length() > 0) {
+            viewModel.attachCapturedPhoto(file)
+        } else {
+            file?.delete()
+        }
+    }
+    val capturePhoto: () -> Unit = {
+        if (viewModel.remainingAttachmentSlots() <= 0) {
+            Toast.makeText(
+                context,
+                "Attach up to ${SharedDraftPolicy.MAXIMUM_SHARED_ATTACHMENT_COUNT} files per message.",
+                Toast.LENGTH_LONG,
+            ).show()
+        } else {
+            runCatching {
+                val directory = File(context.cacheDir, "camera").apply { mkdirs() }
+                val file = File.createTempFile("hermex-camera-", ".jpg", directory)
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                pendingCameraPath = file.absolutePath
+                cameraPicker.launch(uri)
+            }.onFailure { error ->
+                pendingCameraPath?.let(::File)?.delete()
+                pendingCameraPath = null
+                Toast.makeText(context, error.message ?: "Could not open the camera.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
     var pendingVoicePermissionAction by rememberSaveable { mutableStateOf<VoicePermissionAction?>(null) }
     var isVoiceDictating by remember { mutableStateOf(false) }
+    var isVoiceDictationTranscribing by remember { mutableStateOf(false) }
     var voiceDictationError by rememberSaveable { mutableStateOf<String?>(null) }
     var voiceDictationBaseDraft by rememberSaveable { mutableStateOf("") }
-    val beginVoiceDictation: () -> Unit = {
-        if (isVoiceDictating) {
-            dictationController.stop()
+    lateinit var finishServerDictation: () -> Unit
+    finishServerDictation = {
+        if (!dictationRecorder.isRecording || isVoiceDictationTranscribing) {
+            Unit
         } else {
-            voiceDictationBaseDraft = state.draft
-            voiceDictationError = null
-            dictationController.start(
-                onText = { transcript, _ ->
-                    viewModel.updateDraft(voiceDictationDraft(voiceDictationBaseDraft, transcript))
-                },
-                onListeningChanged = { isVoiceDictating = it },
-                onError = { voiceDictationError = it },
-            )
+            val file = dictationRecorder.stop()
+            if (file == null) {
+                isVoiceDictating = false
+                voiceDictationError = dictationRecorder.lastErrorMessage ?: "Voice dictation was empty."
+            } else {
+                isVoiceDictationTranscribing = true
+                isVoiceDictating = true
+                dictationJob = speechScope.launch {
+                    try {
+                        val response = repository.transcribe(file)
+                        val transcript = response.transcript?.trim().orEmpty()
+                        require(response.error.isNullOrBlank() && transcript.isNotEmpty()) {
+                            response.error ?: "The server did not return a transcript."
+                        }
+                        viewModel.updateDraft(voiceDictationDraft(voiceDictationBaseDraft, transcript))
+                        voiceDictationError = null
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Throwable) {
+                        voiceDictationError = error.message ?: "Could not transcribe voice input."
+                    } finally {
+                        runCatching { file.delete() }
+                        isVoiceDictationTranscribing = false
+                        isVoiceDictating = false
+                        dictationJob = null
+                    }
+                }
+            }
+        }
+    }
+    val beginVoiceDictation: () -> Unit = {
+        when {
+            isVoiceDictationTranscribing -> Unit
+            isVoiceDictating && dictationRecorder.isRecording -> finishServerDictation()
+            isVoiceDictating -> dictationController.stop()
+            else -> {
+                voiceDictationBaseDraft = state.draft
+                voiceDictationError = null
+                when (
+                    DictationProviderPolicy.primaryProvider(
+                        preference = dictationProviderPreference,
+                        serverConfigured = true,
+                        onDeviceSupported = dictationController.isOnDeviceRecognitionAvailable,
+                    )
+                ) {
+                    DictationProvider.Server -> runCatching {
+                        dictationRecorder.start { speechScope.launch { finishServerDictation() } }
+                    }.onSuccess {
+                        isVoiceDictating = true
+                    }.onFailure { error ->
+                        voiceDictationError = error.message ?: "Could not start server dictation."
+                    }
+                    DictationProvider.OnDevice -> dictationController.start(
+                        onDeviceOnly = true,
+                        onText = { transcript, _ ->
+                            viewModel.updateDraft(voiceDictationDraft(voiceDictationBaseDraft, transcript))
+                        },
+                        onListeningChanged = { isVoiceDictating = it },
+                        onError = { voiceDictationError = it },
+                    )
+                    null -> voiceDictationError = "On-device dictation is not available on this device."
+                }
+            }
         }
     }
     val beginVoiceNote: () -> Unit = {
         if (isVoiceDictating) dictationController.cancel { isVoiceDictating = it }
+        if (dictationRecorder.isRecording) dictationRecorder.stop(delete = true)
+        dictationJob?.cancel()
+        dictationJob = null
+        isVoiceDictating = false
+        isVoiceDictationTranscribing = false
         voiceDictationError = null
         viewModel.startVoiceNote(recorder)
     }
@@ -435,6 +526,7 @@ fun ChatRoute(
     var showsProfilePicker by rememberSaveable { mutableStateOf(false) }
     var showsReasoningPicker by rememberSaveable { mutableStateOf(false) }
     var showsWorkspacePicker by rememberSaveable { mutableStateOf(false) }
+    var showsWorkspaceManager by rememberSaveable { mutableStateOf(false) }
     var showsAttachmentOptions by rememberSaveable { mutableStateOf(false) }
     var selectedTextContext by remember { mutableStateOf<MessageActionContext?>(null) }
     var editingMessageContext by remember { mutableStateOf<MessageActionContext?>(null) }
@@ -454,6 +546,12 @@ fun ChatRoute(
     val transcriptListState = rememberLazyListState()
     val isTranscriptDragged by transcriptListState.interactionSource.collectIsDraggedAsState()
     var followsTranscriptBottom by remember(sessionId) { mutableStateOf(true) }
+    var transcriptScrollCooldownActive by remember(sessionId) { mutableStateOf(false) }
+    var isReadingOlderTranscript by remember(sessionId) { mutableStateOf(false) }
+    val nearBottomTolerancePx = with(density) {
+        (if (state.isStreaming) 160.dp else 80.dp).roundToPx()
+    }
+    val readingOlderHysteresisPx = with(density) { 64.dp.roundToPx() }
     val isTranscriptAtBottom by remember(sessionId, transcriptListState) {
         derivedStateOf {
             val layout = transcriptListState.layoutInfo
@@ -467,20 +565,66 @@ fun ChatRoute(
             )
         }
     }
+    val isTranscriptNearBottomNow by remember(sessionId, transcriptListState, nearBottomTolerancePx) {
+        derivedStateOf {
+            val layout = transcriptListState.layoutInfo
+            val lastVisible = layout.visibleItemsInfo.lastOrNull()
+            isTranscriptNearBottom(
+                totalItemsCount = layout.totalItemsCount,
+                lastVisibleIndex = lastVisible?.index ?: -1,
+                lastVisibleOffset = lastVisible?.offset ?: 0,
+                lastVisibleSize = lastVisible?.size ?: 0,
+                viewportEndOffset = layout.viewportEndOffset,
+                tolerancePixels = nearBottomTolerancePx,
+            )
+        }
+    }
 
-    LaunchedEffect(transcriptListState, isTranscriptDragged) {
+    LaunchedEffect(isTranscriptDragged) {
+        if (isTranscriptDragged) {
+            transcriptScrollCooldownActive = true
+        } else {
+            delay(TRANSCRIPT_USER_SCROLL_COOLDOWN_MILLIS)
+            transcriptScrollCooldownActive = false
+        }
+    }
+
+    LaunchedEffect(transcriptListState, isTranscriptDragged, nearBottomTolerancePx, readingOlderHysteresisPx) {
         snapshotFlow {
             val layout = transcriptListState.layoutInfo
-            val lastVisible = layout.visibleItemsInfo.lastOrNull()?.index ?: -1
-            TranscriptScrollObservation(
-                isUserDragging = isTranscriptDragged,
-                lastScrolledBackward = transcriptListState.lastScrolledBackward,
-                isNearBottom = layout.totalItemsCount == 0 || lastVisible >= layout.totalItemsCount - 2,
+            val lastVisible = layout.visibleItemsInfo.lastOrNull()
+            val isNearBottom = isTranscriptNearBottom(
+                totalItemsCount = layout.totalItemsCount,
+                lastVisibleIndex = lastVisible?.index ?: -1,
+                lastVisibleOffset = lastVisible?.offset ?: 0,
+                lastVisibleSize = lastVisible?.size ?: 0,
+                viewportEndOffset = layout.viewportEndOffset,
+                tolerancePixels = nearBottomTolerancePx,
             )
-        }.collect { observation ->
+            val distanceFromBottom = when {
+                layout.totalItemsCount == 0 -> 0
+                lastVisible?.index != layout.totalItemsCount - 1 -> Int.MAX_VALUE
+                else -> (lastVisible.offset + lastVisible.size - layout.viewportEndOffset).coerceAtLeast(0)
+            }
+            TranscriptScrollMetrics(
+                observation = TranscriptScrollObservation(
+                    isUserDragging = isTranscriptDragged,
+                    lastScrolledBackward = transcriptListState.lastScrolledBackward,
+                    isNearBottom = isNearBottom,
+                ),
+                distanceFromBottomPixels = distanceFromBottom,
+            )
+        }.collect { metrics ->
             followsTranscriptBottom = transcriptFollowState(
                 currentlyFollowing = followsTranscriptBottom,
-                observation = observation,
+                observation = metrics.observation,
+            )
+            isReadingOlderTranscript = transcriptReadingOlderState(
+                currentlyReadingOlder = isReadingOlderTranscript,
+                isNearBottom = metrics.observation.isNearBottom,
+                distanceFromBottomPixels = metrics.distanceFromBottomPixels,
+                nearBottomTolerancePixels = nearBottomTolerancePx,
+                hysteresisPixels = readingOlderHysteresisPx,
             )
         }
     }
@@ -493,28 +637,72 @@ fun ChatRoute(
         state.responseCompletionTrigger,
         state.isLoading,
         composerHeightPx,
+        transcriptScrollCooldownActive,
     ) {
-        if (!shouldAutoScrollTranscript(followsTranscriptBottom, transcriptListState.isScrollInProgress)) {
+        if (!shouldAutoScrollTranscript(
+                followsBottom = followsTranscriptBottom,
+                isScrollInProgress = transcriptListState.isScrollInProgress,
+                isUserScrollCooldownActive = transcriptScrollCooldownActive,
+            )
+        ) {
             return@LaunchedEffect
         }
         delay(32)
-        if (!shouldAutoScrollTranscript(followsTranscriptBottom, transcriptListState.isScrollInProgress)) {
+        if (!shouldAutoScrollTranscript(
+                followsBottom = followsTranscriptBottom,
+                isScrollInProgress = transcriptListState.isScrollInProgress,
+                isUserScrollCooldownActive = transcriptScrollCooldownActive,
+            )
+        ) {
             return@LaunchedEffect
         }
         val lastItem = transcriptListState.layoutInfo.totalItemsCount - 1
         if (lastItem >= 0) transcriptListState.animateScrollToItem(lastItem)
     }
 
-    LaunchedEffect(isTranscriptAtBottom, followsTranscriptBottom) {
-        if (isTranscriptAtBottom || !followsTranscriptBottom || transcriptListState.isScrollInProgress) {
+    LaunchedEffect(isTranscriptAtBottom, followsTranscriptBottom, transcriptScrollCooldownActive) {
+        if (
+            isTranscriptAtBottom ||
+            !followsTranscriptBottom ||
+            transcriptListState.isScrollInProgress ||
+            transcriptScrollCooldownActive
+        ) {
             return@LaunchedEffect
         }
         // AndroidView-backed Markdown can grow after the message-count effect fires.
         // Re-anchor once the next frame has committed the measured height.
         withFrameNanos { }
-        if (followsTranscriptBottom && !transcriptListState.isScrollInProgress) {
+        if (
+            followsTranscriptBottom &&
+            !transcriptListState.isScrollInProgress &&
+            !transcriptScrollCooldownActive
+        ) {
             val lastItem = transcriptListState.layoutInfo.totalItemsCount - 1
             if (lastItem >= 0) transcriptListState.scrollToItem(lastItem, Int.MAX_VALUE)
+        }
+    }
+
+    LaunchedEffect(transcriptListState, followsTranscriptBottom, transcriptScrollCooldownActive) {
+        snapshotFlow { transcriptListState.isScrollInProgress }.collect { isScrollInProgress ->
+            if (
+                isScrollInProgress ||
+                !followsTranscriptBottom ||
+                transcriptScrollCooldownActive ||
+                isTranscriptAtBottom
+            ) {
+                return@collect
+            }
+            // Content can grow while an earlier follow animation is still running.
+            // Catch up after it settles so the transcript cannot remain one layout behind.
+            withFrameNanos { }
+            if (
+                followsTranscriptBottom &&
+                !transcriptListState.isScrollInProgress &&
+                !transcriptScrollCooldownActive
+            ) {
+                val lastItem = transcriptListState.layoutInfo.totalItemsCount - 1
+                if (lastItem >= 0) transcriptListState.scrollToItem(lastItem, Int.MAX_VALUE)
+            }
         }
     }
 
@@ -533,59 +721,42 @@ fun ChatRoute(
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("Hermex message", text))
     }
-    val speakLocally: (String) -> Unit = { text ->
-        if (isTtsReady.value) {
-            ttsState.value?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "hermex-message")
+    val listenText: (MessageActionContext?, String) -> Unit = { actionContext, fallbackText ->
+        val text = actionContext?.listenText ?: fallbackText
+        val messageId = actionContext?.messageId ?: "assistant-${text.hashCode()}"
+        speechJob?.cancel()
+        if (listenPlaybackState.activeMessageId == messageId) {
+            listenPlaybackController.stop()
+        } else {
+            val requestGeneration = listenPlaybackController.beginLoading(messageId)
+            speechJob = speechScope.launch {
+                val audio = if (ServerTtsPolicy.shouldUseServer(text)) {
+                    viewModel.synthesizeSpeech(text)
+                } else {
+                    null
+                }
+                if (!isActive || !listenPlaybackController.isCurrent(requestGeneration, messageId)) {
+                    return@launch
+                }
+                val played = audio?.takeIf { it.isNotEmpty() }?.let { bytes ->
+                    listenPlaybackController.startServerAudio(
+                        requestGeneration = requestGeneration,
+                        messageId = messageId,
+                        title = "Hermex response",
+                        audio = bytes,
+                    )
+                } == true
+                if (!played && isActive) {
+                    listenPlaybackController.startOnDevice(requestGeneration, messageId, text)
+                }
+            }
         }
     }
-    val listenText: (String) -> Unit = { text ->
-        speechJob?.cancel()
-        releaseServerSpeech()
-        ttsState.value?.stop()
-        speechJob = speechScope.launch {
-            val audio = viewModel.synthesizeSpeech(text)
-            if (!isActive) return@launch
-            if (audio == null || audio.isEmpty()) {
-                speakLocally(text)
-                return@launch
-            }
-            val prepared = runCatching {
-                withContext(Dispatchers.IO) {
-                    val audioFile = File.createTempFile("hermex-tts-", ".mp3", context.cacheDir).also { it.writeBytes(audio) }
-                    val player = MediaPlayer()
-                    try {
-                        player.setDataSource(audioFile.absolutePath)
-                        player.prepare()
-                        player to audioFile
-                    } catch (error: Throwable) {
-                        player.release()
-                        audioFile.delete()
-                        throw error
-                    }
-                }
-            }.getOrNull()
-            if (!isActive) {
-                prepared?.first?.release()
-                prepared?.second?.delete()
-                return@launch
-            }
-            val played = prepared?.let { (player, audioFile) ->
-                releaseServerSpeech()
-                serverSpeechPlayer.value = player
-                serverSpeechFile.value = audioFile
-                player.setOnCompletionListener { releaseServerSpeech() }
-                player.setOnErrorListener { _, _, _ ->
-                    releaseServerSpeech()
-                    true
-                }
-                player.start()
-                true
-            } == true
-            if (!played) {
-                releaseServerSpeech()
-                speakLocally(text)
-            }
-            speechJob = null
+
+    LaunchedEffect(listenPlaybackState.phase) {
+        while (listenPlaybackState.phase == ListenPlaybackPhase.Playing && listenPlaybackState.hasSeekableAudio) {
+            delay(200)
+            listenPlaybackController.refreshProgress()
         }
     }
     val transcriptMessagesAfter: (MessageActionContext) -> Int = remember(
@@ -783,17 +954,19 @@ fun ChatRoute(
                                     toolCardsStartExpanded = chatDisplaySettings.toolCardsStartExpanded,
                                     hidesAttachmentPaths = chatDisplaySettings.hidesAttachmentPaths,
                                     showsAssistantTurnTimestamps = chatDisplaySettings.showsAssistantTurnTimestamps,
+                                    showsResponseSpeed = chatDisplaySettings.showsResponseSpeed,
                                     wrapsCodeBlockLines = chatDisplaySettings.wrapsCodeBlockLines,
                                     streamedTextAnimationEnabled = chatDisplaySettings.streamedTextAnimationEnabled,
                                     loadTranscriptMediaImage = viewModel::transcriptMediaThumbnailData,
                                     loadAttachmentFile = viewModel::attachmentTextFile,
                                     actionContext = actionContext,
+                                    isListening = listenPlaybackState.activeMessageId == actionContext?.messageId,
                                     messageActionEnabled = !state.isViewingCachedData && !state.isStreaming && !state.isRunningSessionAction,
                                     isRegeneratingMessage = state.isRegeneratingMessage,
                                     isEditingMessage = state.isEditingMessage,
                                     isForkingMessage = state.isForkingMessage,
                                     onCopy = { copyText(actionContext?.copyText ?: visibleText) },
-                                    onListen = { listenText(actionContext?.listenText ?: visibleText) },
+                                    onListen = { listenText(actionContext, visibleText) },
                                     onSelectText = { selectedTextContext = it },
                                     onEdit = {
                                         editMessageDraft = it.copyText
@@ -818,7 +991,7 @@ fun ChatRoute(
                                 ?.let { card ->
                                     CompressionReferenceMarkerCard(card)
                                 }
-                            if (turnChangesAnchorIndex == index) {
+                            if (chatDisplaySettings.showsChatGitControls && turnChangesAnchorIndex == index) {
                                 GitTurnChangesCard(
                                     summary = turnChangesSummary,
                                     onOpenAll = {
@@ -887,39 +1060,72 @@ fun ChatRoute(
                     .onSizeChanged { composerHeightPx = it.height },
             ) {
                 CompositionLocalProvider(LocalLayoutDirection provides chatLayoutDirection) {
-                    ComposerSurface(
-                        state = state,
-                        isVoiceDictating = isVoiceDictating,
-                        voiceDictationError = voiceDictationError,
-                        streamingSendBehavior = streamingSendBehavior,
-                        primaryActionTintColor = primaryActionTintColor,
-                        showSecondaryBar = isTranscriptAtBottom,
-                        onDraftChange = viewModel::updateDraft,
-                        onSend = viewModel::send,
-                        onStreamingSend = { viewModel.submitStreamingDraft(streamingSendBehavior) },
-                        onCancel = viewModel::cancel,
-                        onOpenModelPicker = { showsModelPicker = true },
-                        onOpenProfilePicker = { showsProfilePicker = true },
-                        onOpenReasoningPicker = { showsReasoningPicker = true },
-                        onOpenWorkspacePicker = { showsWorkspacePicker = true },
-                        onLoadWorkspaceSuggestions = viewModel::loadWorkspaceSuggestions,
-                        onAttach = { showsAttachmentOptions = true },
-                        onVoiceDictation = requestVoiceDictation,
-                        onVoiceNote = requestVoiceNote,
-                        onStopVoiceNote = { viewModel.stopAndSendVoiceNote(recorder) },
-                        onCancelVoice = { viewModel.cancelVoiceNote(recorder) },
-                        onRemoveAttachment = viewModel::removeAttachment,
-                        loadAttachmentImage = viewModel::attachmentImageData,
-                        loadAttachmentFile = viewModel::attachmentTextFile,
-                    )
+                    Column {
+                        if (listenPlaybackState.showsPlaybackBar) {
+                            ListenPlaybackBar(
+                                state = listenPlaybackState,
+                                onTogglePlayPause = listenPlaybackController::togglePlayPause,
+                                onSeek = listenPlaybackController::seekTo,
+                                onSpeedChange = listenPlaybackController::setSpeed,
+                                onStop = {
+                                    speechJob?.cancel()
+                                    speechJob = null
+                                    listenPlaybackController.stop()
+                                },
+                            )
+                        }
+                        ComposerSurface(
+                            state = state,
+                            isVoiceDictating = isVoiceDictating,
+                            isVoiceDictationTranscribing = isVoiceDictationTranscribing,
+                            voiceDictationError = voiceDictationError,
+                            streamingSendBehavior = streamingSendBehavior,
+                            primaryActionTintColor = primaryActionTintColor,
+                            showSecondaryBar = !isReadingOlderTranscript,
+                            onDraftChange = viewModel::updateDraft,
+                            onSend = {
+                                followsTranscriptBottom = true
+                                transcriptScrollCooldownActive = false
+                                isReadingOlderTranscript = false
+                                viewModel.send()
+                            },
+                            onStreamingSend = {
+                                followsTranscriptBottom = true
+                                transcriptScrollCooldownActive = false
+                                isReadingOlderTranscript = false
+                                viewModel.submitStreamingDraft(streamingSendBehavior)
+                            },
+                            onCancel = viewModel::cancel,
+                            onOpenModelPicker = { showsModelPicker = true },
+                            onOpenProfilePicker = { showsProfilePicker = true },
+                            onOpenReasoningPicker = { showsReasoningPicker = true },
+                            onOpenWorkspacePicker = { showsWorkspacePicker = true },
+                            onLoadWorkspaceSuggestions = viewModel::loadWorkspaceSuggestions,
+                            onAttach = { showsAttachmentOptions = true },
+                            onVoiceDictation = requestVoiceDictation,
+                            onVoiceNote = requestVoiceNote,
+                            onStopVoiceNote = {
+                                followsTranscriptBottom = true
+                                transcriptScrollCooldownActive = false
+                                isReadingOlderTranscript = false
+                                viewModel.stopAndSendVoiceNote(recorder)
+                            },
+                            onCancelVoice = { viewModel.cancelVoiceNote(recorder) },
+                            onRemoveAttachment = viewModel::removeAttachment,
+                            loadAttachmentImage = viewModel::attachmentImageData,
+                            loadAttachmentFile = viewModel::attachmentTextFile,
+                        )
+                    }
                 }
             }
-            if (!isTranscriptAtBottom) {
+            if (!isTranscriptNearBottomNow && (!state.isStreaming || !followsTranscriptBottom)) {
                 HermexIconButton(
                     label = localizedString("Go to latest message"),
                     symbol = "↓",
                     onClick = {
                         followsTranscriptBottom = true
+                        transcriptScrollCooldownActive = false
+                        isReadingOlderTranscript = false
                         val lastItem = transcriptListState.layoutInfo.totalItemsCount - 1
                         if (lastItem >= 0) {
                             speechScope.launch {
@@ -939,6 +1145,8 @@ fun ChatRoute(
             title = state.headerTitle,
             subtitle = state.headerSubtitle,
             hasRepository = gitState.hasRepository,
+            showsFilesButton = chatDisplaySettings.showsChatFilesButton,
+            showsGitControls = chatDisplaySettings.showsChatGitControls,
             onBack = onBack,
             onOpenWorkspace = onOpenWorkspace,
             onOpenGit = onOpenGit,
@@ -1085,10 +1293,24 @@ fun ChatRoute(
             suggestions = state.workspaceSuggestions,
             onLoadSuggestions = viewModel::loadWorkspaceSuggestions,
             onDismiss = { showsWorkspacePicker = false },
+            onManage = workspaceRepository?.let {
+                {
+                    showsWorkspacePicker = false
+                    showsWorkspaceManager = true
+                }
+            },
             onSelect = { path ->
                 showsWorkspacePicker = false
                 viewModel.selectWorkspace(path)
             },
+        )
+    }
+    if (showsWorkspaceManager && workspaceRepository != null) {
+        WorkspaceManagerDialog(
+            viewModelKey = "workspace-manager:${repository.serverUrl}",
+            repository = workspaceRepository,
+            onDismiss = { showsWorkspaceManager = false },
+            onRegistryChanged = viewModel::loadComposerConfig,
         )
     }
     if (showsAttachmentOptions) {
@@ -1101,6 +1323,10 @@ fun ChatRoute(
             onPhotos = {
                 showsAttachmentOptions = false
                 photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            },
+            onCamera = {
+                showsAttachmentOptions = false
+                capturePhoto()
             },
         )
     }
@@ -1402,6 +1628,8 @@ private fun ChatTopBar(
     title: String,
     subtitle: String?,
     hasRepository: Boolean,
+    showsFilesButton: Boolean,
+    showsGitControls: Boolean,
     onBack: () -> Unit,
     onOpenWorkspace: () -> Unit,
     onOpenGit: () -> Unit,
@@ -1437,7 +1665,13 @@ private fun ChatTopBar(
             modifier = Modifier
                 .align(Alignment.Center)
                 .fillMaxWidth()
-                .padding(horizontal = if (hasRepository) 152.dp else 108.dp),
+                .padding(
+                    horizontal = when {
+                        showsFilesButton && showsGitControls && hasRepository -> 152.dp
+                        showsFilesButton || (showsGitControls && hasRepository) -> 108.dp
+                        else -> 64.dp
+                    },
+                ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
@@ -1464,14 +1698,16 @@ private fun ChatTopBar(
                 .hermexGlass(shape = CircleShape, castsShadow = false)
                 .padding(1.dp),
         ) {
-            HermexIconButton(
-                label = localizedString("Files"),
-                symbol = "\u2302",
-                onClick = onOpenWorkspace,
-                tonalContainerColor = Color.Transparent,
-                modifier = Modifier.size(44.dp),
-            )
-            if (hasRepository) {
+            if (showsFilesButton) {
+                HermexIconButton(
+                    label = localizedString("Files"),
+                    symbol = "\u2302",
+                    onClick = onOpenWorkspace,
+                    tonalContainerColor = Color.Transparent,
+                    modifier = Modifier.size(44.dp),
+                )
+            }
+            if (showsGitControls && hasRepository) {
                 HermexIconButton(
                     label = localizedString("Git"),
                     symbol = "Git",
@@ -1896,6 +2132,7 @@ private fun SlashAutocompleteSurface(
 private fun ComposerSurface(
     state: ChatUiState,
     isVoiceDictating: Boolean,
+    isVoiceDictationTranscribing: Boolean,
     voiceDictationError: String?,
     streamingSendBehavior: StreamingSendBehavior,
     primaryActionTintColor: Color?,
@@ -1963,6 +2200,7 @@ private fun ComposerSurface(
                 onCancel = onCancelVoice,
             )
             state.isTranscribingVoiceNote -> ComposerVoiceTranscribingStatus()
+            isVoiceDictationTranscribing -> ComposerVoiceDictationStatus("Transcribing...", isError = false)
             isVoiceDictating -> ComposerVoiceDictationStatus("Listening...", isError = false)
             voiceDictationError != null -> ComposerVoiceDictationStatus(voiceDictationError, isError = true)
         }
@@ -2422,15 +2660,111 @@ private fun ContextWindowInfoRow(
 }
 
 @Composable
+private fun ListenPlaybackBar(
+    state: ListenPlaybackUiState,
+    onTogglePlayPause: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onSpeedChange: (ListenPlaybackSpeed) -> Unit,
+    onStop: () -> Unit,
+) {
+    var showsSpeedMenu by remember { mutableStateOf(false) }
+    val playbackPositionDescription = localizedString("Listen")
+    val maximumPosition = state.durationMillis.coerceAtLeast(1).toFloat()
+    val currentPosition = state.elapsedMillis.coerceIn(0, state.durationMillis.coerceAtLeast(0)).toFloat()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
+            .testTag("listen_playback_bar"),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (state.phase == ListenPlaybackPhase.Loading) {
+                Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                    )
+                }
+            } else {
+                HermexIconButton(
+                    label = localizedString(if (state.isPlaying) "Pause" else "Listen"),
+                    symbol = if (state.isPlaying) "Ⅱ" else "▶",
+                    onClick = onTogglePlayPause,
+                    enabled = state.isReady,
+                    modifier = Modifier.size(36.dp),
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Slider(
+                    value = currentPosition.coerceIn(0f, maximumPosition),
+                    onValueChange = { onSeek(it.toLong()) },
+                    valueRange = 0f..maximumPosition,
+                    enabled = state.isReady && state.durationMillis > 0,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(28.dp)
+                        .semantics { contentDescription = playbackPositionDescription },
+                )
+                Text(
+                    text = "${formatPlaybackDuration(state.elapsedMillis)} / ${formatPlaybackDuration(state.durationMillis)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
+            Box {
+                TextButton(
+                    onClick = { showsSpeedMenu = true },
+                    enabled = state.isReady,
+                    modifier = Modifier.semantics { contentDescription = state.speed.title },
+                ) {
+                    Text(state.speed.title, fontWeight = FontWeight.SemiBold)
+                }
+                DropdownMenu(
+                    expanded = showsSpeedMenu,
+                    onDismissRequest = { showsSpeedMenu = false },
+                ) {
+                    ListenPlaybackSpeed.entries.forEach { speed ->
+                        DropdownMenuItem(
+                            text = { Text(speed.title) },
+                            trailingIcon = {
+                                if (speed == state.speed) Text("✓")
+                            },
+                            onClick = {
+                                showsSpeedMenu = false
+                                onSpeedChange(speed)
+                            },
+                        )
+                    }
+                }
+            }
+            HermexIconButton(
+                label = localizedString("Stop Listening"),
+                symbol = "×",
+                onClick = onStop,
+                modifier = Modifier.size(36.dp),
+            )
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    }
+}
+
+@Composable
 private fun AttachmentOptionsSheet(
     onDismiss: () -> Unit,
     onAttachFile: () -> Unit,
     onPhotos: () -> Unit,
+    onCamera: () -> Unit,
 ) {
     PickerSheet(
         title = "Attach",
         onDismiss = onDismiss,
-        heightFraction = 0.36f,
+        heightFraction = 0.44f,
     ) {
         Column(Modifier.fillMaxSize()) {
             PickerSectionHeader("Attach")
@@ -2450,6 +2784,16 @@ private fun AttachmentOptionsSheet(
                 subtitle = "Choose images from your library",
                 selected = false,
                 onClick = onPhotos,
+            )
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant,
+                modifier = Modifier.padding(start = 52.dp),
+            )
+            SelectorRow(
+                title = localizedString("Camera"),
+                subtitle = "Take a new photo",
+                selected = false,
+                onClick = onCamera,
             )
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant,
@@ -3014,6 +3358,7 @@ private fun WorkspacePickerDialog(
     suggestions: List<String>,
     onLoadSuggestions: (String) -> Unit,
     onDismiss: () -> Unit,
+    onManage: (() -> Unit)? = null,
     onSelect: (String) -> Unit,
 ) {
     var prefix by rememberSaveable { mutableStateOf("") }
@@ -3072,6 +3417,19 @@ private fun WorkspacePickerDialog(
                     )
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
+            if (onManage != null) {
+                item("workspace-manage") {
+                    TextButton(
+                        onClick = onManage,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                    ) {
+                        Text(localizedString("Manage Workspaces"))
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
             }
             if (!effectiveSelected.isNullOrBlank()) {
                 item("current-header") {
@@ -3383,11 +3741,13 @@ private fun MessageRow(
     toolCardsStartExpanded: Boolean,
     hidesAttachmentPaths: Boolean,
     showsAssistantTurnTimestamps: Boolean,
+    showsResponseSpeed: Boolean,
     wrapsCodeBlockLines: Boolean,
     streamedTextAnimationEnabled: Boolean,
     loadTranscriptMediaImage: suspend (TranscriptMediaReference) -> ByteArray?,
     loadAttachmentFile: suspend (String) -> FileResponse?,
     actionContext: MessageActionContext?,
+    isListening: Boolean,
     messageActionEnabled: Boolean,
     isRegeneratingMessage: Boolean,
     isEditingMessage: Boolean,
@@ -3460,11 +3820,13 @@ private fun MessageRow(
             reasoningTexts = message.reasoningTexts,
             tools = message.toolCalls.orEmpty(),
             timestamp = message.timestamp,
+            tokensPerSecond = message.turnTokensPerSecond,
             isStreamingMessage = isStreamingMessage,
             showThinkingAndToolCards = showThinkingAndToolCards,
             thinkingCardsStartExpanded = thinkingCardsStartExpanded,
             toolCardsStartExpanded = toolCardsStartExpanded,
             showsAssistantTurnTimestamp = showsAssistantTurnTimestamps,
+            showsResponseSpeed = showsResponseSpeed,
             wrapsCodeBlockLines = wrapsCodeBlockLines,
             streamedTextAnimationEnabled = streamedTextAnimationEnabled,
             linkPreviewUrl = linkPreviewUrl,
@@ -3492,6 +3854,7 @@ private fun MessageRow(
     if (showsMessageActions && actionContext != null) {
         MessageActionSheet(
             context = actionContext,
+            isListening = isListening,
             messageActionEnabled = messageActionEnabled,
             isRegeneratingMessage = isRegeneratingMessage,
             isEditingMessage = isEditingMessage,
@@ -3705,11 +4068,13 @@ private fun AssistantMessageRow(
     reasoningTexts: List<String>,
     tools: List<ToolCall>,
     timestamp: Double?,
+    tokensPerSecond: Double?,
     isStreamingMessage: Boolean,
     showThinkingAndToolCards: Boolean,
     thinkingCardsStartExpanded: Boolean,
     toolCardsStartExpanded: Boolean,
     showsAssistantTurnTimestamp: Boolean,
+    showsResponseSpeed: Boolean,
     wrapsCodeBlockLines: Boolean,
     streamedTextAnimationEnabled: Boolean,
     linkPreviewUrl: HttpUrl?,
@@ -3748,8 +4113,11 @@ private fun AssistantMessageRow(
             }
         }
         if (visibleText.isNotBlank()) {
-            if (showsAssistantTurnTimestamp) {
-                AssistantTurnHeader(timestamp = timestamp)
+            if (showsAssistantTurnTimestamp || (showsResponseSpeed && responseSpeedText(tokensPerSecond) != null)) {
+                AssistantTurnHeader(
+                    timestamp = timestamp.takeIf { showsAssistantTurnTimestamp },
+                    tokensPerSecond = tokensPerSecond.takeIf { showsResponseSpeed },
+                )
             }
             if (containsTranscriptMedia) {
                 TranscriptMediaContentView(
@@ -3827,9 +4195,29 @@ private fun TranscriptMediaThumbnailView(
     loadMediaImage: suspend (TranscriptMediaReference) -> ByteArray?,
     onPreviewMedia: (TranscriptMediaReference) -> Unit,
 ) {
-    if (!reference.isRasterImageCandidate) {
-        TranscriptMediaUnavailableChip(reference = reference)
-        return
+    when (reference.mediaKind) {
+        TranscriptMediaKind.Audio -> {
+            TranscriptMediaAudioView(
+                reference = reference,
+                loadMediaData = loadMediaImage,
+            )
+            return
+        }
+        TranscriptMediaKind.Video -> {
+            TranscriptMediaVideoTile(
+                reference = reference,
+                onPreviewMedia = onPreviewMedia,
+            )
+            return
+        }
+        TranscriptMediaKind.Unsupported -> {
+            TranscriptMediaFileDownloadView(
+                reference = reference,
+                loadMediaData = loadMediaImage,
+            )
+            return
+        }
+        TranscriptMediaKind.Image -> Unit
     }
 
     var bytes by remember(reference.id) { mutableStateOf<ByteArray?>(null) }
@@ -3847,6 +4235,9 @@ private fun TranscriptMediaThumbnailView(
         didAttemptLoad = true
     }
     val bitmap = rememberDecodedBitmap(bytes, maxDimension = 840, maxPixels = 1_000_000L)
+    val resolvedKind = remember(reference.id, bytes) {
+        bytes?.let { TranscriptMediaDataClassifier.resolvedKind(reference, it) }
+    }
 
     val shape = RoundedCornerShape(10.dp)
     when {
@@ -3886,6 +4277,27 @@ private fun TranscriptMediaThumbnailView(
                     .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f), shape),
             )
         }
+        resolvedKind == TranscriptMediaKind.Audio && bytes != null -> {
+            TranscriptMediaAudioView(
+                reference = reference,
+                initialData = bytes,
+                remoteAlreadyApproved = true,
+                loadMediaData = loadMediaImage,
+            )
+        }
+        resolvedKind == TranscriptMediaKind.Video -> {
+            TranscriptMediaVideoTile(
+                reference = reference,
+                onPreviewMedia = onPreviewMedia,
+            )
+        }
+        resolvedKind == TranscriptMediaKind.Unsupported && bytes != null -> {
+            TranscriptMediaFileDownloadView(
+                reference = reference,
+                initialData = bytes,
+                loadMediaData = loadMediaImage,
+            )
+        }
         didAttemptLoad -> TranscriptMediaUnavailableChip(reference = reference)
         else -> {
             Box(
@@ -3900,6 +4312,184 @@ private fun TranscriptMediaThumbnailView(
             }
         }
     }
+}
+
+@Composable
+private fun TranscriptMediaAudioView(
+    reference: TranscriptMediaReference,
+    loadMediaData: suspend (TranscriptMediaReference) -> ByteArray?,
+    initialData: ByteArray? = null,
+    remoteAlreadyApproved: Boolean = false,
+) {
+    Column(
+        modifier = Modifier.widthIn(max = 300.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        InlineAudioAttachmentPlayer(
+            title = reference.displayName,
+            path = reference.rawReference,
+            loadAttachmentData = { initialData ?: loadMediaData(reference) },
+            requiresRemoteApproval = !remoteAlreadyApproved,
+        )
+        TranscriptMediaDownloadButton(
+            reference = reference,
+            initialData = initialData,
+            loadMediaData = loadMediaData,
+            modifier = Modifier.align(Alignment.End),
+        )
+    }
+}
+
+@Composable
+private fun TranscriptMediaVideoTile(
+    reference: TranscriptMediaReference,
+    onPreviewMedia: (TranscriptMediaReference) -> Unit,
+) {
+    val shape = RoundedCornerShape(10.dp)
+    val accessibilityLabel = localizedStringFormat("Open media video %@", reference.displayName)
+    val playSymbol = "▶"
+    Column(
+        modifier = Modifier
+            .size(width = 210.dp, height = 132.dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f))
+            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f), shape)
+            .clickable { onPreviewMedia(reference) }
+            .semantics { contentDescription = accessibilityLabel }
+            .padding(horizontal = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            playSymbol,
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(7.dp))
+        Text(
+            reference.displayName,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.MiddleEllipsis,
+        )
+        Text(
+            localizedString("Video"),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun TranscriptMediaFileDownloadView(
+    reference: TranscriptMediaReference,
+    loadMediaData: suspend (TranscriptMediaReference) -> ByteArray?,
+    initialData: ByteArray? = null,
+) {
+    val shape = RoundedCornerShape(8.dp)
+    Row(
+        modifier = Modifier
+            .widthIn(max = 300.dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f))
+            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f), shape)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            reference.fileExtension?.uppercase(Locale.ROOT)?.take(5) ?: "FILE",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.secondary,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                reference.displayName,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.MiddleEllipsis,
+            )
+            Text(
+                localizedString("Tap to download"),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        TranscriptMediaDownloadButton(
+            reference = reference,
+            initialData = initialData,
+            loadMediaData = loadMediaData,
+        )
+    }
+}
+
+@Composable
+private fun TranscriptMediaDownloadButton(
+    reference: TranscriptMediaReference,
+    loadMediaData: suspend (TranscriptMediaReference) -> ByteArray?,
+    initialData: ByteArray? = null,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var cachedData by remember(reference.id, initialData) { mutableStateOf(initialData) }
+    var pendingData by remember(reference.id) { mutableStateOf<ByteArray?>(null) }
+    var isLoading by remember(reference.id) { mutableStateOf(false) }
+    val resolvedKind = cachedData?.let { TranscriptMediaDataClassifier.resolvedKind(reference, it) }
+        ?: reference.mediaKind
+    val mimeType = when (resolvedKind) {
+        TranscriptMediaKind.Image -> "image/*"
+        TranscriptMediaKind.Audio -> "audio/*"
+        TranscriptMediaKind.Video -> "video/*"
+        TranscriptMediaKind.Unsupported -> "application/octet-stream"
+    }
+    val createDocument = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(mimeType)) { uri ->
+        val data = pendingData
+        pendingData = null
+        if (uri != null && data != null) {
+            scope.launch {
+                val saved = withContext(Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openOutputStream(uri, "w").use { output ->
+                            requireNotNull(output) { "Could not open the selected file." }
+                            output.write(data)
+                        }
+                    }.isSuccess
+                }
+                Toast.makeText(
+                    context,
+                    context.localizedString(if (saved) "Download complete" else "Download Failed"),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+    }
+    val downloadLabel = localizedString("Download")
+    HermexIconButton(
+        label = downloadLabel,
+        symbol = if (isLoading) "…" else "↓",
+        enabled = !isLoading,
+        onClick = {
+            scope.launch {
+                isLoading = true
+                val data = cachedData ?: loadMediaData(reference)
+                isLoading = false
+                if (data == null || data.isEmpty()) {
+                    Toast.makeText(context, context.localizedString("Could not load media."), Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                cachedData = data
+                pendingData = data
+                val extension = TranscriptMediaDataClassifier.suggestedExtension(reference, data)
+                createDocument.launch(reference.exportFilename(extension))
+            }
+        },
+        modifier = modifier.size(38.dp),
+    )
 }
 
 @Composable
@@ -3955,22 +4545,45 @@ private fun TranscriptMediaPreviewSheet(
     var didAttemptLoad by remember(reference.id) { mutableStateOf(false) }
     var isSaving by remember(reference.id) { mutableStateOf(false) }
     var saveMessage by remember(reference.id) { mutableStateOf<String?>(null) }
+    var videoFile by remember(reference.id) { mutableStateOf<File?>(null) }
     LaunchedEffect(reference.id) {
         didAttemptLoad = false
         bytes = loadMediaImage(reference)
         didAttemptLoad = true
     }
     val bitmap = rememberDecodedBitmap(bytes, maxDimension = 4_096, maxPixels = 8_000_000L)
-    val saveImage: () -> Unit = {
-        val imageBytes = bytes
-        if (imageBytes == null) {
-            saveMessage = "Could not save image."
+    val resolvedKind = remember(reference.id, bytes, bitmap) {
+        bytes?.let { data ->
+            if (bitmap != null) TranscriptMediaKind.Image else TranscriptMediaDataClassifier.resolvedKind(reference, data)
+        } ?: reference.mediaKind
+    }
+    LaunchedEffect(reference.id, bytes, resolvedKind) {
+        videoFile?.delete()
+        videoFile = null
+        val videoBytes = bytes?.takeIf { resolvedKind == TranscriptMediaKind.Video } ?: return@LaunchedEffect
+        videoFile = withContext(Dispatchers.IO) {
+            val extension = TranscriptMediaDataClassifier.suggestedExtension(reference, videoBytes)
+            File.createTempFile("hermex-transcript-video-", ".$extension", context.cacheDir).also { it.writeBytes(videoBytes) }
+        }
+    }
+    val latestVideoFile by rememberUpdatedState(videoFile)
+    DisposableEffect(reference.id) {
+        onDispose { latestVideoFile?.delete() }
+    }
+    val saveMedia: () -> Unit = {
+        val mediaBytes = bytes
+        if (mediaBytes == null) {
+            saveMessage = "Could not save media."
         } else {
             scope.launch {
                 isSaving = true
                 try {
                     saveMessage = withContext(Dispatchers.IO) {
-                        saveTranscriptMediaImageToGallery(context, reference, imageBytes)
+                        when (resolvedKind) {
+                            TranscriptMediaKind.Image -> saveTranscriptMediaImageToGallery(context, reference, mediaBytes)
+                            TranscriptMediaKind.Video -> saveTranscriptMediaVideoToGallery(context, reference, mediaBytes)
+                            else -> "This media type cannot be saved to Photos."
+                        }
                     }
                 } finally {
                     isSaving = false
@@ -3979,7 +4592,7 @@ private fun TranscriptMediaPreviewSheet(
         }
     }
     val legacyStoragePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) saveImage() else saveMessage = "Photos permission is required to save this image."
+        if (granted) saveMedia() else saveMessage = "Photos permission is required to save this media."
     }
 
     PickerSheet(
@@ -4005,30 +4618,47 @@ private fun TranscriptMediaPreviewSheet(
                             .clip(RoundedCornerShape(12.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        HermexPillButton(
-                            label = if (isSaving) "Saving" else "Save",
-                            onClick = {
-                                if (
-                                    Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
-                                    ContextCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                                    ) != PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    legacyStoragePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                                } else {
-                                    saveImage()
-                                }
-                            },
-                            enabled = !isSaving,
-                            filled = true,
-                        )
-                    }
                 }
+                resolvedKind == TranscriptMediaKind.Audio && bytes != null -> TranscriptMediaAudioView(
+                    reference = reference,
+                    initialData = bytes,
+                    remoteAlreadyApproved = true,
+                    loadMediaData = loadMediaImage,
+                )
+                resolvedKind == TranscriptMediaKind.Video && videoFile != null -> AndroidView(
+                    factory = { viewContext ->
+                        VideoView(viewContext).apply {
+                            val controller = MediaController(viewContext)
+                            controller.setAnchorView(this)
+                            setMediaController(controller)
+                        }
+                    },
+                    update = { videoView ->
+                        val path = videoFile?.absolutePath ?: return@AndroidView
+                        if (videoView.tag != path) {
+                            videoView.tag = path
+                            videoView.setVideoPath(path)
+                            videoView.setOnPreparedListener { player ->
+                                player.isLooping = false
+                                videoView.seekTo(1)
+                            }
+                        }
+                    },
+                    onRelease = { videoView ->
+                        videoView.stopPlayback()
+                        videoView.setMediaController(null)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(360.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.Black),
+                )
+                resolvedKind == TranscriptMediaKind.Unsupported && bytes != null -> TranscriptMediaFileDownloadView(
+                    reference = reference,
+                    initialData = bytes,
+                    loadMediaData = loadMediaImage,
+                )
                 didAttemptLoad -> TranscriptMediaUnavailableChip(reference = reference)
                 else -> {
                     Box(
@@ -4039,6 +4669,37 @@ private fun TranscriptMediaPreviewSheet(
                     ) {
                         CircularProgressIndicator(strokeWidth = 2.dp)
                     }
+                }
+            }
+            if (bytes != null && (resolvedKind == TranscriptMediaKind.Image || resolvedKind == TranscriptMediaKind.Video)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TranscriptMediaDownloadButton(
+                        reference = reference,
+                        initialData = bytes,
+                        loadMediaData = loadMediaImage,
+                    )
+                    HermexPillButton(
+                        label = localizedString(if (isSaving) "Saving" else "Save"),
+                        onClick = {
+                            if (
+                                Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                                ) != PackageManager.PERMISSION_GRANTED
+                            ) {
+                                legacyStoragePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            } else {
+                                saveMedia()
+                            }
+                        },
+                        enabled = !isSaving,
+                        filled = true,
+                    )
                 }
             }
             saveMessage?.let { message ->
@@ -4059,7 +4720,7 @@ private fun saveTranscriptMediaImageToGallery(
     bytes: ByteArray,
 ): String = runCatching {
     val resolver = context.contentResolver
-    val fileName = reference.galleryFilename()
+    val fileName = reference.exportFilename(TranscriptMediaDataClassifier.suggestedExtension(reference, bytes))
     val values = ContentValues().apply {
         put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
         put(MediaStore.MediaColumns.MIME_TYPE, fileName.galleryMimeType())
@@ -4088,14 +4749,49 @@ private fun saveTranscriptMediaImageToGallery(
     "Could not save image: ${error.localizedMessage ?: "Unknown error."}"
 }
 
-private fun TranscriptMediaReference.galleryFilename(): String {
+private fun saveTranscriptMediaVideoToGallery(
+    context: Context,
+    reference: TranscriptMediaReference,
+    bytes: ByteArray,
+): String = runCatching {
+    val resolver = context.contentResolver
+    val extension = TranscriptMediaDataClassifier.suggestedExtension(reference, bytes)
+    val fileName = reference.exportFilename(extension)
+    val values = ContentValues().apply {
+        put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+        put(MediaStore.MediaColumns.MIME_TYPE, when (extension) {
+            "mov" -> "video/quicktime"
+            "m4v" -> "video/x-m4v"
+            else -> "video/mp4"
+        })
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "Movies/Hermex")
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+    }
+    val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
+        ?: error("Gallery did not create a video entry.")
+    try {
+        resolver.openOutputStream(uri)?.use { output -> output.write(bytes) }
+            ?: error("Could not open gallery item.")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            values.clear()
+            values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+        }
+        "Video saved to gallery."
+    } catch (error: Throwable) {
+        runCatching { resolver.delete(uri, null, null) }
+        throw error
+    }
+}.getOrElse { error ->
+    "Could not save video: ${error.localizedMessage ?: "Unknown error."}"
+}
+
+private fun TranscriptMediaReference.exportFilename(extension: String): String {
     val rawName = displayName.trim().takeIf { it.isNotBlank() } ?: "hermex-media"
-    val extension = rawName.substringAfterLast('.', missingDelimiterValue = "")
-        .lowercase(Locale.US)
-        .takeIf { it in galleryImageExtensions }
-        ?: "png"
+    if (rawName.substringAfterLast('.', missingDelimiterValue = "").isNotBlank()) return rawName
     val stem = rawName
-        .substringBeforeLast('.', missingDelimiterValue = rawName)
         .replace(Regex("[^A-Za-z0-9._-]+"), "_")
         .trim('.', '_', '-')
         .take(80)
@@ -4115,8 +4811,6 @@ private fun String.galleryMimeType(): String =
         "webp" -> "image/webp"
         else -> "image/png"
     }
-
-private val galleryImageExtensions = setOf("bmp", "gif", "heic", "heif", "jpg", "jpeg", "png", "tif", "tiff", "webp")
 
 @Composable
 private fun TranscriptLinkPreviewCard(
@@ -4203,12 +4897,16 @@ private fun TranscriptLinkPreviewCard(
 }
 
 @Composable
-private fun AssistantTurnHeader(timestamp: Double?) {
-    val timestampDescription = localizedString("Response Timestamps")
+private fun AssistantTurnHeader(timestamp: Double?, tokensPerSecond: Double?) {
+    val speed = responseSpeedText(tokensPerSecond)
+    val details = listOfNotNull(timestamp.shortTimeText(), speed)
+    val headerDescription = localizedString(
+        if (timestamp != null) "Response Timestamps" else "Response Speed",
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = timestampDescription },
+            .semantics { contentDescription = headerDescription },
         horizontalArrangement = Arrangement.spacedBy(5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -4218,15 +4916,24 @@ private fun AssistantTurnHeader(timestamp: Double?) {
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.SemiBold,
         )
-        timestamp.shortTimeText()?.let { time ->
+        details.forEach { detail ->
             Text(
-                time,
+                detail,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.secondary,
                 fontWeight = FontWeight.Medium,
             )
         }
     }
+}
+
+internal fun responseSpeedText(tokensPerSecond: Double?, locale: Locale = Locale.getDefault()): String? {
+    val value = tokensPerSecond?.takeIf { it.isFinite() && it > 0.0 } ?: return null
+    val formatter = NumberFormat.getNumberInstance(locale).apply {
+        minimumFractionDigits = 1
+        maximumFractionDigits = 1
+    }
+    return "${formatter.format(value)} t/s"
 }
 
 @Composable
@@ -5082,6 +5789,7 @@ private fun UserMessageBubble(
 @Composable
 private fun MessageActionSheet(
     context: MessageActionContext,
+    isListening: Boolean,
     messageActionEnabled: Boolean,
     isRegeneratingMessage: Boolean,
     isEditingMessage: Boolean,
@@ -5109,7 +5817,7 @@ private fun MessageActionSheet(
         ) {
             if (context.role == MessageActionRole.Assistant) {
                 MessageActionSheetRow(
-                    title = localizedString("Listen"),
+                    title = localizedString(if (isListening) "Stop Listening" else "Listen"),
                     symbol = "\u266a",
                     enabled = context.listenText?.isNotBlank() == true,
                     onClick = onListen,
@@ -5229,6 +5937,7 @@ private fun InlineAudioAttachmentPlayer(
     title: String,
     path: String?,
     loadAttachmentData: suspend (String) -> ByteArray?,
+    requiresRemoteApproval: Boolean = true,
 ) {
     val context = LocalContext.current
     var phase by remember(path) { mutableStateOf(AudioAttachmentPhase.Loading) }
@@ -5241,7 +5950,7 @@ private fun InlineAudioAttachmentPlayer(
     val remoteUrl = remember(path) {
         path?.let { (TranscriptMediaReference(it).source as? TranscriptMediaSource.RemoteUrl)?.url }
     }
-    val isRemote = remoteUrl != null
+    val isRemote = requiresRemoteApproval && remoteUrl != null
     val remoteLoadBlocked = remoteUrl?.scheme != null && remoteUrl.scheme != "https"
 
     LaunchedEffect(path, remoteLoadApproved) {
@@ -5752,7 +6461,7 @@ private fun ChatUiState.slashAutocompleteContext(): SlashAutocompleteContext =
             profile.name?.trim()?.takeIf { it.isNotEmpty() }
                 ?: profile.displayName?.trim()?.takeIf { it.isNotEmpty() }
         },
-        reasoningEfforts = reasoningOptions,
+        reasoningEfforts = (listOf("show", "hide") + reasoningOptions).distinct(),
         workspacePaths = buildList {
             workspaceRoots.mapNotNullTo(this) { root -> root.path?.trim()?.takeIf { it.isNotEmpty() } }
             workspaceSuggestions.mapNotNullTo(this) { path -> path.trim().takeIf { it.isNotEmpty() } }

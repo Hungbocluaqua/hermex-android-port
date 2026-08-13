@@ -32,6 +32,15 @@ final class SessionListMutationTests: XCTestCase {
                     archived: false,
                     projectId: "project-2",
                     profile: "work"
+                ),
+                SessionSummary(
+                    sessionId: "cached-subagent",
+                    title: "Cached delegated work",
+                    archived: false,
+                    projectId: "project-1",
+                    profile: "work",
+                    sourceTag: "subagent",
+                    readOnly: true
                 )
             ],
             serverURL: serverURL,
@@ -53,11 +62,23 @@ final class SessionListMutationTests: XCTestCase {
 
         XCTAssertEqual(
             Set(viewModel.sessions.compactMap(\.sessionId)),
-            Set(["cached-project-one", "cached-project-two"])
+            Set(["cached-project-one", "cached-project-two", "cached-subagent"])
         )
         XCTAssertEqual(
-            viewModel.visibleSessions(searchText: "", selectedProjectID: "project-1").compactMap(\.sessionId),
+            viewModel.visibleSessions(
+                searchText: "",
+                selectedProjectID: "project-1",
+                automatedVisibility: AutomatedSessionVisibility(showsCron: true, showsCli: true)
+            ).compactMap(\.sessionId),
             ["cached-project-one"]
+        )
+        XCTAssertEqual(
+            Set(viewModel.visibleSessions(
+                searchText: "",
+                selectedProjectID: "project-1",
+                automatedVisibility: .showAll
+            ).compactMap(\.sessionId)),
+            Set(["cached-project-one", "cached-subagent"])
         )
         XCTAssertTrue(viewModel.isViewingCachedData)
         XCTAssertNil(viewModel.errorMessage)
@@ -164,6 +185,89 @@ final class SessionListMutationTests: XCTestCase {
     }
 
     @MainActor
+    func testLoadFiltersEmptyUntitledPlaceholdersButKeepsRealUntitledRows() async throws {
+        let context = try makeContext()
+        let serverURL = try XCTUnwrap(URL(string: "https://example.test"))
+        let viewModel = try makeViewModel { request in
+            XCTAssertEqual(request.url?.path, "/api/sessions")
+            return apiTestJSONResponse("""
+            {
+              "sessions": [
+                {
+                  "session_id": "empty-placeholder",
+                  "title": "Untitled Session",
+                  "message_count": 0,
+                  "archived": false
+                },
+                {
+                  "session_id": "empty-placeholder-missing-count",
+                  "title": "Untitled Session",
+                  "archived": false
+                },
+                {
+                  "session_id": "contentful-untitled",
+                  "title": "Untitled Session",
+                  "message_count": 2,
+                  "archived": false
+                },
+                {
+                  "session_id": "recent-untitled",
+                  "title": "Untitled",
+                  "message_count": 0,
+                  "last_message_at": 1770000000,
+                  "archived": false
+                },
+                {
+                  "session_id": "streaming-untitled",
+                  "title": "Untitled",
+                  "message_count": 0,
+                  "active_stream_id": "stream-123",
+                  "archived": false
+                },
+                {
+                  "session_id": "pending-untitled",
+                  "title": "Untitled",
+                  "message_count": 0,
+                  "has_pending_user_message": true,
+                  "archived": false
+                },
+                {
+                  "session_id": "worktree-untitled",
+                  "title": "Untitled",
+                  "message_count": 0,
+                  "worktree_path": "/tmp/hermes-worktree",
+                  "archived": false
+                },
+                {
+                  "session_id": "named-empty",
+                  "title": "Planning",
+                  "message_count": 0,
+                  "archived": false
+                }
+              ]
+            }
+            """, for: request)
+        }
+
+        await viewModel.load(modelContext: context)
+
+        let expectedIDs = [
+            "contentful-untitled",
+            "streaming-untitled",
+            "pending-untitled",
+            "worktree-untitled",
+            "named-empty"
+        ]
+        let loadedIDs = viewModel.sessions.compactMap(\.sessionId)
+        XCTAssertEqual(Set(loadedIDs), Set(expectedIDs))
+        XCTAssertEqual(loadedIDs.count, expectedIDs.count)
+
+        let cachedIDs = try CacheStore.cachedSessions(serverURL: serverURL, in: context).compactMap(\.sessionId)
+        XCTAssertEqual(Set(cachedIDs), Set(expectedIDs))
+        XCTAssertEqual(cachedIDs.count, expectedIDs.count)
+    }
+
+    @MainActor
     func testLoadDoesNotUseCachedSessionsForRealServerError() async throws {
         let context = try makeContext()
         let serverURL = try XCTUnwrap(URL(string: "https://example.test"))
@@ -194,7 +298,9 @@ final class SessionListMutationTests: XCTestCase {
     }
 
     @MainActor
-    func testCreateSessionInsertsReturnedSessionWithoutReloadingSessionList() async throws {
+    func testCreateSessionReturnsEmptyPlaceholderWithoutInsertingIntoSessionList() async throws {
+        let context = try makeContext()
+        let serverURL = try XCTUnwrap(URL(string: "https://example.test"))
         var requestedPaths: [String] = []
         let viewModel = try makeViewModel { request in
             let path = request.url?.path
@@ -223,6 +329,8 @@ final class SessionListMutationTests: XCTestCase {
                     "session_id": "new-123",
                     "title": "Untitled Session",
                     "workspace": "/tmp/workspace",
+                    "updated_at": 1770000000,
+                    "last_message_at": 1770000000,
                     "archived": false
                   }
                 }
@@ -236,14 +344,58 @@ final class SessionListMutationTests: XCTestCase {
             }
         }
 
-        let created = await viewModel.createSession()
+        let created = await viewModel.createSession(modelContext: context)
 
         XCTAssertEqual(created?.sessionId, "new-123")
-        XCTAssertEqual(viewModel.sessions.compactMap(\.sessionId), ["new-123"])
+        XCTAssertTrue(viewModel.sessions.isEmpty)
+        XCTAssertTrue(try CacheStore.cachedSessions(serverURL: serverURL, in: context).isEmpty)
         XCTAssertEqual(requestedPaths, ["/api/workspaces", "/api/session/new"])
         XCTAssertFalse(viewModel.isCreatingSession)
         XCTAssertNil(viewModel.actionErrorMessage)
         XCTAssertNil(viewModel.lastError)
+    }
+
+    @MainActor
+    func testCreateSessionKeepsWorktreeBackedUntitledSessionWithoutCounts() async throws {
+        let context = try makeContext()
+        let serverURL = try XCTUnwrap(URL(string: "https://example.test"))
+        let viewModel = try makeViewModel { request in
+            switch request.url?.path {
+            case "/api/workspaces":
+                return apiTestJSONResponse("""
+                {
+                  "workspaces": [
+                    {"path": "/tmp/workspace", "name": "Workspace"}
+                  ],
+                  "last": "/tmp/workspace"
+                }
+                """, for: request)
+            case "/api/session/new":
+                return apiTestJSONResponse("""
+                {
+                  "session": {
+                    "session_id": "worktree-new",
+                    "title": "Untitled Session",
+                    "workspace": "/tmp/workspace",
+                    "worktree_path": "/tmp/hermes-worktree",
+                    "archived": false
+                  }
+                }
+                """, for: request)
+            default:
+                XCTFail("Unexpected request path: \(request.url?.path ?? "nil")")
+                throw URLError(.badURL)
+            }
+        }
+
+        let created = await viewModel.createSession(modelContext: context)
+
+        XCTAssertEqual(created?.sessionId, "worktree-new")
+        XCTAssertEqual(viewModel.sessions.compactMap(\.sessionId), ["worktree-new"])
+        XCTAssertEqual(
+            try CacheStore.cachedSessions(serverURL: serverURL, in: context).compactMap(\.sessionId),
+            ["worktree-new"]
+        )
     }
 
     @MainActor
@@ -2063,11 +2215,129 @@ final class SessionListMutationTests: XCTestCase {
         XCTAssertFalse(SessionSummary(sessionId: "s6").isCronSession)
     }
 
+    func testDelegatedSubagentRequiresExplicitSourceMarker() {
+        XCTAssertTrue(SessionSummary(sessionId: "s1", sourceTag: "subagent").isDelegatedSubagentSession)
+        XCTAssertTrue(SessionSummary(sessionId: "s2", rawSource: " SubAgent ").isDelegatedSubagentSession)
+        XCTAssertTrue(SessionSummary(sessionId: "s3", sessionSource: "subagent").isDelegatedSubagentSession)
+        XCTAssertTrue(SessionSummary(sessionId: "s4", sourceLabel: "Subagent").isDelegatedSubagentSession)
+
+        XCTAssertFalse(
+            SessionSummary(
+                sessionId: "fork",
+                sourceTag: "fork",
+                parentSessionId: "parent",
+                relationshipType: "fork"
+            ).isDelegatedSubagentSession
+        )
+        XCTAssertFalse(
+            SessionSummary(
+                sessionId: "continuation",
+                sessionSource: "webui",
+                parentSessionId: "parent",
+                relationshipType: "compression_continuation"
+            ).isDelegatedSubagentSession
+        )
+        XCTAssertFalse(SessionSummary(sessionId: "parent-only", parentSessionId: "parent").isDelegatedSubagentSession)
+        XCTAssertFalse(SessionSummary(sessionId: "cron_1", sourceTag: "cron").isDelegatedSubagentSession)
+        XCTAssertFalse(SessionSummary(sessionId: "cli", isCliSession: true).isDelegatedSubagentSession)
+        XCTAssertFalse(SessionSummary(sessionId: "normal").isDelegatedSubagentSession)
+    }
+
+    func testClaudeCodeSessionRequiresExplicitSourceMetadata() {
+        XCTAssertTrue(SessionSummary(sessionId: "s1", sourceTag: "claude_code").isClaudeCodeSession)
+        XCTAssertTrue(
+            SessionSummary(sessionId: "s2", rawSource: "  Claude_Code ").isClaudeCodeSession
+        )
+
+        XCTAssertFalse(
+            SessionSummary(
+                sessionId: "descriptive-only",
+                title: "Claude Code session",
+                model: "claude-sonnet",
+                isCliSession: true,
+                sessionSource: "claude_code",
+                sourceLabel: "Claude Code"
+            ).isClaudeCodeSession
+        )
+        XCTAssertFalse(SessionSummary(sessionId: "normal").isClaudeCodeSession)
+    }
+
+    func testReadOnlyRowsOfferExportButNoMutationActions() {
+        let currentShape = SessionSummary(sessionId: "current", readOnly: true)
+        let legacyShape = SessionSummary(sessionId: "legacy", isReadOnly: true)
+        let normal = SessionSummary(sessionId: "normal")
+
+        XCTAssertFalse(SessionRowActionPolicy.offersMutationActions(for: currentShape))
+        XCTAssertFalse(SessionRowActionPolicy.offersMutationActions(for: legacyShape))
+        XCTAssertFalse(
+            SessionRowActionPolicy.offersMutationActions(
+                for: SessionSummary(sessionId: "subagent", sourceTag: "subagent")
+            )
+        )
+        XCTAssertTrue(SessionRowActionPolicy.offersMutationActions(for: normal))
+
+        XCTAssertTrue(SessionRowActionPolicy.canExport(currentShape, isViewingCachedData: false))
+        XCTAssertFalse(SessionRowActionPolicy.canExport(currentShape, isViewingCachedData: true))
+        XCTAssertFalse(
+            SessionRowActionPolicy.canExport(
+                SessionSummary(sessionId: nil, readOnly: true),
+                isViewingCachedData: false
+            )
+        )
+    }
+
+    func testCopyDeepLinkUsesExportAvailabilityRules() throws {
+        let session = SessionSummary(sessionId: "session & /?=✓", readOnly: true)
+
+        let url = try XCTUnwrap(
+            SessionRowActionPolicy.deepLinkURL(
+                for: session,
+                isViewingCachedData: false,
+                isMutating: false
+            )
+        )
+        XCTAssertEqual(HermesDeepLink.sessionID(from: url), session.sessionId)
+        XCTAssertNil(
+            SessionRowActionPolicy.deepLinkURL(
+                for: session,
+                isViewingCachedData: true,
+                isMutating: false
+            )
+        )
+        XCTAssertNil(
+            SessionRowActionPolicy.deepLinkURL(
+                for: session,
+                isViewingCachedData: false,
+                isMutating: true
+            )
+        )
+        XCTAssertNil(
+            SessionRowActionPolicy.deepLinkURL(
+                for: SessionSummary(sessionId: nil),
+                isViewingCachedData: false,
+                isMutating: false
+            )
+        )
+    }
+
     func testAutomatedVisibilityShowAllKeepsEveryKind() {
         let visibility = AutomatedSessionVisibility.showAll
         XCTAssertTrue(visibility.shows(SessionSummary(sessionId: "cron_1")))
         XCTAssertTrue(visibility.shows(SessionSummary(sessionId: "cli-1", isCliSession: true)))
+        XCTAssertTrue(visibility.shows(SessionSummary(sessionId: "subagent", sourceTag: "subagent")))
         XCTAssertTrue(visibility.shows(SessionSummary(sessionId: "normal")))
+    }
+
+    func testAutomatedVisibilityHidesSubagentsByDefaultAndShowsThemWhenEnabled() {
+        let child = SessionSummary(sessionId: "subagent", sourceTag: "subagent")
+        XCTAssertFalse(AutomatedSessionVisibility(showsCron: true, showsCli: true).shows(child))
+        XCTAssertTrue(
+            AutomatedSessionVisibility(
+                showsCron: true,
+                showsCli: true,
+                showsSubagents: true
+            ).shows(child)
+        )
     }
 
     func testAutomatedVisibilityHidesCronIndependently() {
@@ -2087,11 +2357,154 @@ final class SessionListMutationTests: XCTestCase {
         XCTAssertTrue(visibility.shows(SessionSummary(sessionId: "normal")))
     }
 
+    func testAutomatedVisibilityAppliesClaudeCodeChildPreferenceUnderCliParent() {
+        let claudeCode = SessionSummary(
+            sessionId: "claude-code",
+            isCliSession: true,
+            sourceTag: "claude_code"
+        )
+        let ordinaryCli = SessionSummary(sessionId: "ordinary-cli", isCliSession: true)
+
+        let childHidden = AutomatedSessionVisibility(
+            showsCron: true,
+            showsCli: true,
+            showsClaudeCode: false
+        )
+        XCTAssertFalse(childHidden.shows(claudeCode))
+        XCTAssertTrue(childHidden.shows(ordinaryCli))
+
+        let childShown = AutomatedSessionVisibility(
+            showsCron: true,
+            showsCli: true,
+            showsClaudeCode: true
+        )
+        XCTAssertTrue(childShown.shows(claudeCode))
+
+        let parentHidden = AutomatedSessionVisibility(
+            showsCron: true,
+            showsCli: false,
+            showsClaudeCode: true
+        )
+        XCTAssertFalse(parentHidden.shows(claudeCode))
+        XCTAssertFalse(parentHidden.shows(ordinaryCli))
+    }
+
     func testAutomatedVisibilityHidesBothKinds() {
         let visibility = AutomatedSessionVisibility(showsCron: false, showsCli: false)
         XCTAssertFalse(visibility.shows(SessionSummary(sessionId: "cron_1")))
         XCTAssertFalse(visibility.shows(SessionSummary(sessionId: "cli-1", isCliSession: true)))
         XCTAssertTrue(visibility.shows(SessionSummary(sessionId: "normal")))
+    }
+
+    @MainActor
+    func testScheduledSessionGroupsSeparatesAndCapsNewestNonArchivedCronSessions() async throws {
+        let viewModel = try makeViewModel { request in
+            XCTAssertEqual(request.url?.path, "/api/sessions")
+            return apiTestJSONResponse("""
+            {
+              "sessions": [
+                {"session_id":"ordinary","title":"Ordinary","updated_at":50},
+                {"session_id":"cron_1","title":"Scheduled 1","updated_at":10},
+                {"session_id":"cron_2","title":"Scheduled 2","updated_at":20},
+                {"session_id":"cron_3","title":"Scheduled 3","updated_at":30},
+                {"session_id":"cron_4","title":"Scheduled 4","updated_at":40},
+                {"session_id":"cron_5","title":"Scheduled 5","updated_at":50},
+                {"session_id":"cron_6","title":"Scheduled 6","updated_at":60},
+                {"session_id":"cron_7","title":"Scheduled 7","updated_at":70},
+                {"session_id":"cron_archived","title":"Archived scheduled","updated_at":80,"archived":true}
+              ]
+            }
+            """, for: request)
+        }
+
+        await viewModel.load()
+        let groups = viewModel.scheduledSessionGroups(searchText: "", selectedProjectID: nil)
+
+        XCTAssertEqual(groups.ordinary.compactMap(\.sessionId), ["ordinary"])
+        XCTAssertEqual(groups.totalScheduledCount, 7)
+        XCTAssertEqual(
+            groups.scheduled.compactMap(\.sessionId),
+            ["cron_7", "cron_6", "cron_5", "cron_4", "cron_3", "cron_2", "cron_1"]
+        )
+        XCTAssertEqual(
+            groups.scheduledPreview.compactMap(\.sessionId),
+            ["cron_7", "cron_6", "cron_5", "cron_4", "cron_3"]
+        )
+        XCTAssertTrue(groups.hasAdditionalScheduledSessions)
+        XCTAssertTrue(groups.showsDisclosure(isSearchActive: false))
+    }
+
+    @MainActor
+    func testScheduledSessionGroupsRespectCronVisibilityAndSearchWithoutCappingMatches() async throws {
+        let viewModel = try makeViewModel { request in
+            XCTAssertEqual(request.url?.path, "/api/sessions")
+            return apiTestJSONResponse("""
+            {
+              "sessions": [
+                {"session_id":"ordinary","title":"Needle ordinary","updated_at":5},
+                {"session_id":"cron_1","title":"Needle scheduled 1","updated_at":10},
+                {"session_id":"cron_2","title":"Needle scheduled 2","updated_at":20},
+                {"session_id":"cron_3","title":"Needle scheduled 3","updated_at":30},
+                {"session_id":"cron_4","title":"Needle scheduled 4","updated_at":40},
+                {"session_id":"cron_5","title":"Needle scheduled 5","updated_at":50},
+                {"session_id":"cron_6","title":"Needle scheduled 6","updated_at":60}
+              ]
+            }
+            """, for: request)
+        }
+
+        await viewModel.load()
+        let matches = viewModel.scheduledSessionGroups(searchText: "needle", selectedProjectID: nil)
+        XCTAssertEqual(matches.ordinary.compactMap(\.sessionId), ["ordinary"])
+        XCTAssertEqual(matches.scheduled.count, 6)
+        XCTAssertEqual(matches.totalScheduledCount, 6)
+        XCTAssertTrue(matches.showsDisclosure(isSearchActive: true))
+
+        let noScheduledMatches = viewModel.scheduledSessionGroups(
+            searchText: "ordinary",
+            selectedProjectID: nil
+        )
+        XCTAssertFalse(noScheduledMatches.showsDisclosure(isSearchActive: true))
+        XCTAssertTrue(noScheduledMatches.showsDisclosure(isSearchActive: false))
+
+        let hidden = viewModel.scheduledSessionGroups(
+            searchText: "",
+            selectedProjectID: nil,
+            automatedVisibility: AutomatedSessionVisibility(showsCron: false, showsCli: true)
+        )
+        XCTAssertTrue(hidden.scheduled.isEmpty)
+        XCTAssertEqual(hidden.totalScheduledCount, 0)
+        XCTAssertEqual(hidden.ordinary.compactMap(\.sessionId), ["ordinary"])
+        XCTAssertFalse(hidden.showsDisclosure(isSearchActive: false))
+    }
+
+    @MainActor
+    func testScheduledSessionGroupsApplyProjectFilterToScheduledAndOrdinaryRows() async throws {
+        let viewModel = try makeViewModel { request in
+            XCTAssertEqual(request.url?.path, "/api/sessions")
+            return apiTestJSONResponse("""
+            {
+              "sessions": [
+                {"session_id":"ordinary-1","title":"Ordinary one","project_id":"project-1"},
+                {"session_id":"ordinary-2","title":"Ordinary two","project_id":"project-2"},
+                {"session_id":"cron_1","title":"Scheduled one","project_id":"project-1"},
+                {"session_id":"cron_2","title":"Scheduled two","project_id":"project-2"}
+              ]
+            }
+            """, for: request)
+        }
+
+        await viewModel.load()
+        let groups = viewModel.scheduledSessionGroups(
+            searchText: "",
+            selectedProjectID: "project-1"
+        )
+
+        XCTAssertEqual(groups.ordinary.compactMap(\.sessionId), ["ordinary-1"])
+        XCTAssertEqual(groups.scheduled.compactMap(\.sessionId), ["cron_1"])
+        // The badge is intentionally global even when rows are project-filtered:
+        // issue #125 requires the total number of non-archived scheduled sessions.
+        XCTAssertEqual(groups.totalScheduledCount, 2)
     }
 
     @MainActor
@@ -2147,6 +2560,157 @@ final class SessionListMutationTests: XCTestCase {
                 automatedVisibility: AutomatedSessionVisibility(showsCron: false, showsCli: false)
             ).compactMap(\.sessionId),
             ["normal-1", "normal-2"]
+        )
+    }
+
+    @MainActor
+    func testVisibleSessionsFiltersSubagentsAcrossSearchAndProjects() async throws {
+        let viewModel = try makeViewModel { request in
+            switch request.url?.path {
+            case "/api/sessions":
+                return apiTestJSONResponse("""
+                {
+                  "sessions": [
+                    {"session_id": "normal-p1", "title": "Planning", "project_id": "p1", "last_message_at": 40},
+                    {"session_id": "subagent-p1", "title": "Delegated research", "project_id": "p1", "source_tag": "subagent", "read_only": true, "last_message_at": 30},
+                    {"session_id": "fork-p1", "title": "Ordinary fork", "project_id": "p1", "parent_session_id": "normal-p1", "relationship_type": "fork", "last_message_at": 20},
+                    {"session_id": "normal-p2", "title": "Other project", "project_id": "p2", "last_message_at": 10}
+                  ]
+                }
+                """, for: request)
+            case "/api/sessions/search":
+                return apiTestJSONResponse("""
+                {
+                  "sessions": [
+                    {"session_id": "subagent-p1", "title": "Delegated research", "match_type": "content"},
+                    {"session_id": "normal-p2", "title": "Other project", "match_type": "content"}
+                  ],
+                  "query": "needle",
+                  "count": 2
+                }
+                """, for: request)
+            default:
+                XCTFail("Unexpected request path: \(request.url?.path ?? "nil")")
+                throw URLError(.badURL)
+            }
+        }
+
+        await viewModel.load()
+        let hidden = AutomatedSessionVisibility(showsCron: true, showsCli: true)
+        let shown = AutomatedSessionVisibility(
+            showsCron: true,
+            showsCli: true,
+            showsSubagents: true
+        )
+
+        XCTAssertEqual(
+            viewModel.visibleSessions(
+                searchText: "",
+                selectedProjectID: "p1",
+                automatedVisibility: hidden
+            ).compactMap(\.sessionId),
+            ["normal-p1", "fork-p1"]
+        )
+        XCTAssertEqual(
+            viewModel.visibleSessions(
+                searchText: "",
+                selectedProjectID: "p1",
+                automatedVisibility: shown
+            ).compactMap(\.sessionId),
+            ["normal-p1", "subagent-p1", "fork-p1"]
+        )
+        XCTAssertTrue(
+            viewModel.visibleSessions(
+                searchText: "delegated",
+                selectedProjectID: nil,
+                automatedVisibility: hidden
+            ).isEmpty
+        )
+        XCTAssertEqual(
+            viewModel.visibleSessions(
+                searchText: "delegated",
+                selectedProjectID: nil,
+                automatedVisibility: shown
+            ).compactMap(\.sessionId),
+            ["subagent-p1"]
+        )
+
+        await viewModel.searchSessions(query: "needle", debounceNanoseconds: 0)
+
+        XCTAssertTrue(
+            viewModel.visibleSessions(
+                searchText: "needle",
+                selectedProjectID: "p1",
+                automatedVisibility: hidden
+            ).isEmpty
+        )
+        XCTAssertEqual(
+            viewModel.visibleSessions(
+                searchText: "needle",
+                selectedProjectID: "p1",
+                automatedVisibility: shown
+            ).compactMap(\.sessionId),
+            ["subagent-p1"]
+        )
+    }
+
+    @MainActor
+    func testVisibleSessionsFiltersClaudeCodeAcrossSearchAndProjects() async throws {
+        let viewModel = try makeViewModel { request in
+            switch request.url?.path {
+            case "/api/sessions":
+                return apiTestJSONResponse("""
+                {
+                  "sessions": [
+                    {"session_id": "normal-p1", "title": "Planning", "project_id": "p1", "last_message_at": 40},
+                    {"session_id": "claude-p1", "title": "Imported transcript", "project_id": "p1", "source_tag": "claude_code", "raw_source": "claude_code", "is_cli_session": true, "read_only": true, "last_message_at": 30},
+                    {"session_id": "cli-p1", "title": "Terminal chat", "project_id": "p1", "source_tag": "cli", "is_cli_session": true, "last_message_at": 20},
+                    {"session_id": "normal-p2", "title": "Other project", "project_id": "p2", "last_message_at": 10}
+                  ]
+                }
+                """, for: request)
+            case "/api/sessions/search":
+                return apiTestJSONResponse("""
+                {
+                  "sessions": [
+                    {"session_id": "claude-p1", "title": "Imported transcript", "match_type": "content"},
+                    {"session_id": "cli-p1", "title": "Terminal chat", "match_type": "content"}
+                  ],
+                  "query": "needle",
+                  "count": 2
+                }
+                """, for: request)
+            default:
+                XCTFail("Unexpected request path: \(request.url?.path ?? "nil")")
+                throw URLError(.badURL)
+            }
+        }
+
+        await viewModel.load()
+        let hidden = AutomatedSessionVisibility(
+            showsCron: true,
+            showsCli: true,
+            showsClaudeCode: false
+        )
+
+        XCTAssertEqual(
+            viewModel.visibleSessions(
+                searchText: "",
+                selectedProjectID: "p1",
+                automatedVisibility: hidden
+            ).compactMap(\.sessionId),
+            ["normal-p1", "cli-p1"]
+        )
+
+        await viewModel.searchSessions(query: "needle", debounceNanoseconds: 0)
+
+        XCTAssertEqual(
+            viewModel.visibleSessions(
+                searchText: "needle",
+                selectedProjectID: "p1",
+                automatedVisibility: hidden
+            ).compactMap(\.sessionId),
+            ["cli-p1"]
         )
     }
 

@@ -21,7 +21,6 @@
     "Delete task?": "Delete Task?",
     "Diff was large; message may be partial.": "Changes unavailable",
     "Discard changes?": "Discard Later Messages?",
-    "Enter the Tailscale URL your agent returned, for example http://<tailnet-ip>:8787.": "Enter the Tailscale URL your agent returned, for example `http://<tailnet-ip>:8787`.",
     "Edit Identity": "Identity",
     "Export HTML": "Export as HTML",
     "Export JSON": "Export as JSON",
@@ -95,9 +94,9 @@
       }
     },
     "Control your Hermes agent from Android.": {
-      "source": "Control your Hermes agent from iPhone.",
+      "source": "Control your Hermes agent from iPhone or iPad.",
       "replace": {
-        "iPhone": "Android"
+        "iPhone or iPad": "Android"
       }
     },
     "Get Tailscale on Google Play": {

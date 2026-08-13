@@ -13,6 +13,7 @@
     <string name="widget_new_session">מפגש חדש</string>
     <string name="widget_new_voice">קלט קולי</string>
     <string name="nav_tasks">משימות</string>
+    <string name="nav_kanban">קנבן</string>
     <string name="nav_skills">מיומנויות</string>
     <string name="nav_memory">זיכרון</string>
     <string name="nav_insights">תובנות</string>

@@ -151,6 +151,10 @@ final class ContractReadinessTests: XCTestCase {
                 path: "/api/workspaces/suggest",
                 query: ["prefix": "/Users/uzair"]
             ),
+            .init(name: "workspace add", method: "POST", endpoint: .workspaceAdd, path: "/api/workspaces/add"),
+            .init(name: "workspace remove", method: "POST", endpoint: .workspaceRemove, path: "/api/workspaces/remove"),
+            .init(name: "workspace rename", method: "POST", endpoint: .workspaceRename, path: "/api/workspaces/rename"),
+            .init(name: "workspace reorder", method: "POST", endpoint: .workspaceReorder, path: "/api/workspaces/reorder"),
             .init(
                 name: "directory list root",
                 method: "GET",
@@ -182,9 +186,9 @@ final class ContractReadinessTests: XCTestCase {
             .init(
                 name: "media",
                 method: "GET",
-                endpoint: .media(path: "Assets/icon.png"),
+                endpoint: .media(sessionID: "session-123", path: "Assets/icon.png"),
                 path: "/api/media",
-                query: ["path": "Assets/icon.png"]
+                query: ["session_id": "session-123", "path": "Assets/icon.png"]
             ),
             .init(name: "models", method: "GET", endpoint: .models, path: "/api/models"),
             .init(name: "models live", method: "GET", endpoint: .modelsLive, path: "/api/models/live"),
@@ -234,6 +238,12 @@ final class ContractReadinessTests: XCTestCase {
                 endpoint: .cronOutput(jobID: "job-123", limit: 5),
                 path: "/api/crons/output",
                 query: ["job_id": "job-123", "limit": "5"]
+            ),
+            .init(
+                name: "cron delivery options",
+                method: "GET",
+                endpoint: .cronDeliveryOptions,
+                path: "/api/crons/delivery-options"
             ),
             .init(name: "memory", method: "GET", endpoint: .memory, path: "/api/memory"),
             .init(name: "memory write", method: "POST", endpoint: .memoryWrite, path: "/api/memory/write"),

@@ -4,6 +4,7 @@
     <string name="l10n_da39a3ee5e6b4b0d" formatted="false">""</string>
     <string name="l10n_c5f4841e88283b20" formatted="false">"%@ "</string>
     <string name="l10n_f4bf1c5a87391cee" formatted="false">"%@ (کاپی)"</string>
+    <string name="l10n_2ca3ef88d532a8ea" formatted="false">"%@ (حسبِ ضرورت)"</string>
     <string name="l10n_65f24878983ab599" formatted="false">"%@ کیشے"</string>
     <string name="l10n_d5e871cae9c94743" formatted="false">"%@ ہیڈر لوگو رنگ"</string>
     <string name="l10n_ceccebb4580279f7" formatted="false">"%1$@ اِن / %2$@ آؤٹ"</string>
@@ -16,13 +17,89 @@
     <string name="l10n_101047989486fe1e" formatted="false">"%1$@، %2$@، فعال سرور"</string>
     <string name="l10n_bc576900b6f6e566" formatted="false">"%@، فعال سرور"</string>
     <string name="l10n_16070acfe08366e8" formatted="false">"%lld"</string>
+    <string name="l10n_ec77970ef773212e" formatted="false">"%lld کارڈز"</string>
+    <plurals name="l10n_ec77970ef773212e">
+        <item quantity="zero">"%d کارڈز"</item>
+        <item quantity="one">"%d کارڈ"</item>
+        <item quantity="two">"%d کارڈز"</item>
+        <item quantity="few">"%d کارڈز"</item>
+        <item quantity="many">"%d کارڈز"</item>
+        <item quantity="other">"%d کارڈز"</item>
+    </plurals>
+    <string name="l10n_8d777c131031fa2e" formatted="false">"%lld منحصر کارڈز"</string>
+    <plurals name="l10n_8d777c131031fa2e">
+        <item quantity="zero">"%d منحصر کارڈز"</item>
+        <item quantity="one">"%d منحصر کارڈ"</item>
+        <item quantity="two">"%d منحصر کارڈز"</item>
+        <item quantity="few">"%d منحصر کارڈز"</item>
+        <item quantity="many">"%d منحصر کارڈز"</item>
+        <item quantity="other">"%d منحصر کارڈز"</item>
+    </plurals>
+    <string name="l10n_66a4be0dc2595729" formatted="false">"%lld پیشگی شرائط"</string>
+    <plurals name="l10n_66a4be0dc2595729">
+        <item quantity="zero">"%d پیشگی شرائط"</item>
+        <item quantity="one">"%d پیشگی شرط"</item>
+        <item quantity="two">"%d پیشگی شرائط"</item>
+        <item quantity="few">"%d پیشگی شرائط"</item>
+        <item quantity="many">"%d پیشگی شرائط"</item>
+        <item quantity="other">"%d پیشگی شرائط"</item>
+    </plurals>
     <string name="l10n_f6450a6cc043203f" formatted="false">"%lld شامل"</string>
+    <string name="l10n_5e99075a998414f8" formatted="false">"%lld تبصرے"</string>
+    <plurals name="l10n_5e99075a998414f8">
+        <item quantity="zero">"%d تبصرے"</item>
+        <item quantity="one">"%d تبصرہ"</item>
+        <item quantity="two">"%d تبصرے"</item>
+        <item quantity="few">"%d تبصرے"</item>
+        <item quantity="many">"%d تبصرے"</item>
+        <item quantity="other">"%d تبصرے"</item>
+    </plurals>
     <string name="l10n_06c13ef4292ad119" formatted="false">"%lld فائلیں تبدیل ہوئیں"</string>
+    <plurals name="l10n_06c13ef4292ad119">
+        <item quantity="zero">"%d فائلیں تبدیل ہوئیں"</item>
+        <item quantity="one">"%d فائل تبدیل ہوئی"</item>
+        <item quantity="two">"%d فائلیں تبدیل ہوئیں"</item>
+        <item quantity="few">"%d فائلیں تبدیل ہوئیں"</item>
+        <item quantity="many">"%d فائلیں تبدیل ہوئیں"</item>
+        <item quantity="other">"%d فائلیں تبدیل ہوئیں"</item>
+    </plurals>
     <string name="l10n_c4b7ead9d1bf1471" formatted="false">"%lld سطریں"</string>
+    <plurals name="l10n_c4b7ead9d1bf1471">
+        <item quantity="zero">"%d سطریں"</item>
+        <item quantity="one">"%d سطر"</item>
+        <item quantity="two">"%d سطریں"</item>
+        <item quantity="few">"%d سطریں"</item>
+        <item quantity="many">"%d سطریں"</item>
+        <item quantity="other">"%d سطریں"</item>
+    </plurals>
     <string name="l10n_2efcf5438a29b31f" formatted="false">"%lld پیغامات"</string>
+    <plurals name="l10n_2efcf5438a29b31f">
+        <item quantity="zero">"%d پیغامات"</item>
+        <item quantity="one">"%d پیغام"</item>
+        <item quantity="two">"%d پیغامات"</item>
+        <item quantity="few">"%d پیغامات"</item>
+        <item quantity="many">"%d پیغامات"</item>
+        <item quantity="other">"%d پیغامات"</item>
+    </plurals>
     <string name="l10n_ced88678ac893dde" formatted="false">"%lld ہٹائے گئے"</string>
     <string name="l10n_232aab9f8671f81d" formatted="false">"%lld سیشنز"</string>
+    <plurals name="l10n_232aab9f8671f81d">
+        <item quantity="zero">"%d سیشنز"</item>
+        <item quantity="one">"%d سیشن"</item>
+        <item quantity="two">"%d سیشنز"</item>
+        <item quantity="few">"%d سیشنز"</item>
+        <item quantity="many">"%d سیشنز"</item>
+        <item quantity="other">"%d سیشنز"</item>
+    </plurals>
     <string name="l10n_66137dc5d00d671d" formatted="false">"%lld مہارتیں"</string>
+    <plurals name="l10n_66137dc5d00d671d">
+        <item quantity="zero">"%d مہارتیں"</item>
+        <item quantity="one">"%d مہارت"</item>
+        <item quantity="two">"%d مہارتیں"</item>
+        <item quantity="few">"%d مہارتیں"</item>
+        <item quantity="many">"%d مہارتیں"</item>
+        <item quantity="other">"%d مہارتیں"</item>
+    </plurals>
     <string name="l10n_78cd57f9892157b8" formatted="false">"%lld%% سیاق"</string>
     <string name="l10n_6ab06c5fe8caa9fa" formatted="false">"%lld%% حصہ"</string>
     <string name="l10n_a5b19753b0ff34b9" formatted="false">"، تبدیلی جاری ہے"</string>
@@ -31,6 +108,7 @@
     <string name="l10n_1099d51b36a7e832" formatted="false">"/btw صرف WebUI سیشنز کے لیے دستیاب ہے۔"</string>
     <string name="l10n_449db9ef04232fc8" formatted="false">"1 فائل کو تبدیل کر دیا گیا۔"</string>
     <string name="l10n_4a5c7117b6d4d5cb" formatted="false">"%lld میں سے 1 زیرِ التوا"</string>
+    <string name="l10n_59f764ccfb926ae5" formatted="false">"-100 سے 100 تک کی پوری تعداد۔"</string>
     <string name="l10n_64d3c82b910a7784" formatted="false">"ورک اسپیس کی ایک مقامی فائل عالمی پروجیکٹ سیاق و سباق کو زیر کر رہی ہے۔"</string>
     <string name="l10n_cf678cab87dc1f7d" formatted="false">"API کلید"</string>
     <string name="l10n_85dfa32c97d8618d" formatted="false">"اکاؤنٹ"</string>
@@ -41,11 +119,22 @@
     <string name="l10n_d74340399e2a5b1d" formatted="false">"فعال پروفائل"</string>
     <string name="l10n_81c0d915fa6d82fd" formatted="false">"سرگرمی"</string>
     <string name="l10n_03f7eb4fcb825734" formatted="false">"سرگرمی: %lld ٹولز"</string>
+    <plurals name="l10n_03f7eb4fcb825734">
+        <item quantity="zero">"سرگرمی: %d ٹولز"</item>
+        <item quantity="one">"سرگرمی: %d ٹول"</item>
+        <item quantity="two">"سرگرمی: %d ٹولز"</item>
+        <item quantity="few">"سرگرمی: %d ٹولز"</item>
+        <item quantity="many">"سرگرمی: %d ٹولز"</item>
+        <item quantity="other">"سرگرمی: %d ٹولز"</item>
+    </plurals>
     <string name="l10n_61cc55aa04531847" formatted="false">"شامل کریں"</string>
     <string name="l10n_ea65bead2508867e" formatted="false">"%@ کو پسندیدہ میں شامل کریں"</string>
     <string name="l10n_42b949077d2f4201" formatted="false">"ہیڈر شامل کریں"</string>
+    <string name="l10n_d8ceee085e884024" formatted="false">"پیشگی شرط شامل کریں"</string>
     <string name="l10n_99044355f0319f6b" formatted="false">"سرور شامل کریں"</string>
     <string name="l10n_c378a1c16565ceba" formatted="false">"سرور شامل کریں…"</string>
+    <string name="l10n_a603825bf2c876ef" formatted="false">"ورک اسپیس شامل کریں"</string>
+    <string name="l10n_a245782af7f0aa40" formatted="false">"سیشن شروع کرتے وقت دستیاب بنانے کے لیے ورک اسپیس شامل کریں۔"</string>
     <string name="l10n_cf845d10129ecb8c" formatted="false">"حسبِ ضرورت ماڈل کو پسندیدہ میں شامل کریں"</string>
     <string name="l10n_d5a110d69bfeccca" formatted="false">"ہیڈر شامل کریں"</string>
     <string name="l10n_2470e8667bfae527" formatted="false">"پراجیکٹ شامل کریں"</string>
@@ -70,6 +159,7 @@
     <string name="l10n_902793b227093e34" formatted="false">"ہمیشہ لائٹ آئیکن استعمال کریں"</string>
     <string name="l10n_06ee5beccc033b61" formatted="false">"ہمیشہ ڈارک مونوکروم آئیکن استعمال کریں"</string>
     <string name="l10n_4d538a18a87dcd64" formatted="false">"ہمیشہ ہلکا مونوکروم آئیکن استعمال کریں"</string>
+    <string name="l10n_fa07652b57d3d7c1" formatted="false">"بورڈ کی ایک اور کارروائی جاری ہے۔"</string>
     <string name="l10n_fc4a695f02a8a53a" formatted="false">"ایپ"</string>
     <string name="l10n_f54c8357ef4e5fab" formatted="false">"ایپ آئیکن"</string>
     <string name="l10n_41def7a0febe741d" formatted="false">"ظاہری شکل"</string>
@@ -78,15 +168,21 @@
     <string name="l10n_b8d012c2004fa7b4" formatted="false">"منظوری درکار"</string>
     <string name="l10n_7b2c7f146abacedd" formatted="false">"منظور کریں"</string>
     <string name="l10n_2621c6fd51a58e1d" formatted="false">"آرکائیو"</string>
+    <string name="l10n_2b86e5bc4a2034f2" formatted="false">"کارڈز محفوظ کریں"</string>
+    <string name="l10n_eddc813f35b12589" formatted="false">"محفوظ شدہ"</string>
     <string name="l10n_14eca073e39a5015" formatted="false">"آرکائیو شدہ سیشنز"</string>
     <string name="l10n_cbb9fa252e60809e" formatted="false">"آرگیومنٹس"</string>
     <string name="l10n_ee677f2109607e18" formatted="false">"ضمنی سوال پوچھیں"</string>
     <string name="l10n_e94537390527ef92" formatted="false">"کچھ بھی پوچھیں... /commands"</string>
+    <string name="l10n_288fbe21f70e35a2" formatted="false">"پروفائل تفویض کریں"</string>
+    <string name="l10n_e55df441e8955746" formatted="false">"اسائنمنٹ"</string>
     <string name="l10n_8010d1f4d0696ce1" formatted="false">"اسسٹنٹ"</string>
     <string name="l10n_5157af6823af43d5" formatted="false">"اسسٹنٹ، %@"</string>
     <string name="l10n_1afff0157ce3602c" formatted="false">"منسلک کریں"</string>
     <string name="l10n_469aeebeecf2f62d" formatted="false">"فائل منسلک کریں"</string>
     <string name="l10n_a75411ec9700b4b1" formatted="false">"سرور سے دوبارہ منسلک ہونے اور سیشنز دوبارہ لوڈ کرنے کی کوشش کرتا ہے۔"</string>
+    <string name="l10n_d53e7a421e8fccd3" formatted="false">"تصدیق کی خرابی: %@"</string>
+    <string name="l10n_3cf616bff8d00643" formatted="false">"خودکار طور پر بلاک"</string>
     <string name="l10n_61f543ec018634c1" formatted="false">"دستیاب موبائل کمانڈز:\n\n`/help` - یہ کمانڈ فہرست دکھائیں۔\n`/clear` - مقامی ٹرانسکرپٹ صاف کریں۔\n`/stop` - موجودہ جواب بند کریں۔\n`/new` - نیا سیشن کھولیں۔\n`/model &lt;id&gt;` - اس سیشن کا ماڈل تبدیل کریں۔\n`/workspace &lt;path&gt;` - اس سیشن کا ورک اسپیس تبدیل کریں۔\n`/reasoning &lt;level&gt;` - استدلال کی نمائش یا کوشش مقرر کریں۔\n`/title &lt;text&gt;` - اس سیشن کا نام تبدیل کریں۔\n`/personality &lt;name&gt;` - اس سیشن کی شخصیت مقرر یا صاف کریں۔\n`/skills [query]` - دستیاب مہارتیں تلاش کریں۔\n`/queue &lt;message&gt;` - اگلی باری کے لیے پیغام قطار میں رکھیں۔\n`/steer &lt;message&gt;` - فعال جواب کی سمت بدلیں۔\n`/interrupt &lt;message&gt;` - فعال جواب بند کریں اور نیا پیغام بھیجیں۔\n`/status` - سیشن کی حالت دکھائیں۔\n`/btw &lt;question&gt;` - اس چیٹ کو تبدیل کیے بغیر ضمنی سوال پوچھیں۔\n`/background &lt;prompt&gt;` - متوازی ٹاسک چلائیں اور نتیجہ یہاں شائع کریں۔\n`/bg &lt;prompt&gt;` - `/background` کا متبادل نام۔\n`/branch [name]` - اس گفتگو کو فورک کریں۔\n`/fork [name]` - `/branch` کا متبادل نام۔\n`/compress [focus]` - اس سیشن کا سیاق سکیڑیں۔\n`/compact [focus]` - `/compress` کا متبادل نام۔\n`/undo` - آخری تبادلہ کالعدم کریں۔\n`/retry` - آخری باری دوبارہ کریں۔"</string>
     <string name="l10n_7aabf6c8fafcc129" formatted="false">"دستیاب شخصیات:\n\n%@\n\n`/personality &lt;name&gt;` یا `/personality none` استعمال کریں۔"</string>
     <string name="l10n_d3a12fb079d32731" formatted="false">"دستیاب مہارتیں:"</string>
@@ -96,41 +192,66 @@
     <string name="l10n_2c71547af580e72a" formatted="false">"%lld پیچھے"</string>
     <string name="l10n_f48462d8ff141190" formatted="false">"بائنری فائل"</string>
     <string name="l10n_27441b0fa1b44e2e" formatted="false">"بائنری فائل کو تبدیل کر دیا گیا۔"</string>
+    <string name="l10n_82dd2cdf36f9436d" formatted="false">"بلاک کریں"</string>
+    <string name="l10n_99613c74ce010d98" formatted="false">"مسدود"</string>
     <string name="l10n_7d44bc449c2a2637" formatted="false">"نیلا"</string>
+    <string name="l10n_e879b0be0190766a" formatted="false">"بورڈ"</string>
+    <string name="l10n_4f6778977945bd63" formatted="false">"%@ کے لیے بورڈ کارروائیاں"</string>
     <string name="l10n_1627510b242fdd96" formatted="false">"شاخ"</string>
     <string name="l10n_f578227926a03a85" formatted="false">"شاخیں"</string>
+    <string name="l10n_ca37515a9638c19a" formatted="false">"بورڈ دیکھیں"</string>
+    <string name="l10n_76163bd10c654bd7" formatted="false">"بورڈ دیکھیں: %@"</string>
     <string name="l10n_1e810b2f9f05b51a" formatted="false">"ورک اسپیسز براؤز کریں اور ایجنٹ کے کام پر نظر رکھیں۔"</string>
+    <string name="l10n_95ae28be3160a877" formatted="false">"زیرِ مطالعہ"</string>
+    <string name="l10n_6a57d83c47ce5b34" formatted="false">"بورڈ دیکھنا Hermex تک مقامی رہتا ہے۔ بورڈ فعال کرنے سے مشترکہ سرور کی حالت بدلتی ہے۔"</string>
     <string name="l10n_bbd80cf7e2ded5ef" formatted="false">"بِلڈ"</string>
+    <string name="l10n_7e18229655968fa8" formatted="false">"اجتماعی کارروائیاں"</string>
     <string name="l10n_e179e26271f3e00f" formatted="false">"CLI سیشنز"</string>
-    <string name="l10n_533083941cb59936" formatted="false">"CLI سیشنز کی نمائش اس سرور کے ساتھ ہم آہنگ رہتی ہے، اس لیے WebUI بھی اسی کی پیروی کرتا ہے۔"</string>
     <string name="l10n_467ec180e1789d63" formatted="false">"کیشے ہٹ کی شرح"</string>
     <string name="l10n_a495afbf7ab54ca6" formatted="false">"کیشے سے پڑھے گئے ٹوکنز"</string>
     <string name="l10n_b169be9668e92fe8" formatted="false">"کیشے شدہ"</string>
     <string name="l10n_c6b74ced31b9e9ca" formatted="false">"کیشے شدہ سیشنز اور پیغامات آف لائن دیکھنے کے لیے رکھے جاتے ہیں۔ صاف کرنے سے صرف اس سرور کا کیشے ہٹتا ہے — دیگر سرورز اور Hermes سرور متاثر نہیں ہوتے۔"</string>
+    <string name="l10n_4da9c9af9631e294" formatted="false">"کیمرہ"</string>
     <string name="l10n_77dfd2135f4db726" formatted="false">"منسوخ کریں"</string>
     <string name="l10n_a1bf92eff40dd4ad" formatted="false">"منسوخ شدہ"</string>
     <string name="l10n_68994ea613a15e32" formatted="false">"سرور تک رسائی ممکن نہیں"</string>
+    <string name="l10n_4d4ce73b15660f20" formatted="false">"کارڈ"</string>
+    <string name="l10n_e011b9a5e6fe45c8" formatted="false">"کارڈ کی کارروائیاں"</string>
+    <string name="l10n_473759c32956a5bf" formatted="false">"کارڈ آئی ڈی"</string>
+    <string name="l10n_8f302a05ee377243" formatted="false">"حیثیت تبدیل کریں"</string>
     <string name="l10n_aeba935e2a155528" formatted="false">"تبدیل شدہ فائلیں"</string>
     <string name="l10n_8aa57de6dce6ee1c" formatted="false">"تبدیلیاں"</string>
     <string name="l10n_9bcc895764d8fc8a" formatted="false">"تبدیلیاں دستیاب نہیں ہیں۔"</string>
     <string name="l10n_2ced57f125910a9e" formatted="false">"چیٹ"</string>
     <string name="l10n_79667edb08454169" formatted="false">"اپنے iPhone سے اپنے Hermes ایجنٹ کے ساتھ چیٹ کریں"</string>
+    <string name="l10n_8174723b9172fdb9" formatted="false">"نتیجہ چیک کریں"</string>
     <string name="l10n_4f4bd16d4664cb10" formatted="false">"یقینی بنائیں کہ آپ کا Mac جاگ رہا ہے اور cloudflared چل رہا ہے۔"</string>
+    <string name="l10n_a4e79b38317485a5" formatted="false">"Checking Result"</string>
     <string name="l10n_5b5d3108125e92ca" formatted="false">"سرور کی جانچ ہو رہی ہے..."</string>
     <string name="l10n_ccc506047a3d5fa7" formatted="false">"سرور کی جانچ ہو رہی ہے…"</string>
     <string name="l10n_ebb571babefc16e0" formatted="false">"اسٹریم کی جانچ ہو رہی ہے"</string>
+    <string name="l10n_6d3627f04cb4b2c9" formatted="false">"بورڈ منتخب کریں"</string>
+    <string name="l10n_adaf4eb9ab13e461" formatted="false">"کارڈ منتخب کریں"</string>
     <string name="l10n_0e3df8f396036c89" formatted="false">"ماڈل منتخب کریں"</string>
+    <string name="l10n_74eda4a4630fe67d" formatted="false">"پیشگی شرط کا انتخاب کریں۔"</string>
+    <string name="l10n_adf2074a73ebd128" formatted="false">"کرایہ دار کا انتخاب کریں۔"</string>
     <string name="l10n_a7fe92a51df09be3" formatted="false">"ورک اسپیس منتخب کریں"</string>
     <string name="l10n_508b9e1565ffaab6" formatted="false">"اسلیش کمانڈ منتخب کریں یا ٹائپ کرتے رہیں۔"</string>
+    <string name="l10n_6775ed40b855410b" formatted="false">"ایک تعاون یافتہ اسٹیٹس کا انتخاب کریں۔"</string>
+    <string name="l10n_3754370042b5bbe9" formatted="false">"ایک درست شرط کا انتخاب کریں۔"</string>
     <string name="l10n_94992b7ac22aa32d" formatted="false">"اس نئے پروفائل کے لیے کنفیگر شدہ فراہم کنندگان اور ماڈلز میں سے انتخاب کریں۔"</string>
     <string name="l10n_98e5c453451ff290" formatted="false">"پروفائل منتخب کریں"</string>
     <string name="l10n_75268994292e5b16" formatted="false">"فراہم کنندہ ID منتخب کریں"</string>
     <string name="l10n_0e50f45864ab0e78" formatted="false">"ورک اسپیس پاتھ منتخب کریں"</string>
+    <string name="l10n_d143882689eb110e" formatted="false">"Claim Expires"</string>
+    <string name="l10n_b3b4124cf95844d1" formatted="false">"Claim ID"</string>
     <string name="l10n_e43b8a0a8cf76b80" formatted="false">"وضاحت درکار"</string>
     <string name="l10n_171aff153045c26f" formatted="false">"وضاحت کی میعاد"</string>
     <string name="l10n_3e0fb17cab21c94b" formatted="false">"وضاحت کریں"</string>
+    <string name="l10n_0b721df83e6cbaaa" formatted="false">"Claude Code سیشنز"</string>
     <string name="l10n_719ea396ad92e01b" formatted="false">"صاف کریں"</string>
     <string name="l10n_522175083f0bf50b" formatted="false">"کیشے صاف کریں"</string>
+    <string name="l10n_381c4bf1d409c027" formatted="false">"فلٹرز صاف کریں"</string>
     <string name="l10n_436424aa905192bb" formatted="false">"آف لائن کیشے صاف کریں"</string>
     <string name="l10n_2803e2a8fdc2a018" formatted="false">"فائل تلاش صاف کریں"</string>
     <string name="l10n_6e69351c3627d949" formatted="false">"ماڈل تلاش صاف کریں"</string>
@@ -148,8 +269,12 @@
     <string name="l10n_adac69379a626c24" formatted="false">"کوڈ"</string>
     <string name="l10n_b1c9e2299e9d7ee4" formatted="false">"فعال پروفائل پکر سکیڑیں"</string>
     <string name="l10n_57b446fe95841712" formatted="false">"پراجیکٹس سکیڑیں"</string>
+    <string name="l10n_f54ba11307e1765f" formatted="false">"شیڈول کردہ سیشنز سمیٹیں"</string>
     <string name="l10n_10544603c5d0fa0a" formatted="false">"سیکشن سمیٹیں"</string>
     <string name="l10n_1d0c8304baedcf8e" formatted="false">"رنگ"</string>
+    <string name="l10n_153d7a58b3a3e898" formatted="false">"تبصرہ"</string>
+    <string name="l10n_ad76b4babd667300" formatted="false">"Comment cannot be blank."</string>
+    <string name="l10n_cacb504956b073be" formatted="false">"Comments cannot be edited or deleted after sending."</string>
     <string name="l10n_1f5a1abf2f08ec18" formatted="false">"مکمل کریں"</string>
     <string name="l10n_1798b3ba42ee08ea" formatted="false">"مکمل ہو گیا"</string>
     <string name="l10n_5ff40a15003f2322" formatted="false">"ٹچ پر مبنی کنٹرولز کے ساتھ قدرتی انداز میں لکھیں۔"</string>
@@ -170,11 +295,12 @@
     <string name="l10n_203c28bd65a53e4f" formatted="false">"سیاق سکیڑ دیا گیا۔\n\n%@"</string>
     <string name="l10n_2e02623966f9391f" formatted="false">"جاری رکھیں"</string>
     <string name="l10n_170889a98c72a890" formatted="false">"بہرحال جاری رکھیں"</string>
-    <string name="l10n_842175d421b50dc2" formatted="false">"اپنے iPhone سے اپنے Hermes ایجنٹ کو کنٹرول کریں۔"</string>
+    <string name="l10n_09250307eb1db720" formatted="false">"اپنے iPhone یا iPad سے اپنے Hermes ایجنٹ کو کنٹرول کریں۔"</string>
     <string name="l10n_8e3df45a49dba2b2" formatted="false">"کاپی ہو گیا"</string>
     <string name="l10n_32856512b1e49e91" formatted="false">"Web UI ریپوزٹری لنک کاپی ہو گیا"</string>
     <string name="l10n_f90d7f30d7f1ff1d" formatted="false">"کوڈ کاپی ہو گیا"</string>
     <string name="l10n_af74f7c5362aaee9" formatted="false">"کاپی کریں"</string>
+    <string name="l10n_3736d1a3b46cd58a" formatted="false">"ڈیپ لنک کاپی کریں"</string>
     <string name="l10n_dfa9c0d2596f1d9c" formatted="false">"مکمل عنوان کاپی کریں"</string>
     <string name="l10n_1aa0e16271ee96f4" formatted="false">"Web UI ریپوزٹری لنک کاپی کریں"</string>
     <string name="l10n_abc94cbf067b91d1" formatted="false">"ایجنٹ سیٹ اپ پرامپٹ کاپی کریں"</string>
@@ -207,6 +333,7 @@
     <string name="l10n_a88498840c5e3802" formatted="false">"آرکائیو شدہ سیشنز لوڈ نہ ہو سکے"</string>
     <string name="l10n_4bcac1ad086ca826" formatted="false">"فائل لوڈ نہ ہو سکی: %@"</string>
     <string name="l10n_591b00c12e60c326" formatted="false">"پروفائلز لوڈ نہ ہو سکیں"</string>
+    <string name="l10n_c93b287a71ae2a54" formatted="false">"فراہم کنندگان لوڈ نہیں ہو سکے"</string>
     <string name="l10n_94f5b73955c3ef2c" formatted="false">"سیشنز لوڈ نہ ہو سکے"</string>
     <string name="l10n_8ac36923964f0178" formatted="false">"اس تصویر کا پیش منظر نہ بن سکا۔"</string>
     <string name="l10n_7d897e1d885a3b20" formatted="false">"اپ ڈیٹ شروع کرنے کے لیے سرور تک رسائی نہ ہو سکی۔"</string>
@@ -225,13 +352,20 @@
     <string name="l10n_495ea9f2535f73a3" formatted="false">"موجودہ جواب ابھی بند نہ ہو سکا، اس لیے اِنٹرپٹ پیغام اگلی باری کے لیے قطار میں رکھ دیا گیا۔"</string>
     <string name="l10n_0fe0eba7c7e1c659" formatted="false">"گول کمانڈ جمع نہ ہو سکی۔"</string>
     <string name="l10n_4138a35cf5a60e61" formatted="false">"ٹاسک اپ ڈیٹ نہ ہو سکا۔"</string>
+    <string name="l10n_08111e6efc7fc767" formatted="false">"ریفریش نہیں ہو سکا۔ پہلے سے لوڈ کیے گئے فراہم کنندگان دکھائے جا رہے ہیں۔"</string>
+    <string name="l10n_9985074eae8f7d8d" formatted="false">"کریش ہوا"</string>
     <string name="l10n_6e157c5da4410b7e" formatted="false">"بنائیں"</string>
+    <string name="l10n_5a366386b114c3b4" formatted="false">"تیار، غیر تفویض شدہ کارڈ بنائیں؟"</string>
     <string name="l10n_67c127a271b041fb" formatted="false">"موجودہ ہیڈ سے برانچ بنائیں اور اس پر سوئچ کریں۔"</string>
+    <string name="l10n_c8d7e019182b9eb3" formatted="false">"اگر فولڈر موجود نہ ہو تو بنائیں"</string>
+    <string name="l10n_accf40c89baa4fa8" formatted="false">"بنایا گیا"</string>
     <string name="l10n_5df8f127a4af1417" formatted="false">"ایک نیا خالی پراجیکٹ بناتا ہے۔"</string>
+    <string name="l10n_117a3202c7ad6e39" formatted="false">"بورڈ بنانے سے وہ فعال نہیں ہوتا۔"</string>
     <string name="l10n_de17342aa8c0be17" formatted="false">"Cron سیشنز"</string>
     <string name="l10n_4fc0e2bc80737d78" formatted="false">"موجودہ"</string>
     <string name="l10n_a3f54618caea86a3" formatted="false">"موجودہ حسبِ ضرورت"</string>
     <string name="l10n_23cb5e2e9a9493b9" formatted="false">"موجودہ Git برانچ"</string>
+    <string name="l10n_551ef486ba85e4c8" formatted="false">"موجودہ صورتحال: %@۔ اگر آپ کارڈ کو منتقل کرنا چاہتے ہیں تو ہی اجازت یافتہ حیثیت کا انتخاب کریں۔"</string>
     <string name="l10n_35ff0b484ca98ca9" formatted="false">"موجودہ ورک اسپیس"</string>
     <string name="l10n_9a3c1af6c3ecfd85" formatted="false">"موجودہ عنوان: **%@**\n\nاس سیشن کا نام تبدیل کرنے کے لیے `/title &lt;text&gt;` استعمال کریں۔"</string>
     <string name="l10n_081ae3fdc403609c" formatted="false">"حسبِ ضرورت"</string>
@@ -252,8 +386,11 @@
     <string name="l10n_441bda6cd85689e4" formatted="false">"حذف شدہ"</string>
     <string name="l10n_dcac5d49c54c3c38" formatted="false">"پہنچائیں"</string>
     <string name="l10n_9631af52c66f1a5c" formatted="false">"ترسیل"</string>
+    <string name="l10n_0562f32dc56f5c70" formatted="false">"انحصارات"</string>
+    <string name="l10n_55f8ebc805e65b5b" formatted="false">"تفصیل"</string>
     <string name="l10n_a04fcb7af3c9351b" formatted="false">"Diff بہت بڑا ہے"</string>
     <string name="l10n_7aafaa23867907a5" formatted="false">"ظاہر کرنے کے لیے فرق بہت بڑا ہے۔"</string>
+    <string name="l10n_4b892fe0c040fa8a" formatted="false">"ڈائریکٹری"</string>
     <string name="l10n_407758fed6d9cd6f" formatted="false">"کوڈ سطر ریپنگ غیر فعال کریں"</string>
     <string name="l10n_995b60411b464fb4" formatted="false">"رد کریں اور ترمیم کریں"</string>
     <string name="l10n_5d88c02b40bcad09" formatted="false">"رد کریں اور دوبارہ بنائیں"</string>
@@ -261,6 +398,12 @@
     <string name="l10n_f467e1f839b5212d" formatted="false">"ڈسکو"</string>
     <string name="l10n_70afe9eff3f28884" formatted="false">"برطرف کرنا"</string>
     <string name="l10n_4b6acf651b750357" formatted="false">"منسلکہ خرابی برخاست کریں"</string>
+    <string name="l10n_bb5c6f77a55fc0c9" formatted="false">"ڈسپیچر رنز"</string>
+    <string name="l10n_48f91366c839e056" formatted="false">"ڈسپیچر"</string>
+    <string name="l10n_2ed4598584f8ec1f" formatted="false">"اس سرور پر ڈسپیچر دستیاب نہیں ہے۔"</string>
+    <string name="l10n_f7434de84cdb30cb" formatted="false">"ڈسپیچر، توجہ درکار ہے"</string>
+    <string name="l10n_42df017cec60f8ed" formatted="false">"ڈسپیچر، نتیجہ دستیاب ہے"</string>
+    <string name="l10n_574ff9b0c49cdeb5" formatted="false">"ڈسپلے"</string>
     <string name="l10n_8d6b34815ba43d25" formatted="false">"ظاہری نام"</string>
     <string name="l10n_e9b450d14bc2363d" formatted="false">"ہو گیا"</string>
     <string name="l10n_3c424e9b233642b3" formatted="false">"تفصیلات سکیڑنے کے لیے ڈبل ٹیپ کریں۔"</string>
@@ -270,9 +413,18 @@
     <string name="l10n_13f7aee77892fd5f" formatted="false">"اس سے پہلے"</string>
     <string name="l10n_5301648dcf6b53ce" formatted="false">"ترمیم کریں"</string>
     <string name="l10n_36119979d7cf1f46" formatted="false">"%@ میں ترمیم کریں"</string>
+    <string name="l10n_4596379c38365c9c" formatted="false">"کارڈ میں ترمیم کریں۔"</string>
     <string name="l10n_2ee30cf2c2908397" formatted="false">"پیغام میں ترمیم کریں"</string>
     <string name="l10n_9d0e05d653ce25e7" formatted="false">"ٹاسک میں ترمیم کریں"</string>
     <string name="l10n_b0179bbf23f36576" formatted="false">"اس پیغام میں ترمیم کرنے سے بعد کے %lld پیغامات ضائع ہو جائیں گے۔"</string>
+    <plurals name="l10n_b0179bbf23f36576">
+        <item quantity="zero">"اس پیغام میں ترمیم کرنے سے بعد کے %d پیغامات ضائع ہو جائیں گے۔"</item>
+        <item quantity="one">"اس پیغام میں ترمیم کرنے سے بعد کا %d پیغام ضائع ہو جائے گا۔"</item>
+        <item quantity="two">"اس پیغام میں ترمیم کرنے سے بعد کے %d پیغامات ضائع ہو جائیں گے۔"</item>
+        <item quantity="few">"اس پیغام میں ترمیم کرنے سے بعد کے %d پیغامات ضائع ہو جائیں گے۔"</item>
+        <item quantity="many">"اس پیغام میں ترمیم کرنے سے بعد کے %d پیغامات ضائع ہو جائیں گے۔"</item>
+        <item quantity="other">"اس پیغام میں ترمیم کرنے سے بعد کے %d پیغامات ضائع ہو جائیں گے۔"</item>
+    </plurals>
     <string name="l10n_5fc97790c6a8d0d3" formatted="false">"گزرا ہوا وقت"</string>
     <string name="l10n_755ad4f73ca41dd5" formatted="false">"خالی آؤٹ پٹ"</string>
     <string name="l10n_aa1092d775fca059" formatted="false">"کوڈ سطر ریپنگ فعال کریں"</string>
@@ -280,17 +432,20 @@
     <string name="l10n_598b3a1a236fcb2e" formatted="false">"جمع کرانے سے پہلے جواب درج کریں۔"</string>
     <string name="l10n_6f7c983d3b97261c" formatted="false">"سیشن کا عنوان درج کریں۔"</string>
     <string name="l10n_e64bedf7e5b25d1f" formatted="false">"ایک درست سرور URL درج کریں، مثلاً https://hermes.yourdomain.com یا http://&lt;server-tailscale-ip&gt;:8787۔"</string>
-    <string name="l10n_8230a28313458046" formatted="false">"وہ Tailscale URL درج کریں جو آپ کے ایجنٹ نے واپس کیا، مثلاً `http://&lt;tailnet-ip&gt;:8787`۔"</string>
+    <string name="l10n_6332c9abaf956af9" formatted="false">"وہ درست Tailscale Serve HTTPS URL درج کریں جو آپ کے ایجنٹ نے واپس کیا، مثلاً `https://server.tailnet-name.ts.net`۔"</string>
     <string name="l10n_8f6e7265b4a4d570" formatted="false">"سرور کا پاس ورڈ درج کریں۔"</string>
     <string name="l10n_7f2f6a15cf8da2b2" formatted="false">"خرابی"</string>
     <string name="l10n_09c1adde10c57e5f" formatted="false">"خرابی: %@"</string>
     <string name="l10n_35caa4ac4630bab1" formatted="false">"تخمینی لاگت"</string>
+    <string name="l10n_c5497bca58468ae6" formatted="false">"واقعات"</string>
     <string name="l10n_6e0691470382747c" formatted="false">"دقیق ماڈل ID"</string>
+    <string name="l10n_6d525b71568c2d98" formatted="false">"پھانسی"</string>
     <string name="l10n_0caa309588bbc767" formatted="false">"ایگزٹ کوڈ: %lld"</string>
     <string name="l10n_7b74ff00367a4722" formatted="false">"طے شدہ طور پر سوچ پھیلائیں"</string>
     <string name="l10n_2525f76fc2b6b22d" formatted="false">"طے شدہ طور پر ٹولز پھیلائیں"</string>
     <string name="l10n_f86dd07259eb2bbf" formatted="false">"فعال پروفائل پکر پھیلائیں"</string>
     <string name="l10n_6a9761d620403e7d" formatted="false">"پراجیکٹس پھیلائیں"</string>
+    <string name="l10n_046a1a78d9aec6a9" formatted="false">"شیڈول کردہ سیشنز پھیلائیں"</string>
     <string name="l10n_732f9a41fd04ae76" formatted="false">"سیکشن پھیلائیں"</string>
     <string name="l10n_a689a999a5e62055" formatted="false">"میعاد ختم"</string>
     <string name="l10n_f3e4fadb9e370a1e" formatted="false">"برآمد کریں"</string>
@@ -330,6 +485,7 @@
     <string name="l10n_d6870fe0b85ff5cc" formatted="false">"ڈارک گریڈینٹ"</string>
     <string name="l10n_69dddc0e42ea62e2" formatted="false">"ہلکا گریڈینٹ"</string>
     <string name="l10n_933bf21afdd55a0d" formatted="false">"سبز"</string>
+    <string name="l10n_e9ac611c971177b5" formatted="false">"پروفائل کے لحاظ سے گروپ کریں"</string>
     <string name="l10n_73527bcbcf1d50d3" formatted="false">"HERMEX"</string>
     <string name="l10n_98d63b116d9d718a" formatted="false">"ہیپٹک فیڈ بیک"</string>
     <string name="l10n_c1c645cc10cc39cc" formatted="false">"ہیڈر لوگو رنگ"</string>
@@ -345,10 +501,14 @@
     <string name="l10n_4f56108f827cebaf" formatted="false">"Hermes جواب مکمل"</string>
     <string name="l10n_d1cadaea84c1198b" formatted="false">"Hermes سیشن"</string>
     <string name="l10n_77cde96ca2d45d01" formatted="false">"Hermex"</string>
+    <string name="l10n_9a17d2db6a8055f7" formatted="false">"Hermex ایپ میں محفوظ شدہ بورڈ بحال نہیں کر سکتا۔"</string>
     <string name="l10n_c33659f639454811" formatted="false">"Hermex جواب تیار کر رہا ہے"</string>
+    <string name="l10n_01a030be51125242" formatted="false">"Hermex نے بورڈ ریفریش کیا، لیکن یہ تصدیق نہیں کر سکتا کہ ورکرز شروع ہوئے یا نہیں۔ ڈسپیچر دوبارہ چلانے سے پہلے موجودہ بورڈ کا جائزہ لیں۔"</string>
     <string name="l10n_bb6a69c46c4b1979" formatted="false">"منسلکہ پاتھس چھپائیں"</string>
     <string name="l10n_2981d5547d979457" formatted="false">"آپ کے بھیجے گئے پیغامات میں شامل کی گئی فائل پاتھ کی سطر چھپاتا ہے۔ منسلکات اب بھی پیش منظر کے طور پر ظاہر ہوتے ہیں، اور سرور کو اب بھی پاتھس موصول ہوتے ہیں۔"</string>
     <string name="l10n_b1a5954a483f8f8b" formatted="false">"زیادہ"</string>
+    <string name="l10n_c0a4bc55fa6395b6" formatted="false">"میں نے بورڈ کا جائزہ لے لیا ہے"</string>
+    <string name="l10n_716f63b96e0c2632" formatted="false">"آئیکن"</string>
     <string name="l10n_7e5a975b6add84fd" formatted="false">"شناخت"</string>
     <string name="l10n_50e19fda0d5b4b74" formatted="false">"تصویر"</string>
     <string name="l10n_78cf51d3d2bf067d" formatted="false">"تصویر منسلکہ %@"</string>
@@ -363,7 +523,9 @@
     <string name="l10n_4e73a74600447ea9" formatted="false">"اپنے iPhone پر Tailscale انسٹال کریں اور اپنے سرور والے اسی tailnet میں سائن اِن کریں۔ اگلی اسکرین پر آپ کا ایجنٹ استعمال کرنے کے لیے درست URL کے ساتھ جواب دے گا۔"</string>
     <string name="l10n_94dc8e4a59fafe99" formatted="false">"تعامل"</string>
     <string name="l10n_f3068db36e4be906" formatted="false">"موجودہ جواب میں خلل ڈالا اور آپ کا پیغام اگلی بار بھیجنے کے لیے قطار میں لگا دیا۔"</string>
+    <string name="l10n_3895546730917a69" formatted="false">"کانبان"</string>
     <string name="l10n_8fa296603e98b9fe" formatted="false">"Hermex استعمال کرتے وقت Tailscale منسلک رکھیں۔"</string>
+    <string name="l10n_61737de78417a6fe" formatted="false">"کلید ترتیب دی گئی"</string>
     <string name="l10n_d1c69a859a9638b2" formatted="false">"آخری"</string>
     <string name="l10n_17672aec29094ac4" formatted="false">"آخری %lld دن"</string>
     <string name="l10n_6118867f212578fe" formatted="false">"آخری 30 دن"</string>
@@ -371,6 +533,8 @@
     <string name="l10n_decd7ca800106337" formatted="false">"تازہ ترین"</string>
     <string name="l10n_6f8749290307e9e2" formatted="false">"تازہ ترین حیثیت دکھائی گئی"</string>
     <string name="l10n_a9a621da7e8575d5" formatted="false">"عربی، عبرانی، فارسی اور اردو کے لیے پیغامات اور کمپوزر کو دائیں سے بائیں ترتیب دیتا ہے۔ کوڈ، ریاضی، ٹیبلز اور ٹول آؤٹ پٹ بائیں سے دائیں ہی رہتے ہیں۔ دیگر اسکرینز متاثر نہیں ہوتیں۔"</string>
+    <string name="l10n_66884274e40e33f1" formatted="false">"جاری حالت سے نکلیں؟"</string>
+    <string name="l10n_e427bdd63d4f22bd" formatted="false">"جاری حالت سے نکلنے پر کارڈ کا کلیم اور ورکر کی حالت صاف ہو سکتی ہے۔"</string>
     <string name="l10n_a36ef8aba22905e2" formatted="false">"ہلکا"</string>
     <string name="l10n_d0517071aa376e79" formatted="false">"لنک"</string>
     <string name="l10n_2b95008bb82d2573" formatted="false">"لنک کا پیش منظر"</string>
@@ -380,6 +544,8 @@
     <string name="l10n_4fc2512aa9e1d5c7" formatted="false">"سن رہا ہے..."</string>
     <string name="l10n_65c821a596ceec1c" formatted="false">"لائیو"</string>
     <string name="l10n_7b0ccb219d4d58d2" formatted="false">"لائیو ایکٹیویٹی اقتباسات"</string>
+    <string name="l10n_1d0f8dd5ce3502d2" formatted="false">"لائیو اپ ڈیٹس میں تاخیر"</string>
+    <string name="l10n_b0e0f6bd60d5e5e8" formatted="false">"Load Worker Log"</string>
     <string name="l10n_07471f3481317a16" formatted="false">"پرانے پیغامات لوڈ کریں"</string>
     <string name="l10n_a86c840372f0590b" formatted="false">"اس جواب کو دوبارہ بنانے سے پہلے پرانے پیغامات لوڈ کریں۔"</string>
     <string name="l10n_8f26c6520d61588a" formatted="false">"لوڈ ہو رہا ہے"</string>
@@ -396,6 +562,7 @@
     <string name="l10n_3955c8e98f47edfc" formatted="false">"آؤٹ پٹ لوڈ ہو رہا ہے..."</string>
     <string name="l10n_7b1f2b358b54ee27" formatted="false">"پروفائلز لوڈ ہو رہے ہیں..."</string>
     <string name="l10n_5a1c8090d0b201e5" formatted="false">"پروجیکٹس لوڈ ہو رہے ہیں..."</string>
+    <string name="l10n_a5dcb93d831dc05a" formatted="false">"فراہم کنندگان لوڈ ہو رہے ہیں…"</string>
     <string name="l10n_6ffd1b801dc3250d" formatted="false">"سیشنز لوڈ ہو رہے ہیں"</string>
     <string name="l10n_8605605d9f479dd3" formatted="false">"مہارت لوڈ ہو رہی ہے..."</string>
     <string name="l10n_18f6342375a61986" formatted="false">"مہارتیں لوڈ ہو رہی ہیں..."</string>
@@ -409,11 +576,17 @@
     <string name="l10n_d219c68101f532de" formatted="false">"مقام"</string>
     <string name="l10n_a124947cbd2d1d92" formatted="false">"کم"</string>
     <string name="l10n_d474fceae7ef8451" formatted="false">"چھوٹے حروف، اعداد، ہائفن اور انڈر اسکور؛ آغاز حرف یا عدد سے ہونا ضروری ہے۔"</string>
+    <string name="l10n_6c01c3828067110b" formatted="false">"بورڈ فعال کریں"</string>
     <string name="l10n_f924c396551c216e" formatted="false">"اِسے فعال سرور بنا دیتا ہے۔ سیشنز، چیٹس اور ترتیبات اِس کے لیے دوبارہ لوڈ ہوتی ہیں۔"</string>
+    <string name="l10n_7d949b41b99038e7" formatted="false">"اس بورڈ کو فعال کرنے سے دیگر Hermes کلائنٹس کے لیے مشترکہ سرور کی حالت بدلتی ہے۔"</string>
+    <string name="l10n_bf58d17e561b1b85" formatted="false">"انتظام"</string>
     <string name="l10n_1da7ac1fb66291cc" formatted="false">"سرورز کا انتظام کریں"</string>
+    <string name="l10n_d0c6a4ce42d2461a" formatted="false">"ورک اسپیسز کا انتظام"</string>
     <string name="l10n_005313fed211856e" formatted="false">"سیشنز، ٹاسکس اور فائلوں کا دور سے انتظام کریں"</string>
     <string name="l10n_2ae8bf7c4fda40f7" formatted="false">"مکمل کے طور پر نشان زد کریں"</string>
     <string name="l10n_25f266071c389a50" formatted="false">"آلے کی ظاہری شکل سے مطابقت رکھتا ہے"</string>
+    <string name="l10n_5de003582d342dba" formatted="false">"Maximum Runtime"</string>
+    <string name="l10n_527054fdad8e1c19" formatted="false">"زیادہ سے زیادہ رن ٹائم 0 سے زیادہ سیکنڈز کی پوری تعداد کا ہونا چاہیے۔"</string>
     <string name="l10n_0c77aeece8c25811" formatted="false">"میڈیا"</string>
     <string name="l10n_3aaf713966fafbad" formatted="false">"میڈیا کارروائی ناکام"</string>
     <string name="l10n_da356f9300406f38" formatted="false">"میڈیا دستیاب نہیں"</string>
@@ -424,23 +597,28 @@
     <string name="l10n_8bd1e1ee0b36f619" formatted="false">"پیغامات کی تعداد"</string>
     <string name="l10n_d2dbcb77dcf32674" formatted="false">"Hermex کو پیغام بھیجیں"</string>
     <string name="l10n_f1702b4686278bec" formatted="false">"پیغامات"</string>
+    <string name="l10n_251edc0eb5a82064" formatted="false">"میٹا ڈیٹا"</string>
     <string name="l10n_e8cd6e3a402a74e8" formatted="false">"مائیکروفون تک رسائی غیر فعال ہے۔ صوتی اِن پٹ استعمال کرنے کے لیے اِسے ترتیبات میں فعال کریں۔"</string>
     <string name="l10n_a711cca9a4a9ca25" formatted="false">"کم سے کم"</string>
     <string name="l10n_611aeef9f6f15ff0" formatted="false">"جاب شناخت کنندہ موجود نہیں۔"</string>
     <string name="l10n_68c2cc7f0ceaa3e4" formatted="false">"ماڈل"</string>
     <string name="l10n_47442c9efd89244c" formatted="false">"ماڈل تبدیل کرنا دستیاب نہیں۔"</string>
     <string name="l10n_f3798f81c7b6feca" formatted="false">"ماڈلز"</string>
+    <string name="l10n_32e3bfbf3d74721b" formatted="false">"ماڈلز (%lld)"</string>
     <string name="l10n_19a532c8bc61c311" formatted="false">"ترمیم شدہ"</string>
     <string name="l10n_d3446a31725ad27d" formatted="false">"%@ پہلے ترمیم شدہ"</string>
     <string name="l10n_03b280484618a09d" formatted="false">"ڈارک مونوکروم"</string>
     <string name="l10n_febc733bb49ebbbf" formatted="false">"ہلکا مونوکروم"</string>
+    <string name="l10n_76cdb950721642b6" formatted="false">"منتقل کریں"</string>
     <string name="l10n_96cbe7af61cc6ba3" formatted="false">"پروجیکٹ میں منتقل کریں"</string>
     <string name="l10n_60739d13df292b18" formatted="false">"میرے نوٹس"</string>
     <string name="l10n_709a23220f2c3d64" formatted="false">"نام"</string>
+    <string name="l10n_9c9f03a8394167a1" formatted="false">"نام (اختیاری)"</string>
     <string name="l10n_3dcfe8c501962b28" formatted="false">"توجہ درکار ہے"</string>
     <string name="l10n_a4b628dd7e6cac30" formatted="false">"وضاحت درکار ہے"</string>
     <string name="l10n_80c3052d33ccdee1" formatted="false">"کبھی نہیں"</string>
     <string name="l10n_2f5f0a316c665840" formatted="false">"نئی برانچ"</string>
+    <string name="l10n_f24d098f37cad673" formatted="false">"نیا کارڈ"</string>
     <string name="l10n_364e701f18f5b93f" formatted="false">"نئی چیٹ"</string>
     <string name="l10n_d01329fec0de89f0" formatted="false">"نیا پروفائل"</string>
     <string name="l10n_fd57e65b2e31a39f" formatted="false">"نیا پروجیکٹ"</string>
@@ -467,6 +645,7 @@
     <string name="l10n_9bc37a73e52685de" formatted="false">"کوئی کیٹلاگ ماڈلز نہیں"</string>
     <string name="l10n_24a6191f274fcd49" formatted="false">"کوئی تبدیلی نہیں۔"</string>
     <string name="l10n_fe598959ce0d3df9" formatted="false">"کوئی کمانڈ یا مہارت \"%@\" سے مماثل نہیں"</string>
+    <string name="l10n_38878b052a56f7c2" formatted="false">"کوئی کلید نہیں"</string>
     <string name="l10n_758de69beca09db0" formatted="false">"\"%@\" کے لیے کوئی مماثلت نہیں"</string>
     <string name="l10n_0318ea04f793d95e" formatted="false">"کوئی مماثل سیشنز نہیں"</string>
     <string name="l10n_bcd9d0b98b51e4ac" formatted="false">"کوئی مائیکروفون اِن پٹ دستیاب نہیں ہے۔ Simulator یا آلے کی مائیکروفون ترتیبات چیک کریں۔"</string>
@@ -477,6 +656,7 @@
     <string name="l10n_1f3aa7cb21ea25f7" formatted="false">"کوئی پروفائلز دستیاب نہیں"</string>
     <string name="l10n_c326b75775bf901d" formatted="false">"کوئی پروجیکٹ نہیں"</string>
     <string name="l10n_24a5368bbc878d8d" formatted="false">"کوئی پروجیکٹس نہیں"</string>
+    <string name="l10n_dabb4546aa93c651" formatted="false">"اس سرور نے کوئی فراہم کنندہ رپورٹ نہیں کیا۔"</string>
     <string name="l10n_9d7789c98756a7a1" formatted="false">"ابھی تک کوئی سیشنز نہیں"</string>
     <string name="l10n_459ad5e22c8f13b7" formatted="false">"سرور پر کوئی مہارتیں ترتیب نہیں دی گئیں۔"</string>
     <string name="l10n_d7f0b3c347eb8c09" formatted="false">"کوئی مہارت \"%@\" سے مماثل نہیں۔"</string>
@@ -494,8 +674,11 @@
     <string name="l10n_8956389786fd9918" formatted="false">"آف لائن - کیشے شدہ ورژن دیکھا جا رہا ہے"</string>
     <string name="l10n_8e4f504e020069e6" formatted="false">"آف لائن ڈیٹا"</string>
     <string name="l10n_ccf06f9a4f7a50f8" formatted="false">"آف لائن — کیشے شدہ ورژن دیکھا جا رہا ہے"</string>
+    <string name="l10n_c3cb80395a6f5b01" formatted="false">"آف لائن — پہلے لوڈ کیا گیا ڈیٹا دکھایا جا رہا ہے"</string>
     <string name="l10n_e0049a66519cae71" formatted="false">"آن"</string>
+    <string name="l10n_db4ab04666991840" formatted="false">"صرف میرے"</string>
     <string name="l10n_db21418b19544341" formatted="false">"صرف اسسٹنٹ کے پیغامات دوبارہ بنائے جا سکتے ہیں۔"</string>
+    <string name="l10n_a3b004fb05b4d2cd" formatted="false">"Only the last part of this log is shown."</string>
     <string name="l10n_44a2f9655a134eb7" formatted="false">"صرف صارف کے پیغامات میں ترمیم کی جا سکتی ہے۔"</string>
     <string name="l10n_93d3335d58377959" formatted="false">"%@ کھولیں"</string>
     <string name="l10n_ec9649e469304224" formatted="false">"Hermex ترتیبات کھولیں"</string>
@@ -510,8 +693,13 @@
     <string name="l10n_d381d212e5455e71" formatted="false">"طے شدہ ماڈل منتخب کنندہ کھولتا ہے۔"</string>
     <string name="l10n_da5bd75cb3611219" formatted="false">"طے شدہ پروفائل منتخب کنندہ کھولتا ہے۔"</string>
     <string name="l10n_418cad179a2e9807" formatted="false">"نئے پروفائل کا فارم کھولتا ہے۔"</string>
+    <string name="l10n_336934f19da2f38e" formatted="false">"فراہم کنندہ کی صورتحال کی اسکرین کھولتا ہے۔"</string>
+    <string name="l10n_78ce8b45d4b9bb0a" formatted="false">"آپریشنل ہسٹری"</string>
+    <string name="l10n_c686cc0c99b6645d" formatted="false">"Operational Metadata"</string>
+    <string name="l10n_ce75929f4b0b99d9" formatted="false">"سیکنڈ کی اختیاری تعداد۔"</string>
     <string name="l10n_3fe31a00136bfaac" formatted="false">"اختیاری۔ بنیادی URL کی مثال: ‏http://localhost:11434"</string>
     <string name="l10n_09fb6aaba7940a7b" formatted="false">"نارنجی"</string>
+    <string name="l10n_6282237cfbba8a0c" formatted="false">"Outcome Uncertain"</string>
     <string name="l10n_4bed336194a9a5c8" formatted="false">"آؤٹ پٹ"</string>
     <string name="l10n_878afed57cc32819" formatted="false">"آؤٹ پٹ ٹوکنز"</string>
     <string name="l10n_1a915e2090fc298c" formatted="false">"صفحہ %1$lld از %2$lld"</string>
@@ -533,11 +721,16 @@
     <string name="l10n_9c918414710c579b" formatted="false">"پن کریں"</string>
     <string name="l10n_54076359fdc7f1f0" formatted="false">"گلابی"</string>
     <string name="l10n_f9312169efb2796a" formatted="false">"پن شدہ"</string>
+    <string name="l10n_7039fbec6d98cbb8" formatted="false">"شرط"</string>
     <string name="l10n_3d087feb27bed0d7" formatted="false">"محفوظ شدہ ٹاسک فہرست"</string>
+    <string name="l10n_b35d176a6e2dee64" formatted="false">"ڈسپیچ پیش منظر"</string>
+    <string name="l10n_f67278a6b10f05b1" formatted="false">"پیش منظر صرف رہنمائی کے لیے ہے اور پرانا ہو سکتا ہے۔ یہ کبھی ورکرز شروع نہیں کرتا۔"</string>
     <string name="l10n_e8002a8beabe2288" formatted="false">"اس منسلکہ کے لیے پیش منظر دستیاب نہیں ہے۔"</string>
     <string name="l10n_e4a8cb9c4e93463c" formatted="false">"اس فائل قسم کے لیے پیش منظر دستیاب نہیں ہے۔"</string>
     <string name="l10n_6af2a65d7acff443" formatted="false">"اس میڈیا قسم کے لیے پیش منظر دستیاب نہیں ہے۔"</string>
     <string name="l10n_8ce696a0387284a2" formatted="false">"اس میڈیا کے لیے پیش منظر دستیاب نہیں ہے۔"</string>
+    <string name="l10n_886cbff9d9df761e" formatted="false">"ترجیح"</string>
+    <string name="l10n_4b01e21caae1beff" formatted="false">"ترجیح -100 سے لے کر 100 تک پوری تعداد ہونی چاہیے۔"</string>
     <string name="l10n_9db108ba6b7f6571" formatted="false">"رازداری کی پالیسی"</string>
     <string name="l10n_2fc50ca28d0af98f" formatted="false">"نتیجہ پراسیس ہو رہا ہے"</string>
     <string name="l10n_ff4fc0276e960c34" formatted="false">"پروفائل"</string>
@@ -547,9 +740,13 @@
     <string name="l10n_72c04819df5bb6a9" formatted="false">"%@ کے لیے پروجیکٹ کارروائیاں"</string>
     <string name="l10n_ab9773fcf6b2b1d9" formatted="false">"پروجیکٹ کا نام"</string>
     <string name="l10n_53e890d5f0fffe09" formatted="false">"پروجیکٹس"</string>
+    <string name="l10n_2eb0c3b72a3bd9bf" formatted="false">"ترقی دی گئی"</string>
     <string name="l10n_a817d7eb8e0f1dab" formatted="false">"پرامپٹ"</string>
     <string name="l10n_db95a2972e66e135" formatted="false">"پرامپٹ درکار ہے۔"</string>
+    <string name="l10n_7ceee3f3615a2bbe" formatted="false">"فراہم کنندہ"</string>
     <string name="l10n_610992ef9948a19f" formatted="false">"فراہم کنندہ ID"</string>
+    <string name="l10n_4eaef64dcb3c605f" formatted="false">"فراہم کنندگان کی کلیدیں سرور پر منظم کی جاتی ہیں۔ یہ اسکرین صرف پڑھنے کے لیے ہے۔"</string>
+    <string name="l10n_87b7c08baed1c8e9" formatted="false">"فراہم کنندگان"</string>
     <string name="l10n_5219eb9a71725226" formatted="false">"کھینچنا"</string>
     <string name="l10n_d9a72cc74c68bbfb" formatted="false">"ریموٹ تبدیلیاں ھیںچو؟"</string>
     <string name="l10n_55c0e7925c2e9d6a" formatted="false">"کھینچنا مکمل"</string>
@@ -571,6 +768,7 @@
     <string name="l10n_76eec760c9b6e63e" formatted="false">"حالیہ"</string>
     <string name="l10n_8ea2086a2dbccc7b" formatted="false">"حالیہ یومیہ ٹوکنز"</string>
     <string name="l10n_73c5c034584e46ea" formatted="false">"حالیہ آؤٹ پٹ"</string>
+    <string name="l10n_c885890b098322a9" formatted="false">"دوبارہ حاصل کیے گئے"</string>
     <string name="l10n_d9eb6f071bf574f0" formatted="false">"پیغامات بھیجنے کے لیے دوبارہ منسلک ہوں۔"</string>
     <string name="l10n_b95d5bf53907b729" formatted="false">"%@ کے لیے سرور سے دوبارہ منسلک ہوں۔"</string>
     <string name="l10n_1776302c127400bb" formatted="false">"ضمنی سوال پوچھنے کے لیے سرور سے دوبارہ منسلک ہوں۔"</string>
@@ -597,31 +795,53 @@
     <string name="l10n_8667d8dd1f042e2c" formatted="false">"صرف حوالہ · %@"</string>
     <string name="l10n_56e3badc4e6c5cc9" formatted="false">"تازہ کریں"</string>
     <string name="l10n_309d274a52eca6b8" formatted="false">"پروجیکٹس تازہ کریں"</string>
+    <string name="l10n_d7b762fc3fb27d5a" formatted="false">"ریفریش ناکام ہو گیا۔ ڈسپیچر استعمال کرنے سے پہلے دوبارہ کوشش کریں۔"</string>
+    <string name="l10n_87d2b4ceba88de25" formatted="false">"دوبارہ کوشش کرنے سے پہلے بورڈ کو ریفریش کریں۔"</string>
+    <string name="l10n_44ab50cbb3313634" formatted="false">"دوبارہ کوشش سے پہلے سرور کا نتیجہ جانچنے کے لیے کارڈ ریفریش کریں۔"</string>
+    <string name="l10n_e87e8308cbf8a15e" formatted="false">"Refresh to check the Card before trying again."</string>
     <string name="l10n_5b7bdb61fdbc48d5" formatted="false">"ریفریش ہو رہا ہے..."</string>
     <string name="l10n_12798652dee90c23" formatted="false">"جواب دوبارہ بنائیں"</string>
     <string name="l10n_e57e8f39b6e8ce1b" formatted="false">"اس جواب کو دوبارہ تیار کرنے سے بعد کے %lld پیغامات ضائع ہو جائیں گے۔"</string>
+    <plurals name="l10n_e57e8f39b6e8ce1b">
+        <item quantity="zero">"اس جواب کو دوبارہ تیار کرنے سے بعد کے %d پیغامات ضائع ہو جائیں گے۔"</item>
+        <item quantity="one">"اس جواب کو دوبارہ تیار کرنے سے بعد کا %d پیغام ضائع ہو جائے گا۔"</item>
+        <item quantity="two">"اس جواب کو دوبارہ تیار کرنے سے بعد کے %d پیغامات ضائع ہو جائیں گے۔"</item>
+        <item quantity="few">"اس جواب کو دوبارہ تیار کرنے سے بعد کے %d پیغامات ضائع ہو جائیں گے۔"</item>
+        <item quantity="many">"اس جواب کو دوبارہ تیار کرنے سے بعد کے %d پیغامات ضائع ہو جائیں گے۔"</item>
+        <item quantity="other">"اس جواب کو دوبارہ تیار کرنے سے بعد کے %d پیغامات ضائع ہو جائیں گے۔"</item>
+    </plurals>
+    <string name="l10n_cce7155371fc2668" formatted="false">"دوبارہ لوڈ کریں۔"</string>
+    <string name="l10n_8b1c557db10dc346" formatted="false">"سرور کا ورژن دوبارہ لوڈ کریں۔"</string>
+    <string name="l10n_76cc25831dafa135" formatted="false">"سرور کا ورژن دوبارہ لوڈ کریں؟"</string>
     <string name="l10n_ecca3ebfebb1231b" formatted="false">"برانچ لسٹ کو دوبارہ لوڈ کریں۔"</string>
     <string name="l10n_c93f6536dcfbeeee" formatted="false">"ریموٹ"</string>
     <string name="l10n_95a7c84ae08947db" formatted="false">"مقامی شاخ سے آگے دور دراز کی شاخ"</string>
+    <string name="l10n_e963907dac5cd5c0" formatted="false">"ہٹائیں"</string>
+    <string name="l10n_74211945be6416aa" formatted="false">"%@ کو پیشگی شرط سے ہٹائیں"</string>
     <string name="l10n_50abaeabec168aa3" formatted="false">"%@ کو پسندیدہ سے ہٹائیں"</string>
     <string name="l10n_49c2c77417839a5d" formatted="false">"سرور ہٹائیں"</string>
+    <string name="l10n_1e49097a3b6f2e45" formatted="false">"ورک اسپیس ہٹائیں؟"</string>
     <string name="l10n_8808b2840f078cfa" formatted="false">"منسلکہ %@ ہٹائیں"</string>
     <string name="l10n_6df2166b68573bb1" formatted="false">"حسبِ ضرورت ماڈل کو پسندیدہ سے ہٹائیں"</string>
     <string name="l10n_3e19869f4c6dd932" formatted="false">"ہیڈر ہٹائیں"</string>
     <string name="l10n_75bfa312029037aa" formatted="false">"یہ سرور ہٹائیں؟"</string>
     <string name="l10n_013a5d20d5696b29" formatted="false">"اس آلے پر سے یہ سرور اور اس کی محفوظ شدہ ترتیبات ہٹا دیتا ہے۔ آپ کا فعال سرور متاثر نہیں ہوتا۔"</string>
+    <string name="l10n_ce29465cad73fef0" formatted="false">"ورک اسپیس ہٹانے سے صرف اس کا راستہ سرور کی فہرست سے خارج ہوتا ہے۔ کوئی فائل حذف نہیں ہوتی۔"</string>
     <string name="l10n_d3f4cb898fbe0c7a" formatted="false">"نام بدلیں"</string>
     <string name="l10n_2631fe63a2fe1b89" formatted="false">"پروجیکٹ کا نام بدلیں"</string>
     <string name="l10n_d80362f6a02f697f" formatted="false">"سیشن کا نام بدلیں"</string>
+    <string name="l10n_37b77d35f230ff7d" formatted="false">"ورک اسپیس کا نام تبدیل کریں"</string>
     <string name="l10n_ef1c7b2eb614a607" formatted="false">"موجودہ سیشن کا نام بدلیں"</string>
     <string name="l10n_e5ad1c6b966bc12c" formatted="false">"نام تبدیل شدہ"</string>
     <string name="l10n_6c2bb735a46a8ff3" formatted="false">"جواب دیں"</string>
     <string name="l10n_8b03ca3239a2d4b3" formatted="false">"ذخیرہ کی حیثیت دستیاب نہیں ہے۔"</string>
     <string name="l10n_9ec40b4a79f06a39" formatted="false">"ذخیرہ تازہ ترین"</string>
     <string name="l10n_4ea95c7e3ce383e5" formatted="false">"صوتی اجازتیں طلب کی جا رہی ہیں..."</string>
+    <string name="l10n_eed6bfb41051ed5b" formatted="false">"درکار ہے۔"</string>
     <string name="l10n_7517ceebb9cbd1af" formatted="false">"ایپس تبدیل کیے بغیر ایجنٹ کے پرامپٹس کا جواب دیں۔"</string>
     <string name="l10n_7fafe94e3d4ca86e" formatted="false">"جواب دے رہا ہے"</string>
     <string name="l10n_ea7ab827fb7b09d6" formatted="false">"جواب مکمل ہونے کی انتباہات"</string>
+    <string name="l10n_07528719f78e54c9" formatted="false">"جواب کی رفتار"</string>
     <string name="l10n_ec2fb8b9d8a0585a" formatted="false">"جواب کے ٹائم اسٹیمپس"</string>
     <string name="l10n_6b656398c39ddef4" formatted="false">"جواب منسوخ کر دیا گیا"</string>
     <string name="l10n_96423842ebcbe649" formatted="false">"جواب مکمل"</string>
@@ -629,17 +849,22 @@
     <string name="l10n_5faa59d4bc375604" formatted="false">"نتیجہ"</string>
     <string name="l10n_b3bd0b5a70497bec" formatted="false">"جاری رکھیں"</string>
     <string name="l10n_9f5cd8a2e8807d73" formatted="false">"دوبارہ کوشش کریں"</string>
+    <string name="l10n_a3303b326f2b8e0c" formatted="false">"ناکام دوبارہ آزمائیں"</string>
     <string name="l10n_bbe728dc05ae5101" formatted="false">"دوبارہ کوشش صرف WebUI سیشنز کے لیے دستیاب ہے۔"</string>
     <string name="l10n_d0efe1645c15924c" formatted="false">"سیشنز لوڈ کرنے کی دوبارہ کوشش کریں"</string>
     <string name="l10n_08fe845cce87a735" formatted="false">"آخری باری دوبارہ آزمائیں"</string>
     <string name="l10n_effe5e3d4358574a" formatted="false">"اپ ڈیٹ دوبارہ آزمائیں"</string>
+    <string name="l10n_7bb8fd0794a55ded" formatted="false">"جائزہ لیں اور اوور رائٹ کریں۔"</string>
     <string name="l10n_cde5a6be0081dff8" formatted="false">"منظوریاں اور وضاحتیں اسی جگہ جائزہ لیں"</string>
     <string name="l10n_0a629b6db6c76c8a" formatted="false">"دائیں سے بائیں چیٹ لے آؤٹ"</string>
     <string name="l10n_e96857c58f716104" formatted="false">"روٹ"</string>
+    <string name="l10n_a299989ee9a1c92e" formatted="false">"ڈسپیچر چلائیں"</string>
     <string name="l10n_8ab343d1eabae3ef" formatted="false">"Siri، Spotlight، لاک اسکرین، یا iPhone کے ایکشن بٹن سے نئی چیٹ جیسی Hermex کارروائیاں چلائیں۔ ایکشن بٹن استعمال کرنے کے لیے، iOS ترتیبات کھولیں، ایکشن بٹن منتخب کریں، شارٹ کٹ منتخب کریں، پھر کوئی Hermex کارروائی منتخب کریں۔"</string>
+    <string name="l10n_79adb123c5c0db44" formatted="false">"Run ID"</string>
     <string name="l10n_4ee85a626ff6183b" formatted="false">"ابھی چلائیں"</string>
     <string name="l10n_0e076478ac56474c" formatted="false">"متوازی ٹاسک چلائیں"</string>
     <string name="l10n_73989d9c59264da0" formatted="false">"چل رہا ہے"</string>
+    <string name="l10n_a1b88f565760f0c1" formatted="false">"ڈسپیچر چل رہا ہے…"</string>
     <string name="l10n_b66803829687b9de" formatted="false">"کمانڈ چل رہی ہے"</string>
     <string name="l10n_33cfd5d598aac712" formatted="false">"ابھی چل رہا ہے"</string>
     <string name="l10n_93dd44cf2d1ccfaa" formatted="false">"مرحلہ %lld"</string>
@@ -649,10 +874,13 @@
     <string name="l10n_c0ae8f6ea8411149" formatted="false">"محفوظ ہو گیا"</string>
     <string name="l10n_85cc0a3b9ae258eb" formatted="false">"محفوظ شدہ حسبِ ضرورت"</string>
     <string name="l10n_6dd5ffdf0c60362e" formatted="false">"محفوظ شدہ ورک اسپیسز"</string>
+    <string name="l10n_369c534df344ee14" formatted="false">"محفوظ کرنا"</string>
     <string name="l10n_0a8adac9d6d5f4d1" formatted="false">"شیڈول"</string>
     <string name="l10n_82f00823fbf52cac" formatted="false">"شیڈول درکار ہے۔"</string>
     <string name="l10n_9ca43b04c3d2e353" formatted="false">"شیڈول شدہ جابز"</string>
     <string name="l10n_395c32f788a3f892" formatted="false">"Hermes سرور سے شیڈول شدہ جابز یہاں ظاہر ہوں گی۔"</string>
+    <string name="l10n_bce73c4a4b04e523" formatted="false">"شیڈول کردہ سیشنز"</string>
+    <string name="l10n_168bebddecbb0754" formatted="false">"کھرچنا"</string>
     <string name="l10n_d887477630313495" formatted="false">"تازہ ترین پیغام تک اسکرول کریں"</string>
     <string name="l10n_bce06414177f72ab" formatted="false">"تلاش کریں"</string>
     <string name="l10n_e64891ecd1e87786" formatted="false">"دستیاب مہارتیں تلاش کریں"</string>
@@ -664,6 +892,7 @@
     <string name="l10n_d4e6fa2549fd2925" formatted="false">"مہارتیں تلاش کریں..."</string>
     <string name="l10n_436af877d210be41" formatted="false">"فائلیں تلاش کی جا رہی ہیں"</string>
     <string name="l10n_c57285ac350f9afc" formatted="false">"سیشنز تلاش کیے جا رہے ہیں"</string>
+    <string name="l10n_bca2e803ac1c71fd" formatted="false">"کارڈز منتخب کریں"</string>
     <string name="l10n_95cbd4cb485fce7c" formatted="false">"متن منتخب کریں"</string>
     <string name="l10n_7915c8a498a76d3f" formatted="false">"منسلک کرنے کے لیے فائل منتخب کریں۔"</string>
     <string name="l10n_426e995abe3623e6" formatted="false">"ماڈل منتخب کریں"</string>
@@ -677,11 +906,14 @@
     <string name="l10n_d7446f460992044a" formatted="false">"اس مہارت کو استعمال کرنے کے لیے `/%@ &lt;message&gt;` بھیجیں۔"</string>
     <string name="l10n_8b2c12c5d4d5965d" formatted="false">"گفتگو شروع کرنے کے لیے پیغام بھیجیں۔"</string>
     <string name="l10n_b57718ffcace839f" formatted="false">"جواب کے بعد بھیجیں"</string>
-    <string name="l10n_16ccc931b1910648" formatted="false">"یہ پرامپٹ اپنے Hermes ایجنٹ کو بھیجیں۔ یہ Hermes Web UI انسٹال کرتا ہے، پاس ورڈ کی توثیق فعال کرتا ہے، اور Tailscale رسائی ترتیب دیتا ہے۔"</string>
+    <string name="l10n_fb8e5450e7708ea1" formatted="false">"یہ پرامپٹ اپنے Hermes ایجنٹ کو بھیجیں۔ یہ موجودہ حالت کا جائزہ لیتا ہے، Hermes Web UI کو localhost پر رکھتا ہے، اور Tailscale Serve کے ساتھ نجی HTTPS ترتیب دیتا ہے۔"</string>
     <string name="l10n_13e251839c1cbadc" formatted="false">"آپ کے سرور کو ہر درخواست کے ساتھ بھیجا جاتا ہے، بشمول میڈیا اور لائیو اسٹریمز۔ ریورس پراکسی (مثلاً Authentik) یا ٹوکن کی توثیق کے لیے استعمال کریں، جیسے Authorization ہیڈر۔"</string>
+    <string name="l10n_97dda3da38b6e1bf" formatted="false">"مہارت کے نام کوما کے ساتھ الگ کریں۔"</string>
     <string name="l10n_cb0cb170d106f8e8" formatted="false">"سرور"</string>
     <string name="l10n_3fa39b5424edd660" formatted="false">"سرور اوتار"</string>
     <string name="l10n_d4b6ea00d9844a33" formatted="false">"سرور طے شدہ"</string>
+    <string name="l10n_fd709421d2263b57" formatted="false">"سرور کی حیثیت"</string>
+    <string name="l10n_bcfef50922cbb5d5" formatted="false">"سرور کا عنوان"</string>
     <string name="l10n_1d5d1effa999db57" formatted="false">"سرور URL"</string>
     <string name="l10n_c3a144c6f18ea41f" formatted="false">"سرور پاس ورڈ"</string>
     <string name="l10n_3630b49185b9bdca" formatted="false">"سرور نے HTTP %lld واپس کیا۔"</string>
@@ -692,11 +924,13 @@
     <string name="l10n_2985663589760d41" formatted="false">"سیشن کی حالت:\n\n- سیشن ID: %1$@\n- عنوان: %2$@\n- ماڈل: %3$@\n- فراہم کنندہ: %4$@\n- پروفائل: %5$@\n- ورک اسپیس: %6$@\n- ایجنٹ چل رہا ہے: %7$@\n- قطار میں پیغامات: %8$lld\n- پس منظر کے ٹاسک: %9$lld\n- لوڈ کیے گئے پیغامات: %10$lld\n- ٹوکنز: %11$@"</string>
     <string name="l10n_e883c5bede310321" formatted="false">"سیشن کا عنوان"</string>
     <string name="l10n_ee4c6b466195baf3" formatted="false">"گفتگو کرنے کے بعد سیشن کے استعمال کا ڈیٹا یہاں ظاہر ہوگا۔"</string>
+    <string name="l10n_6dfb4de7a8af7fa8" formatted="false">"سیشنز کی نمائش اس سرور کے ساتھ ہم آہنگ رہتی ہے، اس لیے WebUI بھی اسی کی پیروی کرتا ہے۔"</string>
     <string name="l10n_e11e37a9253b34ff" formatted="false">"سیشنز"</string>
     <string name="l10n_32962ffd65d2627e" formatted="false">"سیشنز اوتار"</string>
     <string name="l10n_f97972c3e4668e12" formatted="false">"اس پروجیکٹ کے سیشنز کو \"کوئی پروجیکٹ نہیں\" میں منتقل کر دیا جائے گا۔ سیشنز خود حذف نہیں ہوں گے۔"</string>
     <string name="l10n_448ab73ba1c21e67" formatted="false">"سیٹ کریں"</string>
     <string name="l10n_3bd23ee0e245365c" formatted="false">"ہدف سیٹ کریں"</string>
+    <string name="l10n_c8293bad3b7b4fb5" formatted="false">"ترجیح مقرر کریں"</string>
     <string name="l10n_c52c0c7cdc76e95e" formatted="false">"ترتیب دیں"</string>
     <string name="l10n_d22d7bf3a71ec052" formatted="false">"مستقل ہدف سیٹ یا معائنہ کریں"</string>
     <string name="l10n_b4115b8528333061" formatted="false">"استدلال کی کوشش کی سطح سیٹ کریں"</string>
@@ -706,11 +940,14 @@
     <string name="l10n_4c619ef31f07cceb" formatted="false">"تمام پروجیکٹس دکھائیں"</string>
     <string name="l10n_81744b31e55f479f" formatted="false">"دستیاب سلیش کمانڈز دکھائیں"</string>
     <string name="l10n_7097a0c314985f69" formatted="false">"سیشن کی حالت دکھائیں"</string>
+    <string name="l10n_b47f6085ffd26585" formatted="false">"%2$lld میں سے %1$lld ماڈلز دکھائے جا رہے ہیں"</string>
     <string name="l10n_3fa229fdb23ceeb3" formatted="false">"پہلی 500 تبدیل شدہ فائلیں دکھا رہا ہے۔"</string>
     <string name="l10n_c019f77116648ddf" formatted="false">"پہلی 500 تبدیل شدہ فائلیں دکھائی جا رہی ہیں۔"</string>
+    <string name="l10n_a3a6710b148c1660" formatted="false">"دستیاب بورڈ انتظامی کارروائیاں دکھاتا ہے۔"</string>
     <string name="l10n_409adfda54bac8ec" formatted="false">"اس پروجیکٹ کے لیے نام تبدیل کرنے اور حذف کرنے کی کارروائیاں دکھاتا ہے۔"</string>
     <string name="l10n_64bdd26ae9e959e5" formatted="false">"لاک اسکرین اور ڈائنامک آئلینڈ پر مختصر جوابی متن دکھاتا ہے۔"</string>
     <string name="l10n_0c19157b637bd737" formatted="false">"سیشن تلاش کا خانہ دکھاتا ہے۔"</string>
+    <string name="l10n_9710be03d20fb3ad" formatted="false">"اس فراہم کنندہ کے ماڈلز کی فہرست دکھاتا ہے۔"</string>
     <string name="l10n_61fd08ff5c37211d" formatted="false">"سائن آؤٹ کریں"</string>
     <string name="l10n_c5eba70bd3954c88" formatted="false">"اس سرور سے سائن آؤٹ کریں"</string>
     <string name="l10n_f9d09fc5a91b5ed7" formatted="false">"اسی اکاؤنٹ سے سائن اِن کریں جو آپ نے اپنے سرور پر استعمال کیا تھا۔"</string>
@@ -725,12 +962,16 @@
     <string name="l10n_11930e13637cafc2" formatted="false">"Hermes سرور کی مہارتیں یہاں ظاہر ہوں گی۔"</string>
     <string name="l10n_9bfe8690fb3da405" formatted="false">"`%@` سے مماثل مہارتیں:"</string>
     <string name="l10n_4883f494deaf503e" formatted="false">"اس پورے سیشن کے لیے چھوڑ دیں"</string>
+    <string name="l10n_06efe358248e1592" formatted="false">"چھوڑ دیے گئے—کوئی ذمہ دار نہیں"</string>
+    <string name="l10n_60dbead0f06505e3" formatted="false">"چھوڑ دیے گئے—نامعلوم پروفائل"</string>
     <string name="l10n_bb5430b00fb04963" formatted="false">"ترتیب چھوڑ کر منسلک ہونے کی اسکرین کھولتا ہے۔"</string>
     <string name="l10n_b3d97fd6dece388a" formatted="false">"آسمانی"</string>
+    <string name="l10n_094da9b95fdcee3d" formatted="false">"شناختی نام"</string>
     <string name="l10n_4b8bd42120d9a94c" formatted="false">"ماخذ: مقامی سیشن میٹا ڈیٹا فال بیک۔"</string>
     <string name="l10n_2513e8e94b38cc59" formatted="false">"ماخذ: مقامی سیشن میٹا ڈیٹا فال بیک۔ سرور بصیرتیں ناکام ہوئیں: %@"</string>
     <string name="l10n_d1b96f5b62a4287b" formatted="false">"ماخذ: مقامی سیشن میٹا ڈیٹا۔"</string>
     <string name="l10n_03d03ab0d88c3373" formatted="false">"ماخذ: گزشتہ %lld دنوں کی سرور بصیرتیں۔"</string>
+    <string name="l10n_cd5d730d53090728" formatted="false">"شروع کیے گئے"</string>
     <string name="l10n_c0333d1add29d664" formatted="false">"تقریر کی شناخت غیر فعال ہے۔ صوتی ان پٹ استعمال کرنے کے لیے اسے ترتیبات میں فعال کریں۔"</string>
     <string name="l10n_4bfb98bccc44ac2c" formatted="false">"موجودہ لوکیل کے لیے تقریر کی شناخت دستیاب نہیں ہے۔"</string>
     <string name="l10n_59246b380055b101" formatted="false">"تقریر کی شناخت اس وقت دستیاب نہیں ہے۔"</string>
@@ -781,11 +1022,14 @@
     <string name="l10n_7bb0ddf9221c03b8" formatted="false">"ٹاسک"</string>
     <string name="l10n_b41eb6f08c8b078b" formatted="false">"ٹاسک کی کارروائیاں"</string>
     <string name="l10n_090ec5f560fc5037" formatted="false">"ٹاسکس"</string>
+    <string name="l10n_3ca93c78f67175df" formatted="false">"ٹیننٹ"</string>
     <string name="l10n_43518a45c3506afe" formatted="false">"موبائل ایپ میں ٹرمینل دستیاب نہیں ہے۔"</string>
     <string name="l10n_580f6ab716ab4ca9" formatted="false">"کنکشن جانچیں"</string>
     <string name="l10n_7b514bffeae3b7d5" formatted="false">"منظوری کی یہ درخواست پہلے ہی ختم ہو چکی ہے، اس لیے ایجنٹ آگے بڑھ گیا ہے۔"</string>
     <string name="l10n_d2209900784abf2a" formatted="false">"وضاحت کا یہ پرامپٹ پہلے ہی ختم ہو چکا ہے، اس لیے ایجنٹ آگے بڑھ گیا ہے۔"</string>
     <string name="l10n_05d3eab3ca8f18dd" formatted="false">"وہ سیشن اب سرور پر موجود نہیں ہے۔ کوئی دوسرا سیشن دوبارہ کھولیں یا نیا بنائیں۔"</string>
+    <string name="l10n_21f829338a7faa45" formatted="false">"بورڈ ریفریش ہو رہا ہے۔"</string>
+    <string name="l10n_1dd6da47cd03c774" formatted="false">"ڈسپیچر کسی تفویض شدہ پروفائل کے بغیر تیار کارڈز کو چھوڑ دیتا ہے۔"</string>
     <string name="l10n_ecfa2de70a6b9074" formatted="false">"HTTPS کنکشن ناکام ہو گیا۔ سرور URL اور سرٹیفکیٹ کی جانچ کریں۔"</string>
     <string name="l10n_9bbd89ecc5be6e75" formatted="false">"Hermes سرور کو ایک داخلی خرابی کا سامنا ہوا۔ سرور لاگز کی جانچ کریں، پھر دوبارہ کوشش کریں۔"</string>
     <string name="l10n_15ea0a61edd4c28f" formatted="false">"اسسٹنٹ نے جواب دینا مکمل کر لیا۔"</string>
@@ -793,6 +1037,8 @@
     <string name="l10n_99bd906ebc1eccbe" formatted="false">"ترمیم شدہ پیغام خالی نہیں ہو سکتا۔"</string>
     <string name="l10n_81c08290cf69b27a" formatted="false">"پاس ورڈ مسترد کر دیا گیا۔ سرور پاس ورڈ کی جانچ کریں اور دوبارہ کوشش کریں۔"</string>
     <string name="l10n_94f2c21b3df558b2" formatted="false">"درخواست منسوخ کر دی گئی۔"</string>
+    <string name="l10n_8bdfda19530477f9" formatted="false">"منتخب کارڈز آرکائیو میں منتقل کر دیے جائیں گے۔"</string>
+    <string name="l10n_cd019f1c53e3497b" formatted="false">"انتخاب اب دستیاب نہیں ہے۔ بورڈ ریفریش کریں اور کارڈز دوبارہ منتخب کریں۔"</string>
     <string name="l10n_e7160301a4c0999e" formatted="false">"سرور موجودہ جواب کو بند نہیں کر سکا۔"</string>
     <string name="l10n_391ddfb06a8ee962" formatted="false">"سرور اس سیشن کو آرکائیو سے نہیں نکال سکا۔"</string>
     <string name="l10n_11326745266f240a" formatted="false">"سرور نے تبدیلی کی تصدیق نہیں کی۔"</string>
@@ -827,11 +1073,14 @@
     <string name="l10n_ac044556e5548d3c" formatted="false">"سرور کو بہت زیادہ درخواستیں موصول ہو رہی ہیں۔ ایک لمحہ انتظار کریں، پھر دوبارہ کوشش کریں۔"</string>
     <string name="l10n_2a1b7a25a5096500" formatted="false">"سرور یا Cloudflare ٹنل دستیاب نہیں ہے۔ یقینی بنائیں کہ Mac بیدار ہے، hermes-webui چل رہا ہے، اور ٹنل منسلک ہے۔"</string>
     <string name="l10n_f8d83dbb55003db9" formatted="false">"سرور نے رسائی سے انکار کر دیا۔ سرور پاس ورڈ اور اجازتوں کی جانچ کریں۔"</string>
+    <string name="l10n_a9c580f6eaa44ef8" formatted="false">"سرور نے یہ اپ ڈیٹ مسترد کر دی یا لاگو نہیں کی۔"</string>
+    <string name="l10n_1f649f3b878ba1a5" formatted="false">"سرور نے اس ڈسپیچر درخواست کو مسترد کر دیا۔ Hermex نے دوبارہ کوشش نہیں کی۔"</string>
     <string name="l10n_3b7efcceeff317b3" formatted="false">"سرور نے درخواست مسترد کر دی۔"</string>
     <string name="l10n_80e2ebb549050457" formatted="false">"سرور نے درخواست مسترد کر دی: %@"</string>
     <string name="l10n_d2a9f8cb89bf69b7" formatted="false">"سرور کا جواب پڑھا نہیں جا سکا۔"</string>
     <string name="l10n_53e576d649d0b70e" formatted="false">"سرور کا جواب پڑھا نہیں جا سکا۔ یقینی بنائیں کہ URL کسی Hermes Web UI سرور کی طرف اشارہ کرتا ہے۔"</string>
     <string name="l10n_eefb8bb01beaaae1" formatted="false">"سرور کو جواب دینے میں بہت دیر لگی۔ یقینی بنائیں کہ Mac بیدار ہے اور سرور چل رہا ہے۔"</string>
+    <string name="l10n_afa9464df086e048" formatted="false">"بورڈ بننے کے بعد شناختی نام تبدیل نہیں کیا جا سکتا۔"</string>
     <string name="l10n_c9f0def8dcd627c9" formatted="false">"اسٹریم نے ایک بے ترتیب خرابی واقعہ واپس کیا۔"</string>
     <string name="l10n_baa339d62041f2e5" formatted="false">"اسٹریم نے ایک خرابی واپس کی۔"</string>
     <string name="l10n_e0dfd329b1ff55a1" formatted="false">"اپ ڈیٹ لاگو نہیں کی جا سکی۔"</string>
@@ -845,6 +1094,11 @@
     <string name="l10n_a8f4d85bf0de7c20" formatted="false">"سوچ اور ٹول کارڈز"</string>
     <string name="l10n_ac9ded8ad76135f8" formatted="false">"سوچ اور ٹول کارڈز سکڑے ہوئے کے بجائے پھیلے ہوئے شروع ہوتے ہیں۔ کسی کارڈ پر ٹیپ کرنے سے اب بھی اسے ٹوگل کیا جا سکتا ہے۔"</string>
     <string name="l10n_16c5d096ef4c4b52" formatted="false">"سوچ رہا ہے، %@"</string>
+    <string name="l10n_e151dd158050ee78" formatted="false">"یہ بورڈ اب موجود نہیں ہے۔ دوسرا بورڈ منتخب کریں۔"</string>
+    <string name="l10n_6a650636b81004aa" formatted="false">"This Board no longer exists. Return to Kanban to choose another Board."</string>
+    <string name="l10n_ca86aeb9616416a9" formatted="false">"ایڈیٹر کھلنے کے بعد یہ کارڈ سرور پر بدل گیا۔ آپ کا مسودہ محفوظ کر لیا گیا ہے۔"</string>
+    <string name="l10n_3474c0f601ba033a" formatted="false">"This Card no longer exists on this Board. The Board has been refreshed."</string>
+    <string name="l10n_83a3dcf7fc7d62c1" formatted="false">"یہ پیش منظر پرانا ہو چکا ہے۔ اس پر انحصار کرنے سے پہلے ڈسپیچ پیش منظر دوبارہ چلائیں۔"</string>
     <string name="l10n_aba61a2ad81b8d7f" formatted="false">"اس منسلکہ کا کوئی سرور فائل راستہ نہیں ہے۔"</string>
     <string name="l10n_1877e019673b82ad" formatted="false">"اس چیٹ کی ورک اسپیس Git ریپازٹری نہیں ہے۔"</string>
     <string name="l10n_a8f9e43b9a80b7bf" formatted="false">"یہ کمانڈ موبائل ایپ میں دستیاب نہیں ہے۔"</string>
@@ -853,6 +1107,7 @@
     <string name="l10n_de77c8f5ce7c5f65" formatted="false">"یہ فائل خالی معلوم ہوتی ہے۔"</string>
     <string name="l10n_1199f666fedc3267" formatted="false">"یہ فائل بائنری ہے، اس لیے دکھانے کے لیے کوئی متنی diff نہیں۔"</string>
     <string name="l10n_83722fb0e0ca5b75" formatted="false">"یہ فائل ایسی تصویر نہیں ہے جسے فوٹوز میں محفوظ کیا جا سکے۔"</string>
+    <string name="l10n_4914d0afde90fb6d" formatted="false">"اس سے زیادہ سے زیادہ %lld ورکرز شروع ہو سکتے ہیں اور API بجٹ استعمال ہو سکتا ہے۔"</string>
     <string name="l10n_bc15958918104240" formatted="false">"یہ Hermes سرور کا تازہ ترین ورژن حاصل کر کے اسے دوبارہ شروع کرتا ہے۔ فعال چیٹس مختصراً متاثر ہو سکتی ہیں؛ سرور واپس آنے پر ایپ دوبارہ منسلک ہو جاتی ہے۔"</string>
     <string name="l10n_f0c6fa08d0785f19" formatted="false">"یہ شیڈول شدہ ٹاسک کو Hermes سرور سے ہٹا دیتا ہے۔"</string>
     <string name="l10n_9cc29299b5a024f3" formatted="false">"یہ سرور اور اس کی محفوظ کردہ ترتیبات کو اس آلے سے ہٹا دیتا ہے۔ آپ کا فعال سرور غیر متاثر رہتا ہے۔"</string>
@@ -867,16 +1122,21 @@
     <string name="l10n_e00561c4c172b50c" formatted="false">"اس ٹاسک نے ابھی تک کوئی آؤٹ پٹ پیدا نہیں کیا۔"</string>
     <string name="l10n_97b25d863d2e238a" formatted="false">"اس ورک اسپیس میں غیر منظم تبدیلیاں ہیں۔ انہیں عارضی طور پر محفوظ کریں، شاخوں کو تبدیل کریں، پھر منزل کی شاخ کے لیے کسی بھی محفوظ شدہ تبدیلی کو بحال کریں۔"</string>
     <string name="l10n_c51f7b72279e26fd" formatted="false">"حد"</string>
+    <string name="l10n_7bbea3f2b3d3370d" formatted="false">"وقت ختم"</string>
     <string name="l10n_85decb73d1438d2e" formatted="false">"وقت کا دورانیہ"</string>
     <string name="l10n_588e8007757722e5" formatted="false">"ٹائم آؤٹ %@"</string>
     <string name="l10n_abca4fe61ee1300b" formatted="false">"نئی چیٹ اور بھیجیں کو رنگ دیں"</string>
+    <string name="l10n_768e0c1c69573fb5" formatted="false">"عنوان"</string>
+    <string name="l10n_d5ec4d31ee0ffb4b" formatted="false">"عنوان درکار ہے۔"</string>
     <string name="l10n_735e4002db082f59" formatted="false">"عنوان **%@** پر سیٹ کر دیا گیا۔"</string>
+    <string name="l10n_353a23d95e3c0839" formatted="false">"کرنا ہے"</string>
     <string name="l10n_757011e57ad1e225" formatted="false">"ٹوسٹ اطلاعات"</string>
     <string name="l10n_0b021d5f7dac5820" formatted="false">"ٹوسٹس"</string>
     <string name="l10n_24345a14377fd821" formatted="false">"آج"</string>
     <string name="l10n_9a830c714bb2b52b" formatted="false">"ٹول"</string>
     <string name="l10n_fa689a2e435f8e6d" formatted="false">"سرفہرست سیشنز"</string>
     <string name="l10n_b662ff25f41cef30" formatted="false">"کل ٹوکنز"</string>
+    <string name="l10n_013ec284eed0cb93" formatted="false">"جانچ"</string>
     <string name="l10n_cef2fe093b68fa97" formatted="false">"دوبارہ کوشش کریں"</string>
     <string name="l10n_3878a498a56fa2c4" formatted="false">"کوئی مختلف فائل کا نام یا راستہ آزمائیں۔"</string>
     <string name="l10n_4bb4b153f85d494e" formatted="false">"کوئی مختلف ماڈل کا نام یا ID آزمائیں۔"</string>
@@ -887,14 +1147,20 @@
     <string name="l10n_426fed37b50f32c6" formatted="false">"جواب ٹائپ کریں"</string>
     <string name="l10n_0e2d9b0777a485c1" formatted="false">"URL"</string>
     <string name="l10n_35e71c29f1185e21" formatted="false">"آرکائیو سے نکالیں"</string>
+    <string name="l10n_e57016edceec7e7b" formatted="false">"غیر تفویض شدہ"</string>
     <string name="l10n_2c9c1f79142df1b6" formatted="false">"دستیاب نہیں"</string>
+    <string name="l10n_12aabd251c4213f1" formatted="false">"بلاک ختم کریں"</string>
     <string name="l10n_4ef7d73c1a83464f" formatted="false">"غیر زمرہ بند"</string>
     <string name="l10n_10e6f533d2aaca09" formatted="false">"غیر منظم تبدیلیاں"</string>
+    <string name="l10n_39fc72124884d657" formatted="false">"واپس کریں"</string>
+    <string name="l10n_e979f022d850942a" formatted="false">"آرکائیو واپس کریں"</string>
     <string name="l10n_b3a1af021b557f01" formatted="false">"کالعدم کرنا صرف WebUI سیشنز کے لیے دستیاب ہے۔"</string>
     <string name="l10n_0383fdef3915a396" formatted="false">"آخری تبادلہ کالعدم کریں"</string>
     <string name="l10n_bc7819b34ff87570" formatted="false">"نامعلوم"</string>
     <string name="l10n_3697b1ae8e7d30a2" formatted="false">"نامعلوم تاریخ"</string>
     <string name="l10n_b87bd1c1a7bca908" formatted="false">"نامعلوم ماڈل"</string>
+    <string name="l10n_dd1bf46d2decbcfc" formatted="false">"نامعلوم حیثیت"</string>
+    <string name="l10n_9a8ae21fb0d04e5a" formatted="false">"نامعلوم فراہم کنندہ"</string>
     <string name="l10n_fd61688d01169f43" formatted="false">"نامعلوم استدلال کی سطح: %@۔"</string>
     <string name="l10n_d57444178b19325b" formatted="false">"بے نام مہارت"</string>
     <string name="l10n_2eba6a03b89a9ddb" formatted="false">"پن ہٹائیں"</string>
@@ -907,9 +1173,12 @@
     <string name="l10n_82fb1d5144a846f7" formatted="false">"تازہ ترین"</string>
     <string name="l10n_fb91e24fa52d8d2b" formatted="false">"اپ ڈیٹ کریں"</string>
     <string name="l10n_58b0f1cc44738b4e" formatted="false">"اپ ڈیٹ دستیاب · %lld پیچھے"</string>
+    <string name="l10n_4de04cd91a3d954b" formatted="false">"اپ ڈیٹ ناکام ہو گئی"</string>
     <string name="l10n_61c080e52b666016" formatted="false">"سرور اپ ڈیٹ کریں؟"</string>
+    <string name="l10n_f2f8570ddd7b1e7b" formatted="false">"Updated"</string>
     <string name="l10n_a74e190a94f85aeb" formatted="false">"سیشنز ہیڈر لوگو رنگ کو اپ ڈیٹ کرتا ہے۔"</string>
     <string name="l10n_4159ad3b0d6e5c96" formatted="false">"اپ ڈیٹ اور دوبارہ شروع کیا جا رہا ہے…"</string>
+    <string name="l10n_d6f123d4cdba5c1b" formatted="false">"بورڈ اپ ڈیٹ ہو رہا ہے..."</string>
     <string name="l10n_37016ece9e2301b0" formatted="false">"ایپ آئیکن اپ ڈیٹ ہو رہا ہے"</string>
     <string name="l10n_3d07322927c7ed8c" formatted="false">"کمپوزر کی ترتیبات اپ ڈیٹ ہو رہی ہیں..."</string>
     <string name="l10n_05898ca376b6c749" formatted="false">"ٹاسک اپ ڈیٹ ہو رہا ہے..."</string>
@@ -931,6 +1200,7 @@
     <string name="l10n_542f2c8e3ce7e991" formatted="false">"ٹول استعمال ہو رہا ہے"</string>
     <string name="l10n_8dce170de238b1fe" formatted="false">"قدر"</string>
     <string name="l10n_2da600bf94048431" formatted="false">"ورژن"</string>
+    <string name="l10n_931e1a4b152ad9d1" formatted="false">"سبھی دیکھیں"</string>
     <string name="l10n_ddcd2f2e783a0ee9" formatted="false">"بنفشی"</string>
     <string name="l10n_0c82d065d0dd4cbf" formatted="false">"صوتی کمانڈز موبائل ایپ میں دستیاب نہیں ہیں۔"</string>
     <string name="l10n_c0b2cee024771a9f" formatted="false">"صوتی ان پٹ"</string>
@@ -959,9 +1229,16 @@
     <string name="l10n_0a1ea5282f05b18d" formatted="false">"منظوری کا انتظار"</string>
     <string name="l10n_8ac7aa173f261d8b" formatted="false">"آپ کو کیا ملتا ہے"</string>
     <string name="l10n_37619fc13053f82b" formatted="false">"سفید"</string>
+    <string name="l10n_da17e9bd3e2e98db" formatted="false">"Worker ID"</string>
+    <string name="l10n_e7dff0bfb1f39bad" formatted="false">"ورکر لاگ"</string>
     <string name="l10n_4ca0a75c2b7fa7da" formatted="false">"ورک اسپیس"</string>
+    <string name="l10n_45df1387dc17132d" formatted="false">"اس سرور پر ورک اسپیس کا انتظام دستیاب نہیں ہے۔"</string>
+    <string name="l10n_6e0f2ba26a5e7f14" formatted="false">"ورک اسپیس کا نام"</string>
     <string name="l10n_5b8d33f220cddf4c" formatted="false">"ورک اسپیس کا راستہ"</string>
+    <string name="l10n_01844d97ed607c1a" formatted="false">"ورک اسپیس کی اس قسم کے لیے ورک اسپیس کا راستہ درکار ہے۔"</string>
     <string name="l10n_928ae0b86e6b313e" formatted="false">"ورک اسپیس تبدیل کرنا دستیاب نہیں ہے۔"</string>
+    <string name="l10n_dc8ab239f39b6ebf" formatted="false">"ورک اسپیس، سکلز، زیادہ سے زیادہ رن ٹائم، اور شرط اس وقت سیٹ ہوتی ہے جب کارڈ بن جاتا ہے اور یہاں ترمیم نہیں کی جا سکتی۔"</string>
+    <string name="l10n_fad0554cb2ea2e8c" formatted="false">"ورک ٹری"</string>
     <string name="l10n_ebf23375246151e6" formatted="false">"کوڈ بلاک کی سطریں لپیٹیں"</string>
     <string name="l10n_4855c3796b3a0f62" formatted="false">"کوڈ بلاکس میں طویل سطروں کو اسکرین کے مطابق لپیٹتا ہے بجائے اس کے کہ سائیڈ کی طرف اسکرول کیا جائے۔ آپ کسی بھی کوڈ بلاک میں ریپ بٹن پر بھی ٹیپ کر سکتے ہیں۔"</string>
     <string name="l10n_4a48932789d199bb" formatted="false">"لکھیں۔"</string>
@@ -976,6 +1253,7 @@
     <string name="l10n_22b34eb125f0f1ee" formatted="false">"آپ کسی دوسرے ترتیب شدہ سرور پر منتقل ہو جائیں گے۔ اسے استعمال کرنے کے لیے دوبارہ سائن اِن کریں۔"</string>
     <string name="l10n_a7355287e63a4595" formatted="false">"آپ کا Hermes Web UI اسی ہارڈ ویئر پر رہتا ہے جسے آپ کنٹرول کرتے ہیں۔"</string>
     <string name="l10n_0b05d4e5dfddc460" formatted="false">"آپ کا Hermes ایجنٹ، iPhone سے Tailscale کے ذریعے قابلِ رسائی۔"</string>
+    <string name="l10n_d621853ee2b94ab0" formatted="false">"آپ کا مقامی مسودہ مسترد کر دیا جائے گا۔"</string>
     <string name="l10n_1735ecf6cc9d21df" formatted="false">"آپ کا سیشن ختم ہو گیا۔ دوبارہ سائن اِن کریں۔"</string>
     <string name="l10n_46aa126e081be313" formatted="false">"آپ کا کام کرنے والا درخت صاف ہے۔"</string>
     <string name="l10n_0411e4632d186d8a" formatted="false">"ماڈلز تبدیل کریں"</string>
@@ -996,6 +1274,7 @@
     <string name="l10n_9c7e05e5868afcf3" formatted="false">"prompt"</string>
     <string name="l10n_7cd9148ec5a552db" formatted="false">"query"</string>
     <string name="l10n_3b2be2e26344d52b" formatted="false">"سوال"</string>
+    <string name="l10n_8103a6c374c589c3" formatted="false">"ٹوکن فی سیکنڈ"</string>
     <string name="l10n_1937c4c28f726186" formatted="false">"ٹول"</string>
     <string name="l10n_c551e6cf17a561ce" formatted="false">"منظور کریں"</string>
     <string name="l10n_cfea419c3b4e8b02" formatted="false">"محفوظ کریں"</string>
@@ -1019,7 +1298,6 @@
     <string name="l10n_567f51fd4b4b8a0d" formatted="false">"تبدیلیاں دستیاب نہیں ہیں۔"</string>
     <string name="l10n_d3f0b43f65ef5ed5" formatted="false">"بعد کے پیغامات رد کریں؟"</string>
     <string name="l10n_1a2b1cb567321e7c" formatted="false">"شناخت"</string>
-    <string name="l10n_8b39616698372de0" formatted="false">"وہ Tailscale URL درج کریں جو آپ کے ایجنٹ نے واپس کیا، مثلاً `http://&lt;tailnet-ip&gt;:8787`۔"</string>
     <string name="l10n_f54ec593076806df" formatted="false">"HTML کے طور پر برآمد کریں"</string>
     <string name="l10n_bc399052d4204298" formatted="false">"JSON کے طور پر برآمد کریں"</string>
     <string name="l10n_03d5d80199276349" formatted="false">"سرور ہٹائیں"</string>
@@ -1059,7 +1337,6 @@
     <string name="l10n_bd8d3d03c9e555ba" formatted="false">"فعال سرور سے سائن آؤٹ کر کے تعارف پر واپس لے جاتا ہے۔"</string>
     <string name="l10n_2dacf65959849884" formatted="false">"بھیجیں"</string>
     <string name="l10n_8b18a01cc0e805fc" formatted="false">"شاخ"</string>
-    <string name="l10n_768e0c1c69573fb5" formatted="false">"مکمل عنوان"</string>
     <string name="l10n_a62dff92d4316df9" formatted="false">"ٹوسٹ اطلاعات"</string>
     <string name="l10n_7bab0e5ded8bc6f0" formatted="false">"ماڈل ID بالکل اسی طرح ٹائپ کریں جیسا سرور توقع کرتا ہے۔"</string>
     <string name="l10n_1d4d43cc6f3a833e" formatted="false">"ہو گیا"</string>
@@ -1069,7 +1346,7 @@
     <string name="l10n_4995a18a7feb07d3" formatted="false">"Android اطلاعات کی اجازت ہے۔"</string>
     <string name="l10n_6ffbb15ebde8242f" formatted="false">"Android اطلاعات غیر فعال ہیں۔"</string>
     <string name="l10n_65f5f6f5ac859134" formatted="false">"اپنے Android سے اپنے Hermes ایجنٹ کے ساتھ چیٹ کریں"</string>
-    <string name="l10n_9aae4001f785c3f9" formatted="false">"اپنے Android سے اپنے Hermes ایجنٹ کو کنٹرول کریں۔"</string>
+    <string name="l10n_9aae4001f785c3f9" formatted="false">"اپنے iPhone یا iPad سے اپنے Hermes ایجنٹ کو کنٹرول کریں۔"</string>
     <string name="l10n_988fc6350ab87756" formatted="false">"Google Play سے Tailscale حاصل کریں"</string>
     <string name="l10n_e972ad1daa70f255" formatted="false">"آپ کا Hermes ایجنٹ، Android سے Tailscale کے ذریعے قابلِ رسائی۔"</string>
     <string name="l10n_b9cba9b2cbc1433d" formatted="false">"%lld محفوظ شدہ سیشن"</string>
@@ -1085,7 +1362,9 @@
     <string name="l10n_dc3decbb93847518" formatted="false">"تفصیلات"</string>
     <string name="l10n_36fff63ccbcd7bf9" formatted="false">"مسترد کریں"</string>
     <string name="l10n_663da9347806aa18" formatted="false">"فائل کی تبدیلیاں"</string>
+    <string name="l10n_96e578211aa29531" formatted="false">"فلٹرز"</string>
     <string name="l10n_1ce5eec83a4626a6" formatted="false">"Hermex ????? ?????? ???? ???? ???? ???? ?? ??? ???? ?? ?? ??? ?? ????? ???? ?????? ???? ??? ????? ??? ??? ????? ????? ?? ????? ???"</string>
+    <string name="l10n_7f896a7c24b031ad" formatted="false">"غیر موافق Kanban جواب"</string>
     <string name="l10n_7a4e49bc1d9b6a0e" formatted="false">"ریموٹ تصویر لوڈ کریں"</string>
     <string name="l10n_2563f2298c5e7405" formatted="false">"نام: قدر"</string>
     <string name="l10n_cf9b77061f7b3126" formatted="false">"کھولیں"</string>

@@ -61,6 +61,7 @@ struct ComposerModelPickerSheet: View {
                 }
             }
         }
+        .adaptiveFormPresentation()
     }
 
     private var customModelEntry: some View {
@@ -412,12 +413,19 @@ struct ComposerWorkspacePickerSheet: View {
     let workspaceRoots: [WorkspaceRoot]
     let selectedWorkspacePath: String?
     let suggestions: [String]
+    /// Server base URL used to open the registry manager; nil hides the
+    /// Manage affordance (e.g. offline cached mode).
+    var managementServer: URL?
     let onLoadSuggestions: (String) async -> Void
     let onSelect: (String) async -> Void
+    /// Called after the registry manager closes having changed the registry,
+    /// so the owner can refetch `workspaceRoots`.
+    var onRegistryChanged: () async -> Void = {}
 
     @Environment(\.dismiss) private var dismiss
     @State private var prefix = ""
     @State private var acceptedWorkspacePath: String?
+    @State private var showsManagerSheet = false
 
     var body: some View {
         NavigationStack {
@@ -463,6 +471,14 @@ struct ComposerWorkspacePickerSheet: View {
             .navigationTitle("Choose Workspace")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                if managementServer != nil {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Manage") {
+                            showsManagerSheet = true
+                        }
+                    }
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
                         dismiss()
@@ -476,7 +492,16 @@ struct ComposerWorkspacePickerSheet: View {
                 }
                 await onLoadSuggestions(prefix)
             }
+            .sheet(isPresented: $showsManagerSheet) {
+                if let managementServer {
+                    WorkspaceManagerView(server: managementServer) {
+                        await onRegistryChanged()
+                    }
+                    .adaptiveFormPresentation()
+                }
+            }
         }
+        .adaptiveFormPresentation()
     }
 
     private func workspaceButton(path: String, name: String?) -> some View {

@@ -24,6 +24,18 @@ private val Context.localSettingsDataStore by preferencesDataStore(
 fun defaultRtlChatLayoutEnabled(locale: Locale = Locale.getDefault()): Boolean =
     locale.language.lowercase(Locale.US) in setOf("ar", "fa", "he", "iw", "ps", "sd", "ug", "ur", "yi")
 
+enum class DictationProviderPreference(val storageValue: String, val settingsDescription: String) {
+    ServerFirst("serverFirst", "Server first"),
+    OnDeviceFirst("onDeviceFirst", "On-device first"),
+    OnDeviceOnly("onDeviceOnly", "On-device only"),
+    ;
+
+    companion object {
+        fun fromStorageValue(value: String?): DictationProviderPreference =
+            entries.firstOrNull { it.storageValue == value } ?: ServerFirst
+    }
+}
+
 data class ChatDisplaySettings(
     val showThinkingAndToolCards: Boolean = true,
     val thinkingCardsStartExpanded: Boolean = false,
@@ -34,12 +46,26 @@ data class ChatDisplaySettings(
     val wrapsCodeBlockLines: Boolean = false,
     val streamedTextAnimationEnabled: Boolean = true,
     val showsStatusNotificationResponseExcerpts: Boolean = false,
+    val showsResponseSpeed: Boolean = false,
+    val showsChatFilesButton: Boolean = true,
+    val showsChatGitControls: Boolean = true,
 )
 
 data class SessionRowDisplaySettings(
     val showMessageCount: Boolean = true,
     val showWorkspace: Boolean = true,
     val showCronSessions: Boolean = true,
+    val showSubagentSessions: Boolean = false,
+)
+
+data class MainPageDisplaySettings(
+    val showTasks: Boolean = true,
+    val showKanban: Boolean = true,
+    val showSkills: Boolean = true,
+    val showMemory: Boolean = true,
+    val showInsights: Boolean = true,
+    val showActiveProfile: Boolean = true,
+    val showProjects: Boolean = true,
 )
 
 data class SessionIdentitySettings(
@@ -56,6 +82,10 @@ class LocalSettingsRepository(context: Context) {
 
     val streamingSendBehavior: Flow<StreamingSendBehavior> = dataStore.data.map { preferences ->
         StreamingSendBehavior.fromStorageValue(preferences[STREAMING_SEND_BEHAVIOR])
+    }
+
+    val dictationProviderPreference: Flow<DictationProviderPreference> = dataStore.data.map { preferences ->
+        DictationProviderPreference.fromStorageValue(preferences[DICTATION_PROVIDER_PREFERENCE])
     }
 
     val tintPrimaryActionsWithThemeColor: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -88,6 +118,9 @@ class LocalSettingsRepository(context: Context) {
             wrapsCodeBlockLines = preferences[WRAPS_CODE_BLOCK_LINES] ?: false,
             streamedTextAnimationEnabled = preferences[STREAMED_TEXT_ANIMATION_ENABLED] ?: true,
             showsStatusNotificationResponseExcerpts = preferences[SHOWS_STATUS_NOTIFICATION_RESPONSE_EXCERPTS] ?: false,
+            showsResponseSpeed = preferences[SHOWS_RESPONSE_SPEED] ?: false,
+            showsChatFilesButton = preferences[SHOWS_CHAT_FILES_BUTTON] ?: true,
+            showsChatGitControls = preferences[SHOWS_CHAT_GIT_CONTROLS] ?: true,
         )
     }
 
@@ -96,6 +129,19 @@ class LocalSettingsRepository(context: Context) {
             showMessageCount = preferences[SESSION_ROW_SHOW_MESSAGE_COUNT] ?: true,
             showWorkspace = preferences[SESSION_ROW_SHOW_WORKSPACE] ?: true,
             showCronSessions = preferences[SESSION_ROW_SHOW_CRON_SESSIONS] ?: true,
+            showSubagentSessions = preferences[SESSION_ROW_SHOW_SUBAGENT_SESSIONS] ?: false,
+        )
+    }
+
+    val mainPageDisplaySettings: Flow<MainPageDisplaySettings> = dataStore.data.map { preferences ->
+        MainPageDisplaySettings(
+            showTasks = preferences[MAIN_PAGE_SHOW_TASKS] ?: true,
+            showKanban = preferences[MAIN_PAGE_SHOW_KANBAN] ?: true,
+            showSkills = preferences[MAIN_PAGE_SHOW_SKILLS] ?: true,
+            showMemory = preferences[MAIN_PAGE_SHOW_MEMORY] ?: true,
+            showInsights = preferences[MAIN_PAGE_SHOW_INSIGHTS] ?: true,
+            showActiveProfile = preferences[MAIN_PAGE_SHOW_ACTIVE_PROFILE] ?: true,
+            showProjects = preferences[MAIN_PAGE_SHOW_PROJECTS] ?: true,
         )
     }
 
@@ -191,6 +237,26 @@ class LocalSettingsRepository(context: Context) {
         }
     }
 
+    suspend fun setDictationProviderPreference(preference: DictationProviderPreference) {
+        dataStore.edit { preferences ->
+            preferences[DICTATION_PROVIDER_PREFERENCE] = preference.storageValue
+        }
+    }
+
+    fun showClaudeCodeSessions(serverId: String): Flow<Boolean> =
+        dataStore.data.map { preferences ->
+            preferences[showClaudeCodeSessionsKey(serverId)] ?: true
+        }
+
+    suspend fun currentShowClaudeCodeSessions(serverId: String): Boolean =
+        showClaudeCodeSessions(serverId).first()
+
+    suspend fun setShowClaudeCodeSessions(serverId: String, enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[showClaudeCodeSessionsKey(serverId)] = enabled
+        }
+    }
+
     suspend fun setShowThinkingAndToolCards(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[SHOW_THINKING_AND_TOOL_CARDS] = enabled
@@ -245,6 +311,24 @@ class LocalSettingsRepository(context: Context) {
         }
     }
 
+    suspend fun setShowsResponseSpeed(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[SHOWS_RESPONSE_SPEED] = enabled
+        }
+    }
+
+    suspend fun setShowsChatFilesButton(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[SHOWS_CHAT_FILES_BUTTON] = enabled
+        }
+    }
+
+    suspend fun setShowsChatGitControls(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[SHOWS_CHAT_GIT_CONTROLS] = enabled
+        }
+    }
+
     suspend fun setSessionRowShowMessageCount(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[SESSION_ROW_SHOW_MESSAGE_COUNT] = enabled
@@ -262,6 +346,26 @@ class LocalSettingsRepository(context: Context) {
             preferences[SESSION_ROW_SHOW_CRON_SESSIONS] = enabled
         }
     }
+
+    suspend fun setShowSubagentSessions(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[SESSION_ROW_SHOW_SUBAGENT_SESSIONS] = enabled
+        }
+    }
+
+    suspend fun setShowTasksSection(enabled: Boolean) = setBoolean(MAIN_PAGE_SHOW_TASKS, enabled)
+
+    suspend fun setShowKanbanSection(enabled: Boolean) = setBoolean(MAIN_PAGE_SHOW_KANBAN, enabled)
+
+    suspend fun setShowSkillsSection(enabled: Boolean) = setBoolean(MAIN_PAGE_SHOW_SKILLS, enabled)
+
+    suspend fun setShowMemorySection(enabled: Boolean) = setBoolean(MAIN_PAGE_SHOW_MEMORY, enabled)
+
+    suspend fun setShowInsightsSection(enabled: Boolean) = setBoolean(MAIN_PAGE_SHOW_INSIGHTS, enabled)
+
+    suspend fun setShowActiveProfileSection(enabled: Boolean) = setBoolean(MAIN_PAGE_SHOW_ACTIVE_PROFILE, enabled)
+
+    suspend fun setShowProjectsSection(enabled: Boolean) = setBoolean(MAIN_PAGE_SHOW_PROJECTS, enabled)
 
     suspend fun setResponseCompletionNotificationsEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
@@ -320,10 +424,15 @@ class LocalSettingsRepository(context: Context) {
         }
     }
 
+    private suspend fun setBoolean(key: androidx.datastore.preferences.core.Preferences.Key<Boolean>, enabled: Boolean) {
+        dataStore.edit { preferences -> preferences[key] = enabled }
+    }
+
     private companion object {
         val MODEL_KEY_JSON = Json { ignoreUnknownKeys = true }
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val STREAMING_SEND_BEHAVIOR = stringPreferencesKey("streamingSendBehavior")
+        val DICTATION_PROVIDER_PREFERENCE = stringPreferencesKey("composerSTTProviderPreference")
         val TINTS_PRIMARY_ACTIONS_WITH_THEME_COLOR = booleanPreferencesKey("appearance.tintsPrimaryActionsWithThemeColor")
         val HAPTICS_ENABLED = booleanPreferencesKey("appHaptics.isEnabled")
         val SESSION_IDENTITY_DISPLAY_NAME = stringPreferencesKey("sessionIdentity.displayName")
@@ -338,15 +447,28 @@ class LocalSettingsRepository(context: Context) {
         val WRAPS_CODE_BLOCK_LINES = booleanPreferencesKey("chatTranscript.wrapsCodeBlockLines")
         val STREAMED_TEXT_ANIMATION_ENABLED = booleanPreferencesKey("chatTranscript.streamedTextAnimationEnabled")
         val SHOWS_STATUS_NOTIFICATION_RESPONSE_EXCERPTS = booleanPreferencesKey("chatTranscript.showsStatusNotificationResponseExcerpts")
+        val SHOWS_RESPONSE_SPEED = booleanPreferencesKey("chatTranscript.showsResponseSpeed")
+        val SHOWS_CHAT_FILES_BUTTON = booleanPreferencesKey("chatToolbar.showsFilesButton")
+        val SHOWS_CHAT_GIT_CONTROLS = booleanPreferencesKey("chatToolbar.showsGitControls")
         val SESSION_ROW_SHOW_MESSAGE_COUNT = booleanPreferencesKey("sessionRow.showMessageCount")
         val SESSION_ROW_SHOW_WORKSPACE = booleanPreferencesKey("sessionRow.showWorkspace")
         val SESSION_ROW_SHOW_CRON_SESSIONS = booleanPreferencesKey("sessionRow.showCronSessions")
+        val SESSION_ROW_SHOW_SUBAGENT_SESSIONS = booleanPreferencesKey("sessionRow.showSubagentSessions")
+        val MAIN_PAGE_SHOW_TASKS = booleanPreferencesKey("mainPage.showTasks")
+        val MAIN_PAGE_SHOW_KANBAN = booleanPreferencesKey("mainPage.showKanban")
+        val MAIN_PAGE_SHOW_SKILLS = booleanPreferencesKey("mainPage.showSkills")
+        val MAIN_PAGE_SHOW_MEMORY = booleanPreferencesKey("mainPage.showMemory")
+        val MAIN_PAGE_SHOW_INSIGHTS = booleanPreferencesKey("mainPage.showInsights")
+        val MAIN_PAGE_SHOW_ACTIVE_PROFILE = booleanPreferencesKey("mainPage.showActiveProfile")
+        val MAIN_PAGE_SHOW_PROJECTS = booleanPreferencesKey("mainPage.showProjects")
         val RESPONSE_COMPLETION_NOTIFICATIONS_ENABLED = booleanPreferencesKey("responseCompletionNotifications.isEnabled")
         val RESPONSE_COMPLETION_NOTIFICATION_PERMISSION_REQUESTED = booleanPreferencesKey("responseCompletionNotifications.hasRequestedPermission")
         val FAVORITE_MODEL_KEYS = stringPreferencesKey("chatComposer.favoriteModels")
         val RECENT_MODEL_KEYS = stringPreferencesKey("chatComposer.recentModels")
 
         fun showCliSessionsKey(serverId: String) = booleanPreferencesKey("show_cli_sessions::$serverId")
+
+        fun showClaudeCodeSessionsKey(serverId: String) = booleanPreferencesKey("show_claude_code_sessions::$serverId")
 
         fun decodeModelKeys(value: String?): List<ModelFavoriteKey> =
             value

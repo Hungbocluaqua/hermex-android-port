@@ -4,6 +4,7 @@
     <string name="l10n_da39a3ee5e6b4b0d" formatted="false">""</string>
     <string name="l10n_c5f4841e88283b20" formatted="false">"%@ "</string>
     <string name="l10n_f4bf1c5a87391cee" formatted="false">"%@（コピー）"</string>
+    <string name="l10n_2ca3ef88d532a8ea" formatted="false">"%@（カスタム）"</string>
     <string name="l10n_65f24878983ab599" formatted="false">"キャッシュ %@"</string>
     <string name="l10n_d5e871cae9c94743" formatted="false">"%@のヘッダーロゴの色"</string>
     <string name="l10n_ceccebb4580279f7" formatted="false">"入力 %1$@ / 出力 %2$@"</string>
@@ -16,13 +17,89 @@
     <string name="l10n_101047989486fe1e" formatted="false">"%1$@、%2$@、アクティブなサーバ"</string>
     <string name="l10n_bc576900b6f6e566" formatted="false">"%@、アクティブなサーバ"</string>
     <string name="l10n_16070acfe08366e8" formatted="false">"%lld"</string>
+    <string name="l10n_ec77970ef773212e" formatted="false">"%lld件のカード"</string>
+    <plurals name="l10n_ec77970ef773212e">
+        <item quantity="zero">"%d件のカード"</item>
+        <item quantity="one">"%d件のカード"</item>
+        <item quantity="two">"%d件のカード"</item>
+        <item quantity="few">"%d件のカード"</item>
+        <item quantity="many">"%d件のカード"</item>
+        <item quantity="other">"%d件のカード"</item>
+    </plurals>
+    <string name="l10n_8d777c131031fa2e" formatted="false">"依存カード%lld件"</string>
+    <plurals name="l10n_8d777c131031fa2e">
+        <item quantity="zero">"依存カード%d件"</item>
+        <item quantity="one">"依存カード%d件"</item>
+        <item quantity="two">"依存カード%d件"</item>
+        <item quantity="few">"依存カード%d件"</item>
+        <item quantity="many">"依存カード%d件"</item>
+        <item quantity="other">"依存カード%d件"</item>
+    </plurals>
+    <string name="l10n_66a4be0dc2595729" formatted="false">"前提条件%lld件"</string>
+    <plurals name="l10n_66a4be0dc2595729">
+        <item quantity="zero">"前提条件%d件"</item>
+        <item quantity="one">"前提条件%d件"</item>
+        <item quantity="two">"前提条件%d件"</item>
+        <item quantity="few">"前提条件%d件"</item>
+        <item quantity="many">"前提条件%d件"</item>
+        <item quantity="other">"前提条件%d件"</item>
+    </plurals>
     <string name="l10n_f6450a6cc043203f" formatted="false">"%lld 件追加"</string>
+    <string name="l10n_5e99075a998414f8" formatted="false">"コメント%lld件"</string>
+    <plurals name="l10n_5e99075a998414f8">
+        <item quantity="zero">"コメント%d件"</item>
+        <item quantity="one">"コメント%d件"</item>
+        <item quantity="two">"コメント%d件"</item>
+        <item quantity="few">"コメント%d件"</item>
+        <item quantity="many">"コメント%d件"</item>
+        <item quantity="other">"コメント%d件"</item>
+    </plurals>
     <string name="l10n_06c13ef4292ad119" formatted="false">"%lld 件のファイルが変更されました"</string>
+    <plurals name="l10n_06c13ef4292ad119">
+        <item quantity="zero">"%d 件のファイルが変更されました"</item>
+        <item quantity="one">"%d 件のファイルが変更されました"</item>
+        <item quantity="two">"%d 件のファイルが変更されました"</item>
+        <item quantity="few">"%d 件のファイルが変更されました"</item>
+        <item quantity="many">"%d 件のファイルが変更されました"</item>
+        <item quantity="other">"%d 件のファイルが変更されました"</item>
+    </plurals>
     <string name="l10n_c4b7ead9d1bf1471" formatted="false">"%lld行"</string>
+    <plurals name="l10n_c4b7ead9d1bf1471">
+        <item quantity="zero">"%d行"</item>
+        <item quantity="one">"%d行"</item>
+        <item quantity="two">"%d行"</item>
+        <item quantity="few">"%d行"</item>
+        <item quantity="many">"%d行"</item>
+        <item quantity="other">"%d行"</item>
+    </plurals>
     <string name="l10n_2efcf5438a29b31f" formatted="false">"%lld件のメッセージ"</string>
+    <plurals name="l10n_2efcf5438a29b31f">
+        <item quantity="zero">"%d件のメッセージ"</item>
+        <item quantity="one">"%d件のメッセージ"</item>
+        <item quantity="two">"%d件のメッセージ"</item>
+        <item quantity="few">"%d件のメッセージ"</item>
+        <item quantity="many">"%d件のメッセージ"</item>
+        <item quantity="other">"%d件のメッセージ"</item>
+    </plurals>
     <string name="l10n_ced88678ac893dde" formatted="false">"%lld 件削除"</string>
     <string name="l10n_232aab9f8671f81d" formatted="false">"%lld件のセッション"</string>
+    <plurals name="l10n_232aab9f8671f81d">
+        <item quantity="zero">"%d件のセッション"</item>
+        <item quantity="one">"%d件のセッション"</item>
+        <item quantity="two">"%d件のセッション"</item>
+        <item quantity="few">"%d件のセッション"</item>
+        <item quantity="many">"%d件のセッション"</item>
+        <item quantity="other">"%d件のセッション"</item>
+    </plurals>
     <string name="l10n_66137dc5d00d671d" formatted="false">"%lld個のスキル"</string>
+    <plurals name="l10n_66137dc5d00d671d">
+        <item quantity="zero">"%d個のスキル"</item>
+        <item quantity="one">"%d個のスキル"</item>
+        <item quantity="two">"%d個のスキル"</item>
+        <item quantity="few">"%d個のスキル"</item>
+        <item quantity="many">"%d個のスキル"</item>
+        <item quantity="other">"%d個のスキル"</item>
+    </plurals>
     <string name="l10n_78cd57f9892157b8" formatted="false">"コンテキスト %lld%%"</string>
     <string name="l10n_6ab06c5fe8caa9fa" formatted="false">"シェア %lld%%"</string>
     <string name="l10n_a5b19753b0ff34b9" formatted="false">"、切り替え中"</string>
@@ -31,6 +108,7 @@
     <string name="l10n_1099d51b36a7e832" formatted="false">"/btw はWebUIセッションでのみ使用できます。"</string>
     <string name="l10n_449db9ef04232fc8" formatted="false">"1 個のファイルが変更されました"</string>
     <string name="l10n_4a5c7117b6d4d5cb" formatted="false">"%lld 件中 1 件保留中"</string>
+    <string name="l10n_59f764ccfb926ae5" formatted="false">"-100 から 100 までの整数。"</string>
     <string name="l10n_64d3c82b910a7784" formatted="false">"ワークスペース内のローカルファイルがグローバルなプロジェクトコンテキストを上書きしています。"</string>
     <string name="l10n_cf678cab87dc1f7d" formatted="false">"APIキー"</string>
     <string name="l10n_85dfa32c97d8618d" formatted="false">"アカウント"</string>
@@ -41,11 +119,22 @@
     <string name="l10n_d74340399e2a5b1d" formatted="false">"アクティブなプロファイル"</string>
     <string name="l10n_81c0d915fa6d82fd" formatted="false">"アクティビティ"</string>
     <string name="l10n_03f7eb4fcb825734" formatted="false">"アクティビティ: %lld個のツール"</string>
+    <plurals name="l10n_03f7eb4fcb825734">
+        <item quantity="zero">"アクティビティ: %d個のツール"</item>
+        <item quantity="one">"アクティビティ: %d個のツール"</item>
+        <item quantity="two">"アクティビティ: %d個のツール"</item>
+        <item quantity="few">"アクティビティ: %d個のツール"</item>
+        <item quantity="many">"アクティビティ: %d個のツール"</item>
+        <item quantity="other">"アクティビティ: %d個のツール"</item>
+    </plurals>
     <string name="l10n_61cc55aa04531847" formatted="false">"追加"</string>
     <string name="l10n_ea65bead2508867e" formatted="false">"%@ をお気に入りに追加"</string>
     <string name="l10n_42b949077d2f4201" formatted="false">"ヘッダーを追加"</string>
+    <string name="l10n_d8ceee085e884024" formatted="false">"前提条件を追加"</string>
     <string name="l10n_99044355f0319f6b" formatted="false">"サーバを追加"</string>
     <string name="l10n_c378a1c16565ceba" formatted="false">"サーバを追加…"</string>
+    <string name="l10n_a603825bf2c876ef" formatted="false">"ワークスペースを追加"</string>
+    <string name="l10n_a245782af7f0aa40" formatted="false">"セッション開始時に使えるようにワークスペースを追加してください。"</string>
     <string name="l10n_cf845d10129ecb8c" formatted="false">"カスタムモデルをお気に入りに追加"</string>
     <string name="l10n_d5a110d69bfeccca" formatted="false">"ヘッダーを追加"</string>
     <string name="l10n_2470e8667bfae527" formatted="false">"プロジェクトを追加"</string>
@@ -70,6 +159,7 @@
     <string name="l10n_902793b227093e34" formatted="false">"常にライトアイコンを使用"</string>
     <string name="l10n_06ee5beccc033b61" formatted="false">"常にダークのモノクロアイコンを使用"</string>
     <string name="l10n_4d538a18a87dcd64" formatted="false">"常にライトのモノクロアイコンを使用"</string>
+    <string name="l10n_fa07652b57d3d7c1" formatted="false">"別のボード操作が進行中です。"</string>
     <string name="l10n_fc4a695f02a8a53a" formatted="false">"アプリ"</string>
     <string name="l10n_f54c8357ef4e5fab" formatted="false">"アプリアイコン"</string>
     <string name="l10n_41def7a0febe741d" formatted="false">"外観"</string>
@@ -78,15 +168,21 @@
     <string name="l10n_b8d012c2004fa7b4" formatted="false">"承認が必要"</string>
     <string name="l10n_7b2c7f146abacedd" formatted="false">"承認"</string>
     <string name="l10n_2621c6fd51a58e1d" formatted="false">"アーカイブ"</string>
+    <string name="l10n_2b86e5bc4a2034f2" formatted="false">"カードをアーカイブ"</string>
+    <string name="l10n_eddc813f35b12589" formatted="false">"アーカイブ済み"</string>
     <string name="l10n_14eca073e39a5015" formatted="false">"アーカイブ済みセッション"</string>
     <string name="l10n_cbb9fa252e60809e" formatted="false">"引数"</string>
     <string name="l10n_ee677f2109607e18" formatted="false">"サイド質問をする"</string>
     <string name="l10n_e94537390527ef92" formatted="false">"何でも聞いてください… /commands"</string>
+    <string name="l10n_288fbe21f70e35a2" formatted="false">"プロファイルを割り当て"</string>
+    <string name="l10n_e55df441e8955746" formatted="false">"割り当て"</string>
     <string name="l10n_8010d1f4d0696ce1" formatted="false">"アシスタント"</string>
     <string name="l10n_5157af6823af43d5" formatted="false">"アシスタント、%@"</string>
     <string name="l10n_1afff0157ce3602c" formatted="false">"添付"</string>
     <string name="l10n_469aeebeecf2f62d" formatted="false">"ファイルを添付"</string>
     <string name="l10n_a75411ec9700b4b1" formatted="false">"サーバへの再接続とセッションの再読み込みを試みます。"</string>
+    <string name="l10n_d53e7a421e8fccd3" formatted="false">"認証エラー：%@"</string>
+    <string name="l10n_3cf616bff8d00643" formatted="false">"自動ブロック"</string>
     <string name="l10n_61f543ec018634c1" formatted="false">"利用できるモバイルコマンド：\n\n`/help` - このコマンド一覧を表示。\n`/clear` - ローカルの会話履歴を消去。\n`/stop` - 現在の応答を停止。\n`/new` - 新しいセッションを開く。\n`/model &lt;id&gt;` - このセッションのモデルを切り替え。\n`/workspace &lt;path&gt;` - このセッションのワークスペースを切り替え。\n`/reasoning &lt;level&gt;` - 推論の表示または労力を設定。\n`/title &lt;text&gt;` - このセッションの名前を変更。\n`/personality &lt;name&gt;` - このセッションのパーソナリティを設定または解除。\n`/skills [query]` - 利用できるスキルを検索。\n`/queue &lt;message&gt;` - 次のターンにメッセージをキュー。\n`/steer &lt;message&gt;` - アクティブな応答を誘導。\n`/interrupt &lt;message&gt;` - アクティブな応答を停止して新しいメッセージを送信。\n`/status` - セッションの状態を表示。\n`/btw &lt;question&gt;` - このチャットを変えずにサイド質問をする。\n`/background &lt;prompt&gt;` - 並行タスクを実行し結果をここに投稿。\n`/bg &lt;prompt&gt;` - `/background` のエイリアス。\n`/branch [name]` - この会話を分岐。\n`/fork [name]` - `/branch` のエイリアス。\n`/compress [focus]` - このセッションのコンテキストを圧縮。\n`/compact [focus]` - `/compress` のエイリアス。\n`/undo` - 直前のやり取りを取り消し。\n`/retry` - 直前のターンを再試行。"</string>
     <string name="l10n_7aabf6c8fafcc129" formatted="false">"利用できるパーソナリティ：\n\n%@\n\n`/personality &lt;name&gt;` または `/personality none` を使用してください。"</string>
     <string name="l10n_d3a12fb079d32731" formatted="false">"利用できるスキル："</string>
@@ -96,41 +192,66 @@
     <string name="l10n_2c71547af580e72a" formatted="false">"%lld 件遅れ"</string>
     <string name="l10n_f48462d8ff141190" formatted="false">"バイナリファイル"</string>
     <string name="l10n_27441b0fa1b44e2e" formatted="false">"バイナリファイルが変更されました"</string>
+    <string name="l10n_82dd2cdf36f9436d" formatted="false">"ブロック"</string>
+    <string name="l10n_99613c74ce010d98" formatted="false">"ブロック中"</string>
     <string name="l10n_7d44bc449c2a2637" formatted="false">"ブルー"</string>
+    <string name="l10n_e879b0be0190766a" formatted="false">"ボード"</string>
+    <string name="l10n_4f6778977945bd63" formatted="false">"%@ のボード操作"</string>
     <string name="l10n_1627510b242fdd96" formatted="false">"支店"</string>
     <string name="l10n_f578227926a03a85" formatted="false">"支店"</string>
+    <string name="l10n_ca37515a9638c19a" formatted="false">"ボードを表示"</string>
+    <string name="l10n_76163bd10c654bd7" formatted="false">"ボードを表示：%@"</string>
     <string name="l10n_1e810b2f9f05b51a" formatted="false">"ワークスペースを閲覧し、エージェントの作業を把握できます。"</string>
+    <string name="l10n_95ae28be3160a877" formatted="false">"閲覧中"</string>
+    <string name="l10n_6a57d83c47ce5b34" formatted="false">"ボードの閲覧はHermex内だけの操作です。ボードをアクティブにすると共有サーバーの状態が変わります。"</string>
     <string name="l10n_bbd80cf7e2ded5ef" formatted="false">"ビルド"</string>
+    <string name="l10n_7e18229655968fa8" formatted="false">"一括操作"</string>
     <string name="l10n_e179e26271f3e00f" formatted="false">"CLIセッション"</string>
-    <string name="l10n_533083941cb59936" formatted="false">"CLI セッションの表示はこのサーバーと同期されるため、WebUI にも反映されます。"</string>
     <string name="l10n_467ec180e1789d63" formatted="false">"キャッシュヒット率"</string>
     <string name="l10n_a495afbf7ab54ca6" formatted="false">"キャッシュ読み取りトークン"</string>
     <string name="l10n_b169be9668e92fe8" formatted="false">"キャッシュ済み"</string>
     <string name="l10n_c6b74ced31b9e9ca" formatted="false">"キャッシュされたセッションとメッセージはオフライン表示用に保持されます。消去するとこのサーバのキャッシュのみが削除され、他のサーバやHermesサーバには影響しません。"</string>
+    <string name="l10n_4da9c9af9631e294" formatted="false">"カメラ"</string>
     <string name="l10n_77dfd2135f4db726" formatted="false">"キャンセル"</string>
     <string name="l10n_a1bf92eff40dd4ad" formatted="false">"キャンセル済み"</string>
     <string name="l10n_68994ea613a15e32" formatted="false">"サーバに接続できません"</string>
+    <string name="l10n_4d4ce73b15660f20" formatted="false">"カード"</string>
+    <string name="l10n_e011b9a5e6fe45c8" formatted="false">"カードの操作"</string>
+    <string name="l10n_473759c32956a5bf" formatted="false">"カードID"</string>
+    <string name="l10n_8f302a05ee377243" formatted="false">"ステータスを変更"</string>
     <string name="l10n_aeba935e2a155528" formatted="false">"変更済みファイル"</string>
     <string name="l10n_8aa57de6dce6ee1c" formatted="false">"変更点"</string>
     <string name="l10n_9bcc895764d8fc8a" formatted="false">"変更は利用できません"</string>
     <string name="l10n_2ced57f125910a9e" formatted="false">"チャット"</string>
     <string name="l10n_79667edb08454169" formatted="false">"iPhoneからHermesエージェントとチャット"</string>
+    <string name="l10n_8174723b9172fdb9" formatted="false">"結果を確認"</string>
     <string name="l10n_4f4bd16d4664cb10" formatted="false">"Macがスリープしていないこと、cloudflaredが実行中であることを確認してください。"</string>
+    <string name="l10n_a4e79b38317485a5" formatted="false">"Checking Result"</string>
     <string name="l10n_5b5d3108125e92ca" formatted="false">"サーバを確認中…"</string>
     <string name="l10n_ccc506047a3d5fa7" formatted="false">"サーバを確認中…"</string>
     <string name="l10n_ebb571babefc16e0" formatted="false">"ストリームを確認中"</string>
+    <string name="l10n_6d3627f04cb4b2c9" formatted="false">"ボードを選択"</string>
+    <string name="l10n_adaf4eb9ab13e461" formatted="false">"カードを選択"</string>
     <string name="l10n_0e3df8f396036c89" formatted="false">"モデルを選択"</string>
+    <string name="l10n_74eda4a4630fe67d" formatted="false">"前提条件を選択してください"</string>
+    <string name="l10n_adf2074a73ebd128" formatted="false">"テナントの選択"</string>
     <string name="l10n_a7fe92a51df09be3" formatted="false">"ワークスペースを選択"</string>
     <string name="l10n_508b9e1565ffaab6" formatted="false">"スラッシュコマンドを選択するか、入力を続けてください。"</string>
+    <string name="l10n_6775ed40b855410b" formatted="false">"サポートされているステータスを選択します。"</string>
+    <string name="l10n_3754370042b5bbe9" formatted="false">"有効な前提条件を選択してください。"</string>
     <string name="l10n_94992b7ac22aa32d" formatted="false">"この新規プロファイルに使う、設定済みのプロバイダとモデルから選択します。"</string>
     <string name="l10n_98e5c453451ff290" formatted="false">"プロファイルを選択"</string>
     <string name="l10n_75268994292e5b16" formatted="false">"プロバイダIDを選択"</string>
     <string name="l10n_0e50f45864ab0e78" formatted="false">"ワークスペースのパスを選択"</string>
+    <string name="l10n_d143882689eb110e" formatted="false">"Claim Expires"</string>
+    <string name="l10n_b3b4124cf95844d1" formatted="false">"Claim ID"</string>
     <string name="l10n_e43b8a0a8cf76b80" formatted="false">"確認が必要"</string>
     <string name="l10n_171aff153045c26f" formatted="false">"確認の有効期限"</string>
     <string name="l10n_3e0fb17cab21c94b" formatted="false">"確認"</string>
+    <string name="l10n_0b721df83e6cbaaa" formatted="false">"Claude Codeセッション"</string>
     <string name="l10n_719ea396ad92e01b" formatted="false">"消去"</string>
     <string name="l10n_522175083f0bf50b" formatted="false">"キャッシュを消去"</string>
+    <string name="l10n_381c4bf1d409c027" formatted="false">"フィルタをクリア"</string>
     <string name="l10n_436424aa905192bb" formatted="false">"オフラインキャッシュを消去"</string>
     <string name="l10n_2803e2a8fdc2a018" formatted="false">"ファイル検索をクリア"</string>
     <string name="l10n_6e69351c3627d949" formatted="false">"モデル検索をクリア"</string>
@@ -148,8 +269,12 @@
     <string name="l10n_adac69379a626c24" formatted="false">"コード"</string>
     <string name="l10n_b1c9e2299e9d7ee4" formatted="false">"アクティブなプロファイル選択を折りたたむ"</string>
     <string name="l10n_57b446fe95841712" formatted="false">"プロジェクトを折りたたむ"</string>
+    <string name="l10n_f54ba11307e1765f" formatted="false">"スケジュール済みセッションを折りたたむ"</string>
     <string name="l10n_10544603c5d0fa0a" formatted="false">"セクションを折りたたむ"</string>
     <string name="l10n_1d0c8304baedcf8e" formatted="false">"カラー"</string>
+    <string name="l10n_153d7a58b3a3e898" formatted="false">"コメント"</string>
+    <string name="l10n_ad76b4babd667300" formatted="false">"Comment cannot be blank."</string>
+    <string name="l10n_cacb504956b073be" formatted="false">"Comments cannot be edited or deleted after sending."</string>
     <string name="l10n_1f5a1abf2f08ec18" formatted="false">"完了"</string>
     <string name="l10n_1798b3ba42ee08ea" formatted="false">"完了"</string>
     <string name="l10n_5ff40a15003f2322" formatted="false">"タッチ操作優先のコントロールで自然に入力できます。"</string>
@@ -170,11 +295,12 @@
     <string name="l10n_203c28bd65a53e4f" formatted="false">"コンテキストを圧縮しました。\n\n%@"</string>
     <string name="l10n_2e02623966f9391f" formatted="false">"続ける"</string>
     <string name="l10n_170889a98c72a890" formatted="false">"このまま続ける"</string>
-    <string name="l10n_842175d421b50dc2" formatted="false">"iPhoneからHermesエージェントを操作できます。"</string>
+    <string name="l10n_09250307eb1db720" formatted="false">"iPhoneまたはiPadからHermesエージェントを操作できます。"</string>
     <string name="l10n_8e3df45a49dba2b2" formatted="false">"コピー済み"</string>
     <string name="l10n_32856512b1e49e91" formatted="false">"Web UIリポジトリのリンクをコピーしました"</string>
     <string name="l10n_f90d7f30d7f1ff1d" formatted="false">"コードをコピーしました"</string>
     <string name="l10n_af74f7c5362aaee9" formatted="false">"コピー"</string>
+    <string name="l10n_3736d1a3b46cd58a" formatted="false">"ディープリンクをコピー"</string>
     <string name="l10n_dfa9c0d2596f1d9c" formatted="false">"全タイトルをコピー"</string>
     <string name="l10n_1aa0e16271ee96f4" formatted="false">"Web UIリポジトリのリンクをコピー"</string>
     <string name="l10n_abc94cbf067b91d1" formatted="false">"エージェント設定プロンプトをコピー"</string>
@@ -207,6 +333,7 @@
     <string name="l10n_a88498840c5e3802" formatted="false">"アーカイブ済みセッションを読み込めませんでした"</string>
     <string name="l10n_4bcac1ad086ca826" formatted="false">"ファイルを読み込めませんでした：%@"</string>
     <string name="l10n_591b00c12e60c326" formatted="false">"プロファイルを読み込めませんでした"</string>
+    <string name="l10n_c93b287a71ae2a54" formatted="false">"プロバイダを読み込めませんでした"</string>
     <string name="l10n_94f5b73955c3ef2c" formatted="false">"セッションを読み込めませんでした"</string>
     <string name="l10n_8ac36923964f0178" formatted="false">"この画像をプレビューできませんでした。"</string>
     <string name="l10n_7d897e1d885a3b20" formatted="false">"アップデートを開始するためのサーバに接続できませんでした。"</string>
@@ -225,13 +352,20 @@
     <string name="l10n_495ea9f2535f73a3" formatted="false">"現在の応答をまだ停止できなかったため、割り込みメッセージを次のターン用にキューに入れました。"</string>
     <string name="l10n_0fe0eba7c7e1c659" formatted="false">"ゴールコマンドを送信できませんでした。"</string>
     <string name="l10n_4138a35cf5a60e61" formatted="false">"タスクを更新できませんでした。"</string>
+    <string name="l10n_08111e6efc7fc767" formatted="false">"更新できませんでした。以前に読み込んだプロバイダを表示しています。"</string>
+    <string name="l10n_9985074eae8f7d8d" formatted="false">"クラッシュ"</string>
     <string name="l10n_6e157c5da4410b7e" formatted="false">"作成"</string>
+    <string name="l10n_5a366386b114c3b4" formatted="false">"準備完了、未割り当てのカードを作成しますか?"</string>
     <string name="l10n_67c127a271b041fb" formatted="false">"現在の HEAD からブランチを作成し、それに切り替えます。"</string>
+    <string name="l10n_c8d7e019182b9eb3" formatted="false">"フォルダが存在しない場合は作成"</string>
+    <string name="l10n_accf40c89baa4fa8" formatted="false">"作成日時"</string>
     <string name="l10n_5df8f127a4af1417" formatted="false">"新しい空のプロジェクトを作成します。"</string>
+    <string name="l10n_117a3202c7ad6e39" formatted="false">"ボードを作成してもアクティブにはなりません。"</string>
     <string name="l10n_de17342aa8c0be17" formatted="false">"Cronセッション"</string>
     <string name="l10n_4fc0e2bc80737d78" formatted="false">"現在"</string>
     <string name="l10n_a3f54618caea86a3" formatted="false">"現在のカスタム"</string>
     <string name="l10n_23cb5e2e9a9493b9" formatted="false">"現在の Git ブランチ"</string>
+    <string name="l10n_551ef486ba85e4c8" formatted="false">"現在のステータス: %@。カードを移動する場合にのみ、許可されたステータスを選択してください。"</string>
     <string name="l10n_35ff0b484ca98ca9" formatted="false">"現在のワークスペース"</string>
     <string name="l10n_9a3c1af6c3ecfd85" formatted="false">"現在のタイトル：**%@**\n\nこのセッションの名前を変更するには `/title &lt;text&gt;` を使用してください。"</string>
     <string name="l10n_081ae3fdc403609c" formatted="false">"カスタム"</string>
@@ -252,8 +386,11 @@
     <string name="l10n_441bda6cd85689e4" formatted="false">"削除済み"</string>
     <string name="l10n_dcac5d49c54c3c38" formatted="false">"配信"</string>
     <string name="l10n_9631af52c66f1a5c" formatted="false">"配信"</string>
+    <string name="l10n_0562f32dc56f5c70" formatted="false">"依存関係"</string>
+    <string name="l10n_55f8ebc805e65b5b" formatted="false">"説明"</string>
     <string name="l10n_a04fcb7af3c9351b" formatted="false">"Diffが大きすぎます"</string>
     <string name="l10n_7aafaa23867907a5" formatted="false">"差分が大きすぎて表示できません。"</string>
+    <string name="l10n_4b892fe0c040fa8a" formatted="false">"ディレクトリ"</string>
     <string name="l10n_407758fed6d9cd6f" formatted="false">"コードの行折り返しを無効にする"</string>
     <string name="l10n_995b60411b464fb4" formatted="false">"破棄して編集"</string>
     <string name="l10n_5d88c02b40bcad09" formatted="false">"破棄して再生成"</string>
@@ -261,6 +398,12 @@
     <string name="l10n_f467e1f839b5212d" formatted="false">"ディスコ"</string>
     <string name="l10n_70afe9eff3f28884" formatted="false">"却下する"</string>
     <string name="l10n_4b6acf651b750357" formatted="false">"添付ファイルのエラーを閉じる"</string>
+    <string name="l10n_bb5c6f77a55fc0c9" formatted="false">"ディスパッチ実行"</string>
+    <string name="l10n_48f91366c839e056" formatted="false">"ディスパッチャー"</string>
+    <string name="l10n_2ed4598584f8ec1f" formatted="false">"このサーバーではディスパッチャーを利用できません。"</string>
+    <string name="l10n_f7434de84cdb30cb" formatted="false">"ディスパッチャー、確認が必要"</string>
+    <string name="l10n_42df017cec60f8ed" formatted="false">"ディスパッチャー、結果あり"</string>
+    <string name="l10n_574ff9b0c49cdeb5" formatted="false">"表示"</string>
     <string name="l10n_8d6b34815ba43d25" formatted="false">"表示名"</string>
     <string name="l10n_e9b450d14bc2363d" formatted="false">"完了"</string>
     <string name="l10n_3c424e9b233642b3" formatted="false">"ダブルタップで詳細を折りたたみます。"</string>
@@ -270,9 +413,18 @@
     <string name="l10n_13f7aee77892fd5f" formatted="false">"以前"</string>
     <string name="l10n_5301648dcf6b53ce" formatted="false">"編集"</string>
     <string name="l10n_36119979d7cf1f46" formatted="false">"%@ を編集"</string>
+    <string name="l10n_4596379c38365c9c" formatted="false">"カードの編集"</string>
     <string name="l10n_2ee30cf2c2908397" formatted="false">"メッセージを編集"</string>
     <string name="l10n_9d0e05d653ce25e7" formatted="false">"タスクを編集"</string>
     <string name="l10n_b0179bbf23f36576" formatted="false">"このメッセージを編集すると、後続の%lld件のメッセージが破棄されます。"</string>
+    <plurals name="l10n_b0179bbf23f36576">
+        <item quantity="zero">"このメッセージを編集すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="one">"このメッセージを編集すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="two">"このメッセージを編集すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="few">"このメッセージを編集すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="many">"このメッセージを編集すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="other">"このメッセージを編集すると、後続の%d件のメッセージが破棄されます。"</item>
+    </plurals>
     <string name="l10n_5fc97790c6a8d0d3" formatted="false">"経過時間"</string>
     <string name="l10n_755ad4f73ca41dd5" formatted="false">"出力なし"</string>
     <string name="l10n_aa1092d775fca059" formatted="false">"コードの行折り返しを有効にする"</string>
@@ -280,17 +432,20 @@
     <string name="l10n_598b3a1a236fcb2e" formatted="false">"送信する前に応答を入力してください。"</string>
     <string name="l10n_6f7c983d3b97261c" formatted="false">"セッションのタイトルを入力してください。"</string>
     <string name="l10n_e64bedf7e5b25d1f" formatted="false">"有効なサーバURLを入力してください。例：https://hermes.yourdomain.com または http://&lt;server-tailscale-ip&gt;:8787。"</string>
-    <string name="l10n_8230a28313458046" formatted="false">"エージェントが返したTailscale URLを入力してください。例：`http://&lt;tailnet-ip&gt;:8787`。"</string>
+    <string name="l10n_6332c9abaf956af9" formatted="false">"エージェントが返した正確な Tailscale Serve の HTTPS URL を入力してください。例：`https://server.tailnet-name.ts.net`。"</string>
     <string name="l10n_8f6e7265b4a4d570" formatted="false">"サーバのパスワードを入力してください。"</string>
     <string name="l10n_7f2f6a15cf8da2b2" formatted="false">"エラー"</string>
     <string name="l10n_09c1adde10c57e5f" formatted="false">"エラー：%@"</string>
     <string name="l10n_35caa4ac4630bab1" formatted="false">"推定コスト"</string>
+    <string name="l10n_c5497bca58468ae6" formatted="false">"イベント"</string>
     <string name="l10n_6e0691470382747c" formatted="false">"正確なモデルID"</string>
+    <string name="l10n_6d525b71568c2d98" formatted="false">"実行"</string>
     <string name="l10n_0caa309588bbc767" formatted="false">"終了コード：%lld"</string>
     <string name="l10n_7b74ff00367a4722" formatted="false">"デフォルトで思考を展開"</string>
     <string name="l10n_2525f76fc2b6b22d" formatted="false">"デフォルトでツールを展開"</string>
     <string name="l10n_f86dd07259eb2bbf" formatted="false">"アクティブなプロファイル選択を展開"</string>
     <string name="l10n_6a9761d620403e7d" formatted="false">"プロジェクトを展開"</string>
+    <string name="l10n_046a1a78d9aec6a9" formatted="false">"スケジュール済みセッションを展開"</string>
     <string name="l10n_732f9a41fd04ae76" formatted="false">"セクションを展開"</string>
     <string name="l10n_a689a999a5e62055" formatted="false">"期限切れ"</string>
     <string name="l10n_f3e4fadb9e370a1e" formatted="false">"エクスポート"</string>
@@ -330,6 +485,7 @@
     <string name="l10n_d6870fe0b85ff5cc" formatted="false">"グラデーション（ダーク）"</string>
     <string name="l10n_69dddc0e42ea62e2" formatted="false">"グラデーション（ライト）"</string>
     <string name="l10n_933bf21afdd55a0d" formatted="false">"グリーン"</string>
+    <string name="l10n_e9ac611c971177b5" formatted="false">"プロファイルでグループ化"</string>
     <string name="l10n_73527bcbcf1d50d3" formatted="false">"HERMEX"</string>
     <string name="l10n_98d63b116d9d718a" formatted="false">"触覚フィードバック"</string>
     <string name="l10n_c1c645cc10cc39cc" formatted="false">"ヘッダーロゴの色"</string>
@@ -345,10 +501,14 @@
     <string name="l10n_4f56108f827cebaf" formatted="false">"Hermesの応答が完了しました"</string>
     <string name="l10n_d1cadaea84c1198b" formatted="false">"Hermesセッション"</string>
     <string name="l10n_77cde96ca2d45d01" formatted="false">"Hermex"</string>
+    <string name="l10n_9a17d2db6a8055f7" formatted="false">"Hermexアプリ内ではアーカイブ済みボードを復元できません。"</string>
     <string name="l10n_c33659f639454811" formatted="false">"Hermexが応答を準備しています"</string>
+    <string name="l10n_01a030be51125242" formatted="false">"Hermex はボードを更新しましたが、ワーカーが起動したかどうかを確認できません。ディスパッチャーを再実行する前に現在のボードを確認してください。"</string>
     <string name="l10n_bb6a69c46c4b1979" formatted="false">"添付ファイルのパスを非表示"</string>
     <string name="l10n_2981d5547d979457" formatted="false">"送信メッセージに追加されるファイルパスの行を非表示にします。添付ファイルはプレビューとして表示され、サーバには引き続きパスが送信されます。"</string>
     <string name="l10n_b1a5954a483f8f8b" formatted="false">"高"</string>
+    <string name="l10n_c0a4bc55fa6395b6" formatted="false">"ボードを確認しました"</string>
+    <string name="l10n_716f63b96e0c2632" formatted="false">"アイコン"</string>
     <string name="l10n_7e5a975b6add84fd" formatted="false">"アイデンティティ"</string>
     <string name="l10n_50e19fda0d5b4b74" formatted="false">"画像"</string>
     <string name="l10n_78cf51d3d2bf067d" formatted="false">"画像添付 %@"</string>
@@ -363,7 +523,9 @@
     <string name="l10n_4e73a74600447ea9" formatted="false">"iPhone に Tailscale をインストールし、サーバと同じ tailnet にサインインしてください。次の画面で、エージェントが使用する正確な URL を返信します。"</string>
     <string name="l10n_94dc8e4a59fafe99" formatted="false">"操作"</string>
     <string name="l10n_f3068db36e4be906" formatted="false">"現在の応答を中断し、メッセージを次に送信するためキューに追加しました。"</string>
+    <string name="l10n_3895546730917a69" formatted="false">"カンバン"</string>
     <string name="l10n_8fa296603e98b9fe" formatted="false">"Hermex の使用中は Tailscale を接続したままにしてください。"</string>
+    <string name="l10n_61737de78417a6fe" formatted="false">"キー設定済み"</string>
     <string name="l10n_d1c69a859a9638b2" formatted="false">"最後"</string>
     <string name="l10n_17672aec29094ac4" formatted="false">"過去 %lld 日間"</string>
     <string name="l10n_6118867f212578fe" formatted="false">"過去 30 日間"</string>
@@ -371,6 +533,8 @@
     <string name="l10n_decd7ca800106337" formatted="false">"最新"</string>
     <string name="l10n_6f8749290307e9e2" formatted="false">"最新の状況を表示中"</string>
     <string name="l10n_a9a621da7e8575d5" formatted="false">"アラビア語、ヘブライ語、ペルシア語、ウルドゥー語向けに、メッセージと入力欄を右から左にレイアウトします。コード、数式、表、ツールの出力は左から右のままです。他の画面には影響しません。"</string>
+    <string name="l10n_66884274e40e33f1" formatted="false">"実行中を終了しますか？"</string>
+    <string name="l10n_e427bdd63d4f22bd" formatted="false">"実行中を終了すると、カードのクレームとワーカー状態が消去される場合があります。"</string>
     <string name="l10n_a36ef8aba22905e2" formatted="false">"ライト"</string>
     <string name="l10n_d0517071aa376e79" formatted="false">"リンク"</string>
     <string name="l10n_2b95008bb82d2573" formatted="false">"リンクプレビュー"</string>
@@ -380,6 +544,8 @@
     <string name="l10n_4fc2512aa9e1d5c7" formatted="false">"聞き取り中..."</string>
     <string name="l10n_65c821a596ceec1c" formatted="false">"ライブ"</string>
     <string name="l10n_7b0ccb219d4d58d2" formatted="false">"ライブアクティビティの抜粋"</string>
+    <string name="l10n_1d0f8dd5ce3502d2" formatted="false">"ライブ更新が遅延しています"</string>
+    <string name="l10n_b0e0f6bd60d5e5e8" formatted="false">"Load Worker Log"</string>
     <string name="l10n_07471f3481317a16" formatted="false">"過去のメッセージを読み込む"</string>
     <string name="l10n_a86c840372f0590b" formatted="false">"この応答を再生成する前に、過去のメッセージを読み込んでください。"</string>
     <string name="l10n_8f26c6520d61588a" formatted="false">"読み込み中"</string>
@@ -396,6 +562,7 @@
     <string name="l10n_3955c8e98f47edfc" formatted="false">"出力を読み込み中..."</string>
     <string name="l10n_7b1f2b358b54ee27" formatted="false">"プロファイルを読み込み中..."</string>
     <string name="l10n_5a1c8090d0b201e5" formatted="false">"プロジェクトを読み込み中..."</string>
+    <string name="l10n_a5dcb93d831dc05a" formatted="false">"プロバイダを読み込み中…"</string>
     <string name="l10n_6ffd1b801dc3250d" formatted="false">"セッションを読み込み中"</string>
     <string name="l10n_8605605d9f479dd3" formatted="false">"スキルを読み込み中..."</string>
     <string name="l10n_18f6342375a61986" formatted="false">"スキルを読み込み中..."</string>
@@ -409,11 +576,17 @@
     <string name="l10n_d219c68101f532de" formatted="false">"場所"</string>
     <string name="l10n_a124947cbd2d1d92" formatted="false">"低"</string>
     <string name="l10n_d474fceae7ef8451" formatted="false">"小文字、数字、ハイフン、アンダースコアのみ。先頭は文字か数字にしてください。"</string>
+    <string name="l10n_6c01c3828067110b" formatted="false">"ボードをアクティブにする"</string>
     <string name="l10n_f924c396551c216e" formatted="false">"これをアクティブなサーバにします。セッション、チャット、設定が再読み込みされます。"</string>
+    <string name="l10n_7d949b41b99038e7" formatted="false">"このボードをアクティブにすると、他のHermesクライアントにも見える共有サーバー状態が変わります。"</string>
+    <string name="l10n_bf58d17e561b1b85" formatted="false">"管理"</string>
     <string name="l10n_1da7ac1fb66291cc" formatted="false">"サーバを管理"</string>
+    <string name="l10n_d0c6a4ce42d2461a" formatted="false">"ワークスペースを管理"</string>
     <string name="l10n_005313fed211856e" formatted="false">"セッション、タスク、ファイルをリモートで管理"</string>
     <string name="l10n_2ae8bf7c4fda40f7" formatted="false">"完了にする"</string>
     <string name="l10n_25f266071c389a50" formatted="false">"デバイスの外観に合わせる"</string>
+    <string name="l10n_5de003582d342dba" formatted="false">"Maximum Runtime"</string>
+    <string name="l10n_527054fdad8e1c19" formatted="false">"最大実行時間は、0 より大きい秒数の整数である必要があります。"</string>
     <string name="l10n_0c77aeece8c25811" formatted="false">"メディア"</string>
     <string name="l10n_3aaf713966fafbad" formatted="false">"メディア操作に失敗しました"</string>
     <string name="l10n_da356f9300406f38" formatted="false">"メディアを利用できません"</string>
@@ -424,23 +597,28 @@
     <string name="l10n_8bd1e1ee0b36f619" formatted="false">"メッセージ数"</string>
     <string name="l10n_d2dbcb77dcf32674" formatted="false">"Hermex にメッセージ"</string>
     <string name="l10n_f1702b4686278bec" formatted="false">"メッセージ"</string>
+    <string name="l10n_251edc0eb5a82064" formatted="false">"メタデータ"</string>
     <string name="l10n_e8cd6e3a402a74e8" formatted="false">"マイクへのアクセスが無効です。音声入力を使うには設定で有効にしてください。"</string>
     <string name="l10n_a711cca9a4a9ca25" formatted="false">"最小限"</string>
     <string name="l10n_611aeef9f6f15ff0" formatted="false">"ジョブ識別子がありません。"</string>
     <string name="l10n_68c2cc7f0ceaa3e4" formatted="false">"モデル"</string>
     <string name="l10n_47442c9efd89244c" formatted="false">"モデルの切り替えは利用できません。"</string>
     <string name="l10n_f3798f81c7b6feca" formatted="false">"モデル"</string>
+    <string name="l10n_32e3bfbf3d74721b" formatted="false">"モデル（%lld）"</string>
     <string name="l10n_19a532c8bc61c311" formatted="false">"変更済み"</string>
     <string name="l10n_d3446a31725ad27d" formatted="false">"%@ 前に変更"</string>
     <string name="l10n_03b280484618a09d" formatted="false">"モノクロ（ダーク）"</string>
     <string name="l10n_febc733bb49ebbbf" formatted="false">"モノクロ（ライト）"</string>
+    <string name="l10n_76cdb950721642b6" formatted="false">"移動"</string>
     <string name="l10n_96cbe7af61cc6ba3" formatted="false">"プロジェクトへ移動"</string>
     <string name="l10n_60739d13df292b18" formatted="false">"マイメモ"</string>
     <string name="l10n_709a23220f2c3d64" formatted="false">"名前"</string>
+    <string name="l10n_9c9f03a8394167a1" formatted="false">"名前（任意）"</string>
     <string name="l10n_3dcfe8c501962b28" formatted="false">"要対応"</string>
     <string name="l10n_a4b628dd7e6cac30" formatted="false">"要確認"</string>
     <string name="l10n_80c3052d33ccdee1" formatted="false">"なし"</string>
     <string name="l10n_2f5f0a316c665840" formatted="false">"新しい支店"</string>
+    <string name="l10n_f24d098f37cad673" formatted="false">"新しいカード"</string>
     <string name="l10n_364e701f18f5b93f" formatted="false">"新規チャット"</string>
     <string name="l10n_d01329fec0de89f0" formatted="false">"新規プロファイル"</string>
     <string name="l10n_fd57e65b2e31a39f" formatted="false">"新規プロジェクト"</string>
@@ -467,6 +645,7 @@
     <string name="l10n_9bc37a73e52685de" formatted="false">"カタログモデルなし"</string>
     <string name="l10n_24a6191f274fcd49" formatted="false">"変更なし"</string>
     <string name="l10n_fe598959ce0d3df9" formatted="false">"\"%@\" に一致するコマンドまたはスキルなし"</string>
+    <string name="l10n_38878b052a56f7c2" formatted="false">"キーなし"</string>
     <string name="l10n_758de69beca09db0" formatted="false">"\"%@\" に一致なし"</string>
     <string name="l10n_0318ea04f793d95e" formatted="false">"一致するセッションなし"</string>
     <string name="l10n_bcd9d0b98b51e4ac" formatted="false">"利用可能なマイク入力がありません。シミュレータまたはデバイスのマイク設定を確認してください。"</string>
@@ -477,6 +656,7 @@
     <string name="l10n_1f3aa7cb21ea25f7" formatted="false">"利用可能なプロファイルなし"</string>
     <string name="l10n_c326b75775bf901d" formatted="false">"プロジェクトなし"</string>
     <string name="l10n_24a5368bbc878d8d" formatted="false">"プロジェクトなし"</string>
+    <string name="l10n_dabb4546aa93c651" formatted="false">"このサーバーからプロバイダは報告されていません。"</string>
     <string name="l10n_9d7789c98756a7a1" formatted="false">"セッションはまだありません"</string>
     <string name="l10n_459ad5e22c8f13b7" formatted="false">"サーバにスキルが設定されていません。"</string>
     <string name="l10n_d7f0b3c347eb8c09" formatted="false">"\"%@\" に一致するスキルなし。"</string>
@@ -494,8 +674,11 @@
     <string name="l10n_8956389786fd9918" formatted="false">"オフライン - キャッシュ版を表示中"</string>
     <string name="l10n_8e4f504e020069e6" formatted="false">"オフラインデータ"</string>
     <string name="l10n_ccf06f9a4f7a50f8" formatted="false">"オフライン — キャッシュ版を表示中"</string>
+    <string name="l10n_c3cb80395a6f5b01" formatted="false">"オフライン — 以前に読み込んだデータを表示中"</string>
     <string name="l10n_e0049a66519cae71" formatted="false">"オン"</string>
+    <string name="l10n_db4ab04666991840" formatted="false">"自分のみ"</string>
     <string name="l10n_db21418b19544341" formatted="false">"アシスタントのメッセージのみ再生成できます。"</string>
+    <string name="l10n_a3b004fb05b4d2cd" formatted="false">"Only the last part of this log is shown."</string>
     <string name="l10n_44a2f9655a134eb7" formatted="false">"ユーザーのメッセージのみ編集できます。"</string>
     <string name="l10n_93d3335d58377959" formatted="false">"%@ を開く"</string>
     <string name="l10n_ec9649e469304224" formatted="false">"Hermexの設定を開く"</string>
@@ -510,8 +693,13 @@
     <string name="l10n_d381d212e5455e71" formatted="false">"デフォルトモデルの選択画面を開きます。"</string>
     <string name="l10n_da5bd75cb3611219" formatted="false">"デフォルトプロファイルの選択画面を開きます。"</string>
     <string name="l10n_418cad179a2e9807" formatted="false">"新規プロファイルのフォームを開きます。"</string>
+    <string name="l10n_336934f19da2f38e" formatted="false">"プロバイダの状態画面を開きます。"</string>
+    <string name="l10n_78ce8b45d4b9bb0a" formatted="false">"運用履歴"</string>
+    <string name="l10n_c686cc0c99b6645d" formatted="false">"Operational Metadata"</string>
+    <string name="l10n_ce75929f4b0b99d9" formatted="false">"オプションの秒数。"</string>
     <string name="l10n_3fe31a00136bfaac" formatted="false">"省略可。ベースURLの例：http://localhost:11434"</string>
     <string name="l10n_09fb6aaba7940a7b" formatted="false">"オレンジ"</string>
+    <string name="l10n_6282237cfbba8a0c" formatted="false">"Outcome Uncertain"</string>
     <string name="l10n_4bed336194a9a5c8" formatted="false">"出力"</string>
     <string name="l10n_878afed57cc32819" formatted="false">"出力トークン"</string>
     <string name="l10n_1a915e2090fc298c" formatted="false">"%2$lld ページ中 %1$lld ページ"</string>
@@ -533,11 +721,16 @@
     <string name="l10n_9c918414710c579b" formatted="false">"ピン留め"</string>
     <string name="l10n_54076359fdc7f1f0" formatted="false">"ピンク"</string>
     <string name="l10n_f9312169efb2796a" formatted="false">"ピン留め済み"</string>
+    <string name="l10n_7039fbec6d98cbb8" formatted="false">"前提条件"</string>
     <string name="l10n_3d087feb27bed0d7" formatted="false">"保持されたタスクリスト"</string>
+    <string name="l10n_b35d176a6e2dee64" formatted="false">"ディスパッチをプレビュー"</string>
+    <string name="l10n_f67278a6b10f05b1" formatted="false">"プレビューは参考情報であり、古くなることがあります。ワーカーを起動することはありません。"</string>
     <string name="l10n_e8002a8beabe2288" formatted="false">"この添付ファイルはプレビューできません。"</string>
     <string name="l10n_e4a8cb9c4e93463c" formatted="false">"このファイル形式はプレビューできません。"</string>
     <string name="l10n_6af2a65d7acff443" formatted="false">"このメディア形式はプレビューできません。"</string>
     <string name="l10n_8ce696a0387284a2" formatted="false">"このメディアはプレビューできません。"</string>
+    <string name="l10n_886cbff9d9df761e" formatted="false">"優先度"</string>
+    <string name="l10n_4b01e21caae1beff" formatted="false">"優先順位は -100 から 100 までの整数である必要があります。"</string>
     <string name="l10n_9db108ba6b7f6571" formatted="false">"プライバシーポリシー"</string>
     <string name="l10n_2fc50ca28d0af98f" formatted="false">"結果を処理中"</string>
     <string name="l10n_ff4fc0276e960c34" formatted="false">"プロファイル"</string>
@@ -547,9 +740,13 @@
     <string name="l10n_72c04819df5bb6a9" formatted="false">"%@ のプロジェクト操作"</string>
     <string name="l10n_ab9773fcf6b2b1d9" formatted="false">"プロジェクト名"</string>
     <string name="l10n_53e890d5f0fffe09" formatted="false">"プロジェクト"</string>
+    <string name="l10n_2eb0c3b72a3bd9bf" formatted="false">"昇格"</string>
     <string name="l10n_a817d7eb8e0f1dab" formatted="false">"プロンプト"</string>
     <string name="l10n_db95a2972e66e135" formatted="false">"プロンプトは必須です。"</string>
+    <string name="l10n_7ceee3f3615a2bbe" formatted="false">"プロバイダ"</string>
     <string name="l10n_610992ef9948a19f" formatted="false">"プロバイダ ID"</string>
+    <string name="l10n_4eaef64dcb3c605f" formatted="false">"プロバイダのキーはサーバー側で管理されます。この画面は読み取り専用です。"</string>
+    <string name="l10n_87b7c08baed1c8e9" formatted="false">"プロバイダ"</string>
     <string name="l10n_5219eb9a71725226" formatted="false">"引く"</string>
     <string name="l10n_d9a72cc74c68bbfb" formatted="false">"リモート変更をプルしますか?"</string>
     <string name="l10n_55c0e7925c2e9d6a" formatted="false">"プル完了"</string>
@@ -571,6 +768,7 @@
     <string name="l10n_76eec760c9b6e63e" formatted="false">"最近"</string>
     <string name="l10n_8ea2086a2dbccc7b" formatted="false">"最近の日次トークン"</string>
     <string name="l10n_73c5c034584e46ea" formatted="false">"最近の出力"</string>
+    <string name="l10n_c885890b098322a9" formatted="false">"再取得"</string>
     <string name="l10n_d9eb6f071bf574f0" formatted="false">"メッセージを送信するには再接続してください。"</string>
     <string name="l10n_b95d5bf53907b729" formatted="false">"%@ には、サーバに再接続してください。"</string>
     <string name="l10n_1776302c127400bb" formatted="false">"サイド質問をするには、サーバに再接続してください。"</string>
@@ -597,31 +795,53 @@
     <string name="l10n_8667d8dd1f042e2c" formatted="false">"参照のみ · %@"</string>
     <string name="l10n_56e3badc4e6c5cc9" formatted="false">"更新"</string>
     <string name="l10n_309d274a52eca6b8" formatted="false">"プロジェクトを更新"</string>
+    <string name="l10n_d7b762fc3fb27d5a" formatted="false">"更新に失敗しました。ディスパッチャーを使用する前に再試行してください。"</string>
+    <string name="l10n_87d2b4ceba88de25" formatted="false">"再試行する前にボードを更新してください。"</string>
+    <string name="l10n_44ab50cbb3313634" formatted="false">"再試行する前にカードを更新してサーバーの結果を確認してください。"</string>
+    <string name="l10n_e87e8308cbf8a15e" formatted="false">"Refresh to check the Card before trying again."</string>
     <string name="l10n_5b7bdb61fdbc48d5" formatted="false">"爽やかな..."</string>
     <string name="l10n_12798652dee90c23" formatted="false">"応答を再生成"</string>
     <string name="l10n_e57e8f39b6e8ce1b" formatted="false">"この応答を再生成すると、後続の%lld件のメッセージが破棄されます。"</string>
+    <plurals name="l10n_e57e8f39b6e8ce1b">
+        <item quantity="zero">"この応答を再生成すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="one">"この応答を再生成すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="two">"この応答を再生成すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="few">"この応答を再生成すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="many">"この応答を再生成すると、後続の%d件のメッセージが破棄されます。"</item>
+        <item quantity="other">"この応答を再生成すると、後続の%d件のメッセージが破棄されます。"</item>
+    </plurals>
+    <string name="l10n_cce7155371fc2668" formatted="false">"リロード"</string>
+    <string name="l10n_8b1c557db10dc346" formatted="false">"サーバーのバージョンをリロードする"</string>
+    <string name="l10n_76cc25831dafa135" formatted="false">"サーバーのバージョンをリロードしますか?"</string>
     <string name="l10n_ecca3ebfebb1231b" formatted="false">"ブランチリストをリロードする"</string>
     <string name="l10n_c93f6536dcfbeeee" formatted="false">"リモート"</string>
     <string name="l10n_95a7c84ae08947db" formatted="false">"リモートブランチがローカルブランチよりも先にある"</string>
+    <string name="l10n_e963907dac5cd5c0" formatted="false">"削除"</string>
+    <string name="l10n_74211945be6416aa" formatted="false">"%@ を前提条件から削除"</string>
     <string name="l10n_50abaeabec168aa3" formatted="false">"%@ をお気に入りから削除"</string>
     <string name="l10n_49c2c77417839a5d" formatted="false">"サーバを削除"</string>
+    <string name="l10n_1e49097a3b6f2e45" formatted="false">"ワークスペースを削除しますか？"</string>
     <string name="l10n_8808b2840f078cfa" formatted="false">"添付ファイル %@ を削除"</string>
     <string name="l10n_6df2166b68573bb1" formatted="false">"カスタムモデルをお気に入りから削除"</string>
     <string name="l10n_3e19869f4c6dd932" formatted="false">"ヘッダーを削除"</string>
     <string name="l10n_75bfa312029037aa" formatted="false">"このサーバを削除しますか？"</string>
     <string name="l10n_013a5d20d5696b29" formatted="false">"このデバイス上のこのサーバと保存済み設定を削除します。アクティブなサーバには影響しません。"</string>
+    <string name="l10n_ce29465cad73fef0" formatted="false">"ワークスペースを削除しても、サーバーのリストからパスが登録解除されるだけです。ファイルは削除されません。"</string>
     <string name="l10n_d3f4cb898fbe0c7a" formatted="false">"名前を変更"</string>
     <string name="l10n_2631fe63a2fe1b89" formatted="false">"プロジェクト名を変更"</string>
     <string name="l10n_d80362f6a02f697f" formatted="false">"セッション名を変更"</string>
+    <string name="l10n_37b77d35f230ff7d" formatted="false">"ワークスペースの名前を変更"</string>
     <string name="l10n_ef1c7b2eb614a607" formatted="false">"現在のセッション名を変更"</string>
     <string name="l10n_e5ad1c6b966bc12c" formatted="false">"名前変更済み"</string>
     <string name="l10n_6c2bb735a46a8ff3" formatted="false">"返信"</string>
     <string name="l10n_8b03ca3239a2d4b3" formatted="false">"リポジトリのステータスが利用不可"</string>
     <string name="l10n_9ec40b4a79f06a39" formatted="false">"リポジトリは最新です"</string>
     <string name="l10n_4ea95c7e3ce383e5" formatted="false">"音声権限を要求中..."</string>
+    <string name="l10n_eed6bfb41051ed5b" formatted="false">"必須"</string>
     <string name="l10n_7517ceebb9cbd1af" formatted="false">"アプリを切り替えずにエージェントのプロンプトに応答します。"</string>
     <string name="l10n_7fafe94e3d4ca86e" formatted="false">"応答中"</string>
     <string name="l10n_ea7ab827fb7b09d6" formatted="false">"応答完了アラート"</string>
+    <string name="l10n_07528719f78e54c9" formatted="false">"応答速度"</string>
     <string name="l10n_ec2fb8b9d8a0585a" formatted="false">"応答のタイムスタンプ"</string>
     <string name="l10n_6b656398c39ddef4" formatted="false">"応答をキャンセルしました"</string>
     <string name="l10n_96423842ebcbe649" formatted="false">"応答完了"</string>
@@ -629,17 +849,22 @@
     <string name="l10n_5faa59d4bc375604" formatted="false">"結果"</string>
     <string name="l10n_b3bd0b5a70497bec" formatted="false">"再開"</string>
     <string name="l10n_9f5cd8a2e8807d73" formatted="false">"再試行"</string>
+    <string name="l10n_a3303b326f2b8e0c" formatted="false">"失敗分を再試行"</string>
     <string name="l10n_bbe728dc05ae5101" formatted="false">"再試行は WebUI セッションでのみ利用できます。"</string>
     <string name="l10n_d0efe1645c15924c" formatted="false">"セッションの読み込みを再試行"</string>
     <string name="l10n_08fe845cce87a735" formatted="false">"最後のターンを再試行"</string>
     <string name="l10n_effe5e3d4358574a" formatted="false">"更新を再試行"</string>
+    <string name="l10n_7bb8fd0794a55ded" formatted="false">"確認と上書き"</string>
     <string name="l10n_cde5a6be0081dff8" formatted="false">"承認と確認事項をインラインで確認"</string>
     <string name="l10n_0a629b6db6c76c8a" formatted="false">"右から左へのチャットレイアウト"</string>
     <string name="l10n_e96857c58f716104" formatted="false">"ルート"</string>
+    <string name="l10n_a299989ee9a1c92e" formatted="false">"ディスパッチャーを実行"</string>
     <string name="l10n_8ab343d1eabae3ef" formatted="false">"Siri、Spotlight、ロック画面、またはiPhoneのアクションボタンから、新規チャットなどのHermexアクションを実行できます。アクションボタンを使うには、iOSの設定を開き、「アクションボタン」を選択して「ショートカット」を選び、Hermexアクションを選択します。"</string>
+    <string name="l10n_79adb123c5c0db44" formatted="false">"Run ID"</string>
     <string name="l10n_4ee85a626ff6183b" formatted="false">"今すぐ実行"</string>
     <string name="l10n_0e076478ac56474c" formatted="false">"並列タスクを実行"</string>
     <string name="l10n_73989d9c59264da0" formatted="false">"実行中"</string>
+    <string name="l10n_a1b88f565760f0c1" formatted="false">"ディスパッチャーを実行中…"</string>
     <string name="l10n_b66803829687b9de" formatted="false">"コマンドを実行中"</string>
     <string name="l10n_33cfd5d598aac712" formatted="false">"実行中"</string>
     <string name="l10n_93dd44cf2d1ccfaa" formatted="false">"ステップ %lld"</string>
@@ -649,10 +874,13 @@
     <string name="l10n_c0ae8f6ea8411149" formatted="false">"保存済み"</string>
     <string name="l10n_85cc0a3b9ae258eb" formatted="false">"保存済みカスタム"</string>
     <string name="l10n_6dd5ffdf0c60362e" formatted="false">"保存済みワークスペース"</string>
+    <string name="l10n_369c534df344ee14" formatted="false">"保存"</string>
     <string name="l10n_0a8adac9d6d5f4d1" formatted="false">"スケジュール"</string>
     <string name="l10n_82f00823fbf52cac" formatted="false">"スケジュールは必須です。"</string>
     <string name="l10n_9ca43b04c3d2e353" formatted="false">"スケジュール済みジョブ"</string>
     <string name="l10n_395c32f788a3f892" formatted="false">"Hermes サーバのスケジュール済みジョブがここに表示されます。"</string>
+    <string name="l10n_bce73c4a4b04e523" formatted="false">"スケジュール済みセッション"</string>
+    <string name="l10n_168bebddecbb0754" formatted="false">"傷"</string>
     <string name="l10n_d887477630313495" formatted="false">"最新のメッセージへスクロール"</string>
     <string name="l10n_bce06414177f72ab" formatted="false">"検索"</string>
     <string name="l10n_e64891ecd1e87786" formatted="false">"利用可能なスキルを検索"</string>
@@ -664,6 +892,7 @@
     <string name="l10n_d4e6fa2549fd2925" formatted="false">"スキルを検索..."</string>
     <string name="l10n_436af877d210be41" formatted="false">"ファイルを検索中"</string>
     <string name="l10n_c57285ac350f9afc" formatted="false">"セッションを検索中"</string>
+    <string name="l10n_bca2e803ac1c71fd" formatted="false">"カードを選択"</string>
     <string name="l10n_95cbd4cb485fce7c" formatted="false">"テキストを選択"</string>
     <string name="l10n_7915c8a498a76d3f" formatted="false">"添付するファイルを選択してください。"</string>
     <string name="l10n_426e995abe3623e6" formatted="false">"モデルを選択"</string>
@@ -677,11 +906,14 @@
     <string name="l10n_d7446f460992044a" formatted="false">"このスキルを使うには `/%@ &lt;message&gt;` を送信してください。"</string>
     <string name="l10n_8b2c12c5d4d5965d" formatted="false">"メッセージを送信して会話を始めましょう。"</string>
     <string name="l10n_b57718ffcace839f" formatted="false">"応答後に送信"</string>
-    <string name="l10n_16ccc931b1910648" formatted="false">"このプロンプトを Hermes エージェントに送信してください。Hermes Web UI のインストール、パスワード認証の有効化、Tailscale アクセスの設定を行います。"</string>
+    <string name="l10n_fb8e5450e7708ea1" formatted="false">"このプロンプトを Hermes エージェントに送信してください。既存の状態を確認し、Hermes Web UI を localhost に保ち、Tailscale Serve でプライベート HTTPS を設定します。"</string>
     <string name="l10n_13e251839c1cbadc" formatted="false">"メディアやライブストリームを含む、サーバへのすべてのリクエストとともに送信されます。リバースプロキシ（例: Authentik）や、Authorization ヘッダーなどのトークン認証に使用します。"</string>
+    <string name="l10n_97dda3da38b6e1bf" formatted="false">"スキル名はカンマで区切ります。"</string>
     <string name="l10n_cb0cb170d106f8e8" formatted="false">"サーバ"</string>
     <string name="l10n_3fa39b5424edd660" formatted="false">"サーバアバター"</string>
     <string name="l10n_d4b6ea00d9844a33" formatted="false">"サーバのデフォルト"</string>
+    <string name="l10n_fd709421d2263b57" formatted="false">"サーバーステータス"</string>
+    <string name="l10n_bcfef50922cbb5d5" formatted="false">"サーバーのタイトル"</string>
     <string name="l10n_1d5d1effa999db57" formatted="false">"サーバ URL"</string>
     <string name="l10n_c3a144c6f18ea41f" formatted="false">"サーバパスワード"</string>
     <string name="l10n_3630b49185b9bdca" formatted="false">"サーバが HTTP %lld を返しました。"</string>
@@ -692,11 +924,13 @@
     <string name="l10n_2985663589760d41" formatted="false">"セッションのステータス：\n\n- セッションID：%1$@\n- タイトル：%2$@\n- モデル：%3$@\n- プロバイダ：%4$@\n- プロファイル：%5$@\n- ワークスペース：%6$@\n- エージェント実行中：%7$@\n- キュー内のメッセージ：%8$lld\n- バックグラウンドタスク：%9$lld\n- 読み込み済みメッセージ：%10$lld\n- トークン：%11$@"</string>
     <string name="l10n_e883c5bede310321" formatted="false">"セッションのタイトル"</string>
     <string name="l10n_ee4c6b466195baf3" formatted="false">"会話を行うと、セッションの使用状況データがここに表示されます。"</string>
+    <string name="l10n_6dfb4de7a8af7fa8" formatted="false">"セッションの表示設定はこのサーバーと同期されるため、WebUIにも反映されます。"</string>
     <string name="l10n_e11e37a9253b34ff" formatted="false">"セッション"</string>
     <string name="l10n_32962ffd65d2627e" formatted="false">"セッションのアバター"</string>
     <string name="l10n_f97972c3e4668e12" formatted="false">"このプロジェクトのセッションは「プロジェクトなし」に移動されます。セッション自体は削除されません。"</string>
     <string name="l10n_448ab73ba1c21e67" formatted="false">"設定"</string>
     <string name="l10n_3bd23ee0e245365c" formatted="false">"ゴールを設定"</string>
+    <string name="l10n_c8293bad3b7b4fb5" formatted="false">"優先度を設定"</string>
     <string name="l10n_c52c0c7cdc76e95e" formatted="false">"セットアップ"</string>
     <string name="l10n_d22d7bf3a71ec052" formatted="false">"永続的なゴールを設定または確認"</string>
     <string name="l10n_b4115b8528333061" formatted="false">"推論の労力レベルを設定"</string>
@@ -706,11 +940,14 @@
     <string name="l10n_4c619ef31f07cceb" formatted="false">"すべてのプロジェクトを表示"</string>
     <string name="l10n_81744b31e55f479f" formatted="false">"利用可能なスラッシュコマンドを表示"</string>
     <string name="l10n_7097a0c314985f69" formatted="false">"セッションのステータスを表示"</string>
+    <string name="l10n_b47f6085ffd26585" formatted="false">"%2$lld件中%1$lld件のモデルを表示"</string>
     <string name="l10n_3fa229fdb23ceeb3" formatted="false">"最初の 500 個の変更されたファイルを表示します。"</string>
     <string name="l10n_c019f77116648ddf" formatted="false">"最初の500件の変更済みファイルを表示しています。"</string>
+    <string name="l10n_a3a6710b148c1660" formatted="false">"利用可能なボード管理操作を表示します。"</string>
     <string name="l10n_409adfda54bac8ec" formatted="false">"このプロジェクトの名前変更と削除の操作を表示します。"</string>
     <string name="l10n_64bdd26ae9e959e5" formatted="false">"ロック画面とダイナミックアイランドに短い応答テキストを表示します。"</string>
     <string name="l10n_0c19157b637bd737" formatted="false">"セッションの検索フィールドを表示します。"</string>
+    <string name="l10n_9710be03d20fb3ad" formatted="false">"このプロバイダのモデル一覧を表示します。"</string>
     <string name="l10n_61fd08ff5c37211d" formatted="false">"サインアウト"</string>
     <string name="l10n_c5eba70bd3954c88" formatted="false">"このサーバからサインアウト"</string>
     <string name="l10n_f9d09fc5a91b5ed7" formatted="false">"サーバで使用したものと同じアカウントでサインインしてください。"</string>
@@ -725,12 +962,16 @@
     <string name="l10n_11930e13637cafc2" formatted="false">"Hermesサーバのスキルがここに表示されます。"</string>
     <string name="l10n_9bfe8690fb3da405" formatted="false">"`%@` に一致するスキル："</string>
     <string name="l10n_4883f494deaf503e" formatted="false">"このセッションではすべてスキップ"</string>
+    <string name="l10n_06efe358248e1592" formatted="false">"スキップ—担当者なし"</string>
+    <string name="l10n_60dbead0f06505e3" formatted="false">"スキップ—不明なプロファイル"</string>
     <string name="l10n_bb5430b00fb04963" formatted="false">"セットアップをスキップして接続画面を開きます。"</string>
     <string name="l10n_b3d97fd6dece388a" formatted="false">"スカイ"</string>
+    <string name="l10n_094da9b95fdcee3d" formatted="false">"スラッグ"</string>
     <string name="l10n_4b8bd42120d9a94c" formatted="false">"ソース：ローカルのセッションメタデータのフォールバック。"</string>
     <string name="l10n_2513e8e94b38cc59" formatted="false">"ソース：ローカルのセッションメタデータのフォールバック。サーバのインサイトに失敗しました：%@"</string>
     <string name="l10n_d1b96f5b62a4287b" formatted="false">"ソース：ローカルのセッションメタデータ。"</string>
     <string name="l10n_03d03ab0d88c3373" formatted="false">"ソース：過去 %lld 日間のサーバのインサイト。"</string>
+    <string name="l10n_cd5d730d53090728" formatted="false">"起動"</string>
     <string name="l10n_c0333d1add29d664" formatted="false">"音声認識が無効です。音声入力を使用するには、設定で有効にしてください。"</string>
     <string name="l10n_4bfb98bccc44ac2c" formatted="false">"現在のロケールでは音声認識を利用できません。"</string>
     <string name="l10n_59246b380055b101" formatted="false">"現在、音声認識を利用できません。"</string>
@@ -781,11 +1022,14 @@
     <string name="l10n_7bb0ddf9221c03b8" formatted="false">"タスク"</string>
     <string name="l10n_b41eb6f08c8b078b" formatted="false">"タスクの操作"</string>
     <string name="l10n_090ec5f560fc5037" formatted="false">"タスク"</string>
+    <string name="l10n_3ca93c78f67175df" formatted="false">"テナント"</string>
     <string name="l10n_43518a45c3506afe" formatted="false">"ターミナルはモバイルアプリでは利用できません。"</string>
     <string name="l10n_580f6ab716ab4ca9" formatted="false">"接続をテスト"</string>
     <string name="l10n_7b514bffeae3b7d5" formatted="false">"この承認リクエストはすでに期限切れのため、エージェントは先に進みました。"</string>
     <string name="l10n_d2209900784abf2a" formatted="false">"この確認プロンプトはすでに期限切れのため、エージェントは先に進みました。"</string>
     <string name="l10n_05d3eab3ca8f18dd" formatted="false">"そのセッションはサーバ上に存在しません。別のセッションを開き直すか、新しく作成してください。"</string>
+    <string name="l10n_21f829338a7faa45" formatted="false">"ボードを更新しています。"</string>
+    <string name="l10n_1dd6da47cd03c774" formatted="false">"ディスパッチャは、プロファイルが割り当てられていない Ready Card をスキップします。"</string>
     <string name="l10n_ecfa2de70a6b9074" formatted="false">"HTTPS接続に失敗しました。サーバのURLと証明書を確認してください。"</string>
     <string name="l10n_9bbd89ecc5be6e75" formatted="false">"Hermesサーバで内部エラーが発生しました。サーバのログを確認してから、もう一度お試しください。"</string>
     <string name="l10n_15ea0a61edd4c28f" formatted="false">"アシスタントの応答が完了しました。"</string>
@@ -793,6 +1037,8 @@
     <string name="l10n_99bd906ebc1eccbe" formatted="false">"編集後のメッセージを空にすることはできません。"</string>
     <string name="l10n_81c08290cf69b27a" formatted="false">"パスワードが拒否されました。サーバのパスワードを確認して、もう一度お試しください。"</string>
     <string name="l10n_94f2c21b3df558b2" formatted="false">"リクエストはキャンセルされました。"</string>
+    <string name="l10n_8bdfda19530477f9" formatted="false">"選択したカードはアーカイブに移動されます。"</string>
+    <string name="l10n_cd019f1c53e3497b" formatted="false">"選択項目は利用できなくなりました。ボードを更新して、カードをもう一度選択してください。"</string>
     <string name="l10n_e7160301a4c0999e" formatted="false">"サーバは現在の応答を停止できませんでした。"</string>
     <string name="l10n_391ddfb06a8ee962" formatted="false">"サーバがこのセッションのアーカイブを解除できませんでした。"</string>
     <string name="l10n_11326745266f240a" formatted="false">"サーバが変更を確認しませんでした。"</string>
@@ -827,11 +1073,14 @@
     <string name="l10n_ac044556e5548d3c" formatted="false">"サーバが受け取っているリクエストが多すぎます。少し待ってから、もう一度お試しください。"</string>
     <string name="l10n_2a1b7a25a5096500" formatted="false">"サーバまたはCloudflareトンネルを利用できません。Macがスリープしていないこと、hermes-webuiが実行中であること、トンネルが接続されていることを確認してください。"</string>
     <string name="l10n_f8d83dbb55003db9" formatted="false">"サーバがアクセスを拒否しました。サーバのパスワードと権限を確認してください。"</string>
+    <string name="l10n_a9c580f6eaa44ef8" formatted="false">"サーバーがこの更新を拒否したか、適用しませんでした。"</string>
+    <string name="l10n_1f649f3b878ba1a5" formatted="false">"サーバーがこのディスパッチャー要求を拒否しました。Hermex は再試行していません。"</string>
     <string name="l10n_3b7efcceeff317b3" formatted="false">"サーバがリクエストを拒否しました。"</string>
     <string name="l10n_80e2ebb549050457" formatted="false">"サーバがリクエストを拒否しました：%@"</string>
     <string name="l10n_d2a9f8cb89bf69b7" formatted="false">"サーバの応答を読み取れませんでした。"</string>
     <string name="l10n_53e576d649d0b70e" formatted="false">"サーバの応答を読み取れませんでした。URLがHermes Web UIサーバを指していることを確認してください。"</string>
     <string name="l10n_eefb8bb01beaaae1" formatted="false">"サーバの応答に時間がかかりすぎました。Macがスリープしていないこと、サーバが実行中であることを確認してください。"</string>
+    <string name="l10n_afa9464df086e048" formatted="false">"ボード作成後はスラッグを変更できません。"</string>
     <string name="l10n_c9f0def8dcd627c9" formatted="false">"ストリームが不正な形式のエラーイベントを返しました。"</string>
     <string name="l10n_baa339d62041f2e5" formatted="false">"ストリームがエラーを返しました。"</string>
     <string name="l10n_e0dfd329b1ff55a1" formatted="false">"更新を適用できませんでした。"</string>
@@ -845,6 +1094,11 @@
     <string name="l10n_a8f4d85bf0de7c20" formatted="false">"思考とツールのカード"</string>
     <string name="l10n_ac9ded8ad76135f8" formatted="false">"思考とツールのカードが折りたたまれた状態ではなく展開された状態で表示されます。カードをタップすると引き続き切り替えられます。"</string>
     <string name="l10n_16c5d096ef4c4b52" formatted="false">"思考中、%@"</string>
+    <string name="l10n_e151dd158050ee78" formatted="false">"このボードは存在しません。別のボードを選択してください。"</string>
+    <string name="l10n_6a650636b81004aa" formatted="false">"This Board no longer exists. Return to Kanban to choose another Board."</string>
+    <string name="l10n_ca86aeb9616416a9" formatted="false">"このカードは、エディタを開いた後、サーバー上で変更されました。下書きは保存されました。"</string>
+    <string name="l10n_3474c0f601ba033a" formatted="false">"This Card no longer exists on this Board. The Board has been refreshed."</string>
+    <string name="l10n_83a3dcf7fc7d62c1" formatted="false">"このプレビューは古くなっています。参考にする前にディスパッチのプレビューを再実行してください。"</string>
     <string name="l10n_aba61a2ad81b8d7f" formatted="false">"この添付ファイルにはサーバのファイルパスがありません。"</string>
     <string name="l10n_1877e019673b82ad" formatted="false">"このチャットのワークスペースはGitリポジトリではありません。"</string>
     <string name="l10n_a8f9e43b9a80b7bf" formatted="false">"このコマンドはモバイルアプリでは利用できません。"</string>
@@ -853,6 +1107,7 @@
     <string name="l10n_de77c8f5ce7c5f65" formatted="false">"このファイルは空のようです。"</string>
     <string name="l10n_1199f666fedc3267" formatted="false">"このファイルはバイナリのため、表示できるテキスト差分はありません。"</string>
     <string name="l10n_83722fb0e0ca5b75" formatted="false">"このファイルは写真に保存できる画像ではありません。"</string>
+    <string name="l10n_4914d0afde90fb6d" formatted="false">"最大 %lld 個のワーカーが起動し、API 予算を消費する可能性があります。"</string>
     <string name="l10n_bc15958918104240" formatted="false">"最新のHermesサーバのバージョンを取得して再起動します。実行中のチャットは一時的に中断される場合があります。サーバが復帰するとアプリが再接続します。"</string>
     <string name="l10n_f0c6fa08d0785f19" formatted="false">"Hermesサーバからスケジュールされたタスクを削除します。"</string>
     <string name="l10n_9cc29299b5a024f3" formatted="false">"このデバイスからサーバとその保存済み設定を削除します。アクティブなサーバには影響しません。"</string>
@@ -867,16 +1122,21 @@
     <string name="l10n_e00561c4c172b50c" formatted="false">"このタスクはまだ出力を生成していません。"</string>
     <string name="l10n_97b25d863d2e238a" formatted="false">"このワークスペースにはコミットされていない変更が含まれています。それらを一時的に保存し、ブランチを切り替えてから、保存された変更を宛先ブランチに復元します。"</string>
     <string name="l10n_c51f7b72279e26fd" formatted="false">"しきい値"</string>
+    <string name="l10n_7bbea3f2b3d3370d" formatted="false">"タイムアウト"</string>
     <string name="l10n_85decb73d1438d2e" formatted="false">"期間"</string>
     <string name="l10n_588e8007757722e5" formatted="false">"タイムアウト %@"</string>
     <string name="l10n_abca4fe61ee1300b" formatted="false">"新規チャットと送信に色を付ける"</string>
+    <string name="l10n_768e0c1c69573fb5" formatted="false">"タイトル"</string>
+    <string name="l10n_d5ec4d31ee0ffb4b" formatted="false">"タイトルは必須です。"</string>
     <string name="l10n_735e4002db082f59" formatted="false">"タイトルを **%@** に設定しました。"</string>
+    <string name="l10n_353a23d95e3c0839" formatted="false">"To Do"</string>
     <string name="l10n_757011e57ad1e225" formatted="false">"トースト通知"</string>
     <string name="l10n_0b021d5f7dac5820" formatted="false">"トースト"</string>
     <string name="l10n_24345a14377fd821" formatted="false">"今日"</string>
     <string name="l10n_9a830c714bb2b52b" formatted="false">"ツール"</string>
     <string name="l10n_fa689a2e435f8e6d" formatted="false">"トップセッション"</string>
     <string name="l10n_b662ff25f41cef30" formatted="false">"合計トークン"</string>
+    <string name="l10n_013ec284eed0cb93" formatted="false">"トリアージ"</string>
     <string name="l10n_cef2fe093b68fa97" formatted="false">"再試行"</string>
     <string name="l10n_3878a498a56fa2c4" formatted="false">"別のファイル名またはパスをお試しください。"</string>
     <string name="l10n_4bb4b153f85d494e" formatted="false">"別のモデル名またはIDをお試しください。"</string>
@@ -887,14 +1147,20 @@
     <string name="l10n_426fed37b50f32c6" formatted="false">"応答を入力"</string>
     <string name="l10n_0e2d9b0777a485c1" formatted="false">"URL"</string>
     <string name="l10n_35e71c29f1185e21" formatted="false">"アーカイブ解除"</string>
+    <string name="l10n_e57016edceec7e7b" formatted="false">"未割り当て"</string>
     <string name="l10n_2c9c1f79142df1b6" formatted="false">"利用不可"</string>
+    <string name="l10n_12aabd251c4213f1" formatted="false">"ブロック解除"</string>
     <string name="l10n_4ef7d73c1a83464f" formatted="false">"未分類"</string>
     <string name="l10n_10e6f533d2aaca09" formatted="false">"コミットされていない変更"</string>
+    <string name="l10n_39fc72124884d657" formatted="false">"元に戻す"</string>
+    <string name="l10n_e979f022d850942a" formatted="false">"アーカイブを元に戻す"</string>
     <string name="l10n_b3a1af021b557f01" formatted="false">"取り消しはWebUIのセッションでのみ利用できます。"</string>
     <string name="l10n_0383fdef3915a396" formatted="false">"最後のやり取りを取り消す"</string>
     <string name="l10n_bc7819b34ff87570" formatted="false">"不明"</string>
     <string name="l10n_3697b1ae8e7d30a2" formatted="false">"不明な日付"</string>
     <string name="l10n_b87bd1c1a7bca908" formatted="false">"不明なモデル"</string>
+    <string name="l10n_dd1bf46d2decbcfc" formatted="false">"不明なステータス"</string>
+    <string name="l10n_9a8ae21fb0d04e5a" formatted="false">"不明なプロバイダ"</string>
     <string name="l10n_fd61688d01169f43" formatted="false">"不明な推論レベル：%@。"</string>
     <string name="l10n_d57444178b19325b" formatted="false">"名称未設定のスキル"</string>
     <string name="l10n_2eba6a03b89a9ddb" formatted="false">"ピン留めを解除"</string>
@@ -907,9 +1173,12 @@
     <string name="l10n_82fb1d5144a846f7" formatted="false">"最新"</string>
     <string name="l10n_fb91e24fa52d8d2b" formatted="false">"更新"</string>
     <string name="l10n_58b0f1cc44738b4e" formatted="false">"更新あり · %lld 件遅れ"</string>
+    <string name="l10n_4de04cd91a3d954b" formatted="false">"更新に失敗しました"</string>
     <string name="l10n_61c080e52b666016" formatted="false">"サーバを更新しますか？"</string>
+    <string name="l10n_f2f8570ddd7b1e7b" formatted="false">"Updated"</string>
     <string name="l10n_a74e190a94f85aeb" formatted="false">"セッションのヘッダーロゴの色を更新します。"</string>
     <string name="l10n_4159ad3b0d6e5c96" formatted="false">"更新して再起動中…"</string>
+    <string name="l10n_d6f123d4cdba5c1b" formatted="false">"ボードを更新中…"</string>
     <string name="l10n_37016ece9e2301b0" formatted="false">"アプリアイコンを更新中"</string>
     <string name="l10n_3d07322927c7ed8c" formatted="false">"コンポーザー設定を更新中…"</string>
     <string name="l10n_05898ca376b6c749" formatted="false">"タスクを更新中…"</string>
@@ -931,6 +1200,7 @@
     <string name="l10n_542f2c8e3ce7e991" formatted="false">"ツールを使用中"</string>
     <string name="l10n_8dce170de238b1fe" formatted="false">"値"</string>
     <string name="l10n_2da600bf94048431" formatted="false">"バージョン"</string>
+    <string name="l10n_931e1a4b152ad9d1" formatted="false">"すべて表示"</string>
     <string name="l10n_ddcd2f2e783a0ee9" formatted="false">"バイオレット"</string>
     <string name="l10n_0c82d065d0dd4cbf" formatted="false">"音声コマンドはモバイルアプリでは利用できません。"</string>
     <string name="l10n_c0b2cee024771a9f" formatted="false">"音声入力"</string>
@@ -959,9 +1229,16 @@
     <string name="l10n_0a1ea5282f05b18d" formatted="false">"承認待ち"</string>
     <string name="l10n_8ac7aa173f261d8b" formatted="false">"利用できる機能"</string>
     <string name="l10n_37619fc13053f82b" formatted="false">"ホワイト"</string>
+    <string name="l10n_da17e9bd3e2e98db" formatted="false">"Worker ID"</string>
+    <string name="l10n_e7dff0bfb1f39bad" formatted="false">"ワーカーログ"</string>
     <string name="l10n_4ca0a75c2b7fa7da" formatted="false">"ワークスペース"</string>
+    <string name="l10n_45df1387dc17132d" formatted="false">"このサーバーではワークスペース管理を利用できません。"</string>
+    <string name="l10n_6e0f2ba26a5e7f14" formatted="false">"ワークスペース名"</string>
     <string name="l10n_5b8d33f220cddf4c" formatted="false">"ワークスペースのパス"</string>
+    <string name="l10n_01844d97ed607c1a" formatted="false">"この種類のワークスペースにはワークスペース パスが必要です。"</string>
     <string name="l10n_928ae0b86e6b313e" formatted="false">"ワークスペースの切り替えを利用できません。"</string>
+    <string name="l10n_dc8ab239f39b6ebf" formatted="false">"ワークスペース、スキル、最大実行時間、前提条件はカードの作成時に設定され、ここでは編集できません。"</string>
+    <string name="l10n_fad0554cb2ea2e8c" formatted="false">"ワークツリー"</string>
     <string name="l10n_ebf23375246151e6" formatted="false">"コードブロックの行を折り返す"</string>
     <string name="l10n_4855c3796b3a0f62" formatted="false">"コードブロックの長い行を横スクロールではなく画面に合わせて折り返します。各コードブロックの折り返しボタンをタップして切り替えることもできます。"</string>
     <string name="l10n_4a48932789d199bb" formatted="false">"書く"</string>
@@ -976,6 +1253,7 @@
     <string name="l10n_22b34eb125f0f1ee" formatted="false">"設定済みの別のサーバに切り替えます。このサーバを使用するには再度サインインしてください。"</string>
     <string name="l10n_a7355287e63a4595" formatted="false">"Hermes Web UIはあなたが管理するハードウェア上に保持されます。"</string>
     <string name="l10n_0b05d4e5dfddc460" formatted="false">"Tailscale経由でiPhoneからアクセスできるHermesエージェント。"</string>
+    <string name="l10n_d621853ee2b94ab0" formatted="false">"ローカルドラフトは破棄されます。"</string>
     <string name="l10n_1735ecf6cc9d21df" formatted="false">"セッションの有効期限が切れました。再度サインインしてください。"</string>
     <string name="l10n_46aa126e081be313" formatted="false">"作業ツリーはクリーンです。"</string>
     <string name="l10n_0411e4632d186d8a" formatted="false">"モデルを変更する"</string>
@@ -996,6 +1274,7 @@
     <string name="l10n_9c7e05e5868afcf3" formatted="false">"プロンプト"</string>
     <string name="l10n_7cd9148ec5a552db" formatted="false">"クエリ"</string>
     <string name="l10n_3b2be2e26344d52b" formatted="false">"質問"</string>
+    <string name="l10n_8103a6c374c589c3" formatted="false">"1秒あたりのトークン数"</string>
     <string name="l10n_1937c4c28f726186" formatted="false">"ツール"</string>
     <string name="l10n_c551e6cf17a561ce" formatted="false">"承認"</string>
     <string name="l10n_cfea419c3b4e8b02" formatted="false">"保存"</string>
@@ -1019,7 +1298,6 @@
     <string name="l10n_567f51fd4b4b8a0d" formatted="false">"変更は利用できません"</string>
     <string name="l10n_d3f0b43f65ef5ed5" formatted="false">"以降のメッセージを破棄しますか？"</string>
     <string name="l10n_1a2b1cb567321e7c" formatted="false">"アイデンティティ"</string>
-    <string name="l10n_8b39616698372de0" formatted="false">"エージェントが返したTailscale URLを入力してください。例：`http://&lt;tailnet-ip&gt;:8787`。"</string>
     <string name="l10n_f54ec593076806df" formatted="false">"HTMLとしてエクスポート"</string>
     <string name="l10n_bc399052d4204298" formatted="false">"JSONとしてエクスポート"</string>
     <string name="l10n_03d5d80199276349" formatted="false">"サーバを削除"</string>
@@ -1059,7 +1337,6 @@
     <string name="l10n_bd8d3d03c9e555ba" formatted="false">"アクティブなサーバからサインアウトしてオンボーディングに戻ります。"</string>
     <string name="l10n_2dacf65959849884" formatted="false">"送信"</string>
     <string name="l10n_8b18a01cc0e805fc" formatted="false">"支店"</string>
-    <string name="l10n_768e0c1c69573fb5" formatted="false">"全タイトル"</string>
     <string name="l10n_a62dff92d4316df9" formatted="false">"トースト通知"</string>
     <string name="l10n_7bab0e5ded8bc6f0" formatted="false">"サーバが要求するとおりに正確にモデルIDを入力してください。"</string>
     <string name="l10n_1d4d43cc6f3a833e" formatted="false">"完了"</string>
@@ -1069,7 +1346,7 @@
     <string name="l10n_4995a18a7feb07d3" formatted="false">"Androidの通知が許可されています。"</string>
     <string name="l10n_6ffbb15ebde8242f" formatted="false">"Androidの通知が無効です。"</string>
     <string name="l10n_65f5f6f5ac859134" formatted="false">"AndroidからHermesエージェントとチャット"</string>
-    <string name="l10n_9aae4001f785c3f9" formatted="false">"AndroidからHermesエージェントを操作できます。"</string>
+    <string name="l10n_9aae4001f785c3f9" formatted="false">"iPhoneまたはiPadからHermesエージェントを操作できます。"</string>
     <string name="l10n_988fc6350ab87756" formatted="false">"Google PlayでTailscaleを入手"</string>
     <string name="l10n_e972ad1daa70f255" formatted="false">"Tailscale経由でAndroidからアクセスできるHermesエージェント。"</string>
     <string name="l10n_b9cba9b2cbc1433d" formatted="false">"%lld 件のアーカイブ済みセッション"</string>
@@ -1085,7 +1362,9 @@
     <string name="l10n_dc3decbb93847518" formatted="false">"詳細"</string>
     <string name="l10n_36fff63ccbcd7bf9" formatted="false">"破棄"</string>
     <string name="l10n_663da9347806aa18" formatted="false">"ファイルの変更"</string>
+    <string name="l10n_96e578211aa29531" formatted="false">"フィルター"</string>
     <string name="l10n_1ce5eec83a4626a6" formatted="false">"Hermex ??????????????????????????????????????????????????????? Cookie?????????????????"</string>
+    <string name="l10n_7f896a7c24b031ad" formatted="false">"互換性のない Kanban 応答"</string>
     <string name="l10n_7a4e49bc1d9b6a0e" formatted="false">"リモート画像を読み込む"</string>
     <string name="l10n_2563f2298c5e7405" formatted="false">"名前: 値"</string>
     <string name="l10n_cf9b77061f7b3126" formatted="false">"開く"</string>

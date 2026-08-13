@@ -11,14 +11,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def normalize_dynamic_path(path: str) -> str:
+    path = re.sub(r"\\\([^)]*\)", "{param}", path)
+    return re.sub(r"\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*", "{param}", path)
+
+
 def paths_from_ios() -> set[str]:
     text = (ROOT / "HermesMobile" / "Networking" / "Endpoints.swift").read_text(encoding="utf-8")
-    return set(re.findall(r'return\s+"(/[^"]+)"', text))
+    return {normalize_dynamic_path(path) for path in re.findall(r'return\s+"(/[^"]+)"', text)}
 
 
 def paths_from_android() -> set[str]:
     text = (ROOT / "android" / "app" / "src" / "main" / "java" / "com" / "uzairansar" / "hermex" / "core" / "network" / "Endpoint.kt").read_text(encoding="utf-8")
-    return set(re.findall(r'Endpoint\(\s*"(/[^"]+)"', text))
+    return {normalize_dynamic_path(path) for path in re.findall(r'Endpoint\(\s*"(/[^"]+)"', text)}
 
 
 def report_delta(left_name: str, left: set[str], right_name: str, right: set[str]) -> bool:

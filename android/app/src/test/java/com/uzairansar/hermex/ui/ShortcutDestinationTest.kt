@@ -60,4 +60,14 @@ class ShortcutDestinationTest {
         assertNull(ShortcutDestination.supportedAction("settings"))
         assertNull(ShortcutDestination.supportedAction("delete"))
     }
+
+    @Test
+    fun sessionUriMatchesTheCrossPlatformDeepLinkContract() {
+        assertEquals(
+            "hermes-agent://session?id=session%20%2F%20one",
+            ShortcutDestination.sessionUri(" session / one "),
+        )
+        assertNull(ShortcutDestination.sessionUri(null))
+        assertNull(ShortcutDestination.sessionUri("  "))
+    }
 }

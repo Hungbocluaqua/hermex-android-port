@@ -283,8 +283,8 @@ final class ChatPendingActionCoordinator {
             applyApprovalUpdate(update, sessionID: sessionID)
         case .transportError, .error:
             startApprovalFallbackPolling(sessionID: sessionID)
-        case .token, .interimAssistant, .reasoning, .toolStarted, .toolCompleted, .title, .done, .clarificationPending,
-             .pendingSteerLeftover, .streamEnd, .cancelled, .ignored:
+        case .token, .interimAssistant, .reasoning, .toolStarted, .toolCompleted, .title, .metering, .done, .clarificationPending,
+             .pendingSteerLeftover, .streamEnd, .cancelled, .heartbeat, .ignored:
             break
         }
     }
@@ -389,8 +389,8 @@ final class ChatPendingActionCoordinator {
             }
         case .transportError, .error:
             startClarificationFallbackPolling(sessionID: sessionID)
-        case .token, .interimAssistant, .reasoning, .toolStarted, .toolCompleted, .title, .done,
-             .pendingSteerLeftover, .streamEnd, .cancelled, .ignored:
+        case .token, .interimAssistant, .reasoning, .toolStarted, .toolCompleted, .title, .metering, .done,
+             .pendingSteerLeftover, .streamEnd, .cancelled, .heartbeat, .ignored:
             break
         }
     }

@@ -6,6 +6,13 @@ internal data class TranscriptScrollObservation(
     val isNearBottom: Boolean,
 )
 
+internal data class TranscriptScrollMetrics(
+    val observation: TranscriptScrollObservation,
+    val distanceFromBottomPixels: Int,
+)
+
+internal const val TRANSCRIPT_USER_SCROLL_COOLDOWN_MILLIS = 250L
+
 internal fun transcriptFollowState(
     currentlyFollowing: Boolean,
     observation: TranscriptScrollObservation,
@@ -19,7 +26,32 @@ internal fun transcriptFollowState(
 internal fun shouldAutoScrollTranscript(
     followsBottom: Boolean,
     isScrollInProgress: Boolean,
-): Boolean = followsBottom && !isScrollInProgress
+    isUserScrollCooldownActive: Boolean = false,
+): Boolean = followsBottom && !isScrollInProgress && !isUserScrollCooldownActive
+
+internal fun isTranscriptNearBottom(
+    totalItemsCount: Int,
+    lastVisibleIndex: Int,
+    lastVisibleOffset: Int,
+    lastVisibleSize: Int,
+    viewportEndOffset: Int,
+    tolerancePixels: Int,
+): Boolean = totalItemsCount == 0 || (
+    lastVisibleIndex == totalItemsCount - 1 &&
+        lastVisibleOffset + lastVisibleSize - viewportEndOffset <= tolerancePixels
+    )
+
+internal fun transcriptReadingOlderState(
+    currentlyReadingOlder: Boolean,
+    isNearBottom: Boolean,
+    distanceFromBottomPixels: Int,
+    nearBottomTolerancePixels: Int,
+    hysteresisPixels: Int,
+): Boolean = when {
+    isNearBottom -> false
+    currentlyReadingOlder -> true
+    else -> distanceFromBottomPixels > nearBottomTolerancePixels + hysteresisPixels
+}
 
 internal fun isTranscriptBottomVisible(
     totalItemsCount: Int,

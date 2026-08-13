@@ -331,6 +331,7 @@ class HermexUiFlowTest {
             initials = "MH",
         )
         var openedPanel: String? = null
+        var openedKanban = false
         var openedChat: String? = null
 
         composeRule.setContent {
@@ -338,11 +339,13 @@ class HermexUiFlowTest {
                 SessionListRoute(
                     authState = AuthState.LoggedIn(mockServer.url("/"), account),
                     container = container,
+                    selectedSessionId = "s1",
                     onOpenChat = { openedChat = it },
                     onOpenVoiceChat = {},
                     onOpenSharedDraft = {},
                     onOpenPanels = {},
                     onOpenPanel = { openedPanel = it },
+                    onOpenKanban = { openedKanban = true },
                     onOpenSettings = {},
                     onNeedsOnboarding = {},
                 )
@@ -362,11 +365,13 @@ class HermexUiFlowTest {
         composeRule.onNodeWithText("Android Port").assertIsDisplayed()
         assertTrue(hasText("3 messages", substring = true))
         composeRule.onNodeWithText("Live").assertIsDisplayed()
+        composeRule.onNodeWithTag("session_row_s1").assertIsSelected()
         assertTrue(composeRule.onAllNodesWithText("gpt-5").fetchSemanticsNodes().isEmpty())
         assertTrue(composeRule.onAllNodesWithText("pin").fetchSemanticsNodes().isEmpty())
         assertTrue(composeRule.onAllNodesWithContentDescription("Session actions").fetchSemanticsNodes().isEmpty())
         composeRule.onNodeWithTag("session_row_s1").performTouchInput { longClick() }
         composeRule.onNodeWithText("Duplicate").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Copy Deeplink").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Export HTML").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Export JSON").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Duplicate").performScrollTo()
@@ -375,6 +380,7 @@ class HermexUiFlowTest {
         assertTrue(branchBody.contains(""""session_id":"s1""""))
         assertTrue(branchBody.contains(""""title":"Android Port (copy)""""))
         composeRule.onNodeWithText("Tasks").assertIsDisplayed()
+        composeRule.onNodeWithText("Kanban").assertIsDisplayed()
         composeRule.onNodeWithText("Skills").assertIsDisplayed()
         composeRule.onNodeWithText("Memory").assertIsDisplayed()
         composeRule.onNodeWithText("Insights").assertIsDisplayed()
@@ -382,6 +388,8 @@ class HermexUiFlowTest {
         assertTrue(composeRule.onAllNodesWithText("Tool").fetchSemanticsNodes().isEmpty())
         assertTrue(composeRule.onAllNodesWithText("Mem").fetchSemanticsNodes().isEmpty())
         assertTrue(composeRule.onAllNodesWithText("Chart").fetchSemanticsNodes().isEmpty())
+        composeRule.onNodeWithText("Kanban").performClick()
+        composeRule.runOnIdle { assertTrue(openedKanban) }
         composeRule.onNodeWithText("Projects").assertIsDisplayed()
         assertTrue(composeRule.onAllNodesWithText("Mobile").fetchSemanticsNodes().isEmpty())
         assertTrue(composeRule.onAllNodesWithText("New project").fetchSemanticsNodes().isEmpty())
@@ -424,6 +432,67 @@ class HermexUiFlowTest {
         assertTrue(switchProfileBody.contains(""""name":"review""""))
         assertTrue(composeRule.onAllNodesWithText("Archived Sessions").fetchSemanticsNodes().isEmpty())
         assertTrue(sessionRequests.contains("1"))
+    }
+
+    @Test
+    fun sessionListSeparatesScheduledSessionsAndOpensFullList() {
+        val scheduledSessions = (1..6).joinToString(",") { index ->
+            """{"session_id":"cron_$index","title":"Cron $index","message_count":1,"last_message_at":$index}"""
+        }
+        val mockServer = MockWebServer().also { server ->
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse = when (request.url.encodedPath) {
+                    "/api/projects" -> json("""{"projects":[]}""")
+                    "/api/profiles" -> json("""{"profiles":[],"single_profile_mode":true}""")
+                    "/api/sessions" -> json(
+                        """{"sessions":[{"session_id":"ordinary","title":"Ordinary Chat","message_count":1},$scheduledSessions],"archived_count":0}""",
+                    )
+                    else -> MockResponse.Builder().code(404).body("""{"error":"unexpected"}""").build()
+                }
+            }
+            server.start()
+            this.server = server
+        }
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        val container = AppContainer(application)
+        val account = ServerAccount(
+            id = mockServer.url("/").toString(),
+            urlString = mockServer.url("/").toString(),
+            displayName = "Mock Hermex",
+            initials = "MH",
+        )
+
+        composeRule.setContent {
+            HermexTheme {
+                SessionListRoute(
+                    authState = AuthState.LoggedIn(mockServer.url("/"), account),
+                    container = container,
+                    onOpenChat = {},
+                    onOpenVoiceChat = {},
+                    onOpenSharedDraft = {},
+                    onOpenPanels = {},
+                    onOpenKanban = {},
+                    onOpenSettings = {},
+                    onNeedsOnboarding = {},
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("scheduled_sessions_disclosure").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("scheduled_sessions_disclosure").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Ordinary Chat").performScrollTo().assertIsDisplayed()
+        assertTrue(composeRule.onAllNodesWithText("Cron 6").fetchSemanticsNodes().isEmpty())
+
+        composeRule.onNodeWithTag("scheduled_sessions_disclosure").performScrollTo().performClick()
+        composeRule.onNodeWithText("Cron 6").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("session_list").performScrollToNode(hasSemanticsText("View all"))
+        composeRule.onNodeWithTag("scheduled_sessions_view_all").performClick()
+        composeRule.onNodeWithTag("scheduled_sessions_search_field").assertIsDisplayed().performTextInput("Cron 1")
+        composeRule.onNodeWithTag("session_row_cron_1").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Back").performClick()
+        composeRule.onNodeWithTag("scheduled_sessions_disclosure").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -481,6 +550,7 @@ class HermexUiFlowTest {
                         onOpenVoiceChat = {},
                         onOpenSharedDraft = {},
                         onOpenPanels = {},
+                        onOpenKanban = {},
                         onOpenSettings = {},
                         onNeedsOnboarding = {},
                     )
@@ -633,7 +703,7 @@ class HermexUiFlowTest {
                                       {"role": "local_notice", "content": "Cached local note"},
                                       {
                                         "role": "assistant",
-                                        "content": "Mock response",
+                                        "content": "Mock response\nMEDIA:/tmp/voice.mp3\nMEDIA:/tmp/demo.mp4\nMEDIA:/tmp/report.zip",
                                         "reasoning": [
                                           {"text": "Thinking through Android parity"}
                                         ],
@@ -880,6 +950,7 @@ class HermexUiFlowTest {
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Attach File") }
         composeRule.onNodeWithText("Attach File").assertIsDisplayed()
         composeRule.onNodeWithText("Photos").assertIsDisplayed()
+        composeRule.onNodeWithText("Camera").assertIsDisplayed()
         composeRule.onNodeWithText("Done").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { !hasText("Attach File") }
         composeRule.onNodeWithText("Hermex").performClick()
@@ -946,6 +1017,11 @@ class HermexUiFlowTest {
         composeRule.onNodeWithContentDescription("Message").performTextInput("Hello Android")
         composeRule.onNodeWithContentDescription("Send").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Mock response") }
+        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("voice.mp3") && hasText("demo.mp4") && hasText("report.zip") }
+        composeRule.onNodeWithText("voice.mp3").assertIsDisplayed()
+        composeRule.onNodeWithText("demo.mp4").assertIsDisplayed()
+        composeRule.onNodeWithText("report.zip").assertIsDisplayed()
+        composeRule.onNodeWithText("Tap to download").assertIsDisplayed()
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Post-done title") }
 
         composeRule.onNodeWithText("Mock response").assertExists()
@@ -1609,6 +1685,9 @@ class HermexUiFlowTest {
                             """.trimIndent(),
                         )
                         "/api/crons/status" -> json("""{"running_jobs":{}}""")
+                        "/api/crons/delivery-options" -> json(
+                            """{"platforms":[{"value":"local","label":"Local output only"},{"value":"origin","label":"Reply to creator"}]}""",
+                        )
                         "/api/crons/output" -> json(
                             """{"job_id":"job-1","outputs":[{"filename":"latest.md","content":"$longTaskOutput"}]}""",
                         )
@@ -1673,6 +1752,13 @@ class HermexUiFlowTest {
             .boundsInRoot
         assertTrue(abs(taskSheetAfterScroll.top - taskSheetBeforeScroll.top) <= 1f)
         assertTrue(abs(taskSheetAfterScroll.bottom - taskSheetBeforeScroll.bottom) <= 1f)
+        composeRule.onNodeWithText("Edit").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Edit Task") }
+        composeRule.onNodeWithText("Local output only").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Deliver").performClick()
+        composeRule.onNodeWithText("Reply to creator").assertIsDisplayed()
+        composeRule.onNodeWithText("Reply to creator").performClick()
+        composeRule.onNodeWithText("Reply to creator").assertIsDisplayed()
     }
 
     @Test
@@ -1859,11 +1945,12 @@ class HermexUiFlowTest {
                             if (request.method == "POST") {
                                 settingsUpdateBody.set(request.body?.utf8().orEmpty())
                                 settingsUpdateLatch.countDown()
-                                json("""{"webui_version":"1.2.3","bot_name":"Hermes","show_cli_sessions":false}""")
+                                json("""{"webui_version":"1.2.3","bot_name":"Hermes","show_cli_sessions":false,"show_claude_code_sessions":true}""")
                             } else {
-                                json("""{"webui_version":"1.2.3","bot_name":"Hermes","show_cli_sessions":true}""")
+                                json("""{"webui_version":"1.2.3","bot_name":"Hermes","show_cli_sessions":true,"show_claude_code_sessions":true}""")
                             }
                         }
+                        "/api/providers" -> json("""{"active_provider":"openai","providers":[{"id":"openai","display_name":"OpenAI","has_key":true,"key_source":"env_var","models":["gpt-5"]}]}""")
                         "/api/models" -> json(
                             """
                             {
@@ -1901,11 +1988,12 @@ class HermexUiFlowTest {
                         "/api/settings" -> {
                             if (request.method == "POST") {
                                 settingsUpdateBody.set(request.body?.utf8().orEmpty())
-                                json("""{"webui_version":"1.2.3","bot_name":"Hermes","show_cli_sessions":false}""")
+                                json("""{"webui_version":"1.2.3","bot_name":"Hermes","show_cli_sessions":false,"show_claude_code_sessions":true}""")
                             } else {
-                                json("""{"webui_version":"1.2.3","bot_name":"Hermes","show_cli_sessions":true}""")
+                                json("""{"webui_version":"1.2.3","bot_name":"Hermes","show_cli_sessions":true,"show_claude_code_sessions":true}""")
                             }
                         }
+                        "/api/providers" -> json("""{"active_provider":"openai","providers":[{"id":"openai","display_name":"OpenAI","has_key":true,"key_source":"env_var","models":["gpt-5"]}]}""")
                         "/api/models" -> json(
                             """
                             {
@@ -2031,6 +2119,7 @@ class HermexUiFlowTest {
         composeRule.onNodeWithText("INTERACTION").assertIsDisplayed()
         composeRule.onNodeWithText("Haptic Feedback").assertIsDisplayed()
         composeRule.onNodeWithText("Send While Responding").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Dictation Provider").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("settings_list").performScrollToNode(hasSemanticsText("CHAT"))
         composeRule.onNodeWithText("CHAT").assertIsDisplayed()
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
@@ -2039,21 +2128,35 @@ class HermexUiFlowTest {
         composeRule.onNodeWithText("Expand Tools by Default").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Streamed Text Animation").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Response Timestamps").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Response Speed").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Wrap Code Block Lines").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Hide Attachment Paths").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Right-to-Left Chat Layout").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Files Button").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Git Actions").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("settings_list").performScrollToNode(hasSemanticsText("MAIN PAGE"))
+        composeRule.onNodeWithText("MAIN PAGE").assertIsDisplayed()
+        composeRule.onNodeWithText("Tasks").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Kanban").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Active Profile").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("settings_list").performScrollToNode(hasSemanticsText("ACTIVE SERVER"))
         composeRule.onNodeWithText("ACTIVE SERVER").assertIsDisplayed()
         composeRule.onNodeWithText("Default Model").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("GPT-5").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Default Profile").performScrollTo().assertIsDisplayed()
         assertTrue(hasText("Default"))
+        composeRule.onNodeWithText("Providers").performScrollTo().performClick()
+        composeRule.onNodeWithText("OpenAI").assertIsDisplayed()
+        composeRule.onNodeWithText("Provider keys are managed on the server. This screen is read-only.").assertIsDisplayed()
+        composeRule.onNodeWithText("Done").performClick()
 
         composeRule.onNodeWithTag("settings_list").performScrollToNode(hasSemanticsText("SESSIONS"))
         composeRule.onNodeWithText("SESSIONS").assertIsDisplayed()
-        composeRule.onNodeWithText("CLI session visibility is synced with this server, so the WebUI follows it too.")
+        composeRule.onNodeWithText("Session visibility is synced with this server, so the WebUI follows it too.")
             .performScrollTo()
             .assertIsDisplayed()
+        composeRule.onNodeWithText("Claude Code Sessions").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Subagent Sessions").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("cli_sessions_switch")
             .performScrollTo()
             .assertIsOn()
@@ -2155,6 +2258,8 @@ class HermexUiFlowTest {
         composeRule.onNodeWithText("README.md").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Share") }
         composeRule.onNodeWithText("Share").assertIsDisplayed()
+        composeRule.onNodeWithText("Copy").assertIsDisplayed()
+        composeRule.onNode(hasSemanticsText("# Hermex", substring = true)).assertIsDisplayed()
         composeRule.onNodeWithText("Close").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("report.pdf") }
         composeRule.onNodeWithText("report.pdf").performClick()

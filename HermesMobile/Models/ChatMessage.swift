@@ -16,6 +16,7 @@ struct ChatMessage: Decodable, Equatable, Identifiable {
     let contentParts: [JSONValue]?
     let reasoning: String?
     let attachments: [MessageAttachment]?
+    let turnTps: Double?
 
     init(
         role: String?,
@@ -28,7 +29,8 @@ struct ChatMessage: Decodable, Equatable, Identifiable {
         toolCalls: [JSONValue]? = nil,
         contentParts: [JSONValue]? = nil,
         reasoning: String? = nil,
-        attachments: [MessageAttachment]? = nil
+        attachments: [MessageAttachment]? = nil,
+        turnTps: Double? = nil
     ) {
         self.role = role
         self.content = content
@@ -41,6 +43,7 @@ struct ChatMessage: Decodable, Equatable, Identifiable {
         self.contentParts = contentParts
         self.reasoning = reasoning
         self.attachments = attachments
+        self.turnTps = turnTps
     }
 
     enum CodingKeys: String, CodingKey {
@@ -54,6 +57,7 @@ struct ChatMessage: Decodable, Equatable, Identifiable {
         case toolCalls
         case reasoning
         case attachments
+        case turnTps = "_turnTps"
         case underscoredTimestamp = "_ts"
     }
 
@@ -73,6 +77,7 @@ struct ChatMessage: Decodable, Equatable, Identifiable {
         reasoning = container.decodeLossyStringIfPresent(forKey: .reasoning)
         let decodedAttachments = Self.decodeAttachmentsTolerantly(from: container)
         attachments = Self.attachments(decodedAttachments, enrichedByMarkerIn: content)
+        turnTps = container.decodeLossyDoubleIfPresent(forKey: .turnTps)
     }
 
     private static func attachments(
@@ -350,7 +355,11 @@ extension KeyedDecodingContainer {
 
         if let value = try? decodeIfPresent(Double.self, forKey: key),
            value.isFinite {
-            return Int(value)
+            // Int(exactly:) instead of Int(_:), which traps on doubles outside
+            // Int range, so a huge server value decodes to nil instead of
+            // crashing (#62). Truncation toward zero matches Int(_:) for
+            // values that fit.
+            return Int(exactly: value.rounded(.towardZero))
         }
 
         guard let stringValue = try? decodeIfPresent(String.self, forKey: key) else {
@@ -368,7 +377,8 @@ extension KeyedDecodingContainer {
             return nil
         }
 
-        return Int(value)
+        // Same out-of-range guard as the numeric branch above (#62).
+        return Int(exactly: value.rounded(.towardZero))
     }
 
     func decodeLossyBoolIfPresent(forKey key: Key) -> Bool? {

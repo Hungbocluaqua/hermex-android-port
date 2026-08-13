@@ -187,4 +187,12 @@ private fun SessionDetail.toSummary(): SessionSummary = SessionSummary(
     activeStreamId = activeStreamId,
     isStreaming = isStreaming,
     isCliSession = isCliSession,
+    sourceTag = sourceTag,
+    rawSource = rawSource,
+    sessionSource = sessionSource,
+    sourceLabel = sourceLabel,
+    parentSessionId = parentSessionId,
+    relationshipType = relationshipType,
+    readOnly = readOnly,
+    isReadOnly = isReadOnly,
 )

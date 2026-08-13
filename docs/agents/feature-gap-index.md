@@ -71,7 +71,6 @@ sub-paths of a group. Do not reorder casually.
 | `/api/git/` | roadmap | P3 | write | Git review & management — branches/diff/commit/stage/push/pull/discard/stash |
 | `/api/rollback/` | roadmap | P3 | write | Git Info & Rollback — checkpoint list/diff/restore |
 | `/api/crons/history` | roadmap | P2 | read | Cron History / Recent Runs |
-| `/api/crons/delivery-options` | roadmap | P2 | read | Cron History / Recent Runs |
 | `/api/session/usage` | roadmap | P2 | read | Session Token Usage — mostly covered by the context ring |
 | `/api/session/clear` | roadmap | P2 | write | Session Clear — destructive; needs confirmation |
 | `/api/session/import` | roadmap | P3 | — | Session Import (JSON / CLI) |
@@ -86,7 +85,7 @@ sub-paths of a group. Do not reorder casually.
 | `/api/session/recovery/` | roadmap | P4 | write | Advanced Session Maintenance |
 | `/api/sessions/cleanup` | roadmap | P4 | write | Advanced Session Maintenance — bulk cleanup |
 | `/api/provider/` | roadmap | P3 | secret | Provider Management — quota/cost history |
-| `/api/providers` | roadmap | P3 | secret | Provider Management — set/delete API keys |
+| `/api/providers` | roadmap | P3 | secret | Provider Management — read-only status screen shipped (#26); key set/delete remains roadmap |
 | `/api/models/refresh` | roadmap | P3 | — | Provider / Model Management |
 | `/api/models/live` | roadmap | P3 | — | Provider / Model Management — live model fetch |
 | `/api/model/` | roadmap | P3 | — | Provider / Model Management |
@@ -94,11 +93,10 @@ sub-paths of a group. Do not reorder casually.
 | `/api/profile/` | roadmap | P3 | write | Profile Management — active/create/delete |
 | `/api/skills/` | roadmap | P3 | write | Skill Management — toggle shipped; save/delete remain roadmap |
 | `/api/transcribe` | roadmap | P3 | privacy | Audio Transcription — server-side; audio leaves the device |
-| `/api/workspaces/` | roadmap | P3 | write | Workspace Management — add/remove/rename/reorder |
+| `/api/workspaces/` | roadmap | P3 | write | Workspace Management — add/remove/rename/reorder shipped (#22); list + `/suggest` were already shipped |
 | `/api/workspace/` | roadmap | P3 | write | Workspace Management |
 | `/api/file/` | roadmap | P4 | write | File Editing / Management — owner-deferred |
 | `/api/folder/` | roadmap | P4 | write | File Editing / Management — owner-deferred |
-| `/api/kanban` | roadmap | P4 | write | Kanban Board — owner-deferred |
 | `/api/terminal/` | roadmap | P4 | exec | Terminal — owner-deferred; App Store/safety-sensitive |
 | `/api/commands/exec` | roadmap | P4 | exec | Plugin command exec — owner-deferred |
 | `/api/gateway/` | roadmap | P5 | read | Gateway / Messaging Bridge |
@@ -111,7 +109,6 @@ sub-paths of a group. Do not reorder casually.
 | `/api/mcp/` | roadmap | P5 | admin | MCP Servers & Tools |
 | `/api/wiki/` | roadmap | P5 | read | Wiki / Knowledge System |
 | `/api/notes/` | roadmap | P5 | read | Notes / Knowledge — search/sources/item |
-| `/api/tts` | roadmap | P5 | privacy | Text-to-Speech — server-side; mobile can use native TTS |
 | `/api/project-os/` | roadmap | P5 | read | Project-OS dashboard |
 
 ### Implemented (for reference, derived — not parsed)
@@ -120,9 +117,10 @@ sub-paths of a group. Do not reorder casually.
 list is a human convenience only and is intentionally **not** machine-read.
 Shipping parity features include: Clarification System, Goal Submission, Session
 Search, Memory Editing, Cron mutations, Project Rename, Server-Side Insights,
-Transcript `MEDIA:` inline image rendering, and the core session/chat/streaming
-surface. For each feature's regression-check notes and last-validated shapes, see
-the archived catalog in `git log` history (removed during open-source prep, #347).
+Transcript `MEDIA:` inline image rendering, Kanban Board, and the core
+session/chat/streaming surface. For each feature's regression-check notes and
+last-validated shapes, see the archived catalog in `git log` history (removed
+during open-source prep, #347).
 
 ### Not in this index → `new`
 

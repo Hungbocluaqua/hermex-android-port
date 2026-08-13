@@ -58,6 +58,8 @@ object WorkspaceFilePreviewPolicy {
 
     fun isRasterImage(path: String?): Boolean = extension(path) in rasterImageExtensions
 
+    fun isMarkdown(path: String?): Boolean = extension(path) in setOf("md", "markdown", "mdown", "mkd")
+
     fun isKnownUnsupportedBinary(path: String?): Boolean = extension(path) in unsupportedBinaryExtensions
 
     fun shouldLoadRawPreview(path: String?): Boolean = isRasterImage(path)

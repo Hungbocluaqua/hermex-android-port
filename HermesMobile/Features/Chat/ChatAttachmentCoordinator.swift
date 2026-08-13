@@ -30,9 +30,14 @@ final class ChatAttachmentCoordinator {
     private(set) var uploadAttachmentErrorMessage: String?
     private(set) var localAttachmentPreviews: [String: [String: Data]] = [:]
     private var activeUploadCount = 0
+    private(set) var uploadStartGeneration = 0
 
     var isUploadingAttachment: Bool {
         activeUploadCount > 0
+    }
+
+    var uploadInFlightCount: Int {
+        activeUploadCount
     }
 
     weak var delegate: ChatAttachmentCoordinatorDelegate?
@@ -80,6 +85,7 @@ final class ChatAttachmentCoordinator {
         let uploadFilename = reserveUploadFilename(preferredFilename: displayFilename)
 
         activeUploadCount += 1
+        uploadStartGeneration += 1
         uploadAttachmentErrorMessage = nil
         delegate?.attachmentCoordinatorWillUpload()
         defer {
@@ -155,13 +161,26 @@ final class ChatAttachmentCoordinator {
 
     func transcriptMediaThumbnailData(for reference: TranscriptMediaReference) async -> Data? {
         guard reference.isRasterImageCandidate else { return nil }
+        guard let sessionID = delegate?.attachmentSessionID else { return nil }
 
         do {
-            let data = try await client.transcriptMediaData(for: reference)
+            let data = try await client.transcriptMediaData(for: reference, sessionID: sessionID)
             return await ImagePreviewDownsampler.previewDataAsync(
                 from: data,
                 maxPixelSize: ImagePreviewDownsampler.attachmentMaxPixelSize
             ) ?? data
+        } catch {
+            return nil
+        }
+    }
+
+    /// Raw transcript media bytes for inline audio/video playback. Local paths
+    /// still require a real session ID so `/api/media` can authorize session media.
+    func transcriptMediaData(for reference: TranscriptMediaReference) async -> Data? {
+        guard let sessionID = delegate?.attachmentSessionID else { return nil }
+
+        do {
+            return try await client.transcriptMediaData(for: reference, sessionID: sessionID)
         } catch {
             return nil
         }

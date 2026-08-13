@@ -17,21 +17,29 @@ class VoiceDictationController(
     val isListening: Boolean
         get() = recognizer != null
 
+    val isOnDeviceRecognitionAvailable: Boolean
+        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
+
     fun start(
+        onDeviceOnly: Boolean = false,
         onText: (String, Boolean) -> Unit,
         onListeningChanged: (Boolean) -> Unit,
         onError: (String) -> Unit,
     ) {
         cancel()
-        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+        if (onDeviceOnly && !isOnDeviceRecognitionAvailable) {
+            onError("On-device dictation is not available on this device.")
+            return
+        }
+        if (!onDeviceOnly && !SpeechRecognizer.isRecognitionAvailable(context)) {
             onError("Voice dictation is not available on this device.")
             return
         }
 
         val next = runCatching {
             if (
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
+                isOnDeviceRecognitionAvailable
             ) {
                 SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
             } else {

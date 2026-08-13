@@ -108,7 +108,8 @@ class ChatRepository(
             }
             if (!error.isChatCacheFallbackEligible()) return ResultState.Error(error.userMessage(), error)
             val cached = cacheOwnership.readIfCurrent(serverUrl, operationGeneration) {
-                val messages = cacheDao.cachedMessages(serverUrl, sessionId, now).mapNotNull { it.toMessage() }
+                val messages = cacheDao.cachedMessages(serverUrl, sessionId, now, MESSAGE_PAGE_LIMIT)
+                    .mapNotNull { it.toMessage() }
                 val metadata = cacheDao.cachedSessions(serverUrl, now)
                     .firstOrNull { it.sessionId == sessionId }
                     ?.toSummary()
@@ -126,14 +127,19 @@ class ChatRepository(
         sessionId: String,
         session: SessionDetail,
         streamId: String? = null,
+        turnTokensPerSecond: Double? = null,
     ): ChatSessionSnapshot {
         val operationGeneration = streamId?.let(streamCacheGenerations::remove)
             ?: cacheOwnership.generation(serverUrl)
-        val messages = session.messages.orEmpty()
+        val messages = session.messages.orEmpty().withLatestAssistantResponseSpeed(turnTokensPerSecond)
         val now = System.currentTimeMillis()
         val resolvedSessionId = session.sessionId?.takeIf { it.isNotBlank() } ?: sessionId
         replaceCachedMessages(resolvedSessionId, messages, now, operationGeneration)
-        return snapshotFromSession(session)
+        return snapshotFromSession(session, messagesOverride = messages)
+    }
+
+    suspend fun cacheMessages(sessionId: String, messages: List<ChatMessage>) {
+        replaceCachedMessages(sessionId, messages)
     }
 
     suspend fun send(
@@ -321,7 +327,8 @@ class ChatRepository(
         client.respondClarification(sessionId, response, clarifyId)
     suspend fun upload(sessionId: String, file: File, mimeType: String?) = client.upload(sessionId, file, mimeType)
     suspend fun transcribe(file: File): TranscribeResponse = client.transcribe(file)
-    suspend fun transcriptMediaData(reference: TranscriptMediaReference): ByteArray = client.transcriptMediaData(reference)
+    suspend fun transcriptMediaData(sessionId: String, reference: TranscriptMediaReference): ByteArray =
+        client.transcriptMediaData(reference, sessionId)
     suspend fun attachmentFile(sessionId: String, path: String): FileResponse = client.file(sessionId, path)
     suspend fun synthesizeSpeech(text: String, voice: String = "en-US-AriaNeural"): ByteArray =
         client.synthesizeSpeech(text, voice)
@@ -346,6 +353,8 @@ class ChatRepository(
     suspend fun setReasoning(effort: String, model: ModelSummary?) {
         client.setReasoning(effort, model?.id ?: model?.name, model?.provider)
     }
+
+    suspend fun setReasoningDisplay(display: String): ReasoningResponse = client.setReasoningDisplay(display)
 
     private suspend fun replaceCachedMessages(
         sessionId: String,
@@ -451,6 +460,17 @@ class ChatRepository(
     )
 }
 
+internal fun List<ChatMessage>.withLatestAssistantResponseSpeed(tokensPerSecond: Double?): List<ChatMessage> {
+    val speed = tokensPerSecond?.takeIf { it.isFinite() && it > 0.0 } ?: return this
+    val assistantIndex = indexOfLast { message ->
+        message.role == "assistant" && message.displayText.isNotBlank()
+    }
+    if (assistantIndex < 0) return this
+    return mapIndexed { index, message ->
+        if (index == assistantIndex) message.copy(turnTokensPerSecond = speed) else message
+    }
+}
+
 private fun Throwable.isChatCacheFallbackEligible(): Boolean = when (this) {
     is ApiError.Network -> true
     is ApiError.Http -> statusCode in setOf(408, 502, 503, 504)
@@ -474,7 +494,16 @@ private fun SessionDetail.toSummary(): SessionSummary = SessionSummary(
     inputTokens = inputTokens,
     outputTokens = outputTokens,
     estimatedCost = estimatedCost,
+    tokensPerSecond = tokensPerSecond,
     activeStreamId = activeStreamId,
     isStreaming = isStreaming,
     isCliSession = isCliSession,
+    sourceTag = sourceTag,
+    rawSource = rawSource,
+    sessionSource = sessionSource,
+    sourceLabel = sourceLabel,
+    parentSessionId = parentSessionId,
+    relationshipType = relationshipType,
+    readOnly = readOnly,
+    isReadOnly = isReadOnly,
 )

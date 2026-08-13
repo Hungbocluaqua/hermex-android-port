@@ -81,6 +81,12 @@
   "Voice dictation. Long press to record a voice note.": {
     "en": "Voice dictation. Long press to record a voice note.", "ar": "إملاء صوتي. اضغط مطولًا لتسجيل ملاحظة صوتية.", "de": "Sprachdiktat. Lange drücken, um eine Sprachnotiz aufzunehmen.", "es": "Dictado por voz. Mantén pulsado para grabar una nota de voz.", "fr": "Dictée vocale. Appuyez longuement pour enregistrer une note vocale.", "he": "הכתבה קולית. לחץ לחיצה ארוכה כדי להקליט הערה קולית.", "it": "Dettatura vocale. Tieni premuto per registrare una nota vocale.", "ja": "音声入力。長押しで音声メモを録音します。", "ko": "음성 받아쓰기. 길게 눌러 음성 메모를 녹음하세요.", "nl": "Spraakdictaat. Houd ingedrukt om een spraaknotitie op te nemen.", "pl": "Dyktowanie głosowe. Przytrzymaj, aby nagrać notatkę głosową.", "pt-BR": "Ditado por voz. Mantenha pressionado para gravar uma nota de voz.", "ru": "Голосовой ввод. Удерживайте, чтобы записать голосовую заметку.", "tr": "Sesli dikte. Sesli not kaydetmek için basılı tutun.", "ur": "صوتی املا۔ صوتی نوٹ ریکارڈ کرنے کے لیے دیر تک دبائیں۔", "zh-HK": "語音聽寫。長按即可錄製語音備忘。", "zh-Hans": "语音听写。长按可录制语音备注。", "zh-Hant": "語音聽寫。長按即可錄製語音備忘。"
   },
+  "Filters": {
+    "en": "Filters", "ar": "عوامل التصفية", "de": "Filter", "es": "Filtros", "fr": "Filtres", "he": "מסננים", "it": "Filtri", "ja": "フィルター", "ko": "필터", "nl": "Filters", "pl": "Filtry", "pt-BR": "Filtros", "ru": "Фильтры", "tr": "Filtreler", "ur": "فلٹرز", "zh-HK": "篩選條件", "zh-Hans": "筛选条件", "zh-Hant": "篩選條件"
+  },
+  "Incompatible Kanban response": {
+    "en": "Incompatible Kanban response", "ar": "استجابة Kanban غير متوافقة", "de": "Inkompatible Kanban-Antwort", "es": "Respuesta de Kanban incompatible", "fr": "Réponse Kanban incompatible", "he": "תגובת Kanban לא תואמת", "it": "Risposta Kanban incompatibile", "ja": "互換性のない Kanban 応答", "ko": "호환되지 않는 Kanban 응답", "nl": "Incompatibel Kanban-antwoord", "pl": "Niezgodna odpowiedź Kanban", "pt-BR": "Resposta Kanban incompatível", "ru": "Несовместимый ответ Kanban", "tr": "Uyumsuz Kanban yanıtı", "ur": "غیر موافق Kanban جواب", "zh-HK": "不相容的 Kanban 回應", "zh-Hans": "不兼容的 Kanban 响应", "zh-Hant": "不相容的 Kanban 回應"
+  },
   "Secure storage needs recovery": {
     "en": "Secure storage needs recovery",
     "ar": "????? ??????? ????? ??? ?????",

@@ -5,6 +5,13 @@ enum TranscriptMediaSource: Equatable {
     case remoteURL(URL)
 }
 
+enum TranscriptMediaKind: Equatable {
+    case image
+    case audio
+    case video
+    case unsupported
+}
+
 struct TranscriptMediaReference: Equatable, Identifiable {
     let rawReference: String
 
@@ -38,16 +45,43 @@ struct TranscriptMediaReference: Equatable, Identifiable {
         }
     }
 
-    var isRasterImageCandidate: Bool {
+    var mediaKind: TranscriptMediaKind {
         let ext = pathExtension
         if Self.rasterImageExtensions.contains(ext) {
-            return true
+            return .image
+        }
+
+        if Self.audioExtensions.contains(ext) {
+            return .audio
+        }
+
+        if Self.videoExtensions.contains(ext) {
+            return .video
         }
 
         if case .remoteURL = source, ext.isEmpty {
-            return true
+            return .image
         }
 
+        return .unsupported
+    }
+
+    var isRasterImageCandidate: Bool {
+        mediaKind == .image
+    }
+
+    var isAudioCandidate: Bool {
+        mediaKind == .audio
+    }
+
+    var isVideoCandidate: Bool {
+        mediaKind == .video
+    }
+
+    var isExtensionlessRemoteMediaCandidate: Bool {
+        if case .remoteURL = source, pathExtension.isEmpty {
+            return true
+        }
         return false
     }
 
@@ -62,6 +96,14 @@ struct TranscriptMediaReference: Equatable, Identifiable {
 
     private static let rasterImageExtensions: Set<String> = [
         "bmp", "gif", "heic", "heif", "ico", "jpg", "jpeg", "png", "tif", "tiff", "webp"
+    ]
+
+    private static let audioExtensions: Set<String> = [
+        "aac", "caf", "m4a", "mp3", "wav"
+    ]
+
+    private static let videoExtensions: Set<String> = [
+        "m4v", "mov", "mp4"
     ]
 }
 
@@ -106,16 +148,44 @@ enum TranscriptMediaParser {
     private static func appendMediaSegments(in line: String, to segments: inout [TranscriptMediaSegment]) {
         var cursor = line.startIndex
         var textStart = cursor
+        let inlineCodeRanges = inlineCodeRanges(in: line)
 
         while cursor < line.endIndex {
             if line[cursor...].hasPrefix("MEDIA:"),
-               let referenceRange = referenceRange(in: line, from: line.index(cursor, offsetBy: 6)) {
+               let referenceRange = referenceRange(
+                   in: line,
+                   markerStart: cursor,
+                   from: line.index(cursor, offsetBy: 6),
+                   syntax: .mediaToken
+               ) {
                 appendText(String(line[textStart..<cursor]), to: &segments)
 
                 let reference = TranscriptMediaReference(rawReference: String(line[referenceRange]))
                 segments.append(.media(reference))
 
                 cursor = referenceRange.upperBound
+                textStart = cursor
+                continue
+            }
+
+            if line[cursor...].hasPrefix(fileURLMarker),
+               isBareFileURLStart(cursor, in: line),
+               !inlineCodeRanges.contains(where: { $0.contains(cursor) }),
+               let pathRange = referenceRange(
+                   in: line,
+                   markerStart: cursor,
+                   from: line.index(cursor, offsetBy: fileURLMarker.count),
+                   syntax: .fileURL
+               ) {
+                appendText(String(line[textStart..<cursor]), to: &segments)
+
+                let rawURL = String(line[cursor..<pathRange.upperBound])
+                let reference = TranscriptMediaReference(
+                    rawReference: normalizedLocalPath(fromFileURL: rawURL)
+                )
+                segments.append(.media(reference))
+
+                cursor = pathRange.upperBound
                 textStart = cursor
                 continue
             }
@@ -136,11 +206,16 @@ enum TranscriptMediaParser {
         }
     }
 
-    private static func referenceRange(in line: String, from start: String.Index) -> Range<String.Index>? {
+    private static func referenceRange(
+        in line: String,
+        markerStart: String.Index,
+        from start: String.Index,
+        syntax: ReferenceSyntax
+    ) -> Range<String.Index>? {
         guard start < line.endIndex else { return nil }
 
         var end = start
-        while end < line.endIndex, !isReferenceTerminator(line[end]) {
+        while end < line.endIndex, !isReferenceTerminator(line[end], syntax: syntax) {
             end = line.index(after: end)
         }
 
@@ -154,12 +229,108 @@ enum TranscriptMediaParser {
             }
         }
 
+        if syntax == .mediaToken,
+           let delimiter = emphasisDelimiter(in: line, immediatelyBefore: markerStart),
+           line[start..<trimmedEnd].hasSuffix(delimiter) {
+            trimmedEnd = line.index(trimmedEnd, offsetBy: -delimiter.count)
+        }
+
         guard trimmedEnd > start else { return nil }
         return start..<trimmedEnd
     }
 
-    private static func isReferenceTerminator(_ character: Character) -> Bool {
-        character.isWhitespace || character == ")" || character == "]"
+    private static func emphasisDelimiter(
+        in line: String,
+        immediatelyBefore index: String.Index
+    ) -> String? {
+        for delimiter in ["***", "___", "**", "__", "*", "_"] {
+            guard let delimiterStart = line.index(
+                index,
+                offsetBy: -delimiter.count,
+                limitedBy: line.startIndex
+            ) else {
+                continue
+            }
+
+            if line[delimiterStart..<index] == delimiter {
+                return delimiter
+            }
+        }
+
+        return nil
+    }
+
+    private static func isReferenceTerminator(
+        _ character: Character,
+        syntax: ReferenceSyntax
+    ) -> Bool {
+        if character.isWhitespace || character == ")" || character == "]" {
+            return true
+        }
+
+        return syntax == .fileURL && fileURLTerminators.contains(character)
+    }
+
+    private static func isBareFileURLStart(_ index: String.Index, in line: String) -> Bool {
+        index == line.startIndex || line[line.index(before: index)].isWhitespace
+    }
+
+    private static func normalizedLocalPath(fromFileURL rawURL: String) -> String {
+        if let components = URLComponents(string: rawURL) {
+            let encodedPath = components.percentEncodedPath
+            if !encodedPath.isEmpty {
+                return encodedPath.removingPercentEncoding ?? encodedPath
+            }
+        }
+
+        let schemeStripped = String(rawURL.dropFirst(fileURLMarker.count))
+        return schemeStripped.removingPercentEncoding ?? schemeStripped
+    }
+
+    private static func inlineCodeRanges(in line: String) -> [Range<String.Index>] {
+        var ranges: [Range<String.Index>] = []
+        var cursor = line.startIndex
+
+        while cursor < line.endIndex {
+            guard line[cursor] == "`" else {
+                cursor = line.index(after: cursor)
+                continue
+            }
+
+            let openingStart = cursor
+            let openingEnd = backtickRunEnd(in: line, from: cursor)
+            let delimiterLength = line.distance(from: openingStart, to: openingEnd)
+            var search = openingEnd
+            var closingEnd: String.Index?
+
+            while search < line.endIndex {
+                guard line[search] == "`" else {
+                    search = line.index(after: search)
+                    continue
+                }
+
+                let candidateEnd = backtickRunEnd(in: line, from: search)
+                if line.distance(from: search, to: candidateEnd) == delimiterLength {
+                    closingEnd = candidateEnd
+                    break
+                }
+                search = candidateEnd
+            }
+
+            guard let closingEnd else { break }
+            ranges.append(openingStart..<closingEnd)
+            cursor = closingEnd
+        }
+
+        return ranges
+    }
+
+    private static func backtickRunEnd(in line: String, from start: String.Index) -> String.Index {
+        var end = start
+        while end < line.endIndex, line[end] == "`" {
+            end = line.index(after: end)
+        }
+        return end
     }
 
     private static func fenceMarker(in line: String) -> Character? {
@@ -182,4 +353,11 @@ enum TranscriptMediaParser {
     }
 
     private static let trailingPunctuation: Set<Character> = [".", ",", ";", ":", "!", "?"]
+    private static let fileURLTerminators: Set<Character> = ["<", ">", "\"", "'"]
+    private static let fileURLMarker = "file://"
+
+    private enum ReferenceSyntax {
+        case mediaToken
+        case fileURL
+    }
 }

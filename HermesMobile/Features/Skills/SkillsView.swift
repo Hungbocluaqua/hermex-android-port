@@ -16,6 +16,7 @@ struct SkillsView: View {
 
     var body: some View {
         content
+            .adaptiveReadableScrollContent(maxWidth: AdaptiveReadableContentWidth.secondaryDestination)
             .navigationTitle("Skills")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -159,7 +160,6 @@ private struct SkillCategorySection: View {
 
                     if index < skills.count - 1 {
                         Divider()
-                            .padding(.leading, 58)
                     }
                 }
             }
@@ -184,13 +184,7 @@ private struct SkillRow: View {
     var onToggle: ((Bool) -> Void)? = nil
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: "hammer")
-                .font(.system(size: 17, weight: .medium))
-                .foregroundStyle(.primary)
-                .frame(width: 40, height: 40)
-                .background(Color(.tertiarySystemFill).opacity(0.7), in: Circle())
-
+        HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayName)
                     .font(.body.weight(.semibold))
@@ -319,6 +313,7 @@ struct SkillDetailView: View {
                         isLoading: isLoadingFile
                     )
                 }
+                .adaptivePagePresentation()
             }
     }
 

@@ -264,6 +264,7 @@ private struct MemoryEditSheet: View {
                 }
             }
         }
+        .adaptiveFormPresentation()
     }
 }
 

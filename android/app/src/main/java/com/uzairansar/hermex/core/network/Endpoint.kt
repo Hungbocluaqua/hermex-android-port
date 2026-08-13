@@ -5,6 +5,7 @@ import okhttp3.HttpUrl
 sealed class Endpoint(
     val path: String,
     private val queryItems: List<Pair<String, String?>> = emptyList(),
+    private val pathSegments: List<String>? = null,
 ) {
     data object Health : Endpoint("/health")
     data object AuthStatus : Endpoint("/api/auth/status")
@@ -85,13 +86,20 @@ sealed class Endpoint(
     data class BackgroundStatus(val sessionId: String) : Endpoint("/api/background/status", listOf("session_id" to sessionId))
     data object Workspaces : Endpoint("/api/workspaces")
     data class WorkspaceSuggestions(val prefix: String) : Endpoint("/api/workspaces/suggest", listOf("prefix" to prefix))
+    data object WorkspaceAdd : Endpoint("/api/workspaces/add")
+    data object WorkspaceRemove : Endpoint("/api/workspaces/remove")
+    data object WorkspaceRename : Endpoint("/api/workspaces/rename")
+    data object WorkspaceReorder : Endpoint("/api/workspaces/reorder")
     data class DirectoryList(val sessionId: String, val pathValue: String?) : Endpoint(
         "/api/list",
         listOf("session_id" to sessionId, "path" to pathValue),
     )
     data class File(val sessionId: String, val pathValue: String) : Endpoint("/api/file", listOf("session_id" to sessionId, "path" to pathValue))
     data class RawFile(val sessionId: String, val pathValue: String) : Endpoint("/api/file/raw", listOf("session_id" to sessionId, "path" to pathValue))
-    data class Media(val pathValue: String) : Endpoint("/api/media", listOf("path" to pathValue))
+    data class Media(val sessionId: String, val pathValue: String) : Endpoint(
+        "/api/media",
+        listOf("session_id" to sessionId, "path" to pathValue),
+    )
     data class GitInfo(val sessionId: String) : Endpoint("/api/git-info", listOf("session_id" to sessionId))
     data class GitStatus(val sessionId: String) : Endpoint("/api/git/status", listOf("session_id" to sessionId))
     data class GitBranches(val sessionId: String) : Endpoint("/api/git/branches", listOf("session_id" to sessionId))
@@ -146,6 +154,77 @@ sealed class Endpoint(
         listOf("job_id" to jobId, "offset" to offset?.toString(), "limit" to limit?.toString()),
     )
     data object CronDeliveryOptions : Endpoint("/api/crons/delivery-options")
+    data object KanbanConfig : Endpoint("/api/kanban/config")
+    data object KanbanBoards : Endpoint("/api/kanban/boards")
+    data class KanbanBoardBySlug(val slug: String) : Endpoint(
+        "/api/kanban/boards/$slug",
+        pathSegments = listOf("api", "kanban", "boards", slug),
+    )
+    data class KanbanBoardSwitch(val slug: String) : Endpoint(
+        "/api/kanban/boards/$slug/switch",
+        pathSegments = listOf("api", "kanban", "boards", slug, "switch"),
+    )
+    data class KanbanDispatch(val board: String, val dryRun: Boolean, val maximum: Int = 8) : Endpoint(
+        "/api/kanban/dispatch",
+        listOf("board" to board, "dry_run" to dryRun.toString(), "max" to maximum.coerceIn(1, 8).toString()),
+    )
+    data class KanbanBoard(
+        val board: String,
+        val tenant: String? = null,
+        val assignee: String? = null,
+        val includeArchived: Boolean = false,
+        val onlyMine: Boolean = false,
+        val since: Int? = null,
+    ) : Endpoint(
+        "/api/kanban/board",
+        listOf(
+            "board" to board,
+            "tenant" to tenant,
+            "assignee" to assignee,
+            "include_archived" to includeArchived.takeIf { it }?.toString(),
+            "only_mine" to onlyMine.takeIf { it }?.toString(),
+            "since" to since?.toString(),
+        ),
+    )
+    data class KanbanStats(val board: String) : Endpoint("/api/kanban/stats", listOf("board" to board))
+    data class KanbanAssignees(val board: String) : Endpoint("/api/kanban/assignees", listOf("board" to board))
+    data class KanbanEvents(val board: String, val since: Int, val limit: Int = 200) : Endpoint(
+        "/api/kanban/events",
+        listOf("board" to board, "since" to since.coerceAtLeast(0).toString(), "limit" to limit.coerceIn(1, 200).toString()),
+    )
+    data class KanbanEventsStream(val board: String, val since: Int) : Endpoint(
+        "/api/kanban/events/stream",
+        listOf("board" to board, "since" to since.coerceAtLeast(0).toString()),
+    )
+    data class KanbanCard(val cardId: String, val board: String) : Endpoint(
+        "/api/kanban/tasks/$cardId",
+        listOf("board" to board),
+        listOf("api", "kanban", "tasks", cardId),
+    )
+    data class KanbanCardLog(val cardId: String, val board: String, val tailBytes: Int = 65_536) : Endpoint(
+        "/api/kanban/tasks/$cardId/log",
+        listOf("board" to board, "tail" to tailBytes.coerceIn(1, 2_000_000).toString()),
+        listOf("api", "kanban", "tasks", cardId, "log"),
+    )
+    data class KanbanCardComments(val cardId: String, val board: String) : Endpoint(
+        "/api/kanban/tasks/$cardId/comments",
+        listOf("board" to board),
+        listOf("api", "kanban", "tasks", cardId, "comments"),
+    )
+    data class KanbanCardBlock(val cardId: String, val board: String) : Endpoint(
+        "/api/kanban/tasks/$cardId/block",
+        listOf("board" to board),
+        listOf("api", "kanban", "tasks", cardId, "block"),
+    )
+    data class KanbanCardUnblock(val cardId: String, val board: String) : Endpoint(
+        "/api/kanban/tasks/$cardId/unblock",
+        listOf("board" to board),
+        listOf("api", "kanban", "tasks", cardId, "unblock"),
+    )
+    data class KanbanCards(val board: String) : Endpoint("/api/kanban/tasks", listOf("board" to board))
+    data class KanbanCardsBulk(val board: String) : Endpoint("/api/kanban/tasks/bulk", listOf("board" to board))
+    data class KanbanLinks(val board: String) : Endpoint("/api/kanban/links", listOf("board" to board))
+    data class KanbanLinksDelete(val board: String) : Endpoint("/api/kanban/links/delete", listOf("board" to board))
     data object Memory : Endpoint("/api/memory")
     data object MemoryWrite : Endpoint("/api/memory/write")
     data object Skills : Endpoint("/api/skills")
@@ -162,9 +241,13 @@ sealed class Endpoint(
         val basePath = relativeTo.encodedPath.trimEnd('/')
         val endpointPath = path.trimStart('/')
         val resolvedPath = if (basePath.isEmpty()) "/$endpointPath" else "$basePath/$endpointPath"
-        val builder = relativeTo.newBuilder()
-            .encodedPath(resolvedPath)
-            .encodedQuery(null)
+        val builder = relativeTo.newBuilder().encodedQuery(null)
+        if (pathSegments == null) {
+            builder.encodedPath(resolvedPath)
+        } else {
+            builder.encodedPath(basePath.ifEmpty { "/" })
+            pathSegments.forEach(builder::addPathSegment)
+        }
         queryItems.forEach { (name, value) ->
             if (!value.isNullOrBlank()) builder.addQueryParameter(name, value)
         }

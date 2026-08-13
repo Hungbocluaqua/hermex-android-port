@@ -159,22 +159,57 @@ final class SessionSidebarDisclosureSettingsTests: XCTestCase {
     func testDisclosureStatesDefaultToCollapsedWhenUnset() {
         XCTAssertNil(defaults.object(forKey: SessionSidebarDisclosureSettings.profilesAreExpandedKey))
         XCTAssertNil(defaults.object(forKey: SessionSidebarDisclosureSettings.projectsAreExpandedKey))
+        XCTAssertNil(defaults.object(forKey: SessionSidebarDisclosureSettings.scheduledSessionsAreExpandedKey))
         XCTAssertFalse(SessionSidebarDisclosureSettings.profilesAreExpanded(in: defaults))
         XCTAssertFalse(SessionSidebarDisclosureSettings.projectsAreExpanded(in: defaults))
+        XCTAssertFalse(SessionSidebarDisclosureSettings.scheduledSessionsAreExpanded(in: defaults))
     }
 
     func testDisclosureStatesRoundTripThroughUserDefaults() {
         defaults.set(true, forKey: SessionSidebarDisclosureSettings.profilesAreExpandedKey)
         defaults.set(false, forKey: SessionSidebarDisclosureSettings.projectsAreExpandedKey)
+        defaults.set(true, forKey: SessionSidebarDisclosureSettings.scheduledSessionsAreExpandedKey)
 
         XCTAssertTrue(SessionSidebarDisclosureSettings.profilesAreExpanded(in: defaults))
         XCTAssertFalse(SessionSidebarDisclosureSettings.projectsAreExpanded(in: defaults))
+        XCTAssertTrue(SessionSidebarDisclosureSettings.scheduledSessionsAreExpanded(in: defaults))
 
         defaults.set(false, forKey: SessionSidebarDisclosureSettings.profilesAreExpandedKey)
         defaults.set(true, forKey: SessionSidebarDisclosureSettings.projectsAreExpandedKey)
+        defaults.set(false, forKey: SessionSidebarDisclosureSettings.scheduledSessionsAreExpandedKey)
 
         XCTAssertFalse(SessionSidebarDisclosureSettings.profilesAreExpanded(in: defaults))
         XCTAssertTrue(SessionSidebarDisclosureSettings.projectsAreExpanded(in: defaults))
+        XCTAssertFalse(SessionSidebarDisclosureSettings.scheduledSessionsAreExpanded(in: defaults))
+    }
+}
+
+final class SessionRowDisplaySettingsTests: XCTestCase {
+    private var suiteName: String!
+    private var defaults: UserDefaults!
+
+    override func setUp() {
+        super.setUp()
+        suiteName = "SessionRowDisplaySettingsTests-\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suiteName)
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    override func tearDown() {
+        defaults.removePersistentDomain(forName: suiteName)
+        defaults = nil
+        suiteName = nil
+        super.tearDown()
+    }
+
+    func testSubagentSessionsDefaultHiddenAndPersistStoredChoice() {
+        XCTAssertFalse(SessionRowDisplaySettings.showsSubagentSessions(in: defaults))
+
+        defaults.set(true, forKey: SessionRowDisplaySettings.showSubagentSessionsKey)
+        XCTAssertTrue(SessionRowDisplaySettings.showsSubagentSessions(in: defaults))
+
+        defaults.set(false, forKey: SessionRowDisplaySettings.showSubagentSessionsKey)
+        XCTAssertFalse(SessionRowDisplaySettings.showsSubagentSessions(in: defaults))
     }
 }
 
@@ -256,5 +291,110 @@ final class AvatarServerSwitcherModelTests: XCTestCase {
         )
 
         XCTAssertEqual(model.entries[1].account, bravo)
+    }
+}
+
+final class SectionVisibilitySettingsTests: XCTestCase {
+    private var suiteName: String!
+    private var defaults: UserDefaults!
+
+    private let allKeys = [
+        SectionVisibilitySettings.tasksKey,
+        SectionVisibilitySettings.kanbanKey,
+        SectionVisibilitySettings.skillsKey,
+        SectionVisibilitySettings.memoryKey,
+        SectionVisibilitySettings.insightsKey,
+        SectionVisibilitySettings.activeProfileKey,
+        SectionVisibilitySettings.projectsKey,
+        SectionVisibilitySettings.chatFilesKey,
+        SectionVisibilitySettings.chatGitKey
+    ]
+
+    override func setUp() {
+        super.setUp()
+        suiteName = "SectionVisibilitySettingsTests-\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suiteName)
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    override func tearDown() {
+        defaults.removePersistentDomain(forName: suiteName)
+        defaults = nil
+        suiteName = nil
+        super.tearDown()
+    }
+
+    func testEverySectionDefaultsToVisibleWhenUnset() {
+        for key in allKeys {
+            XCTAssertNil(defaults.object(forKey: key), "\(key) should start unset")
+            XCTAssertTrue(SectionVisibilitySettings.isVisible(key, in: defaults), "\(key) should default to visible")
+        }
+    }
+
+    func testEachSectionRoundTripsThroughUserDefaults() {
+        for key in allKeys {
+            defaults.set(false, forKey: key)
+            XCTAssertFalse(SectionVisibilitySettings.isVisible(key, in: defaults), "\(key) should read back as hidden")
+
+            defaults.set(true, forKey: key)
+            XCTAssertTrue(SectionVisibilitySettings.isVisible(key, in: defaults), "\(key) should read back as visible")
+        }
+    }
+
+    func testKeysAreDistinctSoOneToggleCannotMoveAnother() {
+        XCTAssertEqual(Set(allKeys).count, allKeys.count)
+    }
+
+    func testHidingOneSectionLeavesTheOthersVisible() {
+        defaults.set(false, forKey: SectionVisibilitySettings.insightsKey)
+
+        XCTAssertFalse(SectionVisibilitySettings.isVisible(SectionVisibilitySettings.insightsKey, in: defaults))
+        for key in allKeys where key != SectionVisibilitySettings.insightsKey {
+            XCTAssertTrue(SectionVisibilitySettings.isVisible(key, in: defaults), "\(key) should be unaffected")
+        }
+    }
+}
+
+final class SidebarSectionVisibilityTests: XCTestCase {
+    func testShowAllShowsEverySection() {
+        let visibility = SidebarSectionVisibility.showAll
+
+        XCTAssertTrue(visibility.tasks)
+        XCTAssertTrue(visibility.kanban)
+        XCTAssertTrue(visibility.skills)
+        XCTAssertTrue(visibility.memory)
+        XCTAssertTrue(visibility.insights)
+        XCTAssertTrue(visibility.activeProfile)
+        XCTAssertTrue(visibility.projects)
+        XCTAssertTrue(visibility.showsAnyUtilityLink)
+    }
+
+    func testUtilityLinkRowSurvivesWhileAnySingleLinkIsShown() {
+        var visibility = SidebarSectionVisibility.showAll
+        visibility.tasks = false
+        visibility.kanban = false
+        visibility.skills = false
+        visibility.memory = false
+
+        XCTAssertTrue(visibility.showsAnyUtilityLink)
+    }
+
+    func testUtilityLinkRowDropsOnlyWhenAllFiveAreHidden() {
+        var visibility = SidebarSectionVisibility.showAll
+        visibility.tasks = false
+        visibility.kanban = false
+        visibility.skills = false
+        visibility.memory = false
+        visibility.insights = false
+
+        XCTAssertFalse(visibility.showsAnyUtilityLink)
+    }
+
+    func testProfileAndProjectRowsDoNotAffectTheUtilityLinkRow() {
+        var visibility = SidebarSectionVisibility.showAll
+        visibility.activeProfile = false
+        visibility.projects = false
+
+        XCTAssertTrue(visibility.showsAnyUtilityLink)
     }
 }

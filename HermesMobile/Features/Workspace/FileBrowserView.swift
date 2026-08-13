@@ -21,6 +21,7 @@ struct FileBrowserView: View {
             searchBar
 
             content
+                .adaptiveReadableScrollContent(maxWidth: AdaptiveReadableContentWidth.workspace)
         }
             .navigationTitle("Files")
             .navigationBarTitleDisplayMode(.inline)
@@ -41,7 +42,7 @@ struct FileBrowserView: View {
                 Text(errorMessage)
             } actions: {
                 Button("Try Again") {
-                    Task { await loadRoot() }
+                    Task { await retryLastLoad() }
                 }
             }
         } else if visibleEntries.isEmpty {
@@ -81,6 +82,36 @@ struct FileBrowserView: View {
                 await reloadCurrentPath()
             }
             .listStyle(.plain)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if viewModel.isLoading {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Loading files...")
+                    }
+                    .font(.footnote)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.vertical, 10)
+                    .background(Color(.secondarySystemBackground))
+                } else if let errorMessage = viewModel.errorMessage {
+                    HStack(spacing: 12) {
+                        Label(errorMessage, systemImage: "exclamationmark.triangle")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+
+                        Spacer(minLength: 0)
+
+                        Button("Try Again") {
+                            Task { await retryLastLoad() }
+                        }
+                        .font(.footnote.weight(.semibold))
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 10)
+                    .background(Color(.secondarySystemBackground))
+                }
+            }
         }
     }
 
@@ -210,6 +241,11 @@ struct FileBrowserView: View {
         handleLastError()
     }
 
+    private func retryLastLoad() async {
+        await viewModel.retryLastLoad()
+        handleLastError()
+    }
+
     private func load(path: String) async {
         await viewModel.load(path: path)
         handleLastError()
@@ -261,6 +297,7 @@ private struct FileBrowserRow: View {
             }
         }
         .padding(.vertical, 2)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
     }

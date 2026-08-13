@@ -17,6 +17,7 @@ struct ChatTranscriptView: View {
     let liveToolCalls: [ToolCall]
     let toolCallAnchorMessageID: String?
     let streamingAssistantMessageID: String?
+    let liveTokensPerSecond: Double?
     let activeStreamRecoveryState: ActiveStreamRecoveryState
     let clarificationPrompt: ClarificationPromptState?
     let isRespondingToClarification: Bool
@@ -47,6 +48,8 @@ struct ChatTranscriptView: View {
     let loadAttachmentImage: (String) async -> Data?
     let loadAttachmentData: (String) async -> Data?
     let loadTranscriptMediaImage: (TranscriptMediaReference) async -> Data?
+    let loadTranscriptMediaData: (TranscriptMediaReference) async -> Data?
+    let transcriptMediaCacheNamespace: String
     let actionContext: (ChatMessage, Int) -> MessageActionContext?
     let shouldRenderMessageRow: (ChatMessage) -> Bool
     let onLoadMessages: () async -> Void
@@ -118,6 +121,16 @@ struct ChatTranscriptView: View {
                             contentWidth: contentWidth
                         )
                     }
+                    .defaultScrollAnchor(
+                        ChatScrollPolicy.initialTranscriptAnchor,
+                        for: .initialOffset
+                    )
+                    .defaultScrollAnchor(
+                        ChatScrollPolicy.sizeChangeAnchor(
+                            shouldFollowLatestMessage: shouldFollowLatestMessage
+                        ),
+                        for: .sizeChanges
+                    )
                     .frame(width: viewportWidth)
                     .refreshable {
                         if hasOlderMessages {
@@ -152,9 +165,6 @@ struct ChatTranscriptView: View {
                 }
                 .animation(ChatMotion.quickState(reduceMotion: reduceMotion), value: showsScrollToBottomButton)
                 .background(Color(.systemBackground))
-                .onAppear {
-                    onScrollToLatestContent(proxy, false)
-                }
                 .onChange(of: messages.count) {
                     guard shouldFollowLatestMessage else { return }
 
@@ -223,6 +233,7 @@ struct ChatTranscriptView: View {
                     liveToolCalls: isToolCallAnchor ? liveToolCalls : [],
                     toolCallAnchorMessageID: isToolCallAnchor ? toolCallAnchorMessageID : nil,
                     streamingAssistantMessageID: isStreamingRow ? streamingAssistantMessageID : nil,
+                    liveTokensPerSecond: isStreamingRow ? liveTokensPerSecond : nil,
                     localAttachmentPreviews: localAttachmentPreviews[transcriptMessage.message.id],
                     listeningMessageID: listeningMessageID,
                     isViewingCachedData: isViewingCachedData,
@@ -233,6 +244,8 @@ struct ChatTranscriptView: View {
                     loadAttachmentImage: loadAttachmentImage,
                     loadAttachmentData: loadAttachmentData,
                     loadTranscriptMediaImage: loadTranscriptMediaImage,
+                    loadTranscriptMediaData: loadTranscriptMediaData,
+                    transcriptMediaCacheNamespace: transcriptMediaCacheNamespace,
                     actionContext: actionContext,
                     shouldRenderMessageRow: shouldRenderMessageRow,
                     onPreviewAttachment: onPreviewAttachment,
@@ -442,6 +455,7 @@ private struct ChatTranscriptMessageBlock: View, Equatable {
     let liveToolCalls: [ToolCall]
     let toolCallAnchorMessageID: String?
     let streamingAssistantMessageID: String?
+    let liveTokensPerSecond: Double?
     let localAttachmentPreviews: [String: Data]?
     let listeningMessageID: String?
     let isViewingCachedData: Bool
@@ -452,6 +466,8 @@ private struct ChatTranscriptMessageBlock: View, Equatable {
     let loadAttachmentImage: (String) async -> Data?
     let loadAttachmentData: (String) async -> Data?
     let loadTranscriptMediaImage: (TranscriptMediaReference) async -> Data?
+    let loadTranscriptMediaData: (TranscriptMediaReference) async -> Data?
+    let transcriptMediaCacheNamespace: String
     let actionContext: (ChatMessage, Int) -> MessageActionContext?
     let shouldRenderMessageRow: (ChatMessage) -> Bool
     let onPreviewAttachment: (MessageAttachment, Data?) -> Void
@@ -479,13 +495,15 @@ private struct ChatTranscriptMessageBlock: View, Equatable {
             lhs.liveToolCalls == rhs.liveToolCalls &&
             lhs.toolCallAnchorMessageID == rhs.toolCallAnchorMessageID &&
             lhs.streamingAssistantMessageID == rhs.streamingAssistantMessageID &&
+            lhs.liveTokensPerSecond == rhs.liveTokensPerSecond &&
             lhs.localAttachmentPreviews == rhs.localAttachmentPreviews &&
             lhs.listeningMessageID == rhs.listeningMessageID &&
             lhs.isViewingCachedData == rhs.isViewingCachedData &&
             lhs.hasActiveStream == rhs.hasActiveStream &&
             lhs.isRegeneratingMessage == rhs.isRegeneratingMessage &&
             lhs.isEditingMessage == rhs.isEditingMessage &&
-            lhs.isForkingMessage == rhs.isForkingMessage
+            lhs.isForkingMessage == rhs.isForkingMessage &&
+            lhs.transcriptMediaCacheNamespace == rhs.transcriptMediaCacheNamespace
     }
 
     var body: some View {
@@ -510,12 +528,15 @@ private struct ChatTranscriptMessageBlock: View, Equatable {
                         messageID: transcriptMessage.message.messageId,
                         streamingAssistantMessageID: streamingAssistantMessageID
                     ),
+                    liveTokensPerSecond: liveTokensPerSecond,
                     isRegeneratingMessage: isRegeneratingMessage,
                     isEditingMessage: isEditingMessage,
                     isForkingMessage: isForkingMessage,
                     loadAttachmentImage: loadAttachmentImage,
                     loadAttachmentData: loadAttachmentData,
                     loadTranscriptMediaImage: loadTranscriptMediaImage,
+                    loadTranscriptMediaData: loadTranscriptMediaData,
+                    transcriptMediaCacheNamespace: transcriptMediaCacheNamespace,
                     onPreviewAttachment: onPreviewAttachment,
                     onPreviewTranscriptMedia: onPreviewTranscriptMedia,
                     onToggleListening: onToggleListening,
@@ -590,12 +611,15 @@ private struct ChatTranscriptMessageRow: View {
     let isViewingCachedData: Bool
     let hasActiveStream: Bool
     let isStreaming: Bool
+    let liveTokensPerSecond: Double?
     let isRegeneratingMessage: Bool
     let isEditingMessage: Bool
     let isForkingMessage: Bool
     let loadAttachmentImage: (String) async -> Data?
     let loadAttachmentData: (String) async -> Data?
     let loadTranscriptMediaImage: (TranscriptMediaReference) async -> Data?
+    let loadTranscriptMediaData: (TranscriptMediaReference) async -> Data?
+    let transcriptMediaCacheNamespace: String
     let onPreviewAttachment: (MessageAttachment, Data?) -> Void
     let onPreviewTranscriptMedia: (TranscriptMediaReference) -> Void
     let onToggleListening: (MessageActionContext) -> Void
@@ -641,10 +665,13 @@ private struct ChatTranscriptMessageRow: View {
             loadAttachmentImage: loadAttachmentImage,
             loadAttachmentData: loadAttachmentData,
             loadTranscriptMediaImage: loadTranscriptMediaImage,
+            loadTranscriptMediaData: loadTranscriptMediaData,
+            transcriptMediaCacheNamespace: transcriptMediaCacheNamespace,
             localAttachmentPreviews: localAttachmentPreviews,
             onPreviewAttachment: onPreviewAttachment,
             onPreviewTranscriptMedia: onPreviewTranscriptMedia,
-            isStreaming: isStreaming
+            isStreaming: isStreaming,
+            liveTokensPerSecond: liveTokensPerSecond
         )
     }
 }
@@ -660,12 +687,12 @@ private struct ChatScrollToBottomButton: View {
             Image(systemName: "arrow.down")
                 .font(.system(size: 13, weight: .semibold))
                 .frame(width: 32, height: 32)
-                .background(backgroundColor)
-                .foregroundStyle(foregroundColor)
-                .clipShape(Circle())
-                .overlay(
-                    Circle()
-                        .stroke(Color(.separator).opacity(colorScheme == .dark ? 0.35 : 0.18), lineWidth: 0.5)
+                .foregroundStyle(.primary)
+                .adaptiveGlass(
+                    .regular,
+                    isInteractive: true,
+                    fallbackMaterial: .regularMaterial,
+                    in: Circle()
                 )
                 .chatMinimumHitTarget(in: Circle())
         }
@@ -683,14 +710,6 @@ private struct ChatScrollToBottomButton: View {
         ))
         .padding(.bottom, bottomPadding)
         .accessibilityLabel("Scroll to latest message")
-    }
-
-    private var backgroundColor: Color {
-        colorScheme == .dark ? .white : .black
-    }
-
-    private var foregroundColor: Color {
-        colorScheme == .dark ? .black : .white
     }
 }
 

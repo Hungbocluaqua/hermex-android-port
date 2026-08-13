@@ -7,6 +7,29 @@ import kotlinx.serialization.Serializable
 class EmptyBody
 
 @Serializable
+data class AddWorkspaceRequest(
+    val path: String,
+    val name: String? = null,
+    val create: Boolean? = null,
+)
+
+@Serializable
+data class RemoveWorkspaceRequest(
+    val path: String,
+)
+
+@Serializable
+data class RenameWorkspaceRequest(
+    val path: String,
+    val name: String,
+)
+
+@Serializable
+data class ReorderWorkspacesRequest(
+    val paths: List<String>,
+)
+
+@Serializable
 data class LoginRequest(
     val password: String,
 )
@@ -172,6 +195,7 @@ data class ProfileCreateRequest(
 @Serializable
 data class UpdateSettingsRequest(
     @SerialName("show_cli_sessions") val showCliSessions: Boolean? = null,
+    @SerialName("show_claude_code_sessions") val showClaudeCodeSessions: Boolean? = null,
 )
 
 @Serializable
@@ -231,7 +255,8 @@ data class MemoryWriteRequest(
 
 @Serializable
 data class ReasoningRequest(
-    val effort: String,
+    val effort: String? = null,
+    val display: String? = null,
     val model: String? = null,
     val provider: String? = null,
 )

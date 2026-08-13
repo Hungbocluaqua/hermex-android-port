@@ -118,6 +118,7 @@ class RepositoryCacheSafetyTest {
             assertEquals("gpt-5", result.value.model)
             assertEquals("openai", result.value.modelProvider)
             assertEquals("work", result.value.profile)
+            assertEquals(50, dao.cachedMessageLimit)
         } finally {
             server.close()
         }
@@ -440,11 +441,15 @@ private class RecordingCacheDao : CacheDao {
     val authoritativeSessionSyncs = mutableListOf<Boolean>()
     var cachedSessionResult: List<CachedSessionEntity> = emptyList()
     var cachedMessageResult: List<CachedMessageEntity> = emptyList()
+    var cachedMessageLimit: Int? = null
     val purgedSessionIds = mutableListOf<String>()
     var clearServerCount = 0
 
     override suspend fun cachedSessions(serverUrl: String, now: Long): List<CachedSessionEntity> = cachedSessionResult
-    override suspend fun cachedMessages(serverUrl: String, sessionId: String, now: Long): List<CachedMessageEntity> = cachedMessageResult
+    override suspend fun cachedMessages(serverUrl: String, sessionId: String, now: Long, limit: Int): List<CachedMessageEntity> {
+        cachedMessageLimit = limit
+        return cachedMessageResult.takeLast(limit)
+    }
     override suspend fun upsertSessions(sessions: List<CachedSessionEntity>) { replacedSessionBatches += sessions }
     override suspend fun upsertMessages(messages: List<CachedMessageEntity>) { replacedMessageBatches += messages }
     override suspend fun sessionKeys(serverUrl: String): List<String> = emptyList()

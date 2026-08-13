@@ -58,3 +58,6 @@ fun MemoryWriteResponse.isConfirmedMutation(): Boolean =
 
 fun SettingsResponse.isConfirmedShowCliSessions(enabled: Boolean): Boolean =
     showCliSessions == enabled
+
+fun SettingsResponse.isConfirmedShowClaudeCodeSessions(enabled: Boolean): Boolean =
+    showClaudeCodeSessions == enabled

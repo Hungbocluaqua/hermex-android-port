@@ -292,7 +292,7 @@ class HermesApiClientSafetyTest {
             )
 
             val error = runCatching {
-                HermesApiClient(server.url("/"), OkHttpClient()).media("large.bin")
+                HermesApiClient(server.url("/"), OkHttpClient()).media("session-1", "large.bin")
             }.exceptionOrNull()
 
             assertTrue(error is ApiError.ResponseTooLarge)

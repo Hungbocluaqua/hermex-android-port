@@ -4,6 +4,7 @@
     <string name="l10n_da39a3ee5e6b4b0d" formatted="false">""</string>
     <string name="l10n_c5f4841e88283b20" formatted="false">"%@ "</string>
     <string name="l10n_f4bf1c5a87391cee" formatted="false">"%@ (kopia)"</string>
+    <string name="l10n_2ca3ef88d532a8ea" formatted="false">"%@ (niestandardowe)"</string>
     <string name="l10n_65f24878983ab599" formatted="false">"%@ cache"</string>
     <string name="l10n_d5e871cae9c94743" formatted="false">"kolor logo nagłówka %@"</string>
     <string name="l10n_ceccebb4580279f7" formatted="false">"%1$@ wejście / %2$@ wyjście"</string>
@@ -16,13 +17,89 @@
     <string name="l10n_101047989486fe1e" formatted="false">"%1$@, %2$@, aktywny serwer"</string>
     <string name="l10n_bc576900b6f6e566" formatted="false">"%@, aktywny serwer"</string>
     <string name="l10n_16070acfe08366e8" formatted="false">"%lld"</string>
+    <string name="l10n_ec77970ef773212e" formatted="false">"%lld karty"</string>
+    <plurals name="l10n_ec77970ef773212e">
+        <item quantity="zero">"%d karty"</item>
+        <item quantity="one">"%d karta"</item>
+        <item quantity="two">"%d karty"</item>
+        <item quantity="few">"%d karty"</item>
+        <item quantity="many">"%d karty"</item>
+        <item quantity="other">"%d karty"</item>
+    </plurals>
+    <string name="l10n_8d777c131031fa2e" formatted="false">"%lld zależne karty"</string>
+    <plurals name="l10n_8d777c131031fa2e">
+        <item quantity="zero">"%d zależne karty"</item>
+        <item quantity="one">"%d zależna karta"</item>
+        <item quantity="two">"%d zależne karty"</item>
+        <item quantity="few">"%d zależne karty"</item>
+        <item quantity="many">"%d zależne karty"</item>
+        <item quantity="other">"%d zależne karty"</item>
+    </plurals>
+    <string name="l10n_66a4be0dc2595729" formatted="false">"%lld wymagania wstępne"</string>
+    <plurals name="l10n_66a4be0dc2595729">
+        <item quantity="zero">"%d wymagania wstępne"</item>
+        <item quantity="one">"%d wymaganie wstępne"</item>
+        <item quantity="two">"%d wymagania wstępne"</item>
+        <item quantity="few">"%d wymagania wstępne"</item>
+        <item quantity="many">"%d wymagania wstępne"</item>
+        <item quantity="other">"%d wymagania wstępne"</item>
+    </plurals>
     <string name="l10n_f6450a6cc043203f" formatted="false">"%lld dodano"</string>
+    <string name="l10n_5e99075a998414f8" formatted="false">"%lld komentarze"</string>
+    <plurals name="l10n_5e99075a998414f8">
+        <item quantity="zero">"%d komentarze"</item>
+        <item quantity="one">"%d komentarz"</item>
+        <item quantity="two">"%d komentarze"</item>
+        <item quantity="few">"%d komentarze"</item>
+        <item quantity="many">"%d komentarze"</item>
+        <item quantity="other">"%d komentarze"</item>
+    </plurals>
     <string name="l10n_06c13ef4292ad119" formatted="false">"%lld zmienionego pliku"</string>
+    <plurals name="l10n_06c13ef4292ad119">
+        <item quantity="zero">"%d zmienionego pliku"</item>
+        <item quantity="one">"%d zmieniony plik"</item>
+        <item quantity="two">"%d zmienionego pliku"</item>
+        <item quantity="few">"%d zmienione pliki"</item>
+        <item quantity="many">"%d zmienionych plików"</item>
+        <item quantity="other">"%d zmienionego pliku"</item>
+    </plurals>
     <string name="l10n_c4b7ead9d1bf1471" formatted="false">"%lld wiersza"</string>
+    <plurals name="l10n_c4b7ead9d1bf1471">
+        <item quantity="zero">"%d wiersza"</item>
+        <item quantity="one">"%d wiersz"</item>
+        <item quantity="two">"%d wiersza"</item>
+        <item quantity="few">"%d wiersze"</item>
+        <item quantity="many">"%d wierszy"</item>
+        <item quantity="other">"%d wiersza"</item>
+    </plurals>
     <string name="l10n_2efcf5438a29b31f" formatted="false">"%lld wiadomości"</string>
+    <plurals name="l10n_2efcf5438a29b31f">
+        <item quantity="zero">"%d wiadomości"</item>
+        <item quantity="one">"%d wiadomość"</item>
+        <item quantity="two">"%d wiadomości"</item>
+        <item quantity="few">"%d wiadomości"</item>
+        <item quantity="many">"%d wiadomości"</item>
+        <item quantity="other">"%d wiadomości"</item>
+    </plurals>
     <string name="l10n_ced88678ac893dde" formatted="false">"%lld usunięto"</string>
     <string name="l10n_232aab9f8671f81d" formatted="false">"%lld sesji"</string>
+    <plurals name="l10n_232aab9f8671f81d">
+        <item quantity="zero">"%d sesji"</item>
+        <item quantity="one">"%d sesja"</item>
+        <item quantity="two">"%d sesji"</item>
+        <item quantity="few">"%d sesje"</item>
+        <item quantity="many">"%d sesji"</item>
+        <item quantity="other">"%d sesji"</item>
+    </plurals>
     <string name="l10n_66137dc5d00d671d" formatted="false">"%lld umiejętności"</string>
+    <plurals name="l10n_66137dc5d00d671d">
+        <item quantity="zero">"%d umiejętności"</item>
+        <item quantity="one">"%d umiejętność"</item>
+        <item quantity="two">"%d umiejętności"</item>
+        <item quantity="few">"%d umiejętności"</item>
+        <item quantity="many">"%d umiejętności"</item>
+        <item quantity="other">"%d umiejętności"</item>
+    </plurals>
     <string name="l10n_78cd57f9892157b8" formatted="false">"%lld%% kontekstu"</string>
     <string name="l10n_6ab06c5fe8caa9fa" formatted="false">"%lld%% udział"</string>
     <string name="l10n_a5b19753b0ff34b9" formatted="false">", przełączanie w toku"</string>
@@ -31,6 +108,7 @@
     <string name="l10n_1099d51b36a7e832" formatted="false">"/btw jest dostępne tylko dla sesji WebUI."</string>
     <string name="l10n_449db9ef04232fc8" formatted="false">"Zmieniono 1 plik"</string>
     <string name="l10n_4a5c7117b6d4d5cb" formatted="false">"1 z %lld oczekujących"</string>
+    <string name="l10n_59f764ccfb926ae5" formatted="false">"Liczba całkowita od -100 do 100."</string>
     <string name="l10n_64d3c82b910a7784" formatted="false">"Lokalny plik obszaru roboczego zastępuje globalny kontekst projektu."</string>
     <string name="l10n_cf678cab87dc1f7d" formatted="false">"Klucz API"</string>
     <string name="l10n_85dfa32c97d8618d" formatted="false">"Konto"</string>
@@ -41,11 +119,22 @@
     <string name="l10n_d74340399e2a5b1d" formatted="false">"Aktywny profil"</string>
     <string name="l10n_81c0d915fa6d82fd" formatted="false">"Aktywność"</string>
     <string name="l10n_03f7eb4fcb825734" formatted="false">"Aktywność: %lld narzędzia"</string>
+    <plurals name="l10n_03f7eb4fcb825734">
+        <item quantity="zero">"Aktywność: %d narzędzia"</item>
+        <item quantity="one">"Aktywność: %d narzędzie"</item>
+        <item quantity="two">"Aktywność: %d narzędzia"</item>
+        <item quantity="few">"Aktywność: %d narzędzia"</item>
+        <item quantity="many">"Aktywność: %d narzędzi"</item>
+        <item quantity="other">"Aktywność: %d narzędzia"</item>
+    </plurals>
     <string name="l10n_61cc55aa04531847" formatted="false">"Dodaj"</string>
     <string name="l10n_ea65bead2508867e" formatted="false">"Dodaj %@ do ulubionych"</string>
     <string name="l10n_42b949077d2f4201" formatted="false">"Dodaj nagłówek"</string>
+    <string name="l10n_d8ceee085e884024" formatted="false">"Dodaj wymaganie wstępne"</string>
     <string name="l10n_99044355f0319f6b" formatted="false">"Dodaj serwer"</string>
     <string name="l10n_c378a1c16565ceba" formatted="false">"Dodaj serwer…"</string>
+    <string name="l10n_a603825bf2c876ef" formatted="false">"Dodaj obszar roboczy"</string>
+    <string name="l10n_a245782af7f0aa40" formatted="false">"Dodaj obszar roboczy, aby był dostępny podczas rozpoczynania sesji."</string>
     <string name="l10n_cf845d10129ecb8c" formatted="false">"Dodaj model niestandardowy do ulubionych"</string>
     <string name="l10n_d5a110d69bfeccca" formatted="false">"Dodaj nagłówek"</string>
     <string name="l10n_2470e8667bfae527" formatted="false">"Dodaj projekt"</string>
@@ -70,6 +159,7 @@
     <string name="l10n_902793b227093e34" formatted="false">"Zawsze używaj jasnej ikony"</string>
     <string name="l10n_06ee5beccc033b61" formatted="false">"Zawsze używaj ciemnej ikony monochromatycznej"</string>
     <string name="l10n_4d538a18a87dcd64" formatted="false">"Zawsze używaj jasnej ikony monochromatycznej"</string>
+    <string name="l10n_fa07652b57d3d7c1" formatted="false">"Trwa inna operacja na tablicy."</string>
     <string name="l10n_fc4a695f02a8a53a" formatted="false">"Aplikacja"</string>
     <string name="l10n_f54c8357ef4e5fab" formatted="false">"Ikona aplikacji"</string>
     <string name="l10n_41def7a0febe741d" formatted="false">"Wygląd"</string>
@@ -78,15 +168,21 @@
     <string name="l10n_b8d012c2004fa7b4" formatted="false">"Wymagane zatwierdzenie"</string>
     <string name="l10n_7b2c7f146abacedd" formatted="false">"Zatwierdź"</string>
     <string name="l10n_2621c6fd51a58e1d" formatted="false">"Archiwizuj"</string>
+    <string name="l10n_2b86e5bc4a2034f2" formatted="false">"Archiwizuj karty"</string>
+    <string name="l10n_eddc813f35b12589" formatted="false">"Zarchiwizowane"</string>
     <string name="l10n_14eca073e39a5015" formatted="false">"Zarchiwizowane sesje"</string>
     <string name="l10n_cbb9fa252e60809e" formatted="false">"Argumenty"</string>
     <string name="l10n_ee677f2109607e18" formatted="false">"Zadaj poboczne pytanie"</string>
     <string name="l10n_e94537390527ef92" formatted="false">"Zapytaj o cokolwiek... /commands"</string>
+    <string name="l10n_288fbe21f70e35a2" formatted="false">"Przypisz profil"</string>
+    <string name="l10n_e55df441e8955746" formatted="false">"Zadanie"</string>
     <string name="l10n_8010d1f4d0696ce1" formatted="false">"Asystent"</string>
     <string name="l10n_5157af6823af43d5" formatted="false">"Asystent, %@"</string>
     <string name="l10n_1afff0157ce3602c" formatted="false">"Załącz"</string>
     <string name="l10n_469aeebeecf2f62d" formatted="false">"Załącz plik"</string>
     <string name="l10n_a75411ec9700b4b1" formatted="false">"Próbuje ponownie połączyć się z serwerem i odświeżyć sesje."</string>
+    <string name="l10n_d53e7a421e8fccd3" formatted="false">"Błąd uwierzytelniania: %@"</string>
+    <string name="l10n_3cf616bff8d00643" formatted="false">"Zablokowano automatycznie"</string>
     <string name="l10n_61f543ec018634c1" formatted="false">"Dostępne polecenia mobilne:\n\n`/help` - Pokaż tę listę poleceń.\n`/clear` - Wyczyść lokalny transkrypt.\n`/stop` - Zatrzymaj bieżącą odpowiedź.\n`/new` - Otwórz nową sesję.\n`/model &lt;id&gt;` - Zmień model tej sesji.\n`/workspace &lt;path&gt;` - Zmień obszar roboczy tej sesji.\n`/reasoning &lt;level&gt;` - Ustaw wyświetlanie lub wysiłek rozumowania.\n`/title &lt;text&gt;` - Zmień nazwę tej sesji.\n`/personality &lt;name&gt;` - Ustaw lub wyczyść osobowość tej sesji.\n`/skills [query]` - Wyszukaj dostępne umiejętności.\n`/queue &lt;message&gt;` - Kolejkuj wiadomość na następną turę.\n`/steer &lt;message&gt;` - Kieruj aktywną odpowiedzią.\n`/interrupt &lt;message&gt;` - Zatrzymaj aktywną odpowiedź i wyślij nową wiadomość.\n`/status` - Pokaż status sesji.\n`/btw &lt;question&gt;` - Zadaj poboczne pytanie bez zmiany tego czatu.\n`/background &lt;prompt&gt;` - Uruchom równoległe zadanie i opublikuj wynik tutaj.\n`/bg &lt;prompt&gt;` - Alias dla `/background`.\n`/branch [name]` - Rozgałęź tę rozmowę.\n`/fork [name]` - Alias dla `/branch`.\n`/compress [focus]` - Skompresuj kontekst tej sesji.\n`/compact [focus]` - Alias dla `/compress`.\n`/undo` - Cofnij ostatnią wymianę.\n`/retry` - Ponów ostatnią turę."</string>
     <string name="l10n_7aabf6c8fafcc129" formatted="false">"Dostępne osobowości:\n\n%@\n\nUżyj `/personality &lt;name&gt;` lub `/personality none`."</string>
     <string name="l10n_d3a12fb079d32731" formatted="false">"Dostępne umiejętności:"</string>
@@ -96,41 +192,66 @@
     <string name="l10n_2c71547af580e72a" formatted="false">"%lld za"</string>
     <string name="l10n_f48462d8ff141190" formatted="false">"Plik binarny"</string>
     <string name="l10n_27441b0fa1b44e2e" formatted="false">"Zmieniono plik binarny"</string>
+    <string name="l10n_82dd2cdf36f9436d" formatted="false">"Zablokuj"</string>
+    <string name="l10n_99613c74ce010d98" formatted="false">"Zablokowane"</string>
     <string name="l10n_7d44bc449c2a2637" formatted="false">"Niebieski"</string>
+    <string name="l10n_e879b0be0190766a" formatted="false">"Tablica"</string>
+    <string name="l10n_4f6778977945bd63" formatted="false">"Akcje tablicy dla %@"</string>
     <string name="l10n_1627510b242fdd96" formatted="false">"Oddział"</string>
     <string name="l10n_f578227926a03a85" formatted="false">"Gałęzie"</string>
+    <string name="l10n_ca37515a9638c19a" formatted="false">"Przeglądaj tablicę"</string>
+    <string name="l10n_76163bd10c654bd7" formatted="false">"Przeglądaj tablicę: %@"</string>
     <string name="l10n_1e810b2f9f05b51a" formatted="false">"Przeglądaj obszary robocze i śledź pracę agenta."</string>
+    <string name="l10n_95ae28be3160a877" formatted="false">"Przeglądana"</string>
+    <string name="l10n_6a57d83c47ce5b34" formatted="false">"Przeglądanie tablicy pozostaje lokalne w Hermex. Ustawienie jej jako aktywnej zmienia współdzielony stan serwera."</string>
     <string name="l10n_bbd80cf7e2ded5ef" formatted="false">"Buduj"</string>
+    <string name="l10n_7e18229655968fa8" formatted="false">"Działania zbiorcze"</string>
     <string name="l10n_e179e26271f3e00f" formatted="false">"Sesje CLI"</string>
-    <string name="l10n_533083941cb59936" formatted="false">"Widoczność sesji CLI jest synchronizowana z tym serwerem, więc WebUI również ją odzwierciedla."</string>
     <string name="l10n_467ec180e1789d63" formatted="false">"Współczynnik trafień pamięci podręcznej"</string>
     <string name="l10n_a495afbf7ab54ca6" formatted="false">"Tokeny odczytane z pamięci podręcznej"</string>
     <string name="l10n_b169be9668e92fe8" formatted="false">"Zbuforowane"</string>
     <string name="l10n_c6b74ced31b9e9ca" formatted="false">"Buforowane sesje i wiadomości są przechowywane do przeglądania offline. Wyczyszczenie usuwa tylko pamięć podręczną tego serwera — inne serwery i serwer Hermes nie są zmieniane."</string>
+    <string name="l10n_4da9c9af9631e294" formatted="false">"Aparat"</string>
     <string name="l10n_77dfd2135f4db726" formatted="false">"Anuluj"</string>
     <string name="l10n_a1bf92eff40dd4ad" formatted="false">"Anulowano"</string>
     <string name="l10n_68994ea613a15e32" formatted="false">"Nie można osiągnąć serwera"</string>
+    <string name="l10n_4d4ce73b15660f20" formatted="false">"Karta"</string>
+    <string name="l10n_e011b9a5e6fe45c8" formatted="false">"Akcje karty"</string>
+    <string name="l10n_473759c32956a5bf" formatted="false">"Identyfikator karty"</string>
+    <string name="l10n_8f302a05ee377243" formatted="false">"Zmień status"</string>
     <string name="l10n_aeba935e2a155528" formatted="false">"Zmienione pliki"</string>
     <string name="l10n_8aa57de6dce6ee1c" formatted="false">"Zmiany"</string>
     <string name="l10n_9bcc895764d8fc8a" formatted="false">"Zmiany niedostępne"</string>
     <string name="l10n_2ced57f125910a9e" formatted="false">"Czat"</string>
     <string name="l10n_79667edb08454169" formatted="false">"Czatuj z agentem Hermes przez iPhone'a"</string>
+    <string name="l10n_8174723b9172fdb9" formatted="false">"Sprawdź wynik"</string>
     <string name="l10n_4f4bd16d4664cb10" formatted="false">"Sprawdź, czy Mac jest aktywny i czy cloudflared działa."</string>
+    <string name="l10n_a4e79b38317485a5" formatted="false">"Checking Result"</string>
     <string name="l10n_5b5d3108125e92ca" formatted="false">"Sprawdzanie serwera..."</string>
     <string name="l10n_ccc506047a3d5fa7" formatted="false">"Sprawdzanie serwera…"</string>
     <string name="l10n_ebb571babefc16e0" formatted="false">"Sprawdzanie strumienia"</string>
+    <string name="l10n_6d3627f04cb4b2c9" formatted="false">"Wybierz tablicę"</string>
+    <string name="l10n_adaf4eb9ab13e461" formatted="false">"Wybierz kartę"</string>
     <string name="l10n_0e3df8f396036c89" formatted="false">"Wybierz model"</string>
+    <string name="l10n_74eda4a4630fe67d" formatted="false">"Wybierz Warunek wstępny"</string>
+    <string name="l10n_adf2074a73ebd128" formatted="false">"Wybierz Najemcę"</string>
     <string name="l10n_a7fe92a51df09be3" formatted="false">"Wybierz obszar roboczy"</string>
     <string name="l10n_508b9e1565ffaab6" formatted="false">"Wybierz polecenie slash lub kontynuuj pisanie."</string>
+    <string name="l10n_6775ed40b855410b" formatted="false">"Wybierz obsługiwany status."</string>
+    <string name="l10n_3754370042b5bbe9" formatted="false">"Wybierz prawidłowy warunek wstępny."</string>
     <string name="l10n_94992b7ac22aa32d" formatted="false">"Wybierz spośród skonfigurowanych dostawców i modeli dla tego nowego profilu."</string>
     <string name="l10n_98e5c453451ff290" formatted="false">"Wybierz profil"</string>
     <string name="l10n_75268994292e5b16" formatted="false">"Wybierz ID dostawcy"</string>
     <string name="l10n_0e50f45864ab0e78" formatted="false">"Wybierz ścieżkę obszaru roboczego"</string>
+    <string name="l10n_d143882689eb110e" formatted="false">"Claim Expires"</string>
+    <string name="l10n_b3b4124cf95844d1" formatted="false">"Claim ID"</string>
     <string name="l10n_e43b8a0a8cf76b80" formatted="false">"Wymagane wyjaśnienie"</string>
     <string name="l10n_171aff153045c26f" formatted="false">"Wygaśnięcie wyjaśnienia"</string>
     <string name="l10n_3e0fb17cab21c94b" formatted="false">"Wyjaśnij"</string>
+    <string name="l10n_0b721df83e6cbaaa" formatted="false">"Sesje Claude Code"</string>
     <string name="l10n_719ea396ad92e01b" formatted="false">"Wyczyść"</string>
     <string name="l10n_522175083f0bf50b" formatted="false">"Wyczyść pamięć podręczną"</string>
+    <string name="l10n_381c4bf1d409c027" formatted="false">"Wyczyść filtry"</string>
     <string name="l10n_436424aa905192bb" formatted="false">"Wyczyść pamięć podręczną offline"</string>
     <string name="l10n_2803e2a8fdc2a018" formatted="false">"Wyczyść wyszukiwanie plików"</string>
     <string name="l10n_6e69351c3627d949" formatted="false">"Wyczyść wyszukiwanie modeli"</string>
@@ -148,8 +269,12 @@
     <string name="l10n_adac69379a626c24" formatted="false">"Kod"</string>
     <string name="l10n_b1c9e2299e9d7ee4" formatted="false">"Zwiń selektor aktywnego profilu"</string>
     <string name="l10n_57b446fe95841712" formatted="false">"Zwiń projekty"</string>
+    <string name="l10n_f54ba11307e1765f" formatted="false">"Zwiń zaplanowane sesje"</string>
     <string name="l10n_10544603c5d0fa0a" formatted="false">"Zwiń sekcję"</string>
     <string name="l10n_1d0c8304baedcf8e" formatted="false">"Kolor"</string>
+    <string name="l10n_153d7a58b3a3e898" formatted="false">"Komentarz"</string>
+    <string name="l10n_ad76b4babd667300" formatted="false">"Comment cannot be blank."</string>
+    <string name="l10n_cacb504956b073be" formatted="false">"Comments cannot be edited or deleted after sending."</string>
     <string name="l10n_1f5a1abf2f08ec18" formatted="false">"Zakończ"</string>
     <string name="l10n_1798b3ba42ee08ea" formatted="false">"Zakończono"</string>
     <string name="l10n_5ff40a15003f2322" formatted="false">"Pisz naturalnie z dotykowymi elementami sterowania."</string>
@@ -170,11 +295,12 @@
     <string name="l10n_203c28bd65a53e4f" formatted="false">"Kontekst skompresowany.\n\n%@"</string>
     <string name="l10n_2e02623966f9391f" formatted="false">"Kontynuuj"</string>
     <string name="l10n_170889a98c72a890" formatted="false">"Kontynuuj mimo to"</string>
-    <string name="l10n_842175d421b50dc2" formatted="false">"Steruj agentem Hermes z iPhone'a."</string>
+    <string name="l10n_09250307eb1db720" formatted="false">"Steruj agentem Hermes z iPhone'a lub iPada."</string>
     <string name="l10n_8e3df45a49dba2b2" formatted="false">"Skopiowano"</string>
     <string name="l10n_32856512b1e49e91" formatted="false">"Skopiowano link do repozytorium Web UI"</string>
     <string name="l10n_f90d7f30d7f1ff1d" formatted="false">"Skopiowano kod"</string>
     <string name="l10n_af74f7c5362aaee9" formatted="false">"Kopiuj"</string>
+    <string name="l10n_3736d1a3b46cd58a" formatted="false">"Kopiuj link bezpośredni"</string>
     <string name="l10n_dfa9c0d2596f1d9c" formatted="false">"Kopiuj pełny tytuł"</string>
     <string name="l10n_1aa0e16271ee96f4" formatted="false">"Kopiuj link do repozytorium Web UI"</string>
     <string name="l10n_abc94cbf067b91d1" formatted="false">"Kopiuj prompt konfiguracji agenta"</string>
@@ -207,6 +333,7 @@
     <string name="l10n_a88498840c5e3802" formatted="false">"Nie można załadować zarchiwizowanych sesji"</string>
     <string name="l10n_4bcac1ad086ca826" formatted="false">"Nie można załadować pliku: %@"</string>
     <string name="l10n_591b00c12e60c326" formatted="false">"Nie można załadować profili"</string>
+    <string name="l10n_c93b287a71ae2a54" formatted="false">"Nie udało się wczytać dostawców"</string>
     <string name="l10n_94f5b73955c3ef2c" formatted="false">"Nie można załadować sesji"</string>
     <string name="l10n_8ac36923964f0178" formatted="false">"Nie można podglądać tego obrazu."</string>
     <string name="l10n_7d897e1d885a3b20" formatted="false">"Nie można osiągnąć serwera, aby rozpocząć aktualizację."</string>
@@ -225,13 +352,20 @@
     <string name="l10n_495ea9f2535f73a3" formatted="false">"Nie można jeszcze zatrzymać bieżącej odpowiedzi, więc wiadomość przerwania została umieszczona w kolejce na następną turę."</string>
     <string name="l10n_0fe0eba7c7e1c659" formatted="false">"Nie można przesłać polecenia celu."</string>
     <string name="l10n_4138a35cf5a60e61" formatted="false">"Nie można zaktualizować zadania."</string>
+    <string name="l10n_08111e6efc7fc767" formatted="false">"Nie udało się odświeżyć. Wyświetlani są wcześniej wczytani dostawcy."</string>
+    <string name="l10n_9985074eae8f7d8d" formatted="false">"Awaria"</string>
     <string name="l10n_6e157c5da4410b7e" formatted="false">"Utwórz"</string>
+    <string name="l10n_5a366386b114c3b4" formatted="false">"Utworzyć gotową, nieprzypisaną kartę?"</string>
     <string name="l10n_67c127a271b041fb" formatted="false">"Utwórz gałąź z bieżącego HEAD i przełącz się na nią."</string>
+    <string name="l10n_c8d7e019182b9eb3" formatted="false">"Utwórz folder, jeśli nie istnieje"</string>
+    <string name="l10n_accf40c89baa4fa8" formatted="false">"Utworzono"</string>
     <string name="l10n_5df8f127a4af1417" formatted="false">"Tworzy nowy pusty projekt."</string>
+    <string name="l10n_117a3202c7ad6e39" formatted="false">"Utworzenie tablicy nie ustawia jej jako aktywnej."</string>
     <string name="l10n_de17342aa8c0be17" formatted="false">"Sesje cron"</string>
     <string name="l10n_4fc0e2bc80737d78" formatted="false">"Bieżące"</string>
     <string name="l10n_a3f54618caea86a3" formatted="false">"Bieżące niestandardowe"</string>
     <string name="l10n_23cb5e2e9a9493b9" formatted="false">"Bieżąca gałąź Git"</string>
+    <string name="l10n_551ef486ba85e4c8" formatted="false">"Obecny status: %@. Wybierz dozwolony Status tylko wtedy, gdy chcesz przenieść Kartę."</string>
     <string name="l10n_35ff0b484ca98ca9" formatted="false">"Bieżący obszar roboczy"</string>
     <string name="l10n_9a3c1af6c3ecfd85" formatted="false">"Bieżący tytuł: **%@**\n\nUżyj `/title &lt;text&gt;`, aby zmienić nazwę tej sesji."</string>
     <string name="l10n_081ae3fdc403609c" formatted="false">"Niestandardowe"</string>
@@ -252,8 +386,11 @@
     <string name="l10n_441bda6cd85689e4" formatted="false">"Usunięty"</string>
     <string name="l10n_dcac5d49c54c3c38" formatted="false">"Dostarcz"</string>
     <string name="l10n_9631af52c66f1a5c" formatted="false">"Dostarczanie"</string>
+    <string name="l10n_0562f32dc56f5c70" formatted="false">"Zależności"</string>
+    <string name="l10n_55f8ebc805e65b5b" formatted="false">"Opis"</string>
     <string name="l10n_a04fcb7af3c9351b" formatted="false">"Diff jest za duży"</string>
     <string name="l10n_7aafaa23867907a5" formatted="false">"Różnica jest zbyt duża, aby ją pokazać."</string>
+    <string name="l10n_4b892fe0c040fa8a" formatted="false">"Informator"</string>
     <string name="l10n_407758fed6d9cd6f" formatted="false">"Wyłącz zawijanie wierszy kodu"</string>
     <string name="l10n_995b60411b464fb4" formatted="false">"Odrzuć i edytuj"</string>
     <string name="l10n_5d88c02b40bcad09" formatted="false">"Odrzuć i wygeneruj ponownie"</string>
@@ -261,6 +398,12 @@
     <string name="l10n_f467e1f839b5212d" formatted="false">"Disco"</string>
     <string name="l10n_70afe9eff3f28884" formatted="false">"Odrzucać"</string>
     <string name="l10n_4b6acf651b750357" formatted="false">"Odrzuć błąd załącznika"</string>
+    <string name="l10n_bb5c6f77a55fc0c9" formatted="false">"Uruchomienia dyspozytora"</string>
+    <string name="l10n_48f91366c839e056" formatted="false">"Dyspozytor"</string>
+    <string name="l10n_2ed4598584f8ec1f" formatted="false">"Dyspozytor jest niedostępny na tym serwerze."</string>
+    <string name="l10n_f7434de84cdb30cb" formatted="false">"Dyspozytor, wymaga uwagi"</string>
+    <string name="l10n_42df017cec60f8ed" formatted="false">"Dyspozytor, wynik jest dostępny"</string>
+    <string name="l10n_574ff9b0c49cdeb5" formatted="false">"Wyświetlanie"</string>
     <string name="l10n_8d6b34815ba43d25" formatted="false">"Nazwa wyświetlana"</string>
     <string name="l10n_e9b450d14bc2363d" formatted="false">"Gotowe"</string>
     <string name="l10n_3c424e9b233642b3" formatted="false">"Dotknij dwukrotnie, aby zwinąć szczegóły."</string>
@@ -270,9 +413,18 @@
     <string name="l10n_13f7aee77892fd5f" formatted="false">"Wcześniej"</string>
     <string name="l10n_5301648dcf6b53ce" formatted="false">"Edytuj"</string>
     <string name="l10n_36119979d7cf1f46" formatted="false">"Edytuj %@"</string>
+    <string name="l10n_4596379c38365c9c" formatted="false">"Edytuj kartę"</string>
     <string name="l10n_2ee30cf2c2908397" formatted="false">"Edytuj wiadomość"</string>
     <string name="l10n_9d0e05d653ce25e7" formatted="false">"Edytuj zadanie"</string>
     <string name="l10n_b0179bbf23f36576" formatted="false">"Edytowanie tej wiadomości odrzuci %lld późniejszej wiadomości."</string>
+    <plurals name="l10n_b0179bbf23f36576">
+        <item quantity="zero">"Edytowanie tej wiadomości odrzuci %d późniejszej wiadomości."</item>
+        <item quantity="one">"Edytowanie tej wiadomości odrzuci %d późniejszą wiadomość."</item>
+        <item quantity="two">"Edytowanie tej wiadomości odrzuci %d późniejszej wiadomości."</item>
+        <item quantity="few">"Edytowanie tej wiadomości odrzuci %d późniejsze wiadomości."</item>
+        <item quantity="many">"Edytowanie tej wiadomości odrzuci %d późniejszych wiadomości."</item>
+        <item quantity="other">"Edytowanie tej wiadomości odrzuci %d późniejszej wiadomości."</item>
+    </plurals>
     <string name="l10n_5fc97790c6a8d0d3" formatted="false">"Upłynęło"</string>
     <string name="l10n_755ad4f73ca41dd5" formatted="false">"Puste wyjście"</string>
     <string name="l10n_aa1092d775fca059" formatted="false">"Włącz zawijanie wierszy kodu"</string>
@@ -280,17 +432,20 @@
     <string name="l10n_598b3a1a236fcb2e" formatted="false">"Wprowadź odpowiedź przed wysłaniem."</string>
     <string name="l10n_6f7c983d3b97261c" formatted="false">"Wprowadź tytuł sesji."</string>
     <string name="l10n_e64bedf7e5b25d1f" formatted="false">"Wprowadź prawidłowy URL serwera, na przykład https://hermes.yourdomain.com lub http://&lt;server-tailscale-ip&gt;:8787."</string>
-    <string name="l10n_8230a28313458046" formatted="false">"Wprowadź URL Tailscale zwrócony przez agenta, na przykład `http://&lt;tailnet-ip&gt;:8787`."</string>
+    <string name="l10n_6332c9abaf956af9" formatted="false">"Wprowadź dokładny adres HTTPS Tailscale Serve zwrócony przez agenta, na przykład `https://server.tailnet-name.ts.net`."</string>
     <string name="l10n_8f6e7265b4a4d570" formatted="false">"Wprowadź hasło serwera."</string>
     <string name="l10n_7f2f6a15cf8da2b2" formatted="false">"Błąd"</string>
     <string name="l10n_09c1adde10c57e5f" formatted="false">"Błąd: %@"</string>
     <string name="l10n_35caa4ac4630bab1" formatted="false">"Szacowany koszt"</string>
+    <string name="l10n_c5497bca58468ae6" formatted="false">"Zdarzenia"</string>
     <string name="l10n_6e0691470382747c" formatted="false">"Dokładne ID modelu"</string>
+    <string name="l10n_6d525b71568c2d98" formatted="false">"Wykonanie"</string>
     <string name="l10n_0caa309588bbc767" formatted="false">"Kod wyjścia: %lld"</string>
     <string name="l10n_7b74ff00367a4722" formatted="false">"Domyślnie rozwijaj myślenie"</string>
     <string name="l10n_2525f76fc2b6b22d" formatted="false">"Domyślnie rozwijaj narzędzia"</string>
     <string name="l10n_f86dd07259eb2bbf" formatted="false">"Rozwiń selektor aktywnego profilu"</string>
     <string name="l10n_6a9761d620403e7d" formatted="false">"Rozwiń projekty"</string>
+    <string name="l10n_046a1a78d9aec6a9" formatted="false">"Rozwiń zaplanowane sesje"</string>
     <string name="l10n_732f9a41fd04ae76" formatted="false">"Rozwiń sekcję"</string>
     <string name="l10n_a689a999a5e62055" formatted="false">"Wygasło"</string>
     <string name="l10n_f3e4fadb9e370a1e" formatted="false">"Eksportuj"</string>
@@ -330,6 +485,7 @@
     <string name="l10n_d6870fe0b85ff5cc" formatted="false">"Ciemny gradient"</string>
     <string name="l10n_69dddc0e42ea62e2" formatted="false">"Jasny gradient"</string>
     <string name="l10n_933bf21afdd55a0d" formatted="false">"Zielony"</string>
+    <string name="l10n_e9ac611c971177b5" formatted="false">"Grupuj według profilu"</string>
     <string name="l10n_73527bcbcf1d50d3" formatted="false">"HERMEX"</string>
     <string name="l10n_98d63b116d9d718a" formatted="false">"Haptyczne sprzężenie zwrotne"</string>
     <string name="l10n_c1c645cc10cc39cc" formatted="false">"Kolor logo nagłówka"</string>
@@ -345,10 +501,14 @@
     <string name="l10n_4f56108f827cebaf" formatted="false">"Odpowiedź Hermes zakończona"</string>
     <string name="l10n_d1cadaea84c1198b" formatted="false">"Sesja Hermes"</string>
     <string name="l10n_77cde96ca2d45d01" formatted="false">"Hermex"</string>
+    <string name="l10n_9a17d2db6a8055f7" formatted="false">"Hermex nie może przywrócić zarchiwizowanej tablicy w aplikacji."</string>
     <string name="l10n_c33659f639454811" formatted="false">"Hermex przygotowuje odpowiedź"</string>
+    <string name="l10n_01a030be51125242" formatted="false">"Hermex odświeżył tablicę, ale nie może potwierdzić, czy uruchomiono procesy robocze. Sprawdź bieżącą tablicę przed ponownym uruchomieniem dyspozytora."</string>
     <string name="l10n_bb6a69c46c4b1979" formatted="false">"Ukryj ścieżki załączników"</string>
     <string name="l10n_2981d5547d979457" formatted="false">"Ukrywa dołączoną linię ścieżki pliku w wysłanych wiadomościach. Załączniki nadal wyświetlają się jako podglądy, a serwer nadal otrzymuje ścieżki."</string>
     <string name="l10n_b1a5954a483f8f8b" formatted="false">"Wysoki"</string>
+    <string name="l10n_c0a4bc55fa6395b6" formatted="false">"Tablica została sprawdzona"</string>
+    <string name="l10n_716f63b96e0c2632" formatted="false">"Ikona"</string>
     <string name="l10n_7e5a975b6add84fd" formatted="false">"Tożsamość"</string>
     <string name="l10n_50e19fda0d5b4b74" formatted="false">"Obraz"</string>
     <string name="l10n_78cf51d3d2bf067d" formatted="false">"Załącznik obrazu %@"</string>
@@ -363,7 +523,9 @@
     <string name="l10n_4e73a74600447ea9" formatted="false">"Zainstaluj Tailscale na swoim iPhonie i zaloguj się do tej samej sieci tailnet co serwer. Agent odpowie dokładnym adresem URL do użycia na następnym ekranie."</string>
     <string name="l10n_94dc8e4a59fafe99" formatted="false">"Interakcja"</string>
     <string name="l10n_f3068db36e4be906" formatted="false">"Przerwano bieżącą odpowiedź i dodano wiadomość do kolejki."</string>
+    <string name="l10n_3895546730917a69" formatted="false">"Kanban"</string>
     <string name="l10n_8fa296603e98b9fe" formatted="false">"Utrzymuj połączenie Tailscale podczas korzystania z Hermex."</string>
+    <string name="l10n_61737de78417a6fe" formatted="false">"Klucz skonfigurowany"</string>
     <string name="l10n_d1c69a859a9638b2" formatted="false">"Ostatni"</string>
     <string name="l10n_17672aec29094ac4" formatted="false">"Ostatnie %lld dni"</string>
     <string name="l10n_6118867f212578fe" formatted="false">"Ostatnie 30 dni"</string>
@@ -371,6 +533,8 @@
     <string name="l10n_decd7ca800106337" formatted="false">"Najnowszy"</string>
     <string name="l10n_6f8749290307e9e2" formatted="false">"Pokazano ostatni status"</string>
     <string name="l10n_a9a621da7e8575d5" formatted="false">"Układa wiadomości i pole tworzenia od prawej do lewej dla arabskiego, hebrajskiego, perskiego i urdu. Kod, wzory, tabele i dane wyjściowe narzędzi pozostają od lewej do prawej. Inne ekrany nie są zmieniane."</string>
+    <string name="l10n_66884274e40e33f1" formatted="false">"Opuścić stan Uruchomione?"</string>
+    <string name="l10n_e427bdd63d4f22bd" formatted="false">"Opuszczenie stanu Uruchomione może wyczyścić przejęcie i stan procesu karty."</string>
     <string name="l10n_a36ef8aba22905e2" formatted="false">"Jasny"</string>
     <string name="l10n_d0517071aa376e79" formatted="false">"Łącze"</string>
     <string name="l10n_2b95008bb82d2573" formatted="false">"Podgląd łącza"</string>
@@ -380,6 +544,8 @@
     <string name="l10n_4fc2512aa9e1d5c7" formatted="false">"Słucham..."</string>
     <string name="l10n_65c821a596ceec1c" formatted="false">"Na żywo"</string>
     <string name="l10n_7b0ccb219d4d58d2" formatted="false">"Fragmenty aktywności na żywo"</string>
+    <string name="l10n_1d0f8dd5ce3502d2" formatted="false">"Aktualizacje na żywo są opóźnione"</string>
+    <string name="l10n_b0e0f6bd60d5e5e8" formatted="false">"Load Worker Log"</string>
     <string name="l10n_07471f3481317a16" formatted="false">"Wczytaj starsze wiadomości"</string>
     <string name="l10n_a86c840372f0590b" formatted="false">"Wczytaj starsze wiadomości przed ponownym wygenerowaniem tej odpowiedzi."</string>
     <string name="l10n_8f26c6520d61588a" formatted="false">"Ładowanie"</string>
@@ -396,6 +562,7 @@
     <string name="l10n_3955c8e98f47edfc" formatted="false">"Ładowanie wyniku..."</string>
     <string name="l10n_7b1f2b358b54ee27" formatted="false">"Ładowanie profili..."</string>
     <string name="l10n_5a1c8090d0b201e5" formatted="false">"Ładowanie projektów..."</string>
+    <string name="l10n_a5dcb93d831dc05a" formatted="false">"Wczytywanie dostawców…"</string>
     <string name="l10n_6ffd1b801dc3250d" formatted="false">"Ładowanie sesji"</string>
     <string name="l10n_8605605d9f479dd3" formatted="false">"Ładowanie umiejętności..."</string>
     <string name="l10n_18f6342375a61986" formatted="false">"Ładowanie umiejętności..."</string>
@@ -409,11 +576,17 @@
     <string name="l10n_d219c68101f532de" formatted="false">"Lokalizacja"</string>
     <string name="l10n_a124947cbd2d1d92" formatted="false">"Niski"</string>
     <string name="l10n_d474fceae7ef8451" formatted="false">"Małe litery, cyfry, łączniki i podkreślenia; nazwa musi zaczynać się od litery lub cyfry."</string>
+    <string name="l10n_6c01c3828067110b" formatted="false">"Ustaw tablicę jako aktywną"</string>
     <string name="l10n_f924c396551c216e" formatted="false">"Ustawia ten serwer jako aktywny. Sesje, czaty i ustawienia zostaną przeładowane."</string>
+    <string name="l10n_7d949b41b99038e7" formatted="false">"Ustawienie tej tablicy jako aktywnej zmienia współdzielony stan serwera dla innych klientów Hermes."</string>
+    <string name="l10n_bf58d17e561b1b85" formatted="false">"Zarządzaj"</string>
     <string name="l10n_1da7ac1fb66291cc" formatted="false">"Zarządzaj serwerami"</string>
+    <string name="l10n_d0c6a4ce42d2461a" formatted="false">"Zarządzaj obszarami roboczymi"</string>
     <string name="l10n_005313fed211856e" formatted="false">"Zarządzaj sesjami, zadaniami i plikami zdalnie"</string>
     <string name="l10n_2ae8bf7c4fda40f7" formatted="false">"Oznacz jako gotowe"</string>
     <string name="l10n_25f266071c389a50" formatted="false">"Dopasowuje wygląd urządzenia"</string>
+    <string name="l10n_5de003582d342dba" formatted="false">"Maximum Runtime"</string>
+    <string name="l10n_527054fdad8e1c19" formatted="false">"Maksymalny czas działania musi być liczbą całkowitą sekund większą niż 0."</string>
     <string name="l10n_0c77aeece8c25811" formatted="false">"Multimedia"</string>
     <string name="l10n_3aaf713966fafbad" formatted="false">"Akcja na multimediach nie powiodła się"</string>
     <string name="l10n_da356f9300406f38" formatted="false">"Multimedia niedostępne"</string>
@@ -424,23 +597,28 @@
     <string name="l10n_8bd1e1ee0b36f619" formatted="false">"Liczba wiadomości"</string>
     <string name="l10n_d2dbcb77dcf32674" formatted="false">"Wyślij wiadomość do Hermex"</string>
     <string name="l10n_f1702b4686278bec" formatted="false">"Wiadomości"</string>
+    <string name="l10n_251edc0eb5a82064" formatted="false">"Metadane"</string>
     <string name="l10n_e8cd6e3a402a74e8" formatted="false">"Dostęp do mikrofonu jest wyłączony. Włącz go w Ustawieniach, aby korzystać z wprowadzania głosowego."</string>
     <string name="l10n_a711cca9a4a9ca25" formatted="false">"Minimalny"</string>
     <string name="l10n_611aeef9f6f15ff0" formatted="false">"Brak identyfikatora zadania."</string>
     <string name="l10n_68c2cc7f0ceaa3e4" formatted="false">"Model"</string>
     <string name="l10n_47442c9efd89244c" formatted="false">"Przełączanie modelu jest niedostępne."</string>
     <string name="l10n_f3798f81c7b6feca" formatted="false">"Modele"</string>
+    <string name="l10n_32e3bfbf3d74721b" formatted="false">"Modele (%lld)"</string>
     <string name="l10n_19a532c8bc61c311" formatted="false">"Zmodyfikowany"</string>
     <string name="l10n_d3446a31725ad27d" formatted="false">"Zmodyfikowano %@ temu"</string>
     <string name="l10n_03b280484618a09d" formatted="false">"Ciemny monochromatyczny"</string>
     <string name="l10n_febc733bb49ebbbf" formatted="false">"Jasny monochromatyczny"</string>
+    <string name="l10n_76cdb950721642b6" formatted="false">"Przenieś"</string>
     <string name="l10n_96cbe7af61cc6ba3" formatted="false">"Przenieś do projektu"</string>
     <string name="l10n_60739d13df292b18" formatted="false">"Moje notatki"</string>
     <string name="l10n_709a23220f2c3d64" formatted="false">"Nazwa"</string>
+    <string name="l10n_9c9f03a8394167a1" formatted="false">"Nazwa (opcjonalnie)"</string>
     <string name="l10n_3dcfe8c501962b28" formatted="false">"Wymaga uwagi"</string>
     <string name="l10n_a4b628dd7e6cac30" formatted="false">"Wymaga wyjaśnienia"</string>
     <string name="l10n_80c3052d33ccdee1" formatted="false">"Nigdy"</string>
     <string name="l10n_2f5f0a316c665840" formatted="false">"Nowy oddział"</string>
+    <string name="l10n_f24d098f37cad673" formatted="false">"Nowa karta"</string>
     <string name="l10n_364e701f18f5b93f" formatted="false">"Nowy czat"</string>
     <string name="l10n_d01329fec0de89f0" formatted="false">"Nowy profil"</string>
     <string name="l10n_fd57e65b2e31a39f" formatted="false">"Nowy projekt"</string>
@@ -467,6 +645,7 @@
     <string name="l10n_9bc37a73e52685de" formatted="false">"Brak modeli w katalogu"</string>
     <string name="l10n_24a6191f274fcd49" formatted="false">"Żadnych zmian"</string>
     <string name="l10n_fe598959ce0d3df9" formatted="false">"Żadne polecenia ani umiejętności nie pasują do \"%@\""</string>
+    <string name="l10n_38878b052a56f7c2" formatted="false">"Brak klucza"</string>
     <string name="l10n_758de69beca09db0" formatted="false">"Brak dopasowań dla \"%@\""</string>
     <string name="l10n_0318ea04f793d95e" formatted="false">"Brak pasujących sesji"</string>
     <string name="l10n_bcd9d0b98b51e4ac" formatted="false">"Brak dostępnego wejścia mikrofonu. Sprawdź ustawienia mikrofonu w symulatorze lub na urządzeniu."</string>
@@ -477,6 +656,7 @@
     <string name="l10n_1f3aa7cb21ea25f7" formatted="false">"Brak dostępnych profili"</string>
     <string name="l10n_c326b75775bf901d" formatted="false">"Brak projektu"</string>
     <string name="l10n_24a5368bbc878d8d" formatted="false">"Brak projektów"</string>
+    <string name="l10n_dabb4546aa93c651" formatted="false">"Ten serwer nie zgłasza żadnych dostawców."</string>
     <string name="l10n_9d7789c98756a7a1" formatted="false">"Brak sesji"</string>
     <string name="l10n_459ad5e22c8f13b7" formatted="false">"Na serwerze nie skonfigurowano żadnych umiejętności."</string>
     <string name="l10n_d7f0b3c347eb8c09" formatted="false">"Żadne umiejętności nie pasują do \"%@\"."</string>
@@ -494,8 +674,11 @@
     <string name="l10n_8956389786fd9918" formatted="false">"Offline – wyświetlam wersję z pamięci podręcznej"</string>
     <string name="l10n_8e4f504e020069e6" formatted="false">"Dane offline"</string>
     <string name="l10n_ccf06f9a4f7a50f8" formatted="false">"Offline — wyświetlam wersję z pamięci podręcznej"</string>
+    <string name="l10n_c3cb80395a6f5b01" formatted="false">"Offline — wyświetlanie wcześniej wczytanych danych"</string>
     <string name="l10n_e0049a66519cae71" formatted="false">"Włączone"</string>
+    <string name="l10n_db4ab04666991840" formatted="false">"Tylko moje"</string>
     <string name="l10n_db21418b19544341" formatted="false">"Tylko wiadomości asystenta mogą być ponownie generowane."</string>
+    <string name="l10n_a3b004fb05b4d2cd" formatted="false">"Only the last part of this log is shown."</string>
     <string name="l10n_44a2f9655a134eb7" formatted="false">"Tylko wiadomości użytkownika mogą być edytowane."</string>
     <string name="l10n_93d3335d58377959" formatted="false">"Otwórz %@"</string>
     <string name="l10n_ec9649e469304224" formatted="false">"Otwórz Ustawienia Hermex"</string>
@@ -510,8 +693,13 @@
     <string name="l10n_d381d212e5455e71" formatted="false">"Otwiera selektor domyślnego modelu."</string>
     <string name="l10n_da5bd75cb3611219" formatted="false">"Otwiera selektor domyślnego profilu."</string>
     <string name="l10n_418cad179a2e9807" formatted="false">"Otwiera formularz nowego profilu."</string>
+    <string name="l10n_336934f19da2f38e" formatted="false">"Otwiera ekran stanu dostawców."</string>
+    <string name="l10n_78ce8b45d4b9bb0a" formatted="false">"Historia operacyjna"</string>
+    <string name="l10n_c686cc0c99b6645d" formatted="false">"Operational Metadata"</string>
+    <string name="l10n_ce75929f4b0b99d9" formatted="false">"Opcjonalna liczba sekund."</string>
     <string name="l10n_3fe31a00136bfaac" formatted="false">"Opcjonalne. Przykładowy bazowy adres URL: http://localhost:11434"</string>
     <string name="l10n_09fb6aaba7940a7b" formatted="false">"Pomarańczowy"</string>
+    <string name="l10n_6282237cfbba8a0c" formatted="false">"Outcome Uncertain"</string>
     <string name="l10n_4bed336194a9a5c8" formatted="false">"Wynik"</string>
     <string name="l10n_878afed57cc32819" formatted="false">"Tokeny wyjściowe"</string>
     <string name="l10n_1a915e2090fc298c" formatted="false">"Strona %1$lld z %2$lld"</string>
@@ -533,11 +721,16 @@
     <string name="l10n_9c918414710c579b" formatted="false">"Przypnij"</string>
     <string name="l10n_54076359fdc7f1f0" formatted="false">"Różowy"</string>
     <string name="l10n_f9312169efb2796a" formatted="false">"Przypięte"</string>
+    <string name="l10n_7039fbec6d98cbb8" formatted="false">"Warunek wstępny"</string>
     <string name="l10n_3d087feb27bed0d7" formatted="false">"Zachowana lista zadań"</string>
+    <string name="l10n_b35d176a6e2dee64" formatted="false">"Podgląd dyspozycji"</string>
+    <string name="l10n_f67278a6b10f05b1" formatted="false">"Podgląd ma charakter informacyjny i może się zdezaktualizować. Nigdy nie uruchamia procesów roboczych."</string>
     <string name="l10n_e8002a8beabe2288" formatted="false">"Podgląd tego załącznika jest niedostępny."</string>
     <string name="l10n_e4a8cb9c4e93463c" formatted="false">"Podgląd tego typu pliku jest niedostępny."</string>
     <string name="l10n_6af2a65d7acff443" formatted="false">"Podgląd tego typu multimediów jest niedostępny."</string>
     <string name="l10n_8ce696a0387284a2" formatted="false">"Podgląd tych multimediów jest niedostępny."</string>
+    <string name="l10n_886cbff9d9df761e" formatted="false">"Priorytet"</string>
+    <string name="l10n_4b01e21caae1beff" formatted="false">"Priorytet musi być liczbą całkowitą z zakresu od -100 do 100."</string>
     <string name="l10n_9db108ba6b7f6571" formatted="false">"Polityka prywatności"</string>
     <string name="l10n_2fc50ca28d0af98f" formatted="false">"Przetwarzanie wyniku"</string>
     <string name="l10n_ff4fc0276e960c34" formatted="false">"Profil"</string>
@@ -547,9 +740,13 @@
     <string name="l10n_72c04819df5bb6a9" formatted="false">"Akcje projektu dla %@"</string>
     <string name="l10n_ab9773fcf6b2b1d9" formatted="false">"Nazwa projektu"</string>
     <string name="l10n_53e890d5f0fffe09" formatted="false">"Projekty"</string>
+    <string name="l10n_2eb0c3b72a3bd9bf" formatted="false">"Awansowano"</string>
     <string name="l10n_a817d7eb8e0f1dab" formatted="false">"Monit"</string>
     <string name="l10n_db95a2972e66e135" formatted="false">"Monit jest wymagany."</string>
+    <string name="l10n_7ceee3f3615a2bbe" formatted="false">"Dostawca"</string>
     <string name="l10n_610992ef9948a19f" formatted="false">"Identyfikator dostawcy"</string>
+    <string name="l10n_4eaef64dcb3c605f" formatted="false">"Klucze dostawców są zarządzane na serwerze. Ten ekran jest tylko do odczytu."</string>
+    <string name="l10n_87b7c08baed1c8e9" formatted="false">"Dostawcy"</string>
     <string name="l10n_5219eb9a71725226" formatted="false">"Pociągnij"</string>
     <string name="l10n_d9a72cc74c68bbfb" formatted="false">"Wyciągnąć zdalne zmiany?"</string>
     <string name="l10n_55c0e7925c2e9d6a" formatted="false">"Pociągnij w całości"</string>
@@ -571,6 +768,7 @@
     <string name="l10n_76eec760c9b6e63e" formatted="false">"Ostatnie"</string>
     <string name="l10n_8ea2086a2dbccc7b" formatted="false">"Ostatnie dzienne tokeny"</string>
     <string name="l10n_73c5c034584e46ea" formatted="false">"Ostatnie wyniki"</string>
+    <string name="l10n_c885890b098322a9" formatted="false">"Odzyskano"</string>
     <string name="l10n_d9eb6f071bf574f0" formatted="false">"Połącz ponownie, aby wysyłać wiadomości."</string>
     <string name="l10n_b95d5bf53907b729" formatted="false">"Połącz ponownie z serwerem, aby %@."</string>
     <string name="l10n_1776302c127400bb" formatted="false">"Połącz ponownie z serwerem, aby zadać pytanie poboczne."</string>
@@ -597,31 +795,53 @@
     <string name="l10n_8667d8dd1f042e2c" formatted="false">"Tylko referencja · %@"</string>
     <string name="l10n_56e3badc4e6c5cc9" formatted="false">"Odśwież"</string>
     <string name="l10n_309d274a52eca6b8" formatted="false">"Odśwież projekty"</string>
+    <string name="l10n_d7b762fc3fb27d5a" formatted="false">"Odświeżanie nie powiodło się. Spróbuj ponownie przed użyciem dyspozytora."</string>
+    <string name="l10n_87d2b4ceba88de25" formatted="false">"Odśwież tablicę przed ponowną próbą."</string>
+    <string name="l10n_44ab50cbb3313634" formatted="false">"Odśwież kartę, aby sprawdzić wynik serwera przed ponowną próbą."</string>
+    <string name="l10n_e87e8308cbf8a15e" formatted="false">"Refresh to check the Card before trying again."</string>
     <string name="l10n_5b7bdb61fdbc48d5" formatted="false">"Orzeźwiający..."</string>
     <string name="l10n_12798652dee90c23" formatted="false">"Wygeneruj odpowiedź ponownie"</string>
     <string name="l10n_e57e8f39b6e8ce1b" formatted="false">"Ponowne wygenerowanie tej odpowiedzi odrzuci %lld późniejszej wiadomości."</string>
+    <plurals name="l10n_e57e8f39b6e8ce1b">
+        <item quantity="zero">"Ponowne wygenerowanie tej odpowiedzi odrzuci %d późniejszej wiadomości."</item>
+        <item quantity="one">"Ponowne wygenerowanie tej odpowiedzi odrzuci %d późniejszą wiadomość."</item>
+        <item quantity="two">"Ponowne wygenerowanie tej odpowiedzi odrzuci %d późniejszej wiadomości."</item>
+        <item quantity="few">"Ponowne wygenerowanie tej odpowiedzi odrzuci %d późniejsze wiadomości."</item>
+        <item quantity="many">"Ponowne wygenerowanie tej odpowiedzi odrzuci %d późniejszych wiadomości."</item>
+        <item quantity="other">"Ponowne wygenerowanie tej odpowiedzi odrzuci %d późniejszej wiadomości."</item>
+    </plurals>
+    <string name="l10n_cce7155371fc2668" formatted="false">"Przeładować"</string>
+    <string name="l10n_8b1c557db10dc346" formatted="false">"Załaduj ponownie wersję serwera"</string>
+    <string name="l10n_76cc25831dafa135" formatted="false">"Załadować ponownie wersję serwera?"</string>
     <string name="l10n_ecca3ebfebb1231b" formatted="false">"Załaduj ponownie listę oddziałów"</string>
     <string name="l10n_c93f6536dcfbeeee" formatted="false">"Zdalny"</string>
     <string name="l10n_95a7c84ae08947db" formatted="false">"Oddział zdalny przed oddziałem lokalnym"</string>
+    <string name="l10n_e963907dac5cd5c0" formatted="false">"Usuń"</string>
+    <string name="l10n_74211945be6416aa" formatted="false">"Usuń %@ jako wymaganie wstępne"</string>
     <string name="l10n_50abaeabec168aa3" formatted="false">"Usuń %@ z ulubionych"</string>
     <string name="l10n_49c2c77417839a5d" formatted="false">"Usuń serwer"</string>
+    <string name="l10n_1e49097a3b6f2e45" formatted="false">"Usunąć obszar roboczy?"</string>
     <string name="l10n_8808b2840f078cfa" formatted="false">"Usuń załącznik %@"</string>
     <string name="l10n_6df2166b68573bb1" formatted="false">"Usuń niestandardowy model z ulubionych"</string>
     <string name="l10n_3e19869f4c6dd932" formatted="false">"Usuń nagłówek"</string>
     <string name="l10n_75bfa312029037aa" formatted="false">"Usunąć ten serwer?"</string>
     <string name="l10n_013a5d20d5696b29" formatted="false">"Usuwa ten serwer i jego zapisane ustawienia z tego urządzenia. Twój aktywny serwer pozostaje bez zmian."</string>
+    <string name="l10n_ce29465cad73fef0" formatted="false">"Usunięcie obszaru roboczego jedynie wyrejestrowuje jego ścieżkę z listy serwera. Żadne pliki nie są usuwane."</string>
     <string name="l10n_d3f4cb898fbe0c7a" formatted="false">"Zmień nazwę"</string>
     <string name="l10n_2631fe63a2fe1b89" formatted="false">"Zmień nazwę projektu"</string>
     <string name="l10n_d80362f6a02f697f" formatted="false">"Zmień nazwę sesji"</string>
+    <string name="l10n_37b77d35f230ff7d" formatted="false">"Zmień nazwę obszaru roboczego"</string>
     <string name="l10n_ef1c7b2eb614a607" formatted="false">"Zmień nazwę bieżącej sesji"</string>
     <string name="l10n_e5ad1c6b966bc12c" formatted="false">"Zmieniono nazwę"</string>
     <string name="l10n_6c2bb735a46a8ff3" formatted="false">"Odpowiedz"</string>
     <string name="l10n_8b03ca3239a2d4b3" formatted="false">"Stan repozytorium niedostępny"</string>
     <string name="l10n_9ec40b4a79f06a39" formatted="false">"Repozytorium aktualne"</string>
     <string name="l10n_4ea95c7e3ce383e5" formatted="false">"Żądanie uprawnień głosowych..."</string>
+    <string name="l10n_eed6bfb41051ed5b" formatted="false">"Wymagany"</string>
     <string name="l10n_7517ceebb9cbd1af" formatted="false">"Odpowiadaj na monity agenta bez przełączania aplikacji."</string>
     <string name="l10n_7fafe94e3d4ca86e" formatted="false">"Odpowiadanie"</string>
     <string name="l10n_ea7ab827fb7b09d6" formatted="false">"Alerty o ukończeniu odpowiedzi"</string>
+    <string name="l10n_07528719f78e54c9" formatted="false">"Szybkość odpowiedzi"</string>
     <string name="l10n_ec2fb8b9d8a0585a" formatted="false">"Znaczniki czasu odpowiedzi"</string>
     <string name="l10n_6b656398c39ddef4" formatted="false">"Odpowiedź anulowana"</string>
     <string name="l10n_96423842ebcbe649" formatted="false">"Odpowiedź ukończona"</string>
@@ -629,17 +849,22 @@
     <string name="l10n_5faa59d4bc375604" formatted="false">"Wynik"</string>
     <string name="l10n_b3bd0b5a70497bec" formatted="false">"Wznów"</string>
     <string name="l10n_9f5cd8a2e8807d73" formatted="false">"Spróbuj ponownie"</string>
+    <string name="l10n_a3303b326f2b8e0c" formatted="false">"Ponów nieudane"</string>
     <string name="l10n_bbe728dc05ae5101" formatted="false">"Ponowienie jest dostępne tylko dla sesji WebUI."</string>
     <string name="l10n_d0efe1645c15924c" formatted="false">"Spróbuj ponownie załadować sesje"</string>
     <string name="l10n_08fe845cce87a735" formatted="false">"Ponów ostatnią turę"</string>
     <string name="l10n_effe5e3d4358574a" formatted="false">"Spróbuj ponownie zaktualizować"</string>
+    <string name="l10n_7bb8fd0794a55ded" formatted="false">"Przejrzyj i nadpisz"</string>
     <string name="l10n_cde5a6be0081dff8" formatted="false">"Przeglądaj zatwierdzenia i wyjaśnienia bezpośrednio"</string>
     <string name="l10n_0a629b6db6c76c8a" formatted="false">"Układ czatu od prawej do lewej"</string>
     <string name="l10n_e96857c58f716104" formatted="false">"Główny"</string>
+    <string name="l10n_a299989ee9a1c92e" formatted="false">"Uruchom dyspozytor"</string>
     <string name="l10n_8ab343d1eabae3ef" formatted="false">"Uruchamiaj akcje Hermex, takie jak Nowy czat, za pomocą Siri, Spotlight, ekranu blokady lub przycisku Działania w iPhonie. Aby użyć przycisku Działania, otwórz Ustawienia iOS, wybierz Przycisk Działania, następnie Skrót, a potem akcję Hermex."</string>
+    <string name="l10n_79adb123c5c0db44" formatted="false">"Run ID"</string>
     <string name="l10n_4ee85a626ff6183b" formatted="false">"Uruchom teraz"</string>
     <string name="l10n_0e076478ac56474c" formatted="false">"Uruchom równoległe zadanie"</string>
     <string name="l10n_73989d9c59264da0" formatted="false">"Uruchomione"</string>
+    <string name="l10n_a1b88f565760f0c1" formatted="false">"Uruchamianie dyspozytora…"</string>
     <string name="l10n_b66803829687b9de" formatted="false">"Uruchamianie polecenia"</string>
     <string name="l10n_33cfd5d598aac712" formatted="false">"Uruchomione"</string>
     <string name="l10n_93dd44cf2d1ccfaa" formatted="false">"KROK %lld"</string>
@@ -649,10 +874,13 @@
     <string name="l10n_c0ae8f6ea8411149" formatted="false">"Zapisano"</string>
     <string name="l10n_85cc0a3b9ae258eb" formatted="false">"Zapisane niestandardowe"</string>
     <string name="l10n_6dd5ffdf0c60362e" formatted="false">"Zapisane obszary robocze"</string>
+    <string name="l10n_369c534df344ee14" formatted="false">"Oszczędność"</string>
     <string name="l10n_0a8adac9d6d5f4d1" formatted="false">"Harmonogram"</string>
     <string name="l10n_82f00823fbf52cac" formatted="false">"Harmonogram jest wymagany."</string>
     <string name="l10n_9ca43b04c3d2e353" formatted="false">"Zaplanowane zadania"</string>
     <string name="l10n_395c32f788a3f892" formatted="false">"Zaplanowane zadania z serwera Hermes pojawią się tutaj."</string>
+    <string name="l10n_bce73c4a4b04e523" formatted="false">"Zaplanowane sesje"</string>
+    <string name="l10n_168bebddecbb0754" formatted="false">"Zadrapanie"</string>
     <string name="l10n_d887477630313495" formatted="false">"Przewiń do najnowszej wiadomości"</string>
     <string name="l10n_bce06414177f72ab" formatted="false">"Szukaj"</string>
     <string name="l10n_e64891ecd1e87786" formatted="false">"Szukaj dostępnych umiejętności"</string>
@@ -664,6 +892,7 @@
     <string name="l10n_d4e6fa2549fd2925" formatted="false">"Szukaj umiejętności..."</string>
     <string name="l10n_436af877d210be41" formatted="false">"Wyszukiwanie plików"</string>
     <string name="l10n_c57285ac350f9afc" formatted="false">"Wyszukiwanie sesji"</string>
+    <string name="l10n_bca2e803ac1c71fd" formatted="false">"Wybierz karty"</string>
     <string name="l10n_95cbd4cb485fce7c" formatted="false">"Zaznacz tekst"</string>
     <string name="l10n_7915c8a498a76d3f" formatted="false">"Wybierz plik, aby go dołączyć."</string>
     <string name="l10n_426e995abe3623e6" formatted="false">"Wybierz model"</string>
@@ -677,11 +906,14 @@
     <string name="l10n_d7446f460992044a" formatted="false">"Wyślij `/%@ &lt;wiadomość&gt;`, aby użyć tej umiejętności."</string>
     <string name="l10n_8b2c12c5d4d5965d" formatted="false">"Wyślij wiadomość, aby rozpocząć rozmowę."</string>
     <string name="l10n_b57718ffcace839f" formatted="false">"Wyślij po odpowiedzi"</string>
-    <string name="l10n_16ccc931b1910648" formatted="false">"Wyślij ten monit do swojego agenta Hermes. Instaluje Hermes Web UI, włącza uwierzytelnianie hasłem i konfiguruje dostęp przez Tailscale."</string>
+    <string name="l10n_fb8e5450e7708ea1" formatted="false">"Wyślij ten monit do swojego agenta Hermes. Sprawdza istniejący stan, pozostawia Hermes Web UI na localhost i konfiguruje prywatny HTTPS przez Tailscale Serve."</string>
     <string name="l10n_13e251839c1cbadc" formatted="false">"Wysyłane z każdym żądaniem do serwera, w tym z multimediami i strumieniami na żywo. Użyj dla odwrotnego proxy (np. Authentik) lub uwierzytelniania tokenem, np. nagłówka Authorization."</string>
+    <string name="l10n_97dda3da38b6e1bf" formatted="false">"Nazwy umiejętności oddziel przecinkami."</string>
     <string name="l10n_cb0cb170d106f8e8" formatted="false">"Serwer"</string>
     <string name="l10n_3fa39b5424edd660" formatted="false">"Awatar serwera"</string>
     <string name="l10n_d4b6ea00d9844a33" formatted="false">"Domyślny serwer"</string>
+    <string name="l10n_fd709421d2263b57" formatted="false">"Stan serwera"</string>
+    <string name="l10n_bcfef50922cbb5d5" formatted="false">"Tytuł serwera"</string>
     <string name="l10n_1d5d1effa999db57" formatted="false">"Adres URL serwera"</string>
     <string name="l10n_c3a144c6f18ea41f" formatted="false">"Hasło serwera"</string>
     <string name="l10n_3630b49185b9bdca" formatted="false">"Serwer zwrócił HTTP %lld."</string>
@@ -692,11 +924,13 @@
     <string name="l10n_2985663589760d41" formatted="false">"Stan sesji:\n\n- ID sesji: %1$@\n- Tytuł: %2$@\n- Model: %3$@\n- Dostawca: %4$@\n- Profil: %5$@\n- Obszar roboczy: %6$@\n- Agent działa: %7$@\n- Wiadomości w kolejce: %8$lld\n- Zadania w tle: %9$lld\n- Załadowane wiadomości: %10$lld\n- Tokeny: %11$@"</string>
     <string name="l10n_e883c5bede310321" formatted="false">"Tytuł sesji"</string>
     <string name="l10n_ee4c6b466195baf3" formatted="false">"Dane użycia sesji pojawią się tutaj po rozpoczęciu rozmów."</string>
+    <string name="l10n_6dfb4de7a8af7fa8" formatted="false">"Widoczność sesji jest synchronizowana z tym serwerem, więc WebUI również ją odzwierciedla."</string>
     <string name="l10n_e11e37a9253b34ff" formatted="false">"Sesje"</string>
     <string name="l10n_32962ffd65d2627e" formatted="false">"Awatar sesji"</string>
     <string name="l10n_f97972c3e4668e12" formatted="false">"Sesje z tego projektu zostaną przeniesione do kategorii Bez projektu. Same sesje nie zostaną usunięte."</string>
     <string name="l10n_448ab73ba1c21e67" formatted="false">"Ustaw"</string>
     <string name="l10n_3bd23ee0e245365c" formatted="false">"Ustaw cel"</string>
+    <string name="l10n_c8293bad3b7b4fb5" formatted="false">"Ustaw priorytet"</string>
     <string name="l10n_c52c0c7cdc76e95e" formatted="false">"Skonfiguruj"</string>
     <string name="l10n_d22d7bf3a71ec052" formatted="false">"Ustaw lub sprawdź trwały cel"</string>
     <string name="l10n_b4115b8528333061" formatted="false">"Ustaw poziom wysiłku rozumowania"</string>
@@ -706,11 +940,14 @@
     <string name="l10n_4c619ef31f07cceb" formatted="false">"Pokaż wszystkie projekty"</string>
     <string name="l10n_81744b31e55f479f" formatted="false">"Pokaż dostępne polecenia slash"</string>
     <string name="l10n_7097a0c314985f69" formatted="false">"Pokaż stan sesji"</string>
+    <string name="l10n_b47f6085ffd26585" formatted="false">"Wyświetlanie %1$lld z %2$lld modeli"</string>
     <string name="l10n_3fa229fdb23ceeb3" formatted="false">"Wyświetlanie pierwszych 500 zmienionych plików."</string>
     <string name="l10n_c019f77116648ddf" formatted="false">"Wyświetlono pierwsze 500 zmienionych plików."</string>
+    <string name="l10n_a3a6710b148c1660" formatted="false">"Pokazuje dostępne akcje zarządzania tablicą."</string>
     <string name="l10n_409adfda54bac8ec" formatted="false">"Pokazuje akcje zmiany nazwy i usuwania tego projektu."</string>
     <string name="l10n_64bdd26ae9e959e5" formatted="false">"Wyświetla krótki tekst odpowiedzi na ekranie blokady i w Dynamic Island."</string>
     <string name="l10n_0c19157b637bd737" formatted="false">"Pokazuje pole wyszukiwania sesji."</string>
+    <string name="l10n_9710be03d20fb3ad" formatted="false">"Pokazuje listę modeli tego dostawcy."</string>
     <string name="l10n_61fd08ff5c37211d" formatted="false">"Wyloguj się"</string>
     <string name="l10n_c5eba70bd3954c88" formatted="false">"Wyloguj się z tego serwera"</string>
     <string name="l10n_f9d09fc5a91b5ed7" formatted="false">"Zaloguj się na to samo konto, którego używasz na serwerze."</string>
@@ -725,12 +962,16 @@
     <string name="l10n_11930e13637cafc2" formatted="false">"Umiejętności z serwera Hermes pojawią się tutaj."</string>
     <string name="l10n_9bfe8690fb3da405" formatted="false">"Umiejętności pasujące do \"%@\":"</string>
     <string name="l10n_4883f494deaf503e" formatted="false">"Pomiń całą tę sesję"</string>
+    <string name="l10n_06efe358248e1592" formatted="false">"Pominięto—brak przypisania"</string>
+    <string name="l10n_60dbead0f06505e3" formatted="false">"Pominięto—nieznany profil"</string>
     <string name="l10n_bb5430b00fb04963" formatted="false">"Pomija konfigurację i otwiera ekran połączenia."</string>
     <string name="l10n_b3d97fd6dece388a" formatted="false">"Błękit"</string>
+    <string name="l10n_094da9b95fdcee3d" formatted="false">"Identyfikator"</string>
     <string name="l10n_4b8bd42120d9a94c" formatted="false">"Źródło: lokalne metadane sesji (zapasowe)."</string>
     <string name="l10n_2513e8e94b38cc59" formatted="false">"Źródło: lokalne metadane sesji (zapasowe). Błąd statystyk serwera: %@"</string>
     <string name="l10n_d1b96f5b62a4287b" formatted="false">"Źródło: lokalne metadane sesji."</string>
     <string name="l10n_03d03ab0d88c3373" formatted="false">"Źródło: statystyki serwera z ostatnich %lld dni."</string>
+    <string name="l10n_cd5d730d53090728" formatted="false">"Uruchomiono"</string>
     <string name="l10n_c0333d1add29d664" formatted="false">"Rozpoznawanie mowy jest wyłączone. Włącz je w Ustawieniach, aby korzystać z wejścia głosowego."</string>
     <string name="l10n_4bfb98bccc44ac2c" formatted="false">"Rozpoznawanie mowy jest niedostępne dla bieżących ustawień regionalnych."</string>
     <string name="l10n_59246b380055b101" formatted="false">"Rozpoznawanie mowy jest teraz niedostępne."</string>
@@ -781,11 +1022,14 @@
     <string name="l10n_7bb0ddf9221c03b8" formatted="false">"Zadanie"</string>
     <string name="l10n_b41eb6f08c8b078b" formatted="false">"Akcje zadania"</string>
     <string name="l10n_090ec5f560fc5037" formatted="false">"Zadania"</string>
+    <string name="l10n_3ca93c78f67175df" formatted="false">"Dzierżawca"</string>
     <string name="l10n_43518a45c3506afe" formatted="false">"Terminal jest niedostępny w aplikacji mobilnej."</string>
     <string name="l10n_580f6ab716ab4ca9" formatted="false">"Testuj połączenie"</string>
     <string name="l10n_7b514bffeae3b7d5" formatted="false">"Ta prośba o zatwierdzenie już wygasła, więc agent kontynuował pracę."</string>
     <string name="l10n_d2209900784abf2a" formatted="false">"Ta prośba o wyjaśnienie już wygasła, więc agent kontynuował pracę."</string>
     <string name="l10n_05d3eab3ca8f18dd" formatted="false">"Ta sesja nie istnieje już na serwerze. Otwórz inną sesję lub utwórz nową."</string>
+    <string name="l10n_21f829338a7faa45" formatted="false">"Tablica jest odświeżana."</string>
+    <string name="l10n_1dd6da47cd03c774" formatted="false">"Dyspozytor pomija Gotowe Karty bez przypisanego profilu."</string>
     <string name="l10n_ecfa2de70a6b9074" formatted="false">"Połączenie HTTPS nie powiodło się. Sprawdź adres URL serwera i certyfikat."</string>
     <string name="l10n_9bbd89ecc5be6e75" formatted="false">"Serwer Hermes napotkał wewnętrzny błąd. Sprawdź dzienniki serwera i spróbuj ponownie."</string>
     <string name="l10n_15ea0a61edd4c28f" formatted="false">"Asystent zakończył odpowiadanie."</string>
@@ -793,6 +1037,8 @@
     <string name="l10n_99bd906ebc1eccbe" formatted="false">"Edytowana wiadomość nie może być pusta."</string>
     <string name="l10n_81c08290cf69b27a" formatted="false">"Hasło zostało odrzucone. Sprawdź hasło serwera i spróbuj ponownie."</string>
     <string name="l10n_94f2c21b3df558b2" formatted="false">"Żądanie zostało anulowane."</string>
+    <string name="l10n_8bdfda19530477f9" formatted="false">"Wybrane karty zostaną przeniesione do archiwum."</string>
+    <string name="l10n_cd019f1c53e3497b" formatted="false">"Wybór nie jest już dostępny. Odśwież tablicę i ponownie wybierz karty."</string>
     <string name="l10n_e7160301a4c0999e" formatted="false">"Serwer nie mógł zatrzymać bieżącej odpowiedzi."</string>
     <string name="l10n_391ddfb06a8ee962" formatted="false">"Serwer nie mógł przywrócić tej sesji z archiwum."</string>
     <string name="l10n_11326745266f240a" formatted="false">"Serwer nie potwierdził zmiany."</string>
@@ -827,11 +1073,14 @@
     <string name="l10n_ac044556e5548d3c" formatted="false">"Serwer odbiera zbyt wiele żądań. Chwilę poczekaj i spróbuj ponownie."</string>
     <string name="l10n_2a1b7a25a5096500" formatted="false">"Serwer lub tunel Cloudflare jest niedostępny. Sprawdź, czy Mac jest aktywny, hermes-webui działa, a tunel jest połączony."</string>
     <string name="l10n_f8d83dbb55003db9" formatted="false">"Serwer odmówił dostępu. Sprawdź hasło serwera i uprawnienia."</string>
+    <string name="l10n_a9c580f6eaa44ef8" formatted="false">"Serwer odrzucił lub nie zastosował tej aktualizacji."</string>
+    <string name="l10n_1f649f3b878ba1a5" formatted="false">"Serwer odrzucił to żądanie dyspozytora. Hermex nie ponowił próby."</string>
     <string name="l10n_3b7efcceeff317b3" formatted="false">"Serwer odrzucił żądanie."</string>
     <string name="l10n_80e2ebb549050457" formatted="false">"Serwer odrzucił żądanie: %@"</string>
     <string name="l10n_d2a9f8cb89bf69b7" formatted="false">"Nie można odczytać odpowiedzi serwera."</string>
     <string name="l10n_53e576d649d0b70e" formatted="false">"Nie można odczytać odpowiedzi serwera. Sprawdź, czy adres URL wskazuje na serwer Hermes Web UI."</string>
     <string name="l10n_eefb8bb01beaaae1" formatted="false">"Serwer zbyt długo nie odpowiadał. Sprawdź, czy Mac jest aktywny, a serwer działa."</string>
+    <string name="l10n_afa9464df086e048" formatted="false">"Identyfikatora nie można zmienić po utworzeniu tablicy."</string>
     <string name="l10n_c9f0def8dcd627c9" formatted="false">"Strumień zwrócił nieprawidłowe zdarzenie błędu."</string>
     <string name="l10n_baa339d62041f2e5" formatted="false">"Strumień zwrócił błąd."</string>
     <string name="l10n_e0dfd329b1ff55a1" formatted="false">"Nie można zastosować aktualizacji."</string>
@@ -845,6 +1094,11 @@
     <string name="l10n_a8f4d85bf0de7c20" formatted="false">"Karty myślenia i narzędzi"</string>
     <string name="l10n_ac9ded8ad76135f8" formatted="false">"Karty myślenia i narzędzi zaczynają się rozwinięte zamiast zwinięte. Dotknięcie karty nadal ją przełącza."</string>
     <string name="l10n_16c5d096ef4c4b52" formatted="false">"Myślenie, %@"</string>
+    <string name="l10n_e151dd158050ee78" formatted="false">"Ta tablica już nie istnieje. Wybierz inną tablicę."</string>
+    <string name="l10n_6a650636b81004aa" formatted="false">"This Board no longer exists. Return to Kanban to choose another Board."</string>
+    <string name="l10n_ca86aeb9616416a9" formatted="false">"Ta karta uległa zmianie na serwerze po otwarciu edytora. Twoja wersja robocza została zachowana."</string>
+    <string name="l10n_3474c0f601ba033a" formatted="false">"This Card no longer exists on this Board. The Board has been refreshed."</string>
+    <string name="l10n_83a3dcf7fc7d62c1" formatted="false">"Ten podgląd jest nieaktualny. Uruchom ponownie podgląd dyspozycji, zanim na nim polegasz."</string>
     <string name="l10n_aba61a2ad81b8d7f" formatted="false">"Ten załącznik nie ma ścieżki pliku na serwerze."</string>
     <string name="l10n_1877e019673b82ad" formatted="false">"Obszar roboczy tego czatu nie jest repozytorium Git."</string>
     <string name="l10n_a8f9e43b9a80b7bf" formatted="false">"To polecenie jest niedostępne w aplikacji mobilnej."</string>
@@ -853,6 +1107,7 @@
     <string name="l10n_de77c8f5ce7c5f65" formatted="false">"Ten plik wydaje się być pusty."</string>
     <string name="l10n_1199f666fedc3267" formatted="false">"Ten plik jest binarny, więc nie ma tekstowego diffu do pokazania."</string>
     <string name="l10n_83722fb0e0ca5b75" formatted="false">"Ten plik nie jest obrazem, który można zapisać w Zdjęciach."</string>
+    <string name="l10n_4914d0afde90fb6d" formatted="false">"Może to uruchomić do %lld procesów roboczych i zużyć budżet API."</string>
     <string name="l10n_bc15958918104240" formatted="false">"Pobiera najnowszą wersję serwera Hermes i uruchamia go ponownie. Aktywne czaty mogą być chwilowo przerwane; aplikacja ponownie się połączy, gdy serwer będzie gotowy."</string>
     <string name="l10n_f0c6fa08d0785f19" formatted="false">"Usuwa zaplanowane zadanie z serwera Hermes."</string>
     <string name="l10n_9cc29299b5a024f3" formatted="false">"Usuwa serwer i jego zapisane ustawienia na tym urządzeniu. Aktywny serwer pozostaje bez zmian."</string>
@@ -867,16 +1122,21 @@
     <string name="l10n_e00561c4c172b50c" formatted="false">"To zadanie nie wygenerowało jeszcze żadnych wyników."</string>
     <string name="l10n_97b25d863d2e238a" formatted="false">"Ten obszar roboczy zawiera niezatwierdzone zmiany. Zapisz je tymczasowo, zmień gałęzie, a następnie przywróć wszelkie zapisane zmiany dla gałęzi docelowej."</string>
     <string name="l10n_c51f7b72279e26fd" formatted="false">"Próg"</string>
+    <string name="l10n_7bbea3f2b3d3370d" formatted="false">"Przekroczono limit czasu"</string>
     <string name="l10n_85decb73d1438d2e" formatted="false">"Przedział czasowy"</string>
     <string name="l10n_588e8007757722e5" formatted="false">"Limit czasu %@"</string>
     <string name="l10n_abca4fe61ee1300b" formatted="false">"Koloruj Nowy czat i Wyślij"</string>
+    <string name="l10n_768e0c1c69573fb5" formatted="false">"Tytuł"</string>
+    <string name="l10n_d5ec4d31ee0ffb4b" formatted="false">"Tytuł jest wymagany."</string>
     <string name="l10n_735e4002db082f59" formatted="false">"Tytuł ustawiony na **%@**."</string>
+    <string name="l10n_353a23d95e3c0839" formatted="false">"Do zrobienia"</string>
     <string name="l10n_757011e57ad1e225" formatted="false">"Powiadomienia wyskakujące"</string>
     <string name="l10n_0b021d5f7dac5820" formatted="false">"Wyskakujące komunikaty"</string>
     <string name="l10n_24345a14377fd821" formatted="false">"Dzisiaj"</string>
     <string name="l10n_9a830c714bb2b52b" formatted="false">"Narzędzie"</string>
     <string name="l10n_fa689a2e435f8e6d" formatted="false">"Najczęstsze sesje"</string>
     <string name="l10n_b662ff25f41cef30" formatted="false">"Łączna liczba tokenów"</string>
+    <string name="l10n_013ec284eed0cb93" formatted="false">"Wstępna ocena"</string>
     <string name="l10n_cef2fe093b68fa97" formatted="false">"Spróbuj ponownie"</string>
     <string name="l10n_3878a498a56fa2c4" formatted="false">"Spróbuj innej nazwy pliku lub ścieżki."</string>
     <string name="l10n_4bb4b153f85d494e" formatted="false">"Spróbuj innej nazwy lub identyfikatora modelu."</string>
@@ -887,14 +1147,20 @@
     <string name="l10n_426fed37b50f32c6" formatted="false">"Wpisz odpowiedź"</string>
     <string name="l10n_0e2d9b0777a485c1" formatted="false">"URL"</string>
     <string name="l10n_35e71c29f1185e21" formatted="false">"Przywróć z archiwum"</string>
+    <string name="l10n_e57016edceec7e7b" formatted="false">"Nieprzypisane"</string>
     <string name="l10n_2c9c1f79142df1b6" formatted="false">"Niedostępne"</string>
+    <string name="l10n_12aabd251c4213f1" formatted="false">"Odblokuj"</string>
     <string name="l10n_4ef7d73c1a83464f" formatted="false">"Bez kategorii"</string>
     <string name="l10n_10e6f533d2aaca09" formatted="false">"Niezatwierdzone zmiany"</string>
+    <string name="l10n_39fc72124884d657" formatted="false">"Cofnij"</string>
+    <string name="l10n_e979f022d850942a" formatted="false">"Cofnij archiwizację"</string>
     <string name="l10n_b3a1af021b557f01" formatted="false">"Cofanie jest dostępne tylko dla sesji WebUI."</string>
     <string name="l10n_0383fdef3915a396" formatted="false">"Cofnij ostatnią wymianę"</string>
     <string name="l10n_bc7819b34ff87570" formatted="false">"Nieznane"</string>
     <string name="l10n_3697b1ae8e7d30a2" formatted="false">"Nieznana data"</string>
     <string name="l10n_b87bd1c1a7bca908" formatted="false">"Nieznany model"</string>
+    <string name="l10n_dd1bf46d2decbcfc" formatted="false">"Nieznany status"</string>
+    <string name="l10n_9a8ae21fb0d04e5a" formatted="false">"Nieznany dostawca"</string>
     <string name="l10n_fd61688d01169f43" formatted="false">"Nieznany poziom rozumowania: %@."</string>
     <string name="l10n_d57444178b19325b" formatted="false">"Nienazwana umiejętność"</string>
     <string name="l10n_2eba6a03b89a9ddb" formatted="false">"Odepnij"</string>
@@ -907,9 +1173,12 @@
     <string name="l10n_82fb1d5144a846f7" formatted="false">"Aktualne"</string>
     <string name="l10n_fb91e24fa52d8d2b" formatted="false">"Aktualizuj"</string>
     <string name="l10n_58b0f1cc44738b4e" formatted="false">"Dostępna aktualizacja · %lld w tyle"</string>
+    <string name="l10n_4de04cd91a3d954b" formatted="false">"Aktualizacja nie powiodła się"</string>
     <string name="l10n_61c080e52b666016" formatted="false">"Zaktualizować serwer?"</string>
+    <string name="l10n_f2f8570ddd7b1e7b" formatted="false">"Updated"</string>
     <string name="l10n_a74e190a94f85aeb" formatted="false">"Aktualizuje kolor logo nagłówka sesji."</string>
     <string name="l10n_4159ad3b0d6e5c96" formatted="false">"Aktualizowanie i ponowne uruchamianie…"</string>
+    <string name="l10n_d6f123d4cdba5c1b" formatted="false">"Aktualizowanie tablicy…"</string>
     <string name="l10n_37016ece9e2301b0" formatted="false">"Aktualizowanie ikony aplikacji"</string>
     <string name="l10n_3d07322927c7ed8c" formatted="false">"Aktualizowanie ustawień kompozytora..."</string>
     <string name="l10n_05898ca376b6c749" formatted="false">"Aktualizowanie zadania..."</string>
@@ -931,6 +1200,7 @@
     <string name="l10n_542f2c8e3ce7e991" formatted="false">"Używam narzędzia"</string>
     <string name="l10n_8dce170de238b1fe" formatted="false">"Wartość"</string>
     <string name="l10n_2da600bf94048431" formatted="false">"Wersja"</string>
+    <string name="l10n_931e1a4b152ad9d1" formatted="false">"Wyświetl wszystko"</string>
     <string name="l10n_ddcd2f2e783a0ee9" formatted="false">"Fiolet"</string>
     <string name="l10n_0c82d065d0dd4cbf" formatted="false">"Polecenia głosowe są niedostępne w aplikacji mobilnej."</string>
     <string name="l10n_c0b2cee024771a9f" formatted="false">"Wejście głosowe"</string>
@@ -959,9 +1229,16 @@
     <string name="l10n_0a1ea5282f05b18d" formatted="false">"Oczekiwanie na zatwierdzenie"</string>
     <string name="l10n_8ac7aa173f261d8b" formatted="false">"Co otrzymujesz"</string>
     <string name="l10n_37619fc13053f82b" formatted="false">"Biały"</string>
+    <string name="l10n_da17e9bd3e2e98db" formatted="false">"Worker ID"</string>
+    <string name="l10n_e7dff0bfb1f39bad" formatted="false">"Dziennik workera"</string>
     <string name="l10n_4ca0a75c2b7fa7da" formatted="false">"Obszar roboczy"</string>
+    <string name="l10n_45df1387dc17132d" formatted="false">"Zarządzanie obszarami roboczymi nie jest dostępne na tym serwerze."</string>
+    <string name="l10n_6e0f2ba26a5e7f14" formatted="false">"Nazwa obszaru roboczego"</string>
     <string name="l10n_5b8d33f220cddf4c" formatted="false">"Ścieżka obszaru roboczego"</string>
+    <string name="l10n_01844d97ed607c1a" formatted="false">"Ścieżka obszaru roboczego jest wymagana dla tego rodzaju obszaru roboczego."</string>
     <string name="l10n_928ae0b86e6b313e" formatted="false">"Przełączanie obszaru roboczego jest niedostępne."</string>
+    <string name="l10n_dc8ab239f39b6ebf" formatted="false">"Obszar roboczy, Umiejętności, Maksymalny czas działania i Wymagania wstępne są ustawiane podczas tworzenia karty i nie można ich tutaj edytować."</string>
+    <string name="l10n_fad0554cb2ea2e8c" formatted="false">"Drzewo pracy"</string>
     <string name="l10n_ebf23375246151e6" formatted="false">"Zawijaj wiersze bloku kodu"</string>
     <string name="l10n_4855c3796b3a0f62" formatted="false">"Zawija długie wiersze w blokach kodu, aby zmieściły się na ekranie, zamiast przewijać w bok. Możesz też dotknąć przycisku zawijania w dowolnym bloku kodu."</string>
     <string name="l10n_4a48932789d199bb" formatted="false">"Pisać"</string>
@@ -976,6 +1253,7 @@
     <string name="l10n_22b34eb125f0f1ee" formatted="false">"Przełączysz się na inny skonfigurowany serwer. Zaloguj się ponownie, aby korzystać z tego."</string>
     <string name="l10n_a7355287e63a4595" formatted="false">"Twój Hermes Web UI pozostaje na sprzęcie, który kontrolujesz."</string>
     <string name="l10n_0b05d4e5dfddc460" formatted="false">"Twój agent Hermes, dostępny z iPhone'a przez Tailscale."</string>
+    <string name="l10n_d621853ee2b94ab0" formatted="false">"Twoja lokalna wersja robocza zostanie odrzucona."</string>
     <string name="l10n_1735ecf6cc9d21df" formatted="false">"Twoja sesja wygasła. Zaloguj się ponownie."</string>
     <string name="l10n_46aa126e081be313" formatted="false">"Twoje drzewo robocze jest czyste."</string>
     <string name="l10n_0411e4632d186d8a" formatted="false">"zmień modele"</string>
@@ -996,6 +1274,7 @@
     <string name="l10n_9c7e05e5868afcf3" formatted="false">"prompt"</string>
     <string name="l10n_7cd9148ec5a552db" formatted="false">"zapytanie"</string>
     <string name="l10n_3b2be2e26344d52b" formatted="false">"pytanie"</string>
+    <string name="l10n_8103a6c374c589c3" formatted="false">"tokenów na sekundę"</string>
     <string name="l10n_1937c4c28f726186" formatted="false">"narzędzie"</string>
     <string name="l10n_c551e6cf17a561ce" formatted="false">"Zatwierdź"</string>
     <string name="l10n_cfea419c3b4e8b02" formatted="false">"Zapisz"</string>
@@ -1019,7 +1298,6 @@
     <string name="l10n_567f51fd4b4b8a0d" formatted="false">"Zmiany niedostępne"</string>
     <string name="l10n_d3f0b43f65ef5ed5" formatted="false">"Odrzucić późniejsze wiadomości?"</string>
     <string name="l10n_1a2b1cb567321e7c" formatted="false">"Tożsamość"</string>
-    <string name="l10n_8b39616698372de0" formatted="false">"Wprowadź URL Tailscale zwrócony przez agenta, na przykład `http://&lt;tailnet-ip&gt;:8787`."</string>
     <string name="l10n_f54ec593076806df" formatted="false">"Eksportuj jako HTML"</string>
     <string name="l10n_bc399052d4204298" formatted="false">"Eksportuj jako JSON"</string>
     <string name="l10n_03d5d80199276349" formatted="false">"Usuń serwer"</string>
@@ -1059,7 +1337,6 @@
     <string name="l10n_bd8d3d03c9e555ba" formatted="false">"Wylogowuje z aktywnego serwera i wraca do wprowadzenia."</string>
     <string name="l10n_2dacf65959849884" formatted="false">"Wyślij"</string>
     <string name="l10n_8b18a01cc0e805fc" formatted="false">"Oddział"</string>
-    <string name="l10n_768e0c1c69573fb5" formatted="false">"Pełny tytuł"</string>
     <string name="l10n_a62dff92d4316df9" formatted="false">"Powiadomienia wyskakujące"</string>
     <string name="l10n_7bab0e5ded8bc6f0" formatted="false">"Wpisz identyfikator modelu dokładnie tak, jak oczekuje go serwer."</string>
     <string name="l10n_1d4d43cc6f3a833e" formatted="false">"Gotowe"</string>
@@ -1069,7 +1346,7 @@
     <string name="l10n_4995a18a7feb07d3" formatted="false">"Powiadomienia Android dozwolone."</string>
     <string name="l10n_6ffbb15ebde8242f" formatted="false">"Powiadomienia Android wyłączone."</string>
     <string name="l10n_65f5f6f5ac859134" formatted="false">"Czatuj z agentem Hermes przez Android'a"</string>
-    <string name="l10n_9aae4001f785c3f9" formatted="false">"Steruj agentem Hermes z Android'a."</string>
+    <string name="l10n_9aae4001f785c3f9" formatted="false">"Steruj agentem Hermes z iPhone'a lub iPada."</string>
     <string name="l10n_988fc6350ab87756" formatted="false">"Pobierz Tailscale z Google Play"</string>
     <string name="l10n_e972ad1daa70f255" formatted="false">"Twój agent Hermes, dostępny z Android'a przez Tailscale."</string>
     <string name="l10n_b9cba9b2cbc1433d" formatted="false">"%lld zarchiwizowana sesja"</string>
@@ -1085,7 +1362,9 @@
     <string name="l10n_dc3decbb93847518" formatted="false">"Szczegóły"</string>
     <string name="l10n_36fff63ccbcd7bf9" formatted="false">"Odrzuć"</string>
     <string name="l10n_663da9347806aa18" formatted="false">"Zmiany plików"</string>
+    <string name="l10n_96e578211aa29531" formatted="false">"Filtry"</string>
     <string name="l10n_1ce5eec83a4626a6" formatted="false">"Hermex nie m?g? otworzy? zaszyfrowanych danych konta. Resetowanie usunie z tego urz?dzenia zapisane serwery, pliki cookie logowania i niestandardowe nag??wki."</string>
+    <string name="l10n_7f896a7c24b031ad" formatted="false">"Niezgodna odpowiedź Kanban"</string>
     <string name="l10n_7a4e49bc1d9b6a0e" formatted="false">"Wczytaj zdalny obraz"</string>
     <string name="l10n_2563f2298c5e7405" formatted="false">"Nazwa: wartość"</string>
     <string name="l10n_cf9b77061f7b3126" formatted="false">"Otwórz"</string>

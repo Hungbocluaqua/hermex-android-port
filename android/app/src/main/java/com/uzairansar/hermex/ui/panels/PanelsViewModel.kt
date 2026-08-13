@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.uzairansar.hermex.core.runSuspendCatching
 import com.uzairansar.hermex.core.model.CronCreateRequest
+import com.uzairansar.hermex.core.model.CronDeliveryPlatform
 import com.uzairansar.hermex.core.model.CronJob
 import com.uzairansar.hermex.core.model.CronOutputResponse
 import com.uzairansar.hermex.core.model.CronUpdateRequest
@@ -38,6 +39,7 @@ data class CronTaskDraft(
     val prompt: String = "",
     val schedule: String = "",
     val deliver: String = "local",
+    val initialDeliver: String? = null,
     val skillsText: String = "",
     val model: String = "",
     val provider: String = "",
@@ -50,6 +52,42 @@ data class CronTaskDraft(
             .split(',', '\n')
             .map { it.trim() }
             .filter { it.isNotEmpty() }
+}
+
+data class CronDeliverPickerOption(
+    val value: String,
+    val label: String,
+    val isCustom: Boolean,
+)
+
+internal fun cronDeliverPickerOptions(
+    serverOptions: List<CronDeliveryPlatform>?,
+    currentValue: String,
+    initialValue: String? = null,
+): List<CronDeliverPickerOption>? {
+    val seenValues = mutableSetOf<String>()
+    val options = serverOptions.orEmpty().mapNotNull { option ->
+        val value = option.value?.trim().orEmpty()
+        if (value.isEmpty() || !seenValues.add(value)) return@mapNotNull null
+        CronDeliverPickerOption(
+            value = value,
+            label = option.label?.trim()?.takeIf { it.isNotEmpty() } ?: value,
+            isCustom = false,
+        )
+    }.toMutableList()
+    if (options.isEmpty()) return null
+
+    val current = currentValue.trim()
+    if (current.isEmpty()) return null
+
+    val knownValues = options.mapTo(mutableSetOf()) { it.value }
+    initialValue?.trim()?.takeIf { it.isNotEmpty() && knownValues.add(it) }?.let { initial ->
+        options += CronDeliverPickerOption(initial, initial, isCustom = true)
+    }
+    if (knownValues.add(current)) {
+        options += CronDeliverPickerOption(current, current, isCustom = true)
+    }
+    return options
 }
 
 enum class AnalyticsTimeframe(
@@ -66,6 +104,7 @@ data class PanelsUiState(
     val isLoading: Boolean = true,
     val isMutating: Boolean = false,
     val crons: List<CronJob> = emptyList(),
+    val cronDeliveryOptions: List<CronDeliveryPlatform>? = null,
     val runningCrons: Map<String, Double> = emptyMap(),
     val taskDraft: CronTaskDraft? = null,
     val selectedCronDetail: CronJob? = null,
@@ -99,7 +138,13 @@ class PanelsViewModel(
     private val savedStateHandle: SavedStateHandle? = null,
 ) : ViewModel() {
     private val restoredTaskDraft = savedStateHandle?.get<String>(SAVED_TASK_DRAFT)
-        ?.let { runCatching { HermesJson.decodeFromString<CronTaskDraft>(it).boundedForPersistence() }.getOrNull() }
+        ?.let {
+            runCatching {
+                HermesJson.decodeFromString<CronTaskDraft>(it)
+                    .let { draft -> draft.copy(initialDeliver = draft.initialDeliver ?: draft.deliver) }
+                    .boundedForPersistence()
+            }.getOrNull()
+        }
     private val _state = MutableStateFlow(
         PanelsUiState(
             taskDraft = restoredTaskDraft,
@@ -179,6 +224,18 @@ class PanelsViewModel(
                             throw error
                         } catch (error: Throwable) {
                             recordRefreshError("Tasks", error, "Could not load tasks.", generation)
+                        }
+                    }
+                    launch {
+                        try {
+                            val options = repository.cronDeliveryOptions().platforms
+                            if (refreshGeneration != generation) return@launch
+                            _state.update { it.copy(cronDeliveryOptions = options) }
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (_: Throwable) {
+                            // Older servers may not expose delivery options. Keep the
+                            // editor's free-text field rather than failing all panels.
                         }
                     }
                     launch {
@@ -366,17 +423,19 @@ class PanelsViewModel(
     }
 
     fun openCreateTask() {
-        setTaskDraft(CronTaskDraft())
+        setTaskDraft(CronTaskDraft(initialDeliver = "local"))
     }
 
     fun openEditTask(job: CronJob) {
+        val deliver = job.deliver ?: "local"
         setTaskDraft(
             CronTaskDraft(
                     editingJobId = job.serverJobId,
                     name = job.name.orEmpty(),
                     prompt = job.prompt ?: job.command.orEmpty(),
                     schedule = job.editableScheduleText,
-                    deliver = job.deliver ?: "local",
+                    deliver = deliver,
+                    initialDeliver = deliver,
                     skillsText = job.skills.orEmpty().joinToString(", "),
                     model = job.model.orEmpty(),
                     provider = job.provider.orEmpty(),
@@ -716,6 +775,7 @@ private fun CronTaskDraft.boundedForPersistence(): CronTaskDraft = copy(
     prompt = SavedStatePolicy.boundedInput(prompt),
     schedule = SavedStatePolicy.boundedInput(schedule),
     deliver = SavedStatePolicy.boundedInput(deliver),
+    initialDeliver = initialDeliver?.let { SavedStatePolicy.boundedInput(it) },
     skillsText = SavedStatePolicy.boundedInput(skillsText),
     model = SavedStatePolicy.boundedInput(model),
     provider = SavedStatePolicy.boundedInput(provider),

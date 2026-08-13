@@ -23,6 +23,7 @@ struct GitDiffView: View {
     var body: some View {
         NavigationStack {
             content
+                .adaptiveReadableScrollContent(maxWidth: AdaptiveReadableContentWidth.workspace)
                 .navigationTitle(file.displayPath)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -35,6 +36,7 @@ struct GitDiffView: View {
                 }
         }
         .presentationDetents([.medium, .large])
+        .adaptivePagePresentation()
     }
 
     @ViewBuilder

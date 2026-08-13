@@ -84,6 +84,9 @@ struct MessageComposerView: View {
     let workspaceRoots: [WorkspaceRoot]
     let selectedWorkspacePath: String?
     let workspaceSuggestions: [String]
+    /// Server base URL for the workspace-registry manager; nil hides the
+    /// Manage affordance in the workspace picker.
+    let workspaceManagementServer: URL?
     let personalitySuggestions: [String]
     let skillSuggestions: [SkillSlashSuggestion]
     let agentCommands: [AgentCommand]
@@ -100,10 +103,13 @@ struct MessageComposerView: View {
     let isUpdatingConfiguration: Bool
     let pendingAttachments: [PendingAttachment]
     let isUploadingAttachment: Bool
+    let attachmentUploadCount: Int
+    let attachmentUploadGeneration: Int
     let isSendingVoiceNote: Bool
     /// When true, dictation auto-starts once this composer appears with the app active —
     /// the "New Chat with Voice" App Intent (#338). Defaults to false for normal composers.
     let autoStartsVoiceInput: Bool
+    let apiClient: APIClient?
     let uploadAttachmentErrorMessage: String?
     let onSend: () -> Void
     let onSendVoiceNote: (Data, String) -> Void
@@ -111,6 +117,7 @@ struct MessageComposerView: View {
     let onSelectModel: (ModelCatalogOption) -> Void
     let onModelPickerOpen: () async -> Void
     let onLoadWorkspaceSuggestions: (String) async -> Void
+    let onWorkspaceRegistryChanged: () async -> Void
     let onLoadPersonalitySuggestions: () async -> Void
     let onLoadSkillSuggestions: () async -> Void
     let onSelectWorkspace: (String) async -> Void
@@ -140,14 +147,23 @@ struct MessageComposerView: View {
     @State private var recentModelKeys = ModelRecentsStore.shared.recentKeys
     @State private var keyboardIsVisible = false
     @State private var shouldRestoreFocusAfterPresentation = false
-    @State private var shouldRestoreFocusAfterUpload = false
+    @State private var deferredUploadFocusPhase: DeferredUploadFocusPhase = .none
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var showPhotoPicker = false
+    @State private var showCameraPicker = false
     @State private var showFileImporter = false
     @State private var voiceInput = ComposerVoiceInputController()
     @State private var voiceNoteRecorder = ComposerVoiceNoteRecorder()
     @State private var voiceNoteCancelArmed = false
     @State private var didAutoStartVoiceInput = false
+    @AppStorage(ComposerSTTProviderPreference.storageKey) private var sttProviderPreferenceRawValue = ComposerSTTProviderPreference.defaultValue.rawValue
+    @AppStorage(SectionVisibilitySettings.chatGitKey) private var showsGitControls = true
+
+    private enum DeferredUploadFocusPhase: Equatable {
+        case none
+        case waitingForUploadStart(afterGeneration: Int)
+        case waitingForUploadsToFinish
+    }
 
     private var showsSlashAutocomplete: Bool {
         let query = draftMessage.drop(while: { $0.isWhitespace })
@@ -296,7 +312,9 @@ struct MessageComposerView: View {
                         inputHeight: $textInputHeight,
                         measuredHeight: $textFieldHeight,
                         isDisabled: isOfflineReadOnly,
+                        isKeyboardSendEnabled: !showsStopButton && !isActionButtonDisabled,
                         verticalPadding: textFieldVerticalPadding,
+                        onKeyboardSend: actionButtonTapped,
                         onPasteFileProviders: onPasteFileProviders,
                         onPasteFileURLs: onPasteFileURLs,
                         onPasteImageProviders: onPasteImageProviders,
@@ -382,7 +400,7 @@ struct MessageComposerView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active {
-                voiceInput.stopKeepingTranscript()
+                voiceInput.stopBeforeSubmittingDraft()
                 // Backgrounding stops the recorder's run-loop ticker, so cancel
                 // the in-flight recording rather than leave it silently stalled.
                 cancelVoiceNote()
@@ -429,12 +447,14 @@ struct MessageComposerView: View {
                 workspaceRoots: workspaceRoots,
                 selectedWorkspacePath: displayedWorkspacePath,
                 suggestions: workspaceSuggestions,
+                managementServer: isOfflineReadOnly ? nil : workspaceManagementServer,
                 onLoadSuggestions: onLoadWorkspaceSuggestions,
                 onSelect: { path in
                     optimisticWorkspacePath = path
                     showsWorkspaceSheet = false
                     await onSelectWorkspace(path)
-                }
+                },
+                onRegistryChanged: onWorkspaceRegistryChanged
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -457,7 +477,7 @@ struct MessageComposerView: View {
                 }
 
                 shouldRestoreFocusAfterPresentation = false
-                shouldRestoreFocusAfterUpload = false
+                deferredUploadFocusPhase = .none
                 noticeMessage = error.localizedDescription
             }
         }
@@ -503,14 +523,15 @@ struct MessageComposerView: View {
                 restoreFocusAfterPresentationDismissalSettles()
             }
         }
-        .onChange(of: isUploadingAttachment) { _, isUploading in
-            if !isUploading {
-                restoreFocusAfterUploadIfNeeded()
-            }
+        .onChange(of: attachmentUploadGeneration) { _, newGeneration in
+            handleDeferredUploadStart(newGeneration)
+        }
+        .onChange(of: attachmentUploadCount) { _, newCount in
+            handleDeferredUploadCountChange(newCount)
         }
         .onChange(of: uploadAttachmentErrorMessage) { _, newValue in
             if newValue != nil {
-                shouldRestoreFocusAfterUpload = false
+                deferredUploadFocusPhase = .none
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
@@ -520,7 +541,7 @@ struct MessageComposerView: View {
             keyboardIsVisible = false
         }
         .onDisappear {
-            voiceInput.stopKeepingTranscript()
+            voiceInput.stopBeforeSubmittingDraft()
             cancelVoiceNote()
         }
         .padding(.bottom, keyboardIsVisible ? 10 : 0)
@@ -588,6 +609,18 @@ struct MessageComposerView: View {
                 onPhotoItemSelected(item)
             }
         }
+        .fullScreenCover(isPresented: $showCameraPicker) {
+            CameraPickerView { image in
+                deferFocusRestoreUntilUploadCompletes()
+                onPasteImages([image])
+            }
+            .ignoresSafeArea()
+        }
+        .onChange(of: showCameraPicker) { _, isPresented in
+            if !isPresented {
+                restoreFocusAfterPresentationDismissalSettles()
+            }
+        }
     }
 
     private func composerOptionsMenu() -> UIMenu {
@@ -612,6 +645,16 @@ struct MessageComposerView: View {
                         Task { @MainActor in
                             prepareForComposerPresentation()
                             showPhotoPicker = true
+                        }
+                    },
+                    UIAction(
+                        title: String(localized: "Camera"),
+                        image: UIImage(systemName: "camera"),
+                        attributes: UIImagePickerController.isSourceTypeAvailable(.camera) ? [] : .disabled
+                    ) { _ in
+                        Task { @MainActor in
+                            prepareForComposerPresentation()
+                            showCameraPicker = true
                         }
                     }
                 ]
@@ -663,7 +706,9 @@ struct MessageComposerView: View {
 
     @ViewBuilder
     private var gitBranchPicker: some View {
-        if gitViewModel.hasRepository {
+        // One "Git Actions" toggle covers every git control in chat (#189), so the
+        // branch chip goes with the toolbar menu rather than lingering alone.
+        if showsGitControls, gitViewModel.hasRepository {
             GitBranchPickerButton(
                 currentBranch: gitViewModel.currentBranchName,
                 branches: gitViewModel.branches,
@@ -810,16 +855,21 @@ struct MessageComposerView: View {
     }
 
     private var voiceStatus: ComposerVoiceStatus? {
-        if voiceInput.isListening {
+        switch voiceInput.state {
+        case .listening:
             return ComposerVoiceStatus(text: String(localized: "Listening..."), systemImage: "waveform", isError: false)
-        }
-
-        if voiceInput.isRequestingPermission {
+        case .serverListening:
+            return ComposerVoiceStatus(text: String(localized: "Recording..."), systemImage: "mic.fill", isError: false)
+        case .transcribing:
+            return ComposerVoiceStatus(text: String(localized: "Transcribing..."), systemImage: "waveform", isError: false)
+        case .requestingPermission:
             return ComposerVoiceStatus(
                 text: String(localized: "Requesting voice permissions..."),
                 systemImage: "mic.badge.plus",
                 isError: false
             )
+        case .idle:
+            break
         }
 
         if let errorMessage = voiceInput.errorMessage {
@@ -1010,6 +1060,9 @@ struct MessageComposerView: View {
 
     @MainActor
     private func toggleVoiceInput() {
+        voiceInput.apiClient = apiClient
+        voiceInput.providerPreference = ComposerSTTProviderPreference.storedValue(sttProviderPreferenceRawValue)
+        voiceInput.locale = .current
         Task {
             await voiceInput.toggle(currentDraft: draftMessage) { newDraft in
                 draftMessage = newDraft
@@ -1082,12 +1135,31 @@ struct MessageComposerView: View {
     private func deferFocusRestoreUntilUploadCompletes() {
         guard shouldRestoreFocusAfterPresentation else { return }
         shouldRestoreFocusAfterPresentation = false
-        shouldRestoreFocusAfterUpload = true
+        deferredUploadFocusPhase = .waitingForUploadStart(afterGeneration: attachmentUploadGeneration)
     }
 
-    private func restoreFocusAfterUploadIfNeeded() {
-        guard shouldRestoreFocusAfterUpload else { return }
-        shouldRestoreFocusAfterUpload = false
+    private func handleDeferredUploadStart(_ newGeneration: Int) {
+        guard case let .waitingForUploadStart(afterGeneration) = deferredUploadFocusPhase,
+              newGeneration > afterGeneration
+        else { return }
+
+        if attachmentUploadCount == 0 {
+            restoreFocusAfterDeferredUploadIfNeeded()
+        } else {
+            deferredUploadFocusPhase = .waitingForUploadsToFinish
+        }
+    }
+
+    private func handleDeferredUploadCountChange(_ newCount: Int) {
+        guard case .waitingForUploadsToFinish = deferredUploadFocusPhase else { return }
+        if newCount == 0 {
+            restoreFocusAfterDeferredUploadIfNeeded()
+        }
+    }
+
+    private func restoreFocusAfterDeferredUploadIfNeeded() {
+        guard deferredUploadFocusPhase != .none else { return }
+        deferredUploadFocusPhase = .none
         requestTextViewFocusIfPossible()
     }
 

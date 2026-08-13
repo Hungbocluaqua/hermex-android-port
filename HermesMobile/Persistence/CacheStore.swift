@@ -25,20 +25,36 @@ enum CacheStore {
         serverURL: URL,
         sessionID: String,
         in context: ModelContext,
+        limit: Int? = nil,
         now: Date = Date()
     ) throws -> [ChatMessage] {
+        if let limit, limit <= 0 {
+            return []
+        }
+
         let serverURLString = serverURL.absoluteString
-        let descriptor = FetchDescriptor<CachedMessage>(
+        var descriptor = FetchDescriptor<CachedMessage>(
             predicate: #Predicate { cachedMessage in
                 cachedMessage.serverURLString == serverURLString
                     && cachedMessage.sessionID == sessionID
-            }
+                    && cachedMessage.expiresAt > now
+            },
+            sortBy: [
+                SortDescriptor(
+                    \CachedMessage.sortIndex,
+                    order: limit == nil ? .forward : .reverse
+                )
+            ]
         )
+        if let limit {
+            descriptor.fetchLimit = limit
+        }
 
-        return try context.fetch(descriptor)
-            .filter { $0.expiresAt > now }
-            .sorted { $0.sortIndex < $1.sortIndex }
-            .map(ChatMessage.init(cachedMessage:))
+        let cachedMessages = try context.fetch(descriptor)
+        if limit != nil {
+            return cachedMessages.reversed().map(ChatMessage.init(cachedMessage:))
+        }
+        return cachedMessages.map(ChatMessage.init(cachedMessage:))
     }
 
     @MainActor
@@ -296,9 +312,18 @@ private extension SessionSummary {
         activeStreamId = cachedSession.activeStreamId
         isStreaming = cachedSession.isStreaming
         isCliSession = cachedSession.isCliSession
+        userMessageCount = cachedSession.userMessageCount
+        hasPendingUserMessage = cachedSession.hasPendingUserMessage
+        pendingStartedAt = cachedSession.pendingStartedAt
+        worktreePath = cachedSession.worktreePath
         sourceTag = cachedSession.sourceTag
+        rawSource = cachedSession.rawSource
         sessionSource = cachedSession.sessionSource
         sourceLabel = cachedSession.sourceLabel
+        parentSessionId = cachedSession.parentSessionId
+        relationshipType = cachedSession.relationshipType
+        readOnly = cachedSession.readOnly
+        isReadOnly = cachedSession.isReadOnly
         matchType = nil
     }
 }
@@ -311,6 +336,18 @@ private extension ChatMessage {
         } else {
             attachments = nil
         }
+        let toolCalls: [JSONValue]?
+        if let data = cachedMessage.toolCallsData {
+            toolCalls = try? JSONDecoder().decode([JSONValue].self, from: data)
+        } else {
+            toolCalls = nil
+        }
+        let contentParts: [JSONValue]?
+        if let data = cachedMessage.contentPartsData {
+            contentParts = try? JSONDecoder().decode([JSONValue].self, from: data)
+        } else {
+            contentParts = nil
+        }
         self.init(
             role: cachedMessage.role,
             content: cachedMessage.content,
@@ -318,8 +355,12 @@ private extension ChatMessage {
             messageId: cachedMessage.messageId,
             name: cachedMessage.name,
             toolCallId: cachedMessage.toolCallId,
+            toolUseId: cachedMessage.toolUseId,
+            toolCalls: toolCalls,
+            contentParts: contentParts,
             reasoning: cachedMessage.reasoning,
-            attachments: attachments
+            attachments: attachments,
+            turnTps: cachedMessage.turnTps
         )
     }
 }

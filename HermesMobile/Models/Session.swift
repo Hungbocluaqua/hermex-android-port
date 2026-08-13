@@ -218,9 +218,18 @@ struct SessionSummary: Decodable, Equatable, Hashable, Identifiable {
     let activeStreamId: String?
     let isStreaming: Bool?
     let isCliSession: Bool?
+    let userMessageCount: Int?
+    let hasPendingUserMessage: Bool?
+    let pendingStartedAt: Double?
+    let worktreePath: String?
     let sourceTag: String?
+    let rawSource: String?
     let sessionSource: String?
     let sourceLabel: String?
+    let parentSessionId: String?
+    let relationshipType: String?
+    let readOnly: Bool?
+    let isReadOnly: Bool?
     let matchType: String?
 
     init(
@@ -243,9 +252,18 @@ struct SessionSummary: Decodable, Equatable, Hashable, Identifiable {
         activeStreamId: String? = nil,
         isStreaming: Bool? = nil,
         isCliSession: Bool? = nil,
+        userMessageCount: Int? = nil,
+        hasPendingUserMessage: Bool? = nil,
+        pendingStartedAt: Double? = nil,
+        worktreePath: String? = nil,
         sourceTag: String? = nil,
+        rawSource: String? = nil,
         sessionSource: String? = nil,
         sourceLabel: String? = nil,
+        parentSessionId: String? = nil,
+        relationshipType: String? = nil,
+        readOnly: Bool? = nil,
+        isReadOnly: Bool? = nil,
         matchType: String? = nil
     ) {
         self.sessionId = sessionId
@@ -267,9 +285,18 @@ struct SessionSummary: Decodable, Equatable, Hashable, Identifiable {
         self.activeStreamId = activeStreamId
         self.isStreaming = isStreaming
         self.isCliSession = isCliSession
+        self.userMessageCount = userMessageCount
+        self.hasPendingUserMessage = hasPendingUserMessage
+        self.pendingStartedAt = pendingStartedAt
+        self.worktreePath = worktreePath
         self.sourceTag = sourceTag
+        self.rawSource = rawSource
         self.sessionSource = sessionSource
         self.sourceLabel = sourceLabel
+        self.parentSessionId = parentSessionId
+        self.relationshipType = relationshipType
+        self.readOnly = readOnly
+        self.isReadOnly = isReadOnly
         self.matchType = matchType
     }
 
@@ -279,7 +306,7 @@ struct SessionSummary: Decodable, Equatable, Hashable, Identifiable {
         workspace = detail.workspace
         model = detail.model
         modelProvider = detail.modelProvider
-        messageCount = detail.messageCount
+        messageCount = detail.messageCount ?? detail.messages?.count
         createdAt = detail.createdAt
         updatedAt = detail.updatedAt
         lastMessageAt = detail.lastMessageAt
@@ -293,9 +320,22 @@ struct SessionSummary: Decodable, Equatable, Hashable, Identifiable {
         activeStreamId = detail.activeStreamId
         isStreaming = nil
         isCliSession = detail.isCliSession
-        sourceTag = nil
-        sessionSource = nil
-        sourceLabel = nil
+        userMessageCount = nil
+        if Self.nonEmpty(detail.pendingUserMessage) != nil || detail.pendingAttachments?.isEmpty == false {
+            hasPendingUserMessage = true
+        } else {
+            hasPendingUserMessage = nil
+        }
+        pendingStartedAt = detail.pendingStartedAt
+        worktreePath = detail.worktreePath
+        sourceTag = detail.sourceTag
+        rawSource = detail.rawSource
+        sessionSource = detail.sessionSource
+        sourceLabel = detail.sourceLabel
+        parentSessionId = detail.parentSessionId
+        relationshipType = detail.relationshipType
+        readOnly = detail.readOnly
+        isReadOnly = detail.isReadOnly
         matchType = nil
     }
 
@@ -322,15 +362,66 @@ struct SessionSummary: Decodable, Equatable, Hashable, Identifiable {
             activeStreamId: activeStreamId,
             isStreaming: isStreaming,
             isCliSession: isCliSession,
+            userMessageCount: userMessageCount,
+            hasPendingUserMessage: hasPendingUserMessage,
+            pendingStartedAt: pendingStartedAt,
+            worktreePath: worktreePath,
             sourceTag: sourceTag,
+            rawSource: rawSource,
             sessionSource: sessionSource,
             sourceLabel: sourceLabel,
+            parentSessionId: parentSessionId,
+            relationshipType: relationshipType,
+            readOnly: readOnly,
+            isReadOnly: isReadOnly,
             matchType: matchType
         )
     }
 }
 
 extension SessionSummary {
+    /// Delegated children are identified only by an explicit source marker.
+    /// Parent linkage is shared by ordinary forks and compression continuations,
+    /// so it must never classify a row as a subagent on its own.
+    var isDelegatedSubagentSession: Bool {
+        [sourceTag, rawSource, sessionSource, sourceLabel]
+            .compactMap(Self.normalizedSourceMarker)
+            .contains("subagent")
+    }
+
+    /// Claude Code imports are classified only by explicit upstream source
+    /// metadata. Titles, models, and read-only/CLI flags are intentionally not
+    /// descriptive enough to identify this source.
+    var isClaudeCodeSession: Bool {
+        [sourceTag, rawSource]
+            .compactMap(Self.normalizedSourceMarker)
+            .contains("claude_code")
+    }
+
+    /// Delegated children are runner-owned and view-only. Upstream has also
+    /// emitted both read-only spellings across row sources, so either explicit
+    /// true value preserves that safety for other imported sessions.
+    var isSessionReadOnly: Bool {
+        isDelegatedSubagentSession || readOnly == true || isReadOnly == true
+    }
+
+    var shouldAppearInSessionList: Bool {
+        !isEmptySidebarPlaceholder
+    }
+
+    /// Mirrors hermes-webui's visible-sidebar safety net for just-created
+    /// placeholders: hide only the known empty Untitled shape, while keeping rows
+    /// with content, pending work, streaming state, or explicit user/server state.
+    /// Sort timestamps such as ``lastMessageAt`` are intentionally ignored here —
+    /// ``compact()`` sets them from ``updated_at`` even for zero-message sessions.
+    var isEmptySidebarPlaceholder: Bool {
+        guard hasPlaceholderTitle else { return false }
+        guard !hasSidebarState else { return false }
+        guard !hasMessageActivity else { return false }
+
+        return (messageCount ?? 0) == 0 && (userMessageCount ?? 0) == 0
+    }
+
     /// True when this row originates from a scheduled cron job.
     ///
     /// Mirrors hermes-webui's `is_cron_session` (`api/models.py`): a `cron`
@@ -345,23 +436,70 @@ extension SessionSummary {
             return true
         }
 
-        return [sessionSource, sourceTag, sourceLabel]
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+        return [sessionSource, sourceTag, rawSource, sourceLabel]
+            .compactMap(Self.normalizedSourceMarker)
             .contains("cron")
     }
 
+    private var hasPlaceholderTitle: Bool {
+        guard let normalizedTitle = Self.nonEmpty(title)?.lowercased() else { return true }
+        return normalizedTitle == "untitled" || normalizedTitle == "untitled session"
+    }
+
+    private var hasSidebarState: Bool {
+        pinned == true
+            || isStreaming == true
+            || Self.nonEmpty(activeStreamId) != nil
+            || hasPendingUserMessage == true
+            || pendingStartedAt != nil
+            || Self.nonEmpty(worktreePath) != nil
+    }
+
+    private var hasMessageActivity: Bool {
+        if let messageCount, messageCount > 0 { return true }
+        if let userMessageCount, userMessageCount > 0 { return true }
+        return false
+    }
+
+    private static func nonEmpty(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func normalizedSourceMarker(_ value: String?) -> String? {
+        nonEmpty(value)?.lowercased()
+    }
 }
 
-/// Which automated session kinds the session list should show. Cron jobs and
-/// CLI-imported sessions are controlled independently (#256) so a user can hide
-/// one without the other. A row that is neither cron nor CLI is always shown, so
-/// unknown/missing source data never hides a normal session.
+/// Which non-standard session kinds the session list should show. Cron jobs,
+/// CLI imports, Claude Code imports, and delegated subagents are controlled independently. A row
+/// with unknown/missing source data remains visible as a normal session.
 struct AutomatedSessionVisibility: Equatable {
     var showsCron: Bool
     var showsCli: Bool
+    var showsClaudeCode: Bool
+    var showsSubagents: Bool
 
-    /// Show every kind — the app's default state.
-    static let showAll = AutomatedSessionVisibility(showsCron: true, showsCli: true)
+    /// Show every kind, primarily for explicit opt-in and tests.
+    static let showAll = AutomatedSessionVisibility(
+        showsCron: true,
+        showsCli: true,
+        showsClaudeCode: true,
+        showsSubagents: true
+    )
+
+    init(
+        showsCron: Bool,
+        showsCli: Bool,
+        showsClaudeCode: Bool = true,
+        showsSubagents: Bool = false
+    ) {
+        self.showsCron = showsCron
+        self.showsCli = showsCli
+        self.showsClaudeCode = showsClaudeCode
+        self.showsSubagents = showsSubagents
+    }
 
     /// Whether `session` should remain visible under these toggles.
     ///
@@ -369,8 +507,10 @@ struct AutomatedSessionVisibility: Equatable {
     /// every row by `_normalize_sidebar_source_flags` in `api/routes.py`); cron
     /// detection is client-side (`SessionSummary.isCronSession`).
     func shows(_ session: SessionSummary) -> Bool {
+        if session.isDelegatedSubagentSession, !showsSubagents { return false }
         if session.isCronSession, !showsCron { return false }
         if session.isCliSession == true, !showsCli { return false }
+        if session.isClaudeCodeSession, !showsClaudeCode { return false }
         return true
     }
 }
@@ -406,10 +546,19 @@ struct SessionDetail: Decodable, Equatable, Identifiable {
     let pendingUserMessage: String?
     let pendingAttachments: [JSONValue]?
     let pendingStartedAt: Double?
+    let worktreePath: String?
     let contextLength: Int?
     let thresholdTokens: Int?
     let lastPromptTokens: Int?
     let isCliSession: Bool?
+    let sourceTag: String?
+    let rawSource: String?
+    let sessionSource: String?
+    let sourceLabel: String?
+    let parentSessionId: String?
+    let relationshipType: String?
+    let readOnly: Bool?
+    let isReadOnly: Bool?
     let messages: [ChatMessage]?
     let toolCalls: [PersistedToolCall]?
     let messagesTruncated: Bool?
@@ -439,10 +588,19 @@ struct SessionDetail: Decodable, Equatable, Identifiable {
         case pendingUserMessage
         case pendingAttachments
         case pendingStartedAt
+        case worktreePath
         case contextLength
         case thresholdTokens
         case lastPromptTokens
         case isCliSession
+        case sourceTag
+        case rawSource
+        case sessionSource
+        case sourceLabel
+        case parentSessionId
+        case relationshipType
+        case readOnly
+        case isReadOnly
         case messages
         case toolCalls
         case messagesTruncated
@@ -481,10 +639,19 @@ struct SessionDetail: Decodable, Equatable, Identifiable {
         pendingUserMessage = container.decodeLossyStringIfPresent(forKey: .pendingUserMessage)
         pendingAttachments = try? container.decodeIfPresent([JSONValue].self, forKey: .pendingAttachments)
         pendingStartedAt = container.decodeLossyDoubleIfPresent(forKey: .pendingStartedAt)
+        worktreePath = container.decodeLossyStringIfPresent(forKey: .worktreePath)
         contextLength = container.decodeLossyIntIfPresent(forKey: .contextLength)
         thresholdTokens = container.decodeLossyIntIfPresent(forKey: .thresholdTokens)
         lastPromptTokens = container.decodeLossyIntIfPresent(forKey: .lastPromptTokens)
         isCliSession = container.decodeLossyBoolIfPresent(forKey: .isCliSession)
+        sourceTag = container.decodeLossyStringIfPresent(forKey: .sourceTag)
+        rawSource = container.decodeLossyStringIfPresent(forKey: .rawSource)
+        sessionSource = container.decodeLossyStringIfPresent(forKey: .sessionSource)
+        sourceLabel = container.decodeLossyStringIfPresent(forKey: .sourceLabel)
+        parentSessionId = container.decodeLossyStringIfPresent(forKey: .parentSessionId)
+        relationshipType = container.decodeLossyStringIfPresent(forKey: .relationshipType)
+        readOnly = container.decodeLossyBoolIfPresent(forKey: .readOnly)
+        isReadOnly = container.decodeLossyBoolIfPresent(forKey: .isReadOnly)
         messages = Self.decodeMessagesTolerantly(from: container)
         toolCalls = Self.decodeToolCallsTolerantly(from: container)
         messagesTruncated = container.decodeLossyBoolIfPresent(forKey: .underscoredMessagesTruncated)

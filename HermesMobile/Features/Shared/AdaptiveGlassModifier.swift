@@ -1,5 +1,73 @@
 import SwiftUI
 
+enum AdaptiveReadableContentWidth {
+    static let secondaryDestination: CGFloat = 800
+    static let workspace: CGFloat = 1_000
+}
+
+private struct AdaptiveReadableContentModifier: ViewModifier {
+    let maxWidth: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: maxWidth)
+            .frame(maxWidth: .infinity)
+    }
+}
+
+private struct AdaptiveReadableScrollContentModifier: ViewModifier {
+    let maxWidth: CGFloat
+    @State private var width: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onAppear { width = proxy.size.width }
+                        .onChange(of: proxy.size.width) { _, newWidth in
+                            width = newWidth
+                        }
+                }
+            }
+            .contentMargins(
+                .horizontal,
+                max((width - maxWidth) / 2, 0),
+                for: .scrollContent
+            )
+    }
+}
+
+extension View {
+    func adaptiveReadableContent(maxWidth: CGFloat) -> some View {
+        modifier(AdaptiveReadableContentModifier(maxWidth: maxWidth))
+    }
+
+    func adaptiveReadableScrollContent(maxWidth: CGFloat) -> some View {
+        modifier(AdaptiveReadableScrollContentModifier(maxWidth: maxWidth))
+    }
+
+    func adaptiveFormPresentation() -> some View {
+        presentationSizing(.form)
+    }
+
+    func adaptivePagePresentation() -> some View {
+        presentationSizing(.page)
+    }
+
+    func adaptiveSecondaryNavigationTitle() -> some View {
+        modifier(AdaptiveSecondaryNavigationTitleModifier())
+    }
+}
+
+private struct AdaptiveSecondaryNavigationTitleModifier: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    func body(content: Content) -> some View {
+        content.navigationBarTitleDisplayMode(horizontalSizeClass == .regular ? .inline : .automatic)
+    }
+}
+
 enum GlassPreference {
     static let isEnabledKey = "adaptiveGlass.isEnabled"
     static let defaultIsEnabled = true

@@ -16,11 +16,31 @@ import com.uzairansar.hermex.core.model.MoveSessionRequest
 import com.uzairansar.hermex.core.model.RenameSessionRequest
 import com.uzairansar.hermex.core.model.ToggleSkillRequest
 import com.uzairansar.hermex.core.model.TtsSynthesisRequest
+import com.uzairansar.hermex.core.model.ReasoningRequest
+import com.uzairansar.hermex.core.model.UpdateSettingsRequest
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PendingPromptContractTest {
+    @Test
+    fun settingsUpdatesWriteOnlyTheSelectedSessionVisibilityKey() {
+        val cli = HermesJson.encodeToString(UpdateSettingsRequest(showCliSessions = false))
+        val claude = HermesJson.encodeToString(UpdateSettingsRequest(showClaudeCodeSessions = false))
+
+        assertTrue(cli.contains("\"show_cli_sessions\":false"))
+        assertFalse(cli.contains("show_claude_code_sessions"))
+        assertTrue(claude.contains("\"show_claude_code_sessions\":false"))
+        assertFalse(claude.contains("show_cli_sessions"))
+    }
+
+    @Test
+    fun reasoningDisplayUpdateDoesNotInventAnEffort() {
+        val body = HermesJson.encodeToString(ReasoningRequest(display = "hide"))
+
+        assertTrue(body.contains("\"display\":\"hide\""))
+        assertFalse(body.contains("effort"))
+    }
     @Test
     fun approvalResponseUsesChoiceAndApprovalIdKeys() {
         val body = HermesJson.encodeToString(

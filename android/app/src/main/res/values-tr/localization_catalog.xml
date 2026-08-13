@@ -4,6 +4,7 @@
     <string name="l10n_da39a3ee5e6b4b0d" formatted="false">""</string>
     <string name="l10n_c5f4841e88283b20" formatted="false">"%@ "</string>
     <string name="l10n_f4bf1c5a87391cee" formatted="false">"%@ (kopya)"</string>
+    <string name="l10n_2ca3ef88d532a8ea" formatted="false">"%@ (özel)"</string>
     <string name="l10n_65f24878983ab599" formatted="false">"%@ önbellek"</string>
     <string name="l10n_d5e871cae9c94743" formatted="false">"%@ başlık logosu rengi"</string>
     <string name="l10n_ceccebb4580279f7" formatted="false">"%1$@ giriş / %2$@ çıkış"</string>
@@ -16,13 +17,89 @@
     <string name="l10n_101047989486fe1e" formatted="false">"%1$@, %2$@, etkin sunucu"</string>
     <string name="l10n_bc576900b6f6e566" formatted="false">"%@, etkin sunucu"</string>
     <string name="l10n_16070acfe08366e8" formatted="false">"%lld"</string>
+    <string name="l10n_ec77970ef773212e" formatted="false">"%lld Kart"</string>
+    <plurals name="l10n_ec77970ef773212e">
+        <item quantity="zero">"%d Kart"</item>
+        <item quantity="one">"%d Kart"</item>
+        <item quantity="two">"%d Kart"</item>
+        <item quantity="few">"%d Kart"</item>
+        <item quantity="many">"%d Kart"</item>
+        <item quantity="other">"%d Kart"</item>
+    </plurals>
+    <string name="l10n_8d777c131031fa2e" formatted="false">"%lld bağımlı"</string>
+    <plurals name="l10n_8d777c131031fa2e">
+        <item quantity="zero">"%d bağımlı"</item>
+        <item quantity="one">"%d bağımlı"</item>
+        <item quantity="two">"%d bağımlı"</item>
+        <item quantity="few">"%d bağımlı"</item>
+        <item quantity="many">"%d bağımlı"</item>
+        <item quantity="other">"%d bağımlı"</item>
+    </plurals>
+    <string name="l10n_66a4be0dc2595729" formatted="false">"%lld ön koşul"</string>
+    <plurals name="l10n_66a4be0dc2595729">
+        <item quantity="zero">"%d ön koşul"</item>
+        <item quantity="one">"%d ön koşul"</item>
+        <item quantity="two">"%d ön koşul"</item>
+        <item quantity="few">"%d ön koşul"</item>
+        <item quantity="many">"%d ön koşul"</item>
+        <item quantity="other">"%d ön koşul"</item>
+    </plurals>
     <string name="l10n_f6450a6cc043203f" formatted="false">"%lld eklendi"</string>
+    <string name="l10n_5e99075a998414f8" formatted="false">"%lld yorum"</string>
+    <plurals name="l10n_5e99075a998414f8">
+        <item quantity="zero">"%d yorum"</item>
+        <item quantity="one">"%d yorum"</item>
+        <item quantity="two">"%d yorum"</item>
+        <item quantity="few">"%d yorum"</item>
+        <item quantity="many">"%d yorum"</item>
+        <item quantity="other">"%d yorum"</item>
+    </plurals>
     <string name="l10n_06c13ef4292ad119" formatted="false">"%lld dosya değişti"</string>
+    <plurals name="l10n_06c13ef4292ad119">
+        <item quantity="zero">"%d dosya değişti"</item>
+        <item quantity="one">"%d dosya değişti"</item>
+        <item quantity="two">"%d dosya değişti"</item>
+        <item quantity="few">"%d dosya değişti"</item>
+        <item quantity="many">"%d dosya değişti"</item>
+        <item quantity="other">"%d dosya değişti"</item>
+    </plurals>
     <string name="l10n_c4b7ead9d1bf1471" formatted="false">"%lld satır"</string>
+    <plurals name="l10n_c4b7ead9d1bf1471">
+        <item quantity="zero">"%d satır"</item>
+        <item quantity="one">"%d satır"</item>
+        <item quantity="two">"%d satır"</item>
+        <item quantity="few">"%d satır"</item>
+        <item quantity="many">"%d satır"</item>
+        <item quantity="other">"%d satır"</item>
+    </plurals>
     <string name="l10n_2efcf5438a29b31f" formatted="false">"%lld mesaj"</string>
+    <plurals name="l10n_2efcf5438a29b31f">
+        <item quantity="zero">"%d mesaj"</item>
+        <item quantity="one">"%d mesaj"</item>
+        <item quantity="two">"%d mesaj"</item>
+        <item quantity="few">"%d mesaj"</item>
+        <item quantity="many">"%d mesaj"</item>
+        <item quantity="other">"%d mesaj"</item>
+    </plurals>
     <string name="l10n_ced88678ac893dde" formatted="false">"%lld kaldırıldı"</string>
     <string name="l10n_232aab9f8671f81d" formatted="false">"%lld oturum"</string>
+    <plurals name="l10n_232aab9f8671f81d">
+        <item quantity="zero">"%d oturum"</item>
+        <item quantity="one">"%d oturum"</item>
+        <item quantity="two">"%d oturum"</item>
+        <item quantity="few">"%d oturum"</item>
+        <item quantity="many">"%d oturum"</item>
+        <item quantity="other">"%d oturum"</item>
+    </plurals>
     <string name="l10n_66137dc5d00d671d" formatted="false">"%lld beceri"</string>
+    <plurals name="l10n_66137dc5d00d671d">
+        <item quantity="zero">"%d beceri"</item>
+        <item quantity="one">"%d beceri"</item>
+        <item quantity="two">"%d beceri"</item>
+        <item quantity="few">"%d beceri"</item>
+        <item quantity="many">"%d beceri"</item>
+        <item quantity="other">"%d beceri"</item>
+    </plurals>
     <string name="l10n_78cd57f9892157b8" formatted="false">"%%%lld bağlam"</string>
     <string name="l10n_6ab06c5fe8caa9fa" formatted="false">"%%%lld pay"</string>
     <string name="l10n_a5b19753b0ff34b9" formatted="false">", geçiş yapılıyor"</string>
@@ -31,6 +108,7 @@
     <string name="l10n_1099d51b36a7e832" formatted="false">"/btw yalnızca WebUI oturumları için kullanılabilir."</string>
     <string name="l10n_449db9ef04232fc8" formatted="false">"1 dosya değiştirildi"</string>
     <string name="l10n_4a5c7117b6d4d5cb" formatted="false">"%lld bekleyenden 1'i"</string>
+    <string name="l10n_59f764ccfb926ae5" formatted="false">"-100'den 100'e kadar bir tam sayı."</string>
     <string name="l10n_64d3c82b910a7784" formatted="false">"Çalışma alanına özgü bir dosya genel proje bağlamını geçersiz kılıyor."</string>
     <string name="l10n_cf678cab87dc1f7d" formatted="false">"API anahtarı"</string>
     <string name="l10n_85dfa32c97d8618d" formatted="false">"Hesap"</string>
@@ -41,11 +119,22 @@
     <string name="l10n_d74340399e2a5b1d" formatted="false">"Etkin profil"</string>
     <string name="l10n_81c0d915fa6d82fd" formatted="false">"Etkinlik"</string>
     <string name="l10n_03f7eb4fcb825734" formatted="false">"Etkinlik: %lld araç"</string>
+    <plurals name="l10n_03f7eb4fcb825734">
+        <item quantity="zero">"Etkinlik: %d araç"</item>
+        <item quantity="one">"Etkinlik: %d araç"</item>
+        <item quantity="two">"Etkinlik: %d araç"</item>
+        <item quantity="few">"Etkinlik: %d araç"</item>
+        <item quantity="many">"Etkinlik: %d araç"</item>
+        <item quantity="other">"Etkinlik: %d araç"</item>
+    </plurals>
     <string name="l10n_61cc55aa04531847" formatted="false">"Ekle"</string>
     <string name="l10n_ea65bead2508867e" formatted="false">"%@ ögesini favorilere ekle"</string>
     <string name="l10n_42b949077d2f4201" formatted="false">"Başlık Ekle"</string>
+    <string name="l10n_d8ceee085e884024" formatted="false">"Önkoşul ekle"</string>
     <string name="l10n_99044355f0319f6b" formatted="false">"Sunucu Ekle"</string>
     <string name="l10n_c378a1c16565ceba" formatted="false">"Sunucu Ekle…"</string>
+    <string name="l10n_a603825bf2c876ef" formatted="false">"Çalışma Alanı Ekle"</string>
+    <string name="l10n_a245782af7f0aa40" formatted="false">"Oturum başlatırken kullanılabilmesi için bir çalışma alanı ekleyin."</string>
     <string name="l10n_cf845d10129ecb8c" formatted="false">"Özel modeli favorilere ekle"</string>
     <string name="l10n_d5a110d69bfeccca" formatted="false">"Başlık ekle"</string>
     <string name="l10n_2470e8667bfae527" formatted="false">"Proje ekle"</string>
@@ -70,6 +159,7 @@
     <string name="l10n_902793b227093e34" formatted="false">"Her zaman açık simgeyi kullan"</string>
     <string name="l10n_06ee5beccc033b61" formatted="false">"Her zaman koyu monokrom simgeyi kullan"</string>
     <string name="l10n_4d538a18a87dcd64" formatted="false">"Her zaman açık monokrom simgeyi kullan"</string>
+    <string name="l10n_fa07652b57d3d7c1" formatted="false">"Başka bir pano işlemi devam ediyor."</string>
     <string name="l10n_fc4a695f02a8a53a" formatted="false">"Uygulama"</string>
     <string name="l10n_f54c8357ef4e5fab" formatted="false">"Uygulama Simgesi"</string>
     <string name="l10n_41def7a0febe741d" formatted="false">"Görünüm"</string>
@@ -78,15 +168,21 @@
     <string name="l10n_b8d012c2004fa7b4" formatted="false">"Onay gerekli"</string>
     <string name="l10n_7b2c7f146abacedd" formatted="false">"Onayla"</string>
     <string name="l10n_2621c6fd51a58e1d" formatted="false">"Arşivle"</string>
+    <string name="l10n_2b86e5bc4a2034f2" formatted="false">"Kartları arşivle"</string>
+    <string name="l10n_eddc813f35b12589" formatted="false">"Arşivlendi"</string>
     <string name="l10n_14eca073e39a5015" formatted="false">"Arşivlenen Oturumlar"</string>
     <string name="l10n_cbb9fa252e60809e" formatted="false">"Bağımsız değişkenler"</string>
     <string name="l10n_ee677f2109607e18" formatted="false">"Yan soru sor"</string>
     <string name="l10n_e94537390527ef92" formatted="false">"Her şeyi sorun... /komutlar"</string>
+    <string name="l10n_288fbe21f70e35a2" formatted="false">"Profil ata"</string>
+    <string name="l10n_e55df441e8955746" formatted="false">"Atama"</string>
     <string name="l10n_8010d1f4d0696ce1" formatted="false">"Asistan"</string>
     <string name="l10n_5157af6823af43d5" formatted="false">"Asistan, %@"</string>
     <string name="l10n_1afff0157ce3602c" formatted="false">"Ekle"</string>
     <string name="l10n_469aeebeecf2f62d" formatted="false">"Dosya Ekle"</string>
     <string name="l10n_a75411ec9700b4b1" formatted="false">"Sunucuya yeniden bağlanmayı ve oturumları yeniden yüklemeyi dener."</string>
+    <string name="l10n_d53e7a421e8fccd3" formatted="false">"Kimlik doğrulama hatası: %@"</string>
+    <string name="l10n_3cf616bff8d00643" formatted="false">"Otomatik engellendi"</string>
     <string name="l10n_61f543ec018634c1" formatted="false">"Kullanılabilir mobil komutlar:\n\n`/help` - Bu komut listesini göster.\n`/clear` - Yerel dökümü temizle.\n`/stop` - Geçerli yanıtı durdur.\n`/new` - Yeni bir oturum aç.\n`/model &lt;id&gt;` - Bu oturumun modelini değiştir.\n`/workspace &lt;path&gt;` - Bu oturumun çalışma alanını değiştir.\n`/reasoning &lt;level&gt;` - Akıl yürütme görünümünü veya çabasını ayarla.\n`/title &lt;text&gt;` - Bu oturumu yeniden adlandır.\n`/personality &lt;name&gt;` - Bu oturumun kişiliğini ayarla veya temizle.\n`/skills [query]` - Kullanılabilir becerilerde ara.\n`/queue &lt;message&gt;` - Bir sonraki tur için bir mesaj sıraya al.\n`/steer &lt;message&gt;` - Etkin yanıtı yönlendir.\n`/interrupt &lt;message&gt;` - Etkin yanıtı durdur ve yeni bir mesaj gönder.\n`/status` - Oturum durumunu göster.\n`/btw &lt;question&gt;` - Bu sohbeti değiştirmeden yan soru sor.\n`/background &lt;prompt&gt;` - Paralel bir görev çalıştır ve sonucu buraya gönder.\n`/bg &lt;prompt&gt;` - `/background` için takma ad.\n`/branch [name]` - Bu konuşmayı çatalla.\n`/fork [name]` - `/branch` için takma ad.\n`/compress [focus]` - Bu oturumun bağlamını sıkıştır.\n`/compact [focus]` - `/compress` için takma ad.\n`/undo` - Son alışverişi geri al.\n`/retry` - Son turu yeniden dene."</string>
     <string name="l10n_7aabf6c8fafcc129" formatted="false">"Kullanılabilir kişilikler:\n\n%@\n\n`/personality &lt;name&gt;` veya `/personality none` kullanın."</string>
     <string name="l10n_d3a12fb079d32731" formatted="false">"Kullanılabilir beceriler:"</string>
@@ -96,41 +192,66 @@
     <string name="l10n_2c71547af580e72a" formatted="false">"%lld geride"</string>
     <string name="l10n_f48462d8ff141190" formatted="false">"İkili Dosya"</string>
     <string name="l10n_27441b0fa1b44e2e" formatted="false">"İkili dosya değiştirildi"</string>
+    <string name="l10n_82dd2cdf36f9436d" formatted="false">"Engelle"</string>
+    <string name="l10n_99613c74ce010d98" formatted="false">"Engellendi"</string>
     <string name="l10n_7d44bc449c2a2637" formatted="false">"Mavi"</string>
+    <string name="l10n_e879b0be0190766a" formatted="false">"Pano"</string>
+    <string name="l10n_4f6778977945bd63" formatted="false">"%@ için pano işlemleri"</string>
     <string name="l10n_1627510b242fdd96" formatted="false">"Şube"</string>
     <string name="l10n_f578227926a03a85" formatted="false">"Şubeler"</string>
+    <string name="l10n_ca37515a9638c19a" formatted="false">"Panoya Göz At"</string>
+    <string name="l10n_76163bd10c654bd7" formatted="false">"Panoya Göz At: %@"</string>
     <string name="l10n_1e810b2f9f05b51a" formatted="false">"Çalışma alanlarına göz atın ve ajan çalışmasını takip edin."</string>
+    <string name="l10n_95ae28be3160a877" formatted="false">"Görüntüleniyor"</string>
+    <string name="l10n_6a57d83c47ce5b34" formatted="false">"Bir panoya göz atmak Hermex’te yerel kalır. Panoyu etkinleştirmek paylaşılan sunucu durumunu değiştirir."</string>
     <string name="l10n_bbd80cf7e2ded5ef" formatted="false">"Yapı"</string>
+    <string name="l10n_7e18229655968fa8" formatted="false">"Toplu İşlemler"</string>
     <string name="l10n_e179e26271f3e00f" formatted="false">"CLI Oturumları"</string>
-    <string name="l10n_533083941cb59936" formatted="false">"CLI oturumlarının görünürlüğü bu sunucuyla eşitlenir, bu yüzden WebUI de bunu izler."</string>
     <string name="l10n_467ec180e1789d63" formatted="false">"Önbellek İsabet Oranı"</string>
     <string name="l10n_a495afbf7ab54ca6" formatted="false">"Önbellekten Okunan Token'lar"</string>
     <string name="l10n_b169be9668e92fe8" formatted="false">"Önbelleğe alındı"</string>
     <string name="l10n_c6b74ced31b9e9ca" formatted="false">"Önbelleğe alınan oturumlar ve mesajlar çevrimdışı görüntüleme için saklanır. Temizleme yalnızca bu sunucunun önbelleğini kaldırır — diğer sunucular ve Hermes sunucusu etkilenmez."</string>
+    <string name="l10n_4da9c9af9631e294" formatted="false">"Kamera"</string>
     <string name="l10n_77dfd2135f4db726" formatted="false">"Vazgeç"</string>
     <string name="l10n_a1bf92eff40dd4ad" formatted="false">"İptal edildi"</string>
     <string name="l10n_68994ea613a15e32" formatted="false">"Sunucuya ulaşılamıyor"</string>
+    <string name="l10n_4d4ce73b15660f20" formatted="false">"Kart"</string>
+    <string name="l10n_e011b9a5e6fe45c8" formatted="false">"Kart eylemleri"</string>
+    <string name="l10n_473759c32956a5bf" formatted="false">"Kart Kimliği"</string>
+    <string name="l10n_8f302a05ee377243" formatted="false">"Durumu Değiştir"</string>
     <string name="l10n_aeba935e2a155528" formatted="false">"Değiştirilen Dosyalar"</string>
     <string name="l10n_8aa57de6dce6ee1c" formatted="false">"Değişiklikler"</string>
     <string name="l10n_9bcc895764d8fc8a" formatted="false">"Değişiklikler kullanılamıyor"</string>
     <string name="l10n_2ced57f125910a9e" formatted="false">"Sohbet"</string>
     <string name="l10n_79667edb08454169" formatted="false">"iPhone'unuzdan Hermes ajanınızla sohbet edin"</string>
+    <string name="l10n_8174723b9172fdb9" formatted="false">"Sonucu Kontrol Et"</string>
     <string name="l10n_4f4bd16d4664cb10" formatted="false">"Mac'inizin uyanık olduğundan ve cloudflared'in çalıştığından emin olun."</string>
+    <string name="l10n_a4e79b38317485a5" formatted="false">"Checking Result"</string>
     <string name="l10n_5b5d3108125e92ca" formatted="false">"Sunucu denetleniyor..."</string>
     <string name="l10n_ccc506047a3d5fa7" formatted="false">"Sunucu denetleniyor…"</string>
     <string name="l10n_ebb571babefc16e0" formatted="false">"Akış denetleniyor"</string>
+    <string name="l10n_6d3627f04cb4b2c9" formatted="false">"Pano Seç"</string>
+    <string name="l10n_adaf4eb9ab13e461" formatted="false">"Kart seç"</string>
     <string name="l10n_0e3df8f396036c89" formatted="false">"Model Seç"</string>
+    <string name="l10n_74eda4a4630fe67d" formatted="false">"Ön Koşulu Seçin"</string>
+    <string name="l10n_adf2074a73ebd128" formatted="false">"Kiracıyı Seçin"</string>
     <string name="l10n_a7fe92a51df09be3" formatted="false">"Çalışma Alanı Seç"</string>
     <string name="l10n_508b9e1565ffaab6" formatted="false">"Bir eğik çizgi komutu seçin veya yazmaya devam edin."</string>
+    <string name="l10n_6775ed40b855410b" formatted="false">"Desteklenen bir Durum seçin."</string>
+    <string name="l10n_3754370042b5bbe9" formatted="false">"Geçerli bir Önkoşul seçin."</string>
     <string name="l10n_94992b7ac22aa32d" formatted="false">"Bu yeni profil için yapılandırılmış sağlayıcılar ve modeller arasından seçim yapın."</string>
     <string name="l10n_98e5c453451ff290" formatted="false">"Profil seç"</string>
     <string name="l10n_75268994292e5b16" formatted="false">"Sağlayıcı kimliği seç"</string>
     <string name="l10n_0e50f45864ab0e78" formatted="false">"Çalışma alanı yolu seç"</string>
+    <string name="l10n_d143882689eb110e" formatted="false">"Claim Expires"</string>
+    <string name="l10n_b3b4124cf95844d1" formatted="false">"Claim ID"</string>
     <string name="l10n_e43b8a0a8cf76b80" formatted="false">"Açıklama Gerekli"</string>
     <string name="l10n_171aff153045c26f" formatted="false">"Açıklama süresi sonu"</string>
     <string name="l10n_3e0fb17cab21c94b" formatted="false">"Açıkla"</string>
+    <string name="l10n_0b721df83e6cbaaa" formatted="false">"Claude Code Oturumları"</string>
     <string name="l10n_719ea396ad92e01b" formatted="false">"Temizle"</string>
     <string name="l10n_522175083f0bf50b" formatted="false">"Önbelleği Temizle"</string>
+    <string name="l10n_381c4bf1d409c027" formatted="false">"Filtreleri temizle"</string>
     <string name="l10n_436424aa905192bb" formatted="false">"Çevrimdışı Önbelleği Temizle"</string>
     <string name="l10n_2803e2a8fdc2a018" formatted="false">"Dosya aramasını temizle"</string>
     <string name="l10n_6e69351c3627d949" formatted="false">"Model aramasını temizle"</string>
@@ -148,8 +269,12 @@
     <string name="l10n_adac69379a626c24" formatted="false">"Kod"</string>
     <string name="l10n_b1c9e2299e9d7ee4" formatted="false">"Etkin profil seçiciyi daralt"</string>
     <string name="l10n_57b446fe95841712" formatted="false">"Projeleri daralt"</string>
+    <string name="l10n_f54ba11307e1765f" formatted="false">"Zamanlanmış oturumları daralt"</string>
     <string name="l10n_10544603c5d0fa0a" formatted="false">"Bölümü daralt"</string>
     <string name="l10n_1d0c8304baedcf8e" formatted="false">"Renk"</string>
+    <string name="l10n_153d7a58b3a3e898" formatted="false">"Yorum"</string>
+    <string name="l10n_ad76b4babd667300" formatted="false">"Comment cannot be blank."</string>
+    <string name="l10n_cacb504956b073be" formatted="false">"Comments cannot be edited or deleted after sending."</string>
     <string name="l10n_1f5a1abf2f08ec18" formatted="false">"Tamamla"</string>
     <string name="l10n_1798b3ba42ee08ea" formatted="false">"Tamamlandı"</string>
     <string name="l10n_5ff40a15003f2322" formatted="false">"Dokunma öncelikli denetimlerle doğal bir şekilde yazın."</string>
@@ -170,11 +295,12 @@
     <string name="l10n_203c28bd65a53e4f" formatted="false">"Bağlam sıkıştırıldı.\n\n%@"</string>
     <string name="l10n_2e02623966f9391f" formatted="false">"Devam et"</string>
     <string name="l10n_170889a98c72a890" formatted="false">"Yine de Devam Et"</string>
-    <string name="l10n_842175d421b50dc2" formatted="false">"Hermes ajanınızı iPhone'dan kontrol edin."</string>
+    <string name="l10n_09250307eb1db720" formatted="false">"Hermes ajanınızı iPhone veya iPad'den kontrol edin."</string>
     <string name="l10n_8e3df45a49dba2b2" formatted="false">"Kopyalandı"</string>
     <string name="l10n_32856512b1e49e91" formatted="false">"Web Arayüzü deposu bağlantısı kopyalandı"</string>
     <string name="l10n_f90d7f30d7f1ff1d" formatted="false">"Kod kopyalandı"</string>
     <string name="l10n_af74f7c5362aaee9" formatted="false">"Kopyala"</string>
+    <string name="l10n_3736d1a3b46cd58a" formatted="false">"Derin bağlantıyı kopyala"</string>
     <string name="l10n_dfa9c0d2596f1d9c" formatted="false">"Tam Başlığı Kopyala"</string>
     <string name="l10n_1aa0e16271ee96f4" formatted="false">"Web Arayüzü deposu bağlantısını kopyala"</string>
     <string name="l10n_abc94cbf067b91d1" formatted="false">"Ajan kurulum istemini kopyala"</string>
@@ -207,6 +333,7 @@
     <string name="l10n_a88498840c5e3802" formatted="false">"Arşivlenen oturumlar yüklenemedi"</string>
     <string name="l10n_4bcac1ad086ca826" formatted="false">"Dosya yüklenemedi: %@"</string>
     <string name="l10n_591b00c12e60c326" formatted="false">"Profiller yüklenemedi"</string>
+    <string name="l10n_c93b287a71ae2a54" formatted="false">"Sağlayıcılar yüklenemedi"</string>
     <string name="l10n_94f5b73955c3ef2c" formatted="false">"Oturumlar yüklenemedi"</string>
     <string name="l10n_8ac36923964f0178" formatted="false">"Bu görüntü önizlenemedi."</string>
     <string name="l10n_7d897e1d885a3b20" formatted="false">"Güncellemeyi başlatmak için sunucuya ulaşılamadı."</string>
@@ -225,13 +352,20 @@
     <string name="l10n_495ea9f2535f73a3" formatted="false">"Geçerli yanıt henüz durdurulamadı, bu yüzden kesme mesajı bir sonraki tur için sıraya alındı."</string>
     <string name="l10n_0fe0eba7c7e1c659" formatted="false">"Hedef komutu gönderilemedi."</string>
     <string name="l10n_4138a35cf5a60e61" formatted="false">"Görev güncellenemedi."</string>
+    <string name="l10n_08111e6efc7fc767" formatted="false">"Yenilenemedi. Daha önce yüklenen sağlayıcılar gösteriliyor."</string>
+    <string name="l10n_9985074eae8f7d8d" formatted="false">"Çöktü"</string>
     <string name="l10n_6e157c5da4410b7e" formatted="false">"Oluştur"</string>
+    <string name="l10n_5a366386b114c3b4" formatted="false">"Hazır, Atanmamış Kart Oluşturulsun mu?"</string>
     <string name="l10n_67c127a271b041fb" formatted="false">"Mevcut HEAD'den şubeyi oluşturun ve ona geçin."</string>
+    <string name="l10n_c8d7e019182b9eb3" formatted="false">"Klasör yoksa oluştur"</string>
+    <string name="l10n_accf40c89baa4fa8" formatted="false">"Oluşturuldu"</string>
     <string name="l10n_5df8f127a4af1417" formatted="false">"Yeni boş bir proje oluşturur."</string>
+    <string name="l10n_117a3202c7ad6e39" formatted="false">"Pano oluşturmak onu etkinleştirmez."</string>
     <string name="l10n_de17342aa8c0be17" formatted="false">"Cron Oturumları"</string>
     <string name="l10n_4fc0e2bc80737d78" formatted="false">"Geçerli"</string>
     <string name="l10n_a3f54618caea86a3" formatted="false">"Geçerli Özel"</string>
     <string name="l10n_23cb5e2e9a9493b9" formatted="false">"Mevcut Git şubesi"</string>
+    <string name="l10n_551ef486ba85e4c8" formatted="false">"Mevcut Durum: %@. Yalnızca Kartı taşımak istiyorsanız izin verilen bir Durum seçin."</string>
     <string name="l10n_35ff0b484ca98ca9" formatted="false">"Geçerli Çalışma Alanı"</string>
     <string name="l10n_9a3c1af6c3ecfd85" formatted="false">"Geçerli başlık: **%@**\n\nBu oturumu yeniden adlandırmak için `/title &lt;text&gt;` kullanın."</string>
     <string name="l10n_081ae3fdc403609c" formatted="false">"Özel"</string>
@@ -252,8 +386,11 @@
     <string name="l10n_441bda6cd85689e4" formatted="false">"Silindi"</string>
     <string name="l10n_dcac5d49c54c3c38" formatted="false">"Teslim et"</string>
     <string name="l10n_9631af52c66f1a5c" formatted="false">"Teslimat"</string>
+    <string name="l10n_0562f32dc56f5c70" formatted="false">"Bağımlılıklar"</string>
+    <string name="l10n_55f8ebc805e65b5b" formatted="false">"Açıklama"</string>
     <string name="l10n_a04fcb7af3c9351b" formatted="false">"Diff Çok Büyük"</string>
     <string name="l10n_7aafaa23867907a5" formatted="false">"Fark gösterilemeyecek kadar büyük."</string>
+    <string name="l10n_4b892fe0c040fa8a" formatted="false">"Rehber"</string>
     <string name="l10n_407758fed6d9cd6f" formatted="false">"Kod satırı kaydırmayı devre dışı bırak"</string>
     <string name="l10n_995b60411b464fb4" formatted="false">"Yoksay ve Düzenle"</string>
     <string name="l10n_5d88c02b40bcad09" formatted="false">"Yoksay ve Yeniden Oluştur"</string>
@@ -261,6 +398,12 @@
     <string name="l10n_f467e1f839b5212d" formatted="false">"Disko"</string>
     <string name="l10n_70afe9eff3f28884" formatted="false">"Azletmek"</string>
     <string name="l10n_4b6acf651b750357" formatted="false">"Ek hatasını kapat"</string>
+    <string name="l10n_bb5c6f77a55fc0c9" formatted="false">"Dağıtıcı çalıştırmaları"</string>
+    <string name="l10n_48f91366c839e056" formatted="false">"Dağıtıcı"</string>
+    <string name="l10n_2ed4598584f8ec1f" formatted="false">"Dağıtıcı bu sunucuda kullanılamıyor."</string>
+    <string name="l10n_f7434de84cdb30cb" formatted="false">"Dağıtıcı, ilgilenmeniz gerekiyor"</string>
+    <string name="l10n_42df017cec60f8ed" formatted="false">"Dağıtıcı, sonuç mevcut"</string>
+    <string name="l10n_574ff9b0c49cdeb5" formatted="false">"Görünüm"</string>
     <string name="l10n_8d6b34815ba43d25" formatted="false">"Görünen Ad"</string>
     <string name="l10n_e9b450d14bc2363d" formatted="false">"Bitti"</string>
     <string name="l10n_3c424e9b233642b3" formatted="false">"Ayrıntıları daraltmak için çift dokunun."</string>
@@ -270,9 +413,18 @@
     <string name="l10n_13f7aee77892fd5f" formatted="false">"Daha önce"</string>
     <string name="l10n_5301648dcf6b53ce" formatted="false">"Düzenle"</string>
     <string name="l10n_36119979d7cf1f46" formatted="false">"%@ ögesini düzenle"</string>
+    <string name="l10n_4596379c38365c9c" formatted="false">"Kartı Düzenle"</string>
     <string name="l10n_2ee30cf2c2908397" formatted="false">"Mesajı Düzenle"</string>
     <string name="l10n_9d0e05d653ce25e7" formatted="false">"Görevi Düzenle"</string>
     <string name="l10n_b0179bbf23f36576" formatted="false">"Bu mesajı düzenlemek sonraki %lld mesajı silecek."</string>
+    <plurals name="l10n_b0179bbf23f36576">
+        <item quantity="zero">"Bu mesajı düzenlemek sonraki %d mesajı silecek."</item>
+        <item quantity="one">"Bu mesajı düzenlemek sonraki %d mesajı silecek."</item>
+        <item quantity="two">"Bu mesajı düzenlemek sonraki %d mesajı silecek."</item>
+        <item quantity="few">"Bu mesajı düzenlemek sonraki %d mesajı silecek."</item>
+        <item quantity="many">"Bu mesajı düzenlemek sonraki %d mesajı silecek."</item>
+        <item quantity="other">"Bu mesajı düzenlemek sonraki %d mesajı silecek."</item>
+    </plurals>
     <string name="l10n_5fc97790c6a8d0d3" formatted="false">"Geçen süre"</string>
     <string name="l10n_755ad4f73ca41dd5" formatted="false">"Boş çıktı"</string>
     <string name="l10n_aa1092d775fca059" formatted="false">"Kod satırı kaydırmayı etkinleştir"</string>
@@ -280,17 +432,20 @@
     <string name="l10n_598b3a1a236fcb2e" formatted="false">"Göndermeden önce bir yanıt girin."</string>
     <string name="l10n_6f7c983d3b97261c" formatted="false">"Bir oturum başlığı girin."</string>
     <string name="l10n_e64bedf7e5b25d1f" formatted="false">"Geçerli bir sunucu URL'si girin, örneğin https://hermes.yourdomain.com veya http://&lt;server-tailscale-ip&gt;:8787."</string>
-    <string name="l10n_8230a28313458046" formatted="false">"Ajanınızın döndürdüğü Tailscale URL'sini girin, örneğin `http://&lt;tailnet-ip&gt;:8787`."</string>
+    <string name="l10n_6332c9abaf956af9" formatted="false">"Ajanınızın döndürdüğü tam Tailscale Serve HTTPS URL'sini girin, örneğin `https://server.tailnet-name.ts.net`."</string>
     <string name="l10n_8f6e7265b4a4d570" formatted="false">"Sunucu parolasını girin."</string>
     <string name="l10n_7f2f6a15cf8da2b2" formatted="false">"Hata"</string>
     <string name="l10n_09c1adde10c57e5f" formatted="false">"Hata: %@"</string>
     <string name="l10n_35caa4ac4630bab1" formatted="false">"Tahmini Maliyet"</string>
+    <string name="l10n_c5497bca58468ae6" formatted="false">"Olaylar"</string>
     <string name="l10n_6e0691470382747c" formatted="false">"Tam model kimliği"</string>
+    <string name="l10n_6d525b71568c2d98" formatted="false">"Uygulamak"</string>
     <string name="l10n_0caa309588bbc767" formatted="false">"Çıkış kodu: %lld"</string>
     <string name="l10n_7b74ff00367a4722" formatted="false">"Düşünmeyi Varsayılan Olarak Genişlet"</string>
     <string name="l10n_2525f76fc2b6b22d" formatted="false">"Araçları Varsayılan Olarak Genişlet"</string>
     <string name="l10n_f86dd07259eb2bbf" formatted="false">"Etkin profil seçiciyi genişlet"</string>
     <string name="l10n_6a9761d620403e7d" formatted="false">"Projeleri genişlet"</string>
+    <string name="l10n_046a1a78d9aec6a9" formatted="false">"Zamanlanmış oturumları genişlet"</string>
     <string name="l10n_732f9a41fd04ae76" formatted="false">"Bölümü genişlet"</string>
     <string name="l10n_a689a999a5e62055" formatted="false">"Süresi doldu"</string>
     <string name="l10n_f3e4fadb9e370a1e" formatted="false">"Dışa Aktar"</string>
@@ -330,6 +485,7 @@
     <string name="l10n_d6870fe0b85ff5cc" formatted="false">"Koyu gradyan"</string>
     <string name="l10n_69dddc0e42ea62e2" formatted="false">"Açık gradyan"</string>
     <string name="l10n_933bf21afdd55a0d" formatted="false">"Yeşil"</string>
+    <string name="l10n_e9ac611c971177b5" formatted="false">"Profile göre grupla"</string>
     <string name="l10n_73527bcbcf1d50d3" formatted="false">"HERMEX"</string>
     <string name="l10n_98d63b116d9d718a" formatted="false">"Dokunsal Geri Bildirim"</string>
     <string name="l10n_c1c645cc10cc39cc" formatted="false">"Başlık Logosu Rengi"</string>
@@ -345,10 +501,14 @@
     <string name="l10n_4f56108f827cebaf" formatted="false">"Hermes yanıtı tamamlandı"</string>
     <string name="l10n_d1cadaea84c1198b" formatted="false">"Hermes oturumu"</string>
     <string name="l10n_77cde96ca2d45d01" formatted="false">"Hermex"</string>
+    <string name="l10n_9a17d2db6a8055f7" formatted="false">"Hermex arşivlenmiş bir panoyu uygulama içinden geri yükleyemez."</string>
     <string name="l10n_c33659f639454811" formatted="false">"Hermex bir yanıt hazırlıyor"</string>
+    <string name="l10n_01a030be51125242" formatted="false">"Hermex panoyu yeniledi ancak worker'ların başlayıp başlamadığını doğrulayamıyor. Dağıtıcıyı yeniden çalıştırmadan önce mevcut panoyu inceleyin."</string>
     <string name="l10n_bb6a69c46c4b1979" formatted="false">"Ek Yollarını Gizle"</string>
     <string name="l10n_2981d5547d979457" formatted="false">"Gönderdiğiniz mesajlardaki eklenmiş dosya yolu satırını gizler. Ekler yine önizleme olarak görünür ve sunucu yolları yine alır."</string>
     <string name="l10n_b1a5954a483f8f8b" formatted="false">"Yüksek"</string>
+    <string name="l10n_c0a4bc55fa6395b6" formatted="false">"Panoyu inceledim"</string>
+    <string name="l10n_716f63b96e0c2632" formatted="false">"Simge"</string>
     <string name="l10n_7e5a975b6add84fd" formatted="false">"Kimlik"</string>
     <string name="l10n_50e19fda0d5b4b74" formatted="false">"Görüntü"</string>
     <string name="l10n_78cf51d3d2bf067d" formatted="false">"Görüntü eki %@"</string>
@@ -363,7 +523,9 @@
     <string name="l10n_4e73a74600447ea9" formatted="false">"Tailscale'i iPhone'unuza yükleyin ve sunucunuzla aynı tailnet'e giriş yapın. Aracınız, bir sonraki ekranda kullanılacak tam URL'yi yanıtlayacaktır."</string>
     <string name="l10n_94dc8e4a59fafe99" formatted="false">"Etkileşim"</string>
     <string name="l10n_f3068db36e4be906" formatted="false">"Mevcut yanıt kesildi ve mesajınız bir sonraki gönderim için kuyruğa alındı."</string>
+    <string name="l10n_3895546730917a69" formatted="false">"Kanban"</string>
     <string name="l10n_8fa296603e98b9fe" formatted="false">"Hermex'i kullanırken Tailscale'i bağlı tutun."</string>
+    <string name="l10n_61737de78417a6fe" formatted="false">"Anahtar yapılandırıldı"</string>
     <string name="l10n_d1c69a859a9638b2" formatted="false">"Son"</string>
     <string name="l10n_17672aec29094ac4" formatted="false">"Son %lld Gün"</string>
     <string name="l10n_6118867f212578fe" formatted="false">"Son 30 Gün"</string>
@@ -371,6 +533,8 @@
     <string name="l10n_decd7ca800106337" formatted="false">"En son"</string>
     <string name="l10n_6f8749290307e9e2" formatted="false">"En son durum gösteriliyor"</string>
     <string name="l10n_a9a621da7e8575d5" formatted="false">"Arapça, İbranice, Farsça ve Urduca için mesajları ve yazı alanını sağdan sola yerleştirir. Kod, matematik, tablolar ve araç çıktıları soldan sağa kalır. Diğer ekranlar etkilenmez."</string>
+    <string name="l10n_66884274e40e33f1" formatted="false">"Çalışıyor durumundan çıkılsın mı?"</string>
+    <string name="l10n_e427bdd63d4f22bd" formatted="false">"Çalışıyor durumundan çıkmak Kartın sahiplenme ve çalışan durumunu temizleyebilir."</string>
     <string name="l10n_a36ef8aba22905e2" formatted="false">"Açık"</string>
     <string name="l10n_d0517071aa376e79" formatted="false">"Bağlantı"</string>
     <string name="l10n_2b95008bb82d2573" formatted="false">"Bağlantı önizlemesi"</string>
@@ -380,6 +544,8 @@
     <string name="l10n_4fc2512aa9e1d5c7" formatted="false">"Dinleniyor..."</string>
     <string name="l10n_65c821a596ceec1c" formatted="false">"Canlı"</string>
     <string name="l10n_7b0ccb219d4d58d2" formatted="false">"Canlı Etkinlik Alıntıları"</string>
+    <string name="l10n_1d0f8dd5ce3502d2" formatted="false">"Canlı güncellemeler gecikiyor"</string>
+    <string name="l10n_b0e0f6bd60d5e5e8" formatted="false">"Load Worker Log"</string>
     <string name="l10n_07471f3481317a16" formatted="false">"Eski mesajları yükle"</string>
     <string name="l10n_a86c840372f0590b" formatted="false">"Bu yanıtı yeniden oluşturmadan önce eski mesajları yükleyin."</string>
     <string name="l10n_8f26c6520d61588a" formatted="false">"Yükleniyor"</string>
@@ -396,6 +562,7 @@
     <string name="l10n_3955c8e98f47edfc" formatted="false">"Çıktı yükleniyor..."</string>
     <string name="l10n_7b1f2b358b54ee27" formatted="false">"Profiller yükleniyor..."</string>
     <string name="l10n_5a1c8090d0b201e5" formatted="false">"Projeler yükleniyor..."</string>
+    <string name="l10n_a5dcb93d831dc05a" formatted="false">"Sağlayıcılar yükleniyor…"</string>
     <string name="l10n_6ffd1b801dc3250d" formatted="false">"Oturumlar yükleniyor"</string>
     <string name="l10n_8605605d9f479dd3" formatted="false">"Beceri yükleniyor..."</string>
     <string name="l10n_18f6342375a61986" formatted="false">"Beceriler yükleniyor..."</string>
@@ -409,11 +576,17 @@
     <string name="l10n_d219c68101f532de" formatted="false">"Konum"</string>
     <string name="l10n_a124947cbd2d1d92" formatted="false">"Düşük"</string>
     <string name="l10n_d474fceae7ef8451" formatted="false">"Küçük harfler, rakamlar, tireler ve alt çizgiler; bir harf veya rakamla başlamalıdır."</string>
+    <string name="l10n_6c01c3828067110b" formatted="false">"Panoyu etkinleştir"</string>
     <string name="l10n_f924c396551c216e" formatted="false">"Bunu etkin sunucu yapar. Oturumlar, sohbetler ve ayarlar bunun için yeniden yüklenir."</string>
+    <string name="l10n_7d949b41b99038e7" formatted="false">"Bu panoyu etkinleştirmek diğer Hermes istemcileri için paylaşılan sunucu durumunu değiştirir."</string>
+    <string name="l10n_bf58d17e561b1b85" formatted="false">"Yönet"</string>
     <string name="l10n_1da7ac1fb66291cc" formatted="false">"Sunucuları Yönet"</string>
+    <string name="l10n_d0c6a4ce42d2461a" formatted="false">"Çalışma Alanlarını Yönet"</string>
     <string name="l10n_005313fed211856e" formatted="false">"Oturumları, görevleri ve dosyaları uzaktan yönetin"</string>
     <string name="l10n_2ae8bf7c4fda40f7" formatted="false">"Bitti Olarak İşaretle"</string>
     <string name="l10n_25f266071c389a50" formatted="false">"Cihaz görünümüyle eşleşir"</string>
+    <string name="l10n_5de003582d342dba" formatted="false">"Maximum Runtime"</string>
+    <string name="l10n_527054fdad8e1c19" formatted="false">"Maksimum Çalışma Süresi, 0'dan büyük bir tamsayı saniye olmalıdır."</string>
     <string name="l10n_0c77aeece8c25811" formatted="false">"Medya"</string>
     <string name="l10n_3aaf713966fafbad" formatted="false">"Medya İşlemi Başarısız Oldu"</string>
     <string name="l10n_da356f9300406f38" formatted="false">"Medya kullanılamıyor"</string>
@@ -424,23 +597,28 @@
     <string name="l10n_8bd1e1ee0b36f619" formatted="false">"Mesaj Sayısı"</string>
     <string name="l10n_d2dbcb77dcf32674" formatted="false">"Hermex'e mesaj gönder"</string>
     <string name="l10n_f1702b4686278bec" formatted="false">"Mesajlar"</string>
+    <string name="l10n_251edc0eb5a82064" formatted="false">"Meta veriler"</string>
     <string name="l10n_e8cd6e3a402a74e8" formatted="false">"Mikrofon erişimi devre dışı. Sesli girişi kullanmak için Ayarlar'dan etkinleştirin."</string>
     <string name="l10n_a711cca9a4a9ca25" formatted="false">"Minimal"</string>
     <string name="l10n_611aeef9f6f15ff0" formatted="false">"İş tanımlayıcısı eksik."</string>
     <string name="l10n_68c2cc7f0ceaa3e4" formatted="false">"Model"</string>
     <string name="l10n_47442c9efd89244c" formatted="false">"Model değiştirme kullanılamıyor."</string>
     <string name="l10n_f3798f81c7b6feca" formatted="false">"Modeller"</string>
+    <string name="l10n_32e3bfbf3d74721b" formatted="false">"Modeller (%lld)"</string>
     <string name="l10n_19a532c8bc61c311" formatted="false">"Değiştirildi"</string>
     <string name="l10n_d3446a31725ad27d" formatted="false">"%@ önce değiştirildi"</string>
     <string name="l10n_03b280484618a09d" formatted="false">"Koyu monokrom"</string>
     <string name="l10n_febc733bb49ebbbf" formatted="false">"Açık monokrom"</string>
+    <string name="l10n_76cdb950721642b6" formatted="false">"Taşı"</string>
     <string name="l10n_96cbe7af61cc6ba3" formatted="false">"Projeye Taşı"</string>
     <string name="l10n_60739d13df292b18" formatted="false">"Notlarım"</string>
     <string name="l10n_709a23220f2c3d64" formatted="false">"Ad"</string>
+    <string name="l10n_9c9f03a8394167a1" formatted="false">"Ad (isteğe bağlı)"</string>
     <string name="l10n_3dcfe8c501962b28" formatted="false">"Dikkat Gerektiriyor"</string>
     <string name="l10n_a4b628dd7e6cac30" formatted="false">"Açıklama gerektiriyor"</string>
     <string name="l10n_80c3052d33ccdee1" formatted="false">"Asla"</string>
     <string name="l10n_2f5f0a316c665840" formatted="false">"Yeni Şube"</string>
+    <string name="l10n_f24d098f37cad673" formatted="false">"Yeni Kart"</string>
     <string name="l10n_364e701f18f5b93f" formatted="false">"Yeni Sohbet"</string>
     <string name="l10n_d01329fec0de89f0" formatted="false">"Yeni Profil"</string>
     <string name="l10n_fd57e65b2e31a39f" formatted="false">"Yeni Proje"</string>
@@ -467,6 +645,7 @@
     <string name="l10n_9bc37a73e52685de" formatted="false">"Katalog modeli yok"</string>
     <string name="l10n_24a6191f274fcd49" formatted="false">"Değişiklik yok"</string>
     <string name="l10n_fe598959ce0d3df9" formatted="false">"\"%@\" ile eşleşen komut veya beceri yok"</string>
+    <string name="l10n_38878b052a56f7c2" formatted="false">"Anahtar yok"</string>
     <string name="l10n_758de69beca09db0" formatted="false">"\"%@\" için eşleşme yok"</string>
     <string name="l10n_0318ea04f793d95e" formatted="false">"Eşleşen oturum yok"</string>
     <string name="l10n_bcd9d0b98b51e4ac" formatted="false">"Kullanılabilir mikrofon girişi yok. Simülatör veya cihaz mikrofon ayarlarını kontrol edin."</string>
@@ -477,6 +656,7 @@
     <string name="l10n_1f3aa7cb21ea25f7" formatted="false">"Kullanılabilir profil yok"</string>
     <string name="l10n_c326b75775bf901d" formatted="false">"Proje yok"</string>
     <string name="l10n_24a5368bbc878d8d" formatted="false">"Proje yok"</string>
+    <string name="l10n_dabb4546aa93c651" formatted="false">"Bu sunucu herhangi bir sağlayıcı bildirmedi."</string>
     <string name="l10n_9d7789c98756a7a1" formatted="false">"Henüz oturum yok"</string>
     <string name="l10n_459ad5e22c8f13b7" formatted="false">"Sunucuda yapılandırılmış beceri yok."</string>
     <string name="l10n_d7f0b3c347eb8c09" formatted="false">"\"%@\" ile eşleşen beceri yok."</string>
@@ -494,8 +674,11 @@
     <string name="l10n_8956389786fd9918" formatted="false">"Çevrimdışı - önbelleğe alınmış sürüm görüntüleniyor"</string>
     <string name="l10n_8e4f504e020069e6" formatted="false">"Çevrimdışı Veri"</string>
     <string name="l10n_ccf06f9a4f7a50f8" formatted="false">"Çevrimdışı — önbelleğe alınmış sürüm görüntüleniyor"</string>
+    <string name="l10n_c3cb80395a6f5b01" formatted="false">"Çevrimdışı — önceden yüklenen veriler gösteriliyor"</string>
     <string name="l10n_e0049a66519cae71" formatted="false">"Açık"</string>
+    <string name="l10n_db4ab04666991840" formatted="false">"Yalnızca benimkiler"</string>
     <string name="l10n_db21418b19544341" formatted="false">"Yalnızca asistan mesajları yeniden oluşturulabilir."</string>
+    <string name="l10n_a3b004fb05b4d2cd" formatted="false">"Only the last part of this log is shown."</string>
     <string name="l10n_44a2f9655a134eb7" formatted="false">"Yalnızca kullanıcı mesajları düzenlenebilir."</string>
     <string name="l10n_93d3335d58377959" formatted="false">"%@ öğesini aç"</string>
     <string name="l10n_ec9649e469304224" formatted="false">"Hermex Ayarları'nı Aç"</string>
@@ -510,8 +693,13 @@
     <string name="l10n_d381d212e5455e71" formatted="false">"Varsayılan model seçiciyi açar."</string>
     <string name="l10n_da5bd75cb3611219" formatted="false">"Varsayılan profil seçiciyi açar."</string>
     <string name="l10n_418cad179a2e9807" formatted="false">"Yeni profil formunu açar."</string>
+    <string name="l10n_336934f19da2f38e" formatted="false">"Sağlayıcı durumu ekranını açar."</string>
+    <string name="l10n_78ce8b45d4b9bb0a" formatted="false">"İşlem geçmişi"</string>
+    <string name="l10n_c686cc0c99b6645d" formatted="false">"Operational Metadata"</string>
+    <string name="l10n_ce75929f4b0b99d9" formatted="false">"İsteğe bağlı saniye sayısı."</string>
     <string name="l10n_3fe31a00136bfaac" formatted="false">"İsteğe bağlı. Temel URL örneği: http://localhost:11434"</string>
     <string name="l10n_09fb6aaba7940a7b" formatted="false">"Turuncu"</string>
+    <string name="l10n_6282237cfbba8a0c" formatted="false">"Outcome Uncertain"</string>
     <string name="l10n_4bed336194a9a5c8" formatted="false">"Çıktı"</string>
     <string name="l10n_878afed57cc32819" formatted="false">"Çıktı Token'ları"</string>
     <string name="l10n_1a915e2090fc298c" formatted="false">"%2$lld sayfadan %1$lld. sayfa"</string>
@@ -533,11 +721,16 @@
     <string name="l10n_9c918414710c579b" formatted="false">"Sabitle"</string>
     <string name="l10n_54076359fdc7f1f0" formatted="false">"Pembe"</string>
     <string name="l10n_f9312169efb2796a" formatted="false">"Sabitlendi"</string>
+    <string name="l10n_7039fbec6d98cbb8" formatted="false">"Önkoşul"</string>
     <string name="l10n_3d087feb27bed0d7" formatted="false">"Korunmuş görev listesi"</string>
+    <string name="l10n_b35d176a6e2dee64" formatted="false">"Dağıtım Önizlemesi"</string>
+    <string name="l10n_f67278a6b10f05b1" formatted="false">"Önizleme yalnızca bilgi amaçlıdır ve eskiyebilir. Asla worker başlatmaz."</string>
     <string name="l10n_e8002a8beabe2288" formatted="false">"Bu ek için önizleme kullanılamıyor."</string>
     <string name="l10n_e4a8cb9c4e93463c" formatted="false">"Bu dosya türü için önizleme kullanılamıyor."</string>
     <string name="l10n_6af2a65d7acff443" formatted="false">"Bu medya türü için önizleme kullanılamıyor."</string>
     <string name="l10n_8ce696a0387284a2" formatted="false">"Bu medya için önizleme kullanılamıyor."</string>
+    <string name="l10n_886cbff9d9df761e" formatted="false">"Öncelik"</string>
+    <string name="l10n_4b01e21caae1beff" formatted="false">"Öncelik -100 ile 100 arasında bir tam sayı olmalıdır."</string>
     <string name="l10n_9db108ba6b7f6571" formatted="false">"Gizlilik Politikası"</string>
     <string name="l10n_2fc50ca28d0af98f" formatted="false">"Sonuç işleniyor"</string>
     <string name="l10n_ff4fc0276e960c34" formatted="false">"Profil"</string>
@@ -547,9 +740,13 @@
     <string name="l10n_72c04819df5bb6a9" formatted="false">"%@ için proje işlemleri"</string>
     <string name="l10n_ab9773fcf6b2b1d9" formatted="false">"Proje adı"</string>
     <string name="l10n_53e890d5f0fffe09" formatted="false">"Projeler"</string>
+    <string name="l10n_2eb0c3b72a3bd9bf" formatted="false">"Yükseltildi"</string>
     <string name="l10n_a817d7eb8e0f1dab" formatted="false">"İstem"</string>
     <string name="l10n_db95a2972e66e135" formatted="false">"İstem gereklidir."</string>
+    <string name="l10n_7ceee3f3615a2bbe" formatted="false">"Sağlayıcı"</string>
     <string name="l10n_610992ef9948a19f" formatted="false">"Sağlayıcı kimliği"</string>
+    <string name="l10n_4eaef64dcb3c605f" formatted="false">"Sağlayıcı anahtarları sunucuda yönetilir. Bu ekran salt okunurdur."</string>
+    <string name="l10n_87b7c08baed1c8e9" formatted="false">"Sağlayıcılar"</string>
     <string name="l10n_5219eb9a71725226" formatted="false">"Çekme"</string>
     <string name="l10n_d9a72cc74c68bbfb" formatted="false">"Uzaktan Değişiklikler Çekilsin mi?"</string>
     <string name="l10n_55c0e7925c2e9d6a" formatted="false">"Çekme tamamlandı"</string>
@@ -571,6 +768,7 @@
     <string name="l10n_76eec760c9b6e63e" formatted="false">"Son"</string>
     <string name="l10n_8ea2086a2dbccc7b" formatted="false">"Son Günlük Token'lar"</string>
     <string name="l10n_73c5c034584e46ea" formatted="false">"Son Çıktı"</string>
+    <string name="l10n_c885890b098322a9" formatted="false">"Geri alındı"</string>
     <string name="l10n_d9eb6f071bf574f0" formatted="false">"Mesaj göndermek için yeniden bağlanın."</string>
     <string name="l10n_b95d5bf53907b729" formatted="false">"%@ için sunucuya yeniden bağlanın."</string>
     <string name="l10n_1776302c127400bb" formatted="false">"Yan soru sormak için sunucuya yeniden bağlanın."</string>
@@ -597,31 +795,53 @@
     <string name="l10n_8667d8dd1f042e2c" formatted="false">"Yalnızca referans · %@"</string>
     <string name="l10n_56e3badc4e6c5cc9" formatted="false">"Yenile"</string>
     <string name="l10n_309d274a52eca6b8" formatted="false">"Projeleri Yenile"</string>
+    <string name="l10n_d7b762fc3fb27d5a" formatted="false">"Yenileme başarısız oldu. Dağıtıcıyı kullanmadan önce tekrar deneyin."</string>
+    <string name="l10n_87d2b4ceba88de25" formatted="false">"Tekrar denemeden önce Panoyu yenileyin."</string>
+    <string name="l10n_44ab50cbb3313634" formatted="false">"Tekrar denemeden önce sunucu sonucunu kontrol etmek için Kartı yenileyin."</string>
+    <string name="l10n_e87e8308cbf8a15e" formatted="false">"Refresh to check the Card before trying again."</string>
     <string name="l10n_5b7bdb61fdbc48d5" formatted="false">"Yenileniyor..."</string>
     <string name="l10n_12798652dee90c23" formatted="false">"Yanıtı Yeniden Oluştur"</string>
     <string name="l10n_e57e8f39b6e8ce1b" formatted="false">"Bu yanıtı yeniden oluşturmak sonraki %lld mesajı silecek."</string>
+    <plurals name="l10n_e57e8f39b6e8ce1b">
+        <item quantity="zero">"Bu yanıtı yeniden oluşturmak sonraki %d mesajı silecek."</item>
+        <item quantity="one">"Bu yanıtı yeniden oluşturmak sonraki %d mesajı silecek."</item>
+        <item quantity="two">"Bu yanıtı yeniden oluşturmak sonraki %d mesajı silecek."</item>
+        <item quantity="few">"Bu yanıtı yeniden oluşturmak sonraki %d mesajı silecek."</item>
+        <item quantity="many">"Bu yanıtı yeniden oluşturmak sonraki %d mesajı silecek."</item>
+        <item quantity="other">"Bu yanıtı yeniden oluşturmak sonraki %d mesajı silecek."</item>
+    </plurals>
+    <string name="l10n_cce7155371fc2668" formatted="false">"Yeniden yükle"</string>
+    <string name="l10n_8b1c557db10dc346" formatted="false">"Sunucu Sürümünü Yeniden Yükle"</string>
+    <string name="l10n_76cc25831dafa135" formatted="false">"Sunucu Sürümü Yeniden Yüklensin mi?"</string>
     <string name="l10n_ecca3ebfebb1231b" formatted="false">"Şube listesini yeniden yükle"</string>
     <string name="l10n_c93f6536dcfbeeee" formatted="false">"Uzaktan"</string>
     <string name="l10n_95a7c84ae08947db" formatted="false">"Yerel şubenin önünde uzak şube"</string>
+    <string name="l10n_e963907dac5cd5c0" formatted="false">"Kaldır"</string>
+    <string name="l10n_74211945be6416aa" formatted="false">"%@ öğesini önkoşul olmaktan çıkar"</string>
     <string name="l10n_50abaeabec168aa3" formatted="false">"%@ öğesini favorilerden kaldır"</string>
     <string name="l10n_49c2c77417839a5d" formatted="false">"Sunucuyu Kaldır"</string>
+    <string name="l10n_1e49097a3b6f2e45" formatted="false">"Çalışma Alanı Kaldırılsın mı?"</string>
     <string name="l10n_8808b2840f078cfa" formatted="false">"%@ ekini kaldır"</string>
     <string name="l10n_6df2166b68573bb1" formatted="false">"Özel modeli favorilerden kaldır"</string>
     <string name="l10n_3e19869f4c6dd932" formatted="false">"Başlığı kaldır"</string>
     <string name="l10n_75bfa312029037aa" formatted="false">"Bu sunucu kaldırılsın mı?"</string>
     <string name="l10n_013a5d20d5696b29" formatted="false">"Bu sunucuyu ve bu cihazdaki kayıtlı ayarlarını kaldırır. Etkin sunucunuz etkilenmez."</string>
+    <string name="l10n_ce29465cad73fef0" formatted="false">"Bir çalışma alanını kaldırmak yalnızca yolunu sunucunun listesinden çıkarır. Hiçbir dosya silinmez."</string>
     <string name="l10n_d3f4cb898fbe0c7a" formatted="false">"Yeniden Adlandır"</string>
     <string name="l10n_2631fe63a2fe1b89" formatted="false">"Projeyi Yeniden Adlandır"</string>
     <string name="l10n_d80362f6a02f697f" formatted="false">"Oturumu Yeniden Adlandır"</string>
+    <string name="l10n_37b77d35f230ff7d" formatted="false">"Çalışma Alanını Yeniden Adlandır"</string>
     <string name="l10n_ef1c7b2eb614a607" formatted="false">"Mevcut oturumu yeniden adlandır"</string>
     <string name="l10n_e5ad1c6b966bc12c" formatted="false">"Yeniden adlandırıldı"</string>
     <string name="l10n_6c2bb735a46a8ff3" formatted="false">"Yanıtla"</string>
     <string name="l10n_8b03ca3239a2d4b3" formatted="false">"Depo durumu kullanılamıyor"</string>
     <string name="l10n_9ec40b4a79f06a39" formatted="false">"Depo güncel"</string>
     <string name="l10n_4ea95c7e3ce383e5" formatted="false">"Ses izinleri isteniyor..."</string>
+    <string name="l10n_eed6bfb41051ed5b" formatted="false">"Gerekli"</string>
     <string name="l10n_7517ceebb9cbd1af" formatted="false">"Uygulamalar arasında geçiş yapmadan aracı istemlerini yanıtlayın."</string>
     <string name="l10n_7fafe94e3d4ca86e" formatted="false">"Yanıtlıyor"</string>
     <string name="l10n_ea7ab827fb7b09d6" formatted="false">"Yanıt Tamamlandı Uyarıları"</string>
+    <string name="l10n_07528719f78e54c9" formatted="false">"Yanıt Hızı"</string>
     <string name="l10n_ec2fb8b9d8a0585a" formatted="false">"Yanıt Zaman Damgaları"</string>
     <string name="l10n_6b656398c39ddef4" formatted="false">"Yanıt iptal edildi"</string>
     <string name="l10n_96423842ebcbe649" formatted="false">"Yanıt tamamlandı"</string>
@@ -629,17 +849,22 @@
     <string name="l10n_5faa59d4bc375604" formatted="false">"Sonuç"</string>
     <string name="l10n_b3bd0b5a70497bec" formatted="false">"Devam et"</string>
     <string name="l10n_9f5cd8a2e8807d73" formatted="false">"Yeniden dene"</string>
+    <string name="l10n_a3303b326f2b8e0c" formatted="false">"Başarısızları Yeniden Dene"</string>
     <string name="l10n_bbe728dc05ae5101" formatted="false">"Yeniden deneme yalnızca WebUI oturumları için kullanılabilir."</string>
     <string name="l10n_d0efe1645c15924c" formatted="false">"Oturumları yüklemeyi yeniden dene"</string>
     <string name="l10n_08fe845cce87a735" formatted="false">"Son turu yeniden dene"</string>
     <string name="l10n_effe5e3d4358574a" formatted="false">"Güncellemeyi yeniden dene"</string>
+    <string name="l10n_7bb8fd0794a55ded" formatted="false">"Gözden Geçir ve Üzerine Yaz"</string>
     <string name="l10n_cde5a6be0081dff8" formatted="false">"Onayları ve açıklamaları satır içinde inceleyin"</string>
     <string name="l10n_0a629b6db6c76c8a" formatted="false">"Sağdan Sola Sohbet Düzeni"</string>
     <string name="l10n_e96857c58f716104" formatted="false">"Kök"</string>
+    <string name="l10n_a299989ee9a1c92e" formatted="false">"Dağıtıcıyı Çalıştır"</string>
     <string name="l10n_8ab343d1eabae3ef" formatted="false">"Yeni Sohbet gibi Hermex işlemlerini Siri, Spotlight, Kilit Ekranı veya iPhone'un Aksiyon Düğmesi üzerinden çalıştırın. Aksiyon Düğmesi'ni kullanmak için iOS Ayarları'nı açın, Aksiyon Düğmesi'ni seçin, Kısayol'u seçin, ardından bir Hermex işlemini seçin."</string>
+    <string name="l10n_79adb123c5c0db44" formatted="false">"Run ID"</string>
     <string name="l10n_4ee85a626ff6183b" formatted="false">"Şimdi Çalıştır"</string>
     <string name="l10n_0e076478ac56474c" formatted="false">"Paralel bir görev çalıştır"</string>
     <string name="l10n_73989d9c59264da0" formatted="false">"Çalışıyor"</string>
+    <string name="l10n_a1b88f565760f0c1" formatted="false">"Dağıtıcı çalıştırılıyor…"</string>
     <string name="l10n_b66803829687b9de" formatted="false">"Komut çalıştırılıyor"</string>
     <string name="l10n_33cfd5d598aac712" formatted="false">"Şimdi çalışıyor"</string>
     <string name="l10n_93dd44cf2d1ccfaa" formatted="false">"ADIM %lld"</string>
@@ -649,10 +874,13 @@
     <string name="l10n_c0ae8f6ea8411149" formatted="false">"Kaydedildi"</string>
     <string name="l10n_85cc0a3b9ae258eb" formatted="false">"Kaydedilmiş Özel"</string>
     <string name="l10n_6dd5ffdf0c60362e" formatted="false">"Kaydedilmiş Çalışma Alanları"</string>
+    <string name="l10n_369c534df344ee14" formatted="false">"Kaydediliyor"</string>
     <string name="l10n_0a8adac9d6d5f4d1" formatted="false">"Zamanla"</string>
     <string name="l10n_82f00823fbf52cac" formatted="false">"Zamanlama gereklidir."</string>
     <string name="l10n_9ca43b04c3d2e353" formatted="false">"Zamanlanmış İşler"</string>
     <string name="l10n_395c32f788a3f892" formatted="false">"Hermes sunucusundan zamanlanmış işler burada görünecektir."</string>
+    <string name="l10n_bce73c4a4b04e523" formatted="false">"Zamanlanmış oturumlar"</string>
+    <string name="l10n_168bebddecbb0754" formatted="false">"Çizik"</string>
     <string name="l10n_d887477630313495" formatted="false">"En son mesaja kaydır"</string>
     <string name="l10n_bce06414177f72ab" formatted="false">"Ara"</string>
     <string name="l10n_e64891ecd1e87786" formatted="false">"Kullanılabilir becerileri ara"</string>
@@ -664,6 +892,7 @@
     <string name="l10n_d4e6fa2549fd2925" formatted="false">"Becerileri ara..."</string>
     <string name="l10n_436af877d210be41" formatted="false">"Dosyalar aranıyor"</string>
     <string name="l10n_c57285ac350f9afc" formatted="false">"Oturumlar aranıyor"</string>
+    <string name="l10n_bca2e803ac1c71fd" formatted="false">"Kartları Seç"</string>
     <string name="l10n_95cbd4cb485fce7c" formatted="false">"Metni Seç"</string>
     <string name="l10n_7915c8a498a76d3f" formatted="false">"Eklemek için bir dosya seçin."</string>
     <string name="l10n_426e995abe3623e6" formatted="false">"Model seç"</string>
@@ -677,11 +906,14 @@
     <string name="l10n_d7446f460992044a" formatted="false">"Bu beceriyi kullanmak için `/%@ &lt;message&gt;` gönderin."</string>
     <string name="l10n_8b2c12c5d4d5965d" formatted="false">"Konuşmayı başlatmak için bir mesaj gönderin."</string>
     <string name="l10n_b57718ffcace839f" formatted="false">"Yanıttan sonra gönder"</string>
-    <string name="l10n_16ccc931b1910648" formatted="false">"Bu istemi Hermes Aracınıza gönderin. Hermes Web UI'yi yükler, parola kimlik doğrulamasını etkinleştirir ve Tailscale erişimini yapılandırır."</string>
+    <string name="l10n_fb8e5450e7708ea1" formatted="false">"Bu istemi Hermes Aracınıza gönderin. Mevcut durumu denetler, Hermes Web UI'yi localhost'ta tutar ve Tailscale Serve ile özel HTTPS yapılandırır."</string>
     <string name="l10n_13e251839c1cbadc" formatted="false">"Medya ve canlı akışlar dahil olmak üzere sunucunuza yapılan her istekle birlikte gönderilir. Ters proxy (örn. Authentik) veya Authorization başlığı gibi token kimlik doğrulaması için kullanın."</string>
+    <string name="l10n_97dda3da38b6e1bf" formatted="false">"Beceri adlarını virgülle ayırın."</string>
     <string name="l10n_cb0cb170d106f8e8" formatted="false">"Sunucu"</string>
     <string name="l10n_3fa39b5424edd660" formatted="false">"Sunucu Avatarı"</string>
     <string name="l10n_d4b6ea00d9844a33" formatted="false">"Sunucu Varsayılanı"</string>
+    <string name="l10n_fd709421d2263b57" formatted="false">"Sunucu Durumu"</string>
+    <string name="l10n_bcfef50922cbb5d5" formatted="false">"Sunucu Başlığı"</string>
     <string name="l10n_1d5d1effa999db57" formatted="false">"Sunucu URL'si"</string>
     <string name="l10n_c3a144c6f18ea41f" formatted="false">"Sunucu parolası"</string>
     <string name="l10n_3630b49185b9bdca" formatted="false">"Sunucu HTTP %lld döndürdü."</string>
@@ -692,11 +924,13 @@
     <string name="l10n_2985663589760d41" formatted="false">"Oturum durumu:\n\n- Oturum kimliği: %1$@\n- Başlık: %2$@\n- Model: %3$@\n- Sağlayıcı: %4$@\n- Profil: %5$@\n- Çalışma alanı: %6$@\n- Aracı çalışıyor: %7$@\n- Kuyruktaki mesajlar: %8$lld\n- Arka plan görevleri: %9$lld\n- Yüklenen mesajlar: %10$lld\n- Token'lar: %11$@"</string>
     <string name="l10n_e883c5bede310321" formatted="false">"Oturum başlığı"</string>
     <string name="l10n_ee4c6b466195baf3" formatted="false">"Sohbetleriniz oldukça oturum kullanım verileri burada görünecek."</string>
+    <string name="l10n_6dfb4de7a8af7fa8" formatted="false">"Oturum görünürlüğü bu sunucuyla eşitlenir, bu yüzden WebUI de bunu izler."</string>
     <string name="l10n_e11e37a9253b34ff" formatted="false">"Oturumlar"</string>
     <string name="l10n_32962ffd65d2627e" formatted="false">"Oturumlar Avatarı"</string>
     <string name="l10n_f97972c3e4668e12" formatted="false">"Bu projedeki oturumlar Proje yok kısmına taşınacak. Oturumların kendileri silinmeyecek."</string>
     <string name="l10n_448ab73ba1c21e67" formatted="false">"Ayarla"</string>
     <string name="l10n_3bd23ee0e245365c" formatted="false">"Hedef Belirle"</string>
+    <string name="l10n_c8293bad3b7b4fb5" formatted="false">"Öncelik Ayarla"</string>
     <string name="l10n_c52c0c7cdc76e95e" formatted="false">"Kur"</string>
     <string name="l10n_d22d7bf3a71ec052" formatted="false">"Kalıcı bir hedef belirle veya incele"</string>
     <string name="l10n_b4115b8528333061" formatted="false">"Akıl yürütme çaba düzeyini ayarla"</string>
@@ -706,11 +940,14 @@
     <string name="l10n_4c619ef31f07cceb" formatted="false">"Tüm projeleri göster"</string>
     <string name="l10n_81744b31e55f479f" formatted="false">"Kullanılabilir eğik çizgi komutlarını göster"</string>
     <string name="l10n_7097a0c314985f69" formatted="false">"Oturum durumunu göster"</string>
+    <string name="l10n_b47f6085ffd26585" formatted="false">"%2$lld modelden %1$lld tanesi gösteriliyor"</string>
     <string name="l10n_3fa229fdb23ceeb3" formatted="false">"Değiştirilen ilk 500 dosya gösteriliyor."</string>
     <string name="l10n_c019f77116648ddf" formatted="false">"İlk 500 değiştirilmiş dosya gösteriliyor."</string>
+    <string name="l10n_a3a6710b148c1660" formatted="false">"Kullanılabilir pano yönetimi işlemlerini gösterir."</string>
     <string name="l10n_409adfda54bac8ec" formatted="false">"Bu proje için yeniden adlandırma ve silme işlemlerini gösterir."</string>
     <string name="l10n_64bdd26ae9e959e5" formatted="false">"Kilit Ekranı'nda ve Dynamic Island'da kısa yanıt metnini gösterir."</string>
     <string name="l10n_0c19157b637bd737" formatted="false">"Oturum arama alanını gösterir."</string>
+    <string name="l10n_9710be03d20fb3ad" formatted="false">"Bu sağlayıcının model listesini gösterir."</string>
     <string name="l10n_61fd08ff5c37211d" formatted="false">"Çıkış Yap"</string>
     <string name="l10n_c5eba70bd3954c88" formatted="false">"Bu Sunucudan Çıkış Yap"</string>
     <string name="l10n_f9d09fc5a91b5ed7" formatted="false">"Sunucunuzda kullandığınız hesabın aynısıyla giriş yapın."</string>
@@ -725,12 +962,16 @@
     <string name="l10n_11930e13637cafc2" formatted="false">"Hermes sunucusundaki beceriler burada görünecek."</string>
     <string name="l10n_9bfe8690fb3da405" formatted="false">"`%@` ile eşleşen beceriler:"</string>
     <string name="l10n_4883f494deaf503e" formatted="false">"Bu oturum boyunca tümünü atla"</string>
+    <string name="l10n_06efe358248e1592" formatted="false">"Atlandı—atanan yok"</string>
+    <string name="l10n_60dbead0f06505e3" formatted="false">"Atlandı—bilinmeyen profil"</string>
     <string name="l10n_bb5430b00fb04963" formatted="false">"Kurulumu atlar ve bağlantı ekranını açar."</string>
     <string name="l10n_b3d97fd6dece388a" formatted="false">"Gök Mavisi"</string>
+    <string name="l10n_094da9b95fdcee3d" formatted="false">"Kısa ad"</string>
     <string name="l10n_4b8bd42120d9a94c" formatted="false">"Kaynak: yerel oturum meta verisi yedeği."</string>
     <string name="l10n_2513e8e94b38cc59" formatted="false">"Kaynak: yerel oturum meta verisi yedeği. Sunucu istatistikleri başarısız oldu: %@"</string>
     <string name="l10n_d1b96f5b62a4287b" formatted="false">"Kaynak: yerel oturum meta verisi."</string>
     <string name="l10n_03d03ab0d88c3373" formatted="false">"Kaynak: son %lld günün sunucu istatistikleri."</string>
+    <string name="l10n_cd5d730d53090728" formatted="false">"Başlatıldı"</string>
     <string name="l10n_c0333d1add29d664" formatted="false">"Konuşma tanıma devre dışı. Sesli girişi kullanmak için Ayarlar'dan etkinleştirin."</string>
     <string name="l10n_4bfb98bccc44ac2c" formatted="false">"Konuşma tanıma mevcut yerel ayar için kullanılamıyor."</string>
     <string name="l10n_59246b380055b101" formatted="false">"Konuşma tanıma şu anda kullanılamıyor."</string>
@@ -781,11 +1022,14 @@
     <string name="l10n_7bb0ddf9221c03b8" formatted="false">"Görev"</string>
     <string name="l10n_b41eb6f08c8b078b" formatted="false">"Görev İşlemleri"</string>
     <string name="l10n_090ec5f560fc5037" formatted="false">"Görevler"</string>
+    <string name="l10n_3ca93c78f67175df" formatted="false">"Kiracı"</string>
     <string name="l10n_43518a45c3506afe" formatted="false">"Terminal mobil uygulamada kullanılamıyor."</string>
     <string name="l10n_580f6ab716ab4ca9" formatted="false">"Bağlantıyı Test Et"</string>
     <string name="l10n_7b514bffeae3b7d5" formatted="false">"Bu onay isteğinin süresi zaten dolduğu için ajan devam etti."</string>
     <string name="l10n_d2209900784abf2a" formatted="false">"Bu açıklama isteminin süresi zaten dolduğu için ajan devam etti."</string>
     <string name="l10n_05d3eab3ca8f18dd" formatted="false">"Bu oturum artık sunucuda mevcut değil. Başka bir oturumu yeniden açın veya yeni bir tane oluşturun."</string>
+    <string name="l10n_21f829338a7faa45" formatted="false">"Pano yenileniyor."</string>
+    <string name="l10n_1dd6da47cd03c774" formatted="false">"Gönderici, Atanmış Profili olmayan Hazır Kartları atlar."</string>
     <string name="l10n_ecfa2de70a6b9074" formatted="false">"HTTPS bağlantısı başarısız oldu. Sunucu URL'sini ve sertifikayı kontrol edin."</string>
     <string name="l10n_9bbd89ecc5be6e75" formatted="false">"Hermes sunucusunda bir iç hata oluştu. Sunucu günlüklerini kontrol edin, ardından yeniden deneyin."</string>
     <string name="l10n_15ea0a61edd4c28f" formatted="false">"Asistan yanıtlamayı bitirdi."</string>
@@ -793,6 +1037,8 @@
     <string name="l10n_99bd906ebc1eccbe" formatted="false">"Düzenlenen mesaj boş olamaz."</string>
     <string name="l10n_81c08290cf69b27a" formatted="false">"Parola reddedildi. Sunucu parolasını kontrol edip yeniden deneyin."</string>
     <string name="l10n_94f2c21b3df558b2" formatted="false">"İstek iptal edildi."</string>
+    <string name="l10n_8bdfda19530477f9" formatted="false">"Seçilen Kartlar arşive taşınacak."</string>
+    <string name="l10n_cd019f1c53e3497b" formatted="false">"Seçim artık kullanılamıyor. Panoyu yenileyin ve Kartları tekrar seçin."</string>
     <string name="l10n_e7160301a4c0999e" formatted="false">"Sunucu mevcut yanıtı durduramadı."</string>
     <string name="l10n_391ddfb06a8ee962" formatted="false">"Sunucu bu oturumu arşivden çıkaramadı."</string>
     <string name="l10n_11326745266f240a" formatted="false">"Sunucu değişikliği onaylamadı."</string>
@@ -827,11 +1073,14 @@
     <string name="l10n_ac044556e5548d3c" formatted="false">"Sunucu çok fazla istek alıyor. Biraz bekleyin, ardından yeniden deneyin."</string>
     <string name="l10n_2a1b7a25a5096500" formatted="false">"Sunucu veya Cloudflare tüneli kullanılamıyor. Mac'in uyanık olduğunu, hermes-webui'nin çalıştığını ve tünelin bağlı olduğunu kontrol edin."</string>
     <string name="l10n_f8d83dbb55003db9" formatted="false">"Sunucu erişimi reddetti. Sunucu parolasını ve izinleri kontrol edin."</string>
+    <string name="l10n_a9c580f6eaa44ef8" formatted="false">"Sunucu bu güncellemeyi reddetti veya uygulamadı."</string>
+    <string name="l10n_1f649f3b878ba1a5" formatted="false">"Sunucu bu dağıtıcı isteğini reddetti. Hermex yeniden denemedi."</string>
     <string name="l10n_3b7efcceeff317b3" formatted="false">"Sunucu isteği reddetti."</string>
     <string name="l10n_80e2ebb549050457" formatted="false">"Sunucu isteği reddetti: %@"</string>
     <string name="l10n_d2a9f8cb89bf69b7" formatted="false">"Sunucu yanıtı okunamadı."</string>
     <string name="l10n_53e576d649d0b70e" formatted="false">"Sunucu yanıtı okunamadı. URL'nin bir Hermes Web UI sunucusuna işaret ettiğini kontrol edin."</string>
     <string name="l10n_eefb8bb01beaaae1" formatted="false">"Sunucu yanıt vermek için çok uzun süre aldı. Mac'in uyanık olduğunu ve sunucunun çalıştığını kontrol edin."</string>
+    <string name="l10n_afa9464df086e048" formatted="false">"Pano oluşturulduktan sonra kısa ad değiştirilemez."</string>
     <string name="l10n_c9f0def8dcd627c9" formatted="false">"Akış, hatalı biçimlendirilmiş bir hata olayı döndürdü."</string>
     <string name="l10n_baa339d62041f2e5" formatted="false">"Akış bir hata döndürdü."</string>
     <string name="l10n_e0dfd329b1ff55a1" formatted="false">"Güncelleme uygulanamadı."</string>
@@ -845,6 +1094,11 @@
     <string name="l10n_a8f4d85bf0de7c20" formatted="false">"Düşünme ve Araç Kartları"</string>
     <string name="l10n_ac9ded8ad76135f8" formatted="false">"Düşünme ve Araç kartları daraltılmış yerine genişletilmiş olarak başlar. Bir karta dokunmak yine de durumunu değiştirir."</string>
     <string name="l10n_16c5d096ef4c4b52" formatted="false">"Düşünüyor, %@"</string>
+    <string name="l10n_e151dd158050ee78" formatted="false">"Bu pano artık mevcut değil. Başka bir pano seçin."</string>
+    <string name="l10n_6a650636b81004aa" formatted="false">"This Board no longer exists. Return to Kanban to choose another Board."</string>
+    <string name="l10n_ca86aeb9616416a9" formatted="false">"Bu Kart editör açıldıktan sonra sunucuda değişti. Taslağınız korunmuştur."</string>
+    <string name="l10n_3474c0f601ba033a" formatted="false">"This Card no longer exists on this Board. The Board has been refreshed."</string>
+    <string name="l10n_83a3dcf7fc7d62c1" formatted="false">"Bu önizleme eskidi. Güvenmeden önce Dağıtım Önizlemesini yeniden çalıştırın."</string>
     <string name="l10n_aba61a2ad81b8d7f" formatted="false">"Bu ekin bir sunucu dosya yolu yok."</string>
     <string name="l10n_1877e019673b82ad" formatted="false">"Bu sohbetin çalışma alanı bir Git deposu değil."</string>
     <string name="l10n_a8f9e43b9a80b7bf" formatted="false">"Bu komut mobil uygulamada kullanılamıyor."</string>
@@ -853,6 +1107,7 @@
     <string name="l10n_de77c8f5ce7c5f65" formatted="false">"Bu dosya boş görünüyor."</string>
     <string name="l10n_1199f666fedc3267" formatted="false">"Bu dosya ikili olduğundan gösterilecek metin diff’i yok."</string>
     <string name="l10n_83722fb0e0ca5b75" formatted="false">"Bu dosya Fotoğraflar'a kaydedilebilecek bir görsel değil."</string>
+    <string name="l10n_4914d0afde90fb6d" formatted="false">"Bu işlem en fazla %lld worker başlatabilir ve API bütçesi tüketebilir."</string>
     <string name="l10n_bc15958918104240" formatted="false">"Bu, en son Hermes sunucusu sürümünü çeker ve sunucuyu yeniden başlatır. Etkin sohbetler kısa süreliğine kesintiye uğrayabilir; sunucu geri geldiğinde uygulama yeniden bağlanır."</string>
     <string name="l10n_f0c6fa08d0785f19" formatted="false">"Bu, zamanlanmış görevi Hermes sunucusundan kaldırır."</string>
     <string name="l10n_9cc29299b5a024f3" formatted="false">"Bu, sunucuyu ve bu cihazdaki kayıtlı ayarlarını kaldırır. Etkin sunucunuz etkilenmez."</string>
@@ -867,16 +1122,21 @@
     <string name="l10n_e00561c4c172b50c" formatted="false">"Bu görev henüz herhangi bir çıktı üretmedi."</string>
     <string name="l10n_97b25d863d2e238a" formatted="false">"Bu çalışma alanında kaydedilmemiş değişiklikler var. Bunları geçici olarak kaydedin, dalları değiştirin ve ardından hedef dal için kaydedilen değişiklikleri geri yükleyin."</string>
     <string name="l10n_c51f7b72279e26fd" formatted="false">"Eşik"</string>
+    <string name="l10n_7bbea3f2b3d3370d" formatted="false">"Zaman aşımına uğradı"</string>
     <string name="l10n_85decb73d1438d2e" formatted="false">"Zaman aralığı"</string>
     <string name="l10n_588e8007757722e5" formatted="false">"Zaman aşımı %@"</string>
     <string name="l10n_abca4fe61ee1300b" formatted="false">"Yeni Sohbet ve Gönder Düğmelerini Renklendir"</string>
+    <string name="l10n_768e0c1c69573fb5" formatted="false">"Başlık"</string>
+    <string name="l10n_d5ec4d31ee0ffb4b" formatted="false">"Başlık gerekli."</string>
     <string name="l10n_735e4002db082f59" formatted="false">"Başlık **%@** olarak ayarlandı."</string>
+    <string name="l10n_353a23d95e3c0839" formatted="false">"Yapılacak"</string>
     <string name="l10n_757011e57ad1e225" formatted="false">"Anlık Bildirimler"</string>
     <string name="l10n_0b021d5f7dac5820" formatted="false">"Anlık Bildirimler"</string>
     <string name="l10n_24345a14377fd821" formatted="false">"Bugün"</string>
     <string name="l10n_9a830c714bb2b52b" formatted="false">"Araç"</string>
     <string name="l10n_fa689a2e435f8e6d" formatted="false">"En Çok Kullanılan Oturumlar"</string>
     <string name="l10n_b662ff25f41cef30" formatted="false">"Toplam Token"</string>
+    <string name="l10n_013ec284eed0cb93" formatted="false">"Ön değerlendirme"</string>
     <string name="l10n_cef2fe093b68fa97" formatted="false">"Yeniden Dene"</string>
     <string name="l10n_3878a498a56fa2c4" formatted="false">"Farklı bir dosya adı veya yolu deneyin."</string>
     <string name="l10n_4bb4b153f85d494e" formatted="false">"Farklı bir model adı veya kimliği deneyin."</string>
@@ -887,14 +1147,20 @@
     <string name="l10n_426fed37b50f32c6" formatted="false">"Bir yanıt yazın"</string>
     <string name="l10n_0e2d9b0777a485c1" formatted="false">"URL"</string>
     <string name="l10n_35e71c29f1185e21" formatted="false">"Arşivden Çıkar"</string>
+    <string name="l10n_e57016edceec7e7b" formatted="false">"Atanmamış"</string>
     <string name="l10n_2c9c1f79142df1b6" formatted="false">"Kullanılamıyor"</string>
+    <string name="l10n_12aabd251c4213f1" formatted="false">"Engeli kaldır"</string>
     <string name="l10n_4ef7d73c1a83464f" formatted="false">"Kategorilenmemiş"</string>
     <string name="l10n_10e6f533d2aaca09" formatted="false">"Taahhüt Edilmemiş Değişiklikler"</string>
+    <string name="l10n_39fc72124884d657" formatted="false">"Geri al"</string>
+    <string name="l10n_e979f022d850942a" formatted="false">"Arşivlemeyi geri al"</string>
     <string name="l10n_b3a1af021b557f01" formatted="false">"Geri alma yalnızca WebUI oturumları için kullanılabilir."</string>
     <string name="l10n_0383fdef3915a396" formatted="false">"Son alışverişi geri al"</string>
     <string name="l10n_bc7819b34ff87570" formatted="false">"Bilinmiyor"</string>
     <string name="l10n_3697b1ae8e7d30a2" formatted="false">"Bilinmeyen Tarih"</string>
     <string name="l10n_b87bd1c1a7bca908" formatted="false">"Bilinmeyen Model"</string>
+    <string name="l10n_dd1bf46d2decbcfc" formatted="false">"Bilinmeyen Durum"</string>
+    <string name="l10n_9a8ae21fb0d04e5a" formatted="false">"Bilinmeyen sağlayıcı"</string>
     <string name="l10n_fd61688d01169f43" formatted="false">"Bilinmeyen akıl yürütme düzeyi: %@."</string>
     <string name="l10n_d57444178b19325b" formatted="false">"Adsız Beceri"</string>
     <string name="l10n_2eba6a03b89a9ddb" formatted="false">"Sabitlemeyi Kaldır"</string>
@@ -907,9 +1173,12 @@
     <string name="l10n_82fb1d5144a846f7" formatted="false">"Güncel"</string>
     <string name="l10n_fb91e24fa52d8d2b" formatted="false">"Güncelle"</string>
     <string name="l10n_58b0f1cc44738b4e" formatted="false">"Güncelleme mevcut · %lld sürüm geride"</string>
+    <string name="l10n_4de04cd91a3d954b" formatted="false">"Güncelleme başarısız"</string>
     <string name="l10n_61c080e52b666016" formatted="false">"Sunucu güncellensin mi?"</string>
+    <string name="l10n_f2f8570ddd7b1e7b" formatted="false">"Updated"</string>
     <string name="l10n_a74e190a94f85aeb" formatted="false">"Oturumlar başlık logosu rengini günceller."</string>
     <string name="l10n_4159ad3b0d6e5c96" formatted="false">"Güncelleniyor ve yeniden başlatılıyor…"</string>
+    <string name="l10n_d6f123d4cdba5c1b" formatted="false">"Pano güncelleniyor…"</string>
     <string name="l10n_37016ece9e2301b0" formatted="false">"Uygulama simgesi güncelleniyor"</string>
     <string name="l10n_3d07322927c7ed8c" formatted="false">"Yazma alanı ayarları güncelleniyor..."</string>
     <string name="l10n_05898ca376b6c749" formatted="false">"Görev güncelleniyor..."</string>
@@ -931,6 +1200,7 @@
     <string name="l10n_542f2c8e3ce7e991" formatted="false">"Araç kullanılıyor"</string>
     <string name="l10n_8dce170de238b1fe" formatted="false">"Değer"</string>
     <string name="l10n_2da600bf94048431" formatted="false">"Sürüm"</string>
+    <string name="l10n_931e1a4b152ad9d1" formatted="false">"Tümünü görüntüle"</string>
     <string name="l10n_ddcd2f2e783a0ee9" formatted="false">"Mor"</string>
     <string name="l10n_0c82d065d0dd4cbf" formatted="false">"Sesli komutlar mobil uygulamada kullanılamıyor."</string>
     <string name="l10n_c0b2cee024771a9f" formatted="false">"Sesli giriş"</string>
@@ -959,9 +1229,16 @@
     <string name="l10n_0a1ea5282f05b18d" formatted="false">"Onay bekleniyor"</string>
     <string name="l10n_8ac7aa173f261d8b" formatted="false">"Neler elde edersiniz"</string>
     <string name="l10n_37619fc13053f82b" formatted="false">"Beyaz"</string>
+    <string name="l10n_da17e9bd3e2e98db" formatted="false">"Worker ID"</string>
+    <string name="l10n_e7dff0bfb1f39bad" formatted="false">"Çalışan günlüğü"</string>
     <string name="l10n_4ca0a75c2b7fa7da" formatted="false">"Çalışma alanı"</string>
+    <string name="l10n_45df1387dc17132d" formatted="false">"Bu sunucuda çalışma alanı yönetimi kullanılamıyor."</string>
+    <string name="l10n_6e0f2ba26a5e7f14" formatted="false">"Çalışma alanı adı"</string>
     <string name="l10n_5b8d33f220cddf4c" formatted="false">"Çalışma alanı yolu"</string>
+    <string name="l10n_01844d97ed607c1a" formatted="false">"Bu çalışma alanı türü için çalışma alanı yolu gereklidir."</string>
     <string name="l10n_928ae0b86e6b313e" formatted="false">"Çalışma alanı değiştirme kullanılamıyor."</string>
+    <string name="l10n_dc8ab239f39b6ebf" formatted="false">"Çalışma Alanı, Beceriler, Maksimum Çalışma Süresi ve Önkoşul, Kart oluşturulduğunda ayarlanır ve burada düzenlenemez."</string>
+    <string name="l10n_fad0554cb2ea2e8c" formatted="false">"Çalışma Ağacı"</string>
     <string name="l10n_ebf23375246151e6" formatted="false">"Kod Bloğu Satırlarını Kaydır"</string>
     <string name="l10n_4855c3796b3a0f62" formatted="false">"Kod bloklarındaki uzun satırları yana kaydırmak yerine ekrana sığacak şekilde kaydırır. Herhangi bir kod bloğundaki kaydırma düğmesine de dokunabilirsiniz."</string>
     <string name="l10n_4a48932789d199bb" formatted="false">"Yazmak"</string>
@@ -976,6 +1253,7 @@
     <string name="l10n_22b34eb125f0f1ee" formatted="false">"Yapılandırılmış başka bir sunucuya geçeceksiniz. Bunu kullanmak için yeniden giriş yapın."</string>
     <string name="l10n_a7355287e63a4595" formatted="false">"Hermes Web UI'niz, denetlediğiniz donanımda kalır."</string>
     <string name="l10n_0b05d4e5dfddc460" formatted="false">"Hermes aracınız, Tailscale üzerinden iPhone'dan erişilebilir."</string>
+    <string name="l10n_d621853ee2b94ab0" formatted="false">"Yerel taslağınız silinecek."</string>
     <string name="l10n_1735ecf6cc9d21df" formatted="false">"Oturumunuzun süresi doldu. Yeniden giriş yapın."</string>
     <string name="l10n_46aa126e081be313" formatted="false">"Çalışma ağacınız temiz."</string>
     <string name="l10n_0411e4632d186d8a" formatted="false">"modelleri değiştirme"</string>
@@ -996,6 +1274,7 @@
     <string name="l10n_9c7e05e5868afcf3" formatted="false">"komut"</string>
     <string name="l10n_7cd9148ec5a552db" formatted="false">"sorgu"</string>
     <string name="l10n_3b2be2e26344d52b" formatted="false">"soru"</string>
+    <string name="l10n_8103a6c374c589c3" formatted="false">"saniye başına token"</string>
     <string name="l10n_1937c4c28f726186" formatted="false">"araç"</string>
     <string name="l10n_c551e6cf17a561ce" formatted="false">"Onayla"</string>
     <string name="l10n_cfea419c3b4e8b02" formatted="false">"Kaydet"</string>
@@ -1019,7 +1298,6 @@
     <string name="l10n_567f51fd4b4b8a0d" formatted="false">"Değişiklikler kullanılamıyor"</string>
     <string name="l10n_d3f0b43f65ef5ed5" formatted="false">"Sonraki Mesajlar Yoksayılsın mı?"</string>
     <string name="l10n_1a2b1cb567321e7c" formatted="false">"Kimlik"</string>
-    <string name="l10n_8b39616698372de0" formatted="false">"Ajanınızın döndürdüğü Tailscale URL'sini girin, örneğin `http://&lt;tailnet-ip&gt;:8787`."</string>
     <string name="l10n_f54ec593076806df" formatted="false">"HTML olarak dışa aktar"</string>
     <string name="l10n_bc399052d4204298" formatted="false">"JSON olarak dışa aktar"</string>
     <string name="l10n_03d5d80199276349" formatted="false">"Sunucuyu Kaldır"</string>
@@ -1059,7 +1337,6 @@
     <string name="l10n_bd8d3d03c9e555ba" formatted="false">"Etkin sunucudan çıkış yapar ve tanıtıma geri döner."</string>
     <string name="l10n_2dacf65959849884" formatted="false">"Gönder"</string>
     <string name="l10n_8b18a01cc0e805fc" formatted="false">"Şube"</string>
-    <string name="l10n_768e0c1c69573fb5" formatted="false">"Tam Başlık"</string>
     <string name="l10n_a62dff92d4316df9" formatted="false">"Anlık Bildirimler"</string>
     <string name="l10n_7bab0e5ded8bc6f0" formatted="false">"Bir model kimliğini sunucunun beklediği şekilde tam olarak yazın."</string>
     <string name="l10n_1d4d43cc6f3a833e" formatted="false">"Bitti"</string>
@@ -1069,7 +1346,7 @@
     <string name="l10n_4995a18a7feb07d3" formatted="false">"Android bildirimlerine izin verildi."</string>
     <string name="l10n_6ffbb15ebde8242f" formatted="false">"Android bildirimleri devre dışı."</string>
     <string name="l10n_65f5f6f5ac859134" formatted="false">"Android'unuzdan Hermes ajanınızla sohbet edin"</string>
-    <string name="l10n_9aae4001f785c3f9" formatted="false">"Hermes ajanınızı Android'dan kontrol edin."</string>
+    <string name="l10n_9aae4001f785c3f9" formatted="false">"Hermes ajanınızı iPhone veya iPad'den kontrol edin."</string>
     <string name="l10n_988fc6350ab87756" formatted="false">"Tailscale'i Google Play'dan edinin"</string>
     <string name="l10n_e972ad1daa70f255" formatted="false">"Hermes aracınız, Tailscale üzerinden Android'dan erişilebilir."</string>
     <string name="l10n_b9cba9b2cbc1433d" formatted="false">"%lld arşivlenmiş oturum"</string>
@@ -1085,7 +1362,9 @@
     <string name="l10n_dc3decbb93847518" formatted="false">"Ayrıntılar"</string>
     <string name="l10n_36fff63ccbcd7bf9" formatted="false">"Vazgeç"</string>
     <string name="l10n_663da9347806aa18" formatted="false">"Dosya değişiklikleri"</string>
+    <string name="l10n_96e578211aa29531" formatted="false">"Filtreler"</string>
     <string name="l10n_1ce5eec83a4626a6" formatted="false">"Hermex ?ifrelenmi? hesap verilerini a?amad?. S?f?rlama, kay?tl? sunucular?, oturum a?ma ?erezlerini ve ?zel ba?l?klar? bu cihazdan kald?r?r."</string>
+    <string name="l10n_7f896a7c24b031ad" formatted="false">"Uyumsuz Kanban yanıtı"</string>
     <string name="l10n_7a4e49bc1d9b6a0e" formatted="false">"Uzak görseli yükle"</string>
     <string name="l10n_2563f2298c5e7405" formatted="false">"Ad: Değer"</string>
     <string name="l10n_cf9b77061f7b3126" formatted="false">"Aç"</string>

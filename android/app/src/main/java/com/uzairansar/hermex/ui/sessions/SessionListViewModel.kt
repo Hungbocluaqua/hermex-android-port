@@ -17,6 +17,7 @@ import com.uzairansar.hermex.core.model.SessionMutationResponse
 import com.uzairansar.hermex.core.model.SessionSummary
 import com.uzairansar.hermex.core.model.isConfirmedMutation
 import com.uzairansar.hermex.data.preferences.LocalSettingsRepository
+import com.uzairansar.hermex.data.preferences.MainPageDisplaySettings
 import com.uzairansar.hermex.data.preferences.SessionRowDisplaySettings
 import com.uzairansar.hermex.data.repository.PanelsRepository
 import com.uzairansar.hermex.data.repository.ResultState
@@ -55,6 +56,25 @@ internal val ProjectColorPalette = listOf(
 internal fun defaultProjectColorHex(existingProjectCount: Int): String =
     ProjectColorPalette[existingProjectCount.coerceAtLeast(0) % ProjectColorPalette.size].hex
 
+data class ScheduledSessionGroups(
+    val ordinary: List<SessionSummary>,
+    val scheduled: List<SessionSummary>,
+    val totalScheduledCount: Int,
+) {
+    val scheduledPreview: List<SessionSummary>
+        get() = scheduled.take(ScheduledPreviewLimit)
+
+    val hasAdditionalScheduledSessions: Boolean
+        get() = scheduled.size > scheduledPreview.size
+
+    fun showsDisclosure(isSearchActive: Boolean): Boolean =
+        totalScheduledCount > 0 && (!isSearchActive || scheduled.isNotEmpty())
+
+    private companion object {
+        const val ScheduledPreviewLimit = 5
+    }
+}
+
 enum class SessionOpenDestination {
     Chat,
     VoiceChat,
@@ -77,7 +97,9 @@ data class SessionListUiState(
     val searchError: String? = null,
     val showArchived: Boolean = false,
     val showCliSessions: Boolean = true,
+    val showClaudeCodeSessions: Boolean = true,
     val sessionRowDisplaySettings: SessionRowDisplaySettings = SessionRowDisplaySettings(),
+    val mainPageDisplaySettings: MainPageDisplaySettings = MainPageDisplaySettings(),
     val tintPrimaryActionsWithThemeColor: Boolean = false,
     val archivedCount: Int? = null,
     val profileOptions: List<ProfileSummary> = emptyList(),
@@ -112,6 +134,8 @@ data class SessionListUiState(
             }
             val sourceFiltered = archiveFiltered.filter { showCliSessions || it.isCliSession != true }
                 .filter { sessionRowDisplaySettings.showCronSessions || !it.isCronSession }
+                .filter { showClaudeCodeSessions || !it.isClaudeCodeSession }
+                .filter { sessionRowDisplaySettings.showSubagentSessions || !it.isDelegatedSubagentSession }
             val projectFiltered = selectedProjectId?.let { projectId ->
                 sourceFiltered.filter { it.projectId == projectId }
             } ?: sourceFiltered
@@ -131,6 +155,34 @@ data class SessionListUiState(
             }
             return localMatches + remoteMatches.sortedForSessionList()
         }
+
+    val scheduledSessionGroups: ScheduledSessionGroups
+        get() {
+            val visible = visibleSessions
+            return ScheduledSessionGroups(
+                ordinary = visible.filterNot { it.isCronSession },
+                scheduled = visible.filter { it.isCronSession && it.archived != true },
+                totalScheduledCount = if (sessionRowDisplaySettings.showCronSessions) {
+                    sessions.count { it.isCronSession && it.archived != true }
+                } else {
+                    0
+                },
+            )
+        }
+
+    fun scheduledSessions(searchQuery: String): List<SessionSummary> {
+        if (!sessionRowDisplaySettings.showCronSessions) return emptyList()
+        val query = searchQuery.normalizedSearchQuery()
+        return sessions
+            .asSequence()
+            .filter { it.archived != true && it.isCronSession }
+            .filter { showCliSessions || it.isCliSession != true }
+            .filter { showClaudeCodeSessions || !it.isClaudeCodeSession }
+            .filter { sessionRowDisplaySettings.showSubagentSessions || !it.isDelegatedSubagentSession }
+            .filter { query.isEmpty() || it.searchableText.contains(query) }
+            .toList()
+            .sortedForSessionList()
+    }
 }
 
 @Serializable
@@ -221,8 +273,18 @@ class SessionListViewModel(
             }
         }
         viewModelScope.launch {
+            localSettingsRepository.showClaudeCodeSessions(serverId).collectLatest { enabled ->
+                _state.update { it.copy(showClaudeCodeSessions = enabled) }
+            }
+        }
+        viewModelScope.launch {
             localSettingsRepository.sessionRowDisplaySettings.collectLatest { displaySettings ->
                 _state.update { it.copy(sessionRowDisplaySettings = displaySettings) }
+            }
+        }
+        viewModelScope.launch {
+            localSettingsRepository.mainPageDisplaySettings.collectLatest { displaySettings ->
+                _state.update { it.copy(mainPageDisplaySettings = displaySettings) }
             }
         }
         viewModelScope.launch {
@@ -467,11 +529,13 @@ class SessionListViewModel(
     }
 
     fun togglePin(session: SessionSummary) {
+        if (rejectReadOnlyMutation(session)) return
         val id = session.sessionId ?: return
         mutate("Pin updated.") { repository.pin(id, session.pinned != true).mutationError("The server could not update the pin.") }
     }
 
     fun toggleArchive(session: SessionSummary) {
+        if (rejectReadOnlyMutation(session)) return
         val id = session.sessionId ?: return
         val archived = session.archived != true
         mutate(if (archived) "Session archived." else "Session restored.") {
@@ -480,6 +544,7 @@ class SessionListViewModel(
     }
 
     fun requestRename(session: SessionSummary) {
+        if (rejectReadOnlyMutation(session)) return
         _state.update { it.copy(renameSession = session, renameDraft = session.title.orEmpty(), error = null) }
     }
 
@@ -493,6 +558,7 @@ class SessionListViewModel(
 
     fun confirmRename() {
         val session = _state.value.renameSession ?: return
+        if (rejectReadOnlyMutation(session)) return
         val id = session.sessionId ?: return
         val title = _state.value.renameDraft.trim()
         if (title.isBlank()) {
@@ -504,6 +570,7 @@ class SessionListViewModel(
     }
 
     fun requestDelete(session: SessionSummary) {
+        if (rejectReadOnlyMutation(session)) return
         _state.update { it.copy(deleteSession = session, error = null) }
     }
 
@@ -513,6 +580,7 @@ class SessionListViewModel(
 
     fun confirmDelete() {
         val session = _state.value.deleteSession ?: return
+        if (rejectReadOnlyMutation(session)) return
         val id = session.sessionId ?: return
         viewModelScope.launch {
             _state.update { it.copy(isMutating = true, error = null, notice = null) }
@@ -539,6 +607,7 @@ class SessionListViewModel(
     }
 
     fun requestBranch(session: SessionSummary) {
+        if (rejectReadOnlyMutation(session)) return
         _state.update { it.copy(branchSession = session, branchTitleDraft = "", error = null) }
     }
 
@@ -552,6 +621,7 @@ class SessionListViewModel(
 
     fun confirmBranch() {
         val session = _state.value.branchSession ?: return
+        if (rejectReadOnlyMutation(session)) return
         val id = session.sessionId ?: return
         val title = _state.value.branchTitleDraft.trim().ifBlank { null }
         _state.update { it.copy(branchSession = null, branchTitleDraft = "") }
@@ -579,6 +649,7 @@ class SessionListViewModel(
     }
 
     fun duplicate(session: SessionSummary) {
+        if (rejectReadOnlyMutation(session)) return
         val id = session.sessionId
         if (id.isNullOrBlank()) {
             _state.update { it.copy(error = "The server did not provide a session ID.") }
@@ -626,6 +697,7 @@ class SessionListViewModel(
     }
 
     fun move(session: SessionSummary, projectId: String?) {
+        if (rejectReadOnlyMutation(session)) return
         val id = session.sessionId ?: return
         if (session.projectId == projectId) return
         mutate(if (projectId == null) "Moved to no project." else "Moved to project.") {
@@ -816,6 +888,21 @@ class SessionListViewModel(
         return "$baseTitle (copy)"
     }
 
+    private fun rejectReadOnlyMutation(session: SessionSummary): Boolean {
+        if (!session.isSessionReadOnly) return false
+        _state.update {
+            it.copy(
+                renameSession = null,
+                deleteSession = null,
+                branchSession = null,
+                isMutating = false,
+                notice = null,
+                error = "This session is read-only.",
+            )
+        }
+        return true
+    }
+
     private companion object {
         const val SAVED_TRANSIENT_STATE = "session_list_transient_state"
     }
@@ -864,5 +951,9 @@ internal fun contentMatchSessionIds(
 }
 
 private val SessionSummary.isCronSession: Boolean
-    get() = listOfNotNull(sourceTag, sessionSource, sourceLabel)
-        .any { source -> source.contains("cron", ignoreCase = true) }
+    get() {
+        if (sessionId?.trim()?.startsWith("cron_", ignoreCase = true) == true) return true
+        return listOfNotNull(sessionSource, sourceTag, rawSource, sourceLabel)
+            .map(String::trim)
+            .any { source -> source.contains("cron", ignoreCase = true) }
+    }

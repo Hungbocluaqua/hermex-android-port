@@ -28,10 +28,13 @@ class PanelsRepository(private val client: HermesApiClient) {
     suspend fun writeMemory(section: String, content: String): MemoryWriteResponse = client.writeMemory(section, content)
     suspend fun settings(): SettingsResponse = client.settings()
     suspend fun updateSettings(showCliSessions: Boolean): SettingsResponse = client.updateSettings(showCliSessions)
+    suspend fun updateClaudeCodeSessionVisibility(enabled: Boolean): SettingsResponse =
+        client.updateClaudeCodeSessionVisibility(enabled)
     suspend fun updatesCheck(): UpdatesCheckResponse = client.updatesCheck()
     suspend fun updatesCheckForced(): UpdatesCheckResponse = client.updatesCheckForced()
     suspend fun applyUpdate(target: String = "webui"): UpdatesApplyResponse = client.applyUpdate(target)
     suspend fun models(): ModelCatalogResponse = client.models()
+    suspend fun providers(): ProvidersResponse = client.providers()
     suspend fun modelsLive(): ModelsLiveResponse = client.modelsLive()
     suspend fun saveDefaultModel(model: String, provider: String? = null): DefaultModelResponse = client.defaultModel(model, provider)
     suspend fun profiles(): ProfilesResponse = client.profiles()

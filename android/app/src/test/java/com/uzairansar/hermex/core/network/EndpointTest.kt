@@ -50,6 +50,23 @@ class EndpointTest {
     }
 
     @Test
+    fun mediaEndpointIncludesSessionScopedAuthorizationParameters() {
+        val url = Endpoint.Media("session-123", "/tmp/example.png").url(base)
+
+        assertEquals("/api/media", url.encodedPath)
+        assertEquals("session-123", url.queryParameter("session_id"))
+        assertEquals("/tmp/example.png", url.queryParameter("path"))
+    }
+
+    @Test
+    fun workspaceRegistryEndpointsMatchIosContract() {
+        assertEquals("/api/workspaces/add", Endpoint.WorkspaceAdd.url(base).encodedPath)
+        assertEquals("/api/workspaces/remove", Endpoint.WorkspaceRemove.url(base).encodedPath)
+        assertEquals("/api/workspaces/rename", Endpoint.WorkspaceRename.url(base).encodedPath)
+        assertEquals("/api/workspaces/reorder", Endpoint.WorkspaceReorder.url(base).encodedPath)
+    }
+
+    @Test
     fun chatStreamEndpointMatchesIosContract() {
         val url = Endpoint.ChatStream("stream-1").url(base)
 
@@ -156,5 +173,55 @@ class EndpointTest {
 
         assertEquals("/api/crons/delivery-options", url.encodedPath)
         assertEquals(null, url.query)
+    }
+
+    @Test
+    fun kanbanReadEndpointsClampPagingAndPreserveFilters() {
+        val board = Endpoint.KanbanBoard(
+            board = "main",
+            tenant = "mobile",
+            assignee = "reviewer",
+            includeArchived = true,
+            onlyMine = true,
+            since = 42,
+        ).url(base)
+        val events = Endpoint.KanbanEvents("main", since = -4, limit = 900).url(base)
+        val stream = Endpoint.KanbanEventsStream("main", since = -4).url(base)
+        val log = Endpoint.KanbanCardLog("card/../unsafe", "main", tailBytes = 9_000_000).url(base)
+
+        assertEquals("/api/kanban/board", board.encodedPath)
+        assertEquals("true", board.queryParameter("include_archived"))
+        assertEquals("true", board.queryParameter("only_mine"))
+        assertEquals("42", board.queryParameter("since"))
+        assertEquals("0", events.queryParameter("since"))
+        assertEquals("200", events.queryParameter("limit"))
+        assertEquals("/api/kanban/events/stream", stream.encodedPath)
+        assertEquals("main", stream.queryParameter("board"))
+        assertEquals("0", stream.queryParameter("since"))
+        assertEquals("/api/kanban/tasks/card%2F..%2Funsafe/log", log.encodedPath)
+        assertEquals("2000000", log.queryParameter("tail"))
+    }
+
+    @Test
+    fun kanbanDynamicBoardAndCardPathsEncodeSingleSegments() {
+        val board = Endpoint.KanbanBoardBySlug("team/../board").url(base)
+        val active = Endpoint.KanbanBoardSwitch("team/../board").url(base)
+        val card = Endpoint.KanbanCard("card/../one", "main").url(base)
+        val comment = Endpoint.KanbanCardComments("card/../one", "main").url(base)
+
+        assertEquals("/api/kanban/boards/team%2F..%2Fboard", board.encodedPath)
+        assertEquals("/api/kanban/boards/team%2F..%2Fboard/switch", active.encodedPath)
+        assertEquals("/api/kanban/tasks/card%2F..%2Fone", card.encodedPath)
+        assertEquals("/api/kanban/tasks/card%2F..%2Fone/comments", comment.encodedPath)
+    }
+
+    @Test
+    fun kanbanDispatcherIsBoundedToEightWorkers() {
+        val url = Endpoint.KanbanDispatch("main", dryRun = false, maximum = 99).url(base)
+
+        assertEquals("/api/kanban/dispatch", url.encodedPath)
+        assertEquals("main", url.queryParameter("board"))
+        assertEquals("false", url.queryParameter("dry_run"))
+        assertEquals("8", url.queryParameter("max"))
     }
 }

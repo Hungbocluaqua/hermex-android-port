@@ -10,6 +10,8 @@ import com.uzairansar.hermex.core.model.CronStatusResponse
 import com.uzairansar.hermex.core.model.GoalSubmissionResponse
 import com.uzairansar.hermex.core.model.MemoryResponse
 import com.uzairansar.hermex.core.model.ModelCatalogResponse
+import com.uzairansar.hermex.core.model.PendingApproval
+import com.uzairansar.hermex.core.model.ProvidersResponse
 import com.uzairansar.hermex.core.model.ReasoningResponse
 import com.uzairansar.hermex.core.model.SessionClearResponse
 import com.uzairansar.hermex.core.model.SessionResponse
@@ -17,9 +19,53 @@ import com.uzairansar.hermex.core.model.SessionStatusResponse
 import com.uzairansar.hermex.core.model.SessionUsageResponse
 import com.uzairansar.hermex.core.model.SettingsResponse
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TolerantDecodingTest {
+    @Test
+    fun providerStatusDecodesRichAndLegacyModelShapes() {
+        val decoded = HermesJson.decodeFromString<ProvidersResponse>(
+            """
+            {
+              "active_provider": "openai-codex",
+              "providers": [
+                {
+                  "id": "openai-codex",
+                  "display_name": "OpenAI Codex",
+                  "has_key": "true",
+                  "key_source": "oauth",
+                  "models_total": "3",
+                  "models": ["gpt-5", {"id":"gpt-5-mini","label":"GPT-5 mini"}, 42],
+                  "future_field": {"safe":true}
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val provider = decoded.providers?.single()
+        assertEquals("openai-codex", decoded.activeProvider)
+        assertEquals("OpenAI Codex", provider?.displayName)
+        assertEquals(true, provider?.hasKey)
+        assertEquals(3, provider?.modelsTotal)
+        assertEquals(listOf("gpt-5", "gpt-5-mini", "42"), provider?.models?.map { it.id })
+    }
+
+    @Test
+    fun responseSpeedDecodesFromDoneUsageAndCachedMessage() {
+        val done = SseEventDecoder.decode(
+            "done",
+            """{"usage":{"input_tokens":10,"output_tokens":5,"tps":"18.25"}}""",
+        ) as SseEvent.Done
+        val cached = HermesJson.decodeFromString<ChatMessage>(
+            """{"role":"assistant","content":"Done","_turnTps":"18.25"}""",
+        )
+
+        assertEquals(18.25, done.usage?.tokensPerSecond ?: 0.0, 0.0)
+        assertEquals(18.25, cached.turnTokensPerSecond ?: 0.0, 0.0)
+        assertTrue(HermesJson.encodeToString(cached).contains("\"_turnTps\":18.25"))
+    }
     @Test
     fun modelCatalogDecodesGroupedCurrentServerShape() {
         val json = """
@@ -399,6 +445,50 @@ class TolerantDecodingTest {
         assertEquals(1545, decoded.totalTokens)
         assertEquals(0.042, decoded.estimatedCost ?: 0.0, 0.0)
         assertEquals("@openai:gpt-5.5", decoded.model)
+    }
+
+    @Test
+    fun oversizedOptionalIntegersDoNotRejectTheContainingResponse() {
+        val usage = HermesJson.decodeFromString<SessionUsageResponse>(
+            """{"input_tokens":999999999999,"output_tokens":42,"model":"gpt-test"}""",
+        )
+        val session = HermesJson.decodeFromString<SessionResponse>(
+            """{"session":{"session_id":"s1","context_length":999999999999,"output_tokens":7}}""",
+        )
+
+        assertEquals(null, usage.inputTokens)
+        assertEquals(42, usage.outputTokens)
+        assertEquals("gpt-test", usage.model)
+        assertEquals(null, session.session?.contextLength)
+        assertEquals(7, session.session?.outputTokens)
+    }
+
+    @Test
+    fun approvalIdAcceptsGatewayAliasAndRejectsBlankAliases() {
+        val gateway = HermesJson.decodeFromString<PendingApproval>("""{"id":" gateway-42 "}""")
+        val blank = HermesJson.decodeFromString<PendingApproval>("""{"approvalId":" ","approval_id":""}""")
+
+        assertEquals("gateway-42", gateway.normalizedApprovalId)
+        assertEquals(null, blank.normalizedApprovalId)
+    }
+
+    @Test
+    fun sessionMetadataClassifiesExplicitAndDelegatedReadOnlyRows() {
+        val decoded = HermesJson.decodeFromString<SessionsResponse>(
+            """
+            {
+              "sessions": [
+                {"session_id":"imported","raw_source":"claude_code","is_read_only":true},
+                {"session_id":"child","source_tag":"subagent","read_only":false}
+              ]
+            }
+            """.trimIndent(),
+        ).sessions.orEmpty()
+
+        assertEquals(true, decoded[0].isSessionReadOnly)
+        assertEquals(false, decoded[0].isDelegatedSubagentSession)
+        assertEquals(true, decoded[1].isSessionReadOnly)
+        assertEquals(true, decoded[1].isDelegatedSubagentSession)
     }
 
     @Test

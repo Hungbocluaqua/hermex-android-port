@@ -13,6 +13,7 @@
     <string name="widget_new_session">جلسة جديدة</string>
     <string name="widget_new_voice">الإدخال الصوتي</string>
     <string name="nav_tasks">المهام</string>
+    <string name="nav_kanban">كانبان</string>
     <string name="nav_skills">المهارات</string>
     <string name="nav_memory">الذاكرة</string>
     <string name="nav_insights">إحصاءات</string>

@@ -15,6 +15,14 @@ class ChatDisplaySettingsTest {
     }
 
     @Test
+    fun dictationProviderDefaultsToServerFirstForUnknownStorageValue() {
+        assertTrue(DictationProviderPreference.fromStorageValue(null) == DictationProviderPreference.ServerFirst)
+        assertTrue(DictationProviderPreference.fromStorageValue("onDeviceFirst") == DictationProviderPreference.OnDeviceFirst)
+        assertTrue(DictationProviderPreference.fromStorageValue("onDeviceOnly") == DictationProviderPreference.OnDeviceOnly)
+        assertTrue(DictationProviderPreference.fromStorageValue("future") == DictationProviderPreference.ServerFirst)
+    }
+
+    @Test
     fun rtlChatLayoutDefaultFollowsPrimaryRtlLanguage() {
         assertTrue(defaultRtlChatLayoutEnabled(Locale.forLanguageTag("ar")))
         assertTrue(defaultRtlChatLayoutEnabled(Locale.forLanguageTag("he")))
@@ -29,10 +37,28 @@ class ChatDisplaySettingsTest {
         assertTrue(settings.showMessageCount)
         assertTrue(settings.showWorkspace)
         assertTrue(settings.showCronSessions)
+        assertFalse(settings.showSubagentSessions)
     }
 
     @Test
     fun statusNotificationResponseExcerptsDefaultToPrivate() {
         assertFalse(ChatDisplaySettings().showsStatusNotificationResponseExcerpts)
+    }
+
+    @Test
+    fun parityVisibilityDefaultsKeepNavigationAvailable() {
+        val chat = ChatDisplaySettings()
+        assertFalse(chat.showsResponseSpeed)
+        assertTrue(chat.showsChatFilesButton)
+        assertTrue(chat.showsChatGitControls)
+
+        val mainPage = MainPageDisplaySettings()
+        assertTrue(mainPage.showTasks)
+        assertTrue(mainPage.showKanban)
+        assertTrue(mainPage.showSkills)
+        assertTrue(mainPage.showMemory)
+        assertTrue(mainPage.showInsights)
+        assertTrue(mainPage.showActiveProfile)
+        assertTrue(mainPage.showProjects)
     }
 }

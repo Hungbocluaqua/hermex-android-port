@@ -82,6 +82,72 @@ class TranscriptAutoScrollPolicyTest {
     }
 
     @Test
+    fun cooldownBlocksAutoScrollAfterUserLetsGo() {
+        assertFalse(
+            shouldAutoScrollTranscript(
+                followsBottom = true,
+                isScrollInProgress = false,
+                isUserScrollCooldownActive = true,
+            ),
+        )
+    }
+
+    @Test
+    fun tallLastMessageUsesPixelDistanceInsteadOfItemCount() {
+        assertFalse(
+            isTranscriptNearBottom(
+                totalItemsCount = 4,
+                lastVisibleIndex = 3,
+                lastVisibleOffset = -200,
+                lastVisibleSize = 1_200,
+                viewportEndOffset = 700,
+                tolerancePixels = 160,
+            ),
+        )
+        assertTrue(
+            isTranscriptNearBottom(
+                totalItemsCount = 4,
+                lastVisibleIndex = 3,
+                lastVisibleOffset = -350,
+                lastVisibleSize = 1_200,
+                viewportEndOffset = 700,
+                tolerancePixels = 160,
+            ),
+        )
+    }
+
+    @Test
+    fun readingOlderChromeRequiresHysteresisAndExpandsNearBottom() {
+        assertFalse(
+            transcriptReadingOlderState(
+                currentlyReadingOlder = false,
+                isNearBottom = false,
+                distanceFromBottomPixels = 140,
+                nearBottomTolerancePixels = 80,
+                hysteresisPixels = 64,
+            ),
+        )
+        assertTrue(
+            transcriptReadingOlderState(
+                currentlyReadingOlder = false,
+                isNearBottom = false,
+                distanceFromBottomPixels = 145,
+                nearBottomTolerancePixels = 80,
+                hysteresisPixels = 64,
+            ),
+        )
+        assertFalse(
+            transcriptReadingOlderState(
+                currentlyReadingOlder = true,
+                isNearBottom = true,
+                distanceFromBottomPixels = 80,
+                nearBottomTolerancePixels = 80,
+                hysteresisPixels = 64,
+            ),
+        )
+    }
+
+    @Test
     fun oversizedLastMessageIsNotAtBottomUntilItsEndIsVisible() {
         assertFalse(
             isTranscriptBottomVisible(

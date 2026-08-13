@@ -300,7 +300,7 @@ final class ChatStreamCoordinatorTests: APIClientTestCase {
     }
 
     @MainActor
-    func testStaleDetectionWaitsForCheckingIntervalThenPollsStatus() async throws {
+    func testStaleDetectionWaitsForTransportQuietThresholdThenPollsStatus() async throws {
         var statusRequests = 0
         let streamClient = CoordinatorSpySSEStreamingClient()
         let coordinator = makeCoordinator(
@@ -309,7 +309,8 @@ final class ChatStreamCoordinatorTests: APIClientTestCase {
                 checkingInterval: 5,
                 reconnectInterval: 18,
                 runningToolReconnectInterval: 25,
-                statusPollCooldown: 4
+                statusPollCooldown: 4,
+                transportFreshInterval: 12
             )
         ) { request in
             statusRequests += 1
@@ -325,9 +326,181 @@ final class ChatStreamCoordinatorTests: APIClientTestCase {
         XCTAssertEqual(statusRequests, 0)
         XCTAssertEqual(coordinator.recoveryState, .idle)
 
+        // #227: semantically quiet past checkingInterval, but the transport was
+        // active 5.1s ago — still within transportFreshInterval, so no chip and
+        // no status poll yet.
         await coordinator.recoverStaleStreamIfNeeded(now: start.addingTimeInterval(5.1))
+        XCTAssertEqual(statusRequests, 0)
+        XCTAssertEqual(coordinator.recoveryState, .idle)
+
+        await coordinator.recoverStaleStreamIfNeeded(now: start.addingTimeInterval(12.1))
         XCTAssertEqual(statusRequests, 1)
         XCTAssertEqual(coordinator.recoveryState, .checking)
+    }
+
+    @MainActor
+    func testHeartbeatKeepsSemanticallyQuietStreamOnOriginalConnection() async throws {
+        var statusRequests = 0
+        let streamClient = CoordinatorSpySSEStreamingClient()
+        let coordinator = makeCoordinator(streamClient: streamClient) { request in
+            statusRequests += 1
+            return apiTestJSONResponse(
+                #"{"active": true, "stream_id": "stream-123", "replay_available": true}"#,
+                for: request
+            )
+        }
+
+        coordinator.start(streamID: "stream-123")
+        coordinator.markProgress(now: Date().addingTimeInterval(-60))
+        streamClient.emit(.heartbeat)
+
+        await coordinator.recoverStaleStreamIfNeeded(now: Date().addingTimeInterval(1))
+
+        // #227: the heartbeat 1s ago proves the transport is alive, so the
+        // semantically quiet stream stays idle with zero status polls — no
+        // "Checking stream" chip and no reconnect.
+        XCTAssertEqual(statusRequests, 0)
+        XCTAssertEqual(streamClient.startedURLs.count, 1)
+        XCTAssertEqual(streamClient.stopCount, 0)
+        XCTAssertEqual(coordinator.recoveryState, .idle)
+    }
+
+    @MainActor
+    func testHeartbeatDemotesCheckingStateToIdle() async throws {
+        var statusRequests = 0
+        let streamClient = CoordinatorSpySSEStreamingClient()
+        let coordinator = makeCoordinator(streamClient: streamClient) { request in
+            statusRequests += 1
+            return apiTestJSONResponse(#"{"active": true, "stream_id": "stream-123"}"#, for: request)
+        }
+
+        coordinator.start(streamID: "stream-123")
+        coordinator.markProgress(now: Date().addingTimeInterval(-13))
+
+        await coordinator.recoverStaleStreamIfNeeded(now: Date())
+        XCTAssertEqual(statusRequests, 1)
+        XCTAssertEqual(coordinator.recoveryState, .checking)
+
+        streamClient.emit(.heartbeat)
+
+        XCTAssertEqual(coordinator.recoveryState, .idle)
+        XCTAssertEqual(streamClient.startedURLs.count, 1)
+        XCTAssertEqual(streamClient.stopCount, 0)
+    }
+
+    // The MockURLProtocol handler runs on URLSession's protocol thread while the
+    // coordinator's status-poll await has suspended the main actor, so a
+    // main-queue sync hop delivers the heartbeat deterministically *mid-flight*
+    // — before the poll's continuation resumes (PR #238 review).
+    @MainActor
+    func testHeartbeatDuringStatusPollKeepsIdleStateWithoutReassertingChecking() async throws {
+        var statusRequests = 0
+        let streamClient = CoordinatorSpySSEStreamingClient()
+        let coordinator = makeCoordinator(streamClient: streamClient) { request in
+            statusRequests += 1
+            DispatchQueue.main.sync {
+                MainActor.assumeIsolated { streamClient.emit(.heartbeat) }
+            }
+            return apiTestJSONResponse(#"{"active": true, "stream_id": "stream-123"}"#, for: request)
+        }
+
+        coordinator.start(streamID: "stream-123")
+        coordinator.markProgress(now: Date().addingTimeInterval(-13))
+
+        await coordinator.recoverStaleStreamIfNeeded(now: Date())
+
+        XCTAssertEqual(statusRequests, 1)
+        XCTAssertEqual(coordinator.recoveryState, .idle)
+        XCTAssertEqual(streamClient.startedURLs.count, 1)
+        XCTAssertEqual(streamClient.stopCount, 0)
+    }
+
+    @MainActor
+    func testHeartbeatDuringForceReconnectStatusPollSkipsReconnect() async throws {
+        let streamClient = CoordinatorSpySSEStreamingClient()
+        let coordinator = makeCoordinator(streamClient: streamClient) { request in
+            DispatchQueue.main.sync {
+                MainActor.assumeIsolated { streamClient.emit(.heartbeat) }
+            }
+            return apiTestJSONResponse(
+                #"{"active": true, "stream_id": "stream-123", "replay_available": true}"#,
+                for: request
+            )
+        }
+
+        coordinator.start(streamID: "stream-123")
+        coordinator.markProgress(now: Date().addingTimeInterval(-19))
+
+        await coordinator.recoverStaleStreamIfNeeded(now: Date())
+
+        XCTAssertEqual(coordinator.recoveryState, .idle)
+        XCTAssertEqual(streamClient.startedURLs.count, 1)
+        XCTAssertEqual(streamClient.stopCount, 0)
+    }
+
+    @MainActor
+    func testHeartbeatDoesNotDemoteReconnectingState() async throws {
+        let streamClient = CoordinatorSpySSEStreamingClient()
+        let coordinator = makeCoordinator(streamClient: streamClient) { request in
+            apiTestJSONResponse(
+                #"{"active": true, "stream_id": "stream-123", "replay_available": true}"#,
+                for: request
+            )
+        }
+
+        coordinator.start(streamID: "stream-123")
+        coordinator.markProgress(now: Date().addingTimeInterval(-20))
+
+        await coordinator.recoverStaleStreamIfNeeded(now: Date())
+        XCTAssertEqual(coordinator.recoveryState, .reconnecting)
+
+        streamClient.emit(.heartbeat)
+
+        XCTAssertEqual(coordinator.recoveryState, .reconnecting)
+    }
+
+    @MainActor
+    func testMissingTransportActivityReconnectsStaleActiveStream() async throws {
+        let streamClient = CoordinatorSpySSEStreamingClient()
+        let coordinator = makeCoordinator(streamClient: streamClient) { request in
+            apiTestJSONResponse(
+                #"{"active": true, "stream_id": "stream-123", "replay_available": true}"#,
+                for: request
+            )
+        }
+        let start = Date(timeIntervalSince1970: 1_770_000_000)
+
+        coordinator.start(streamID: "stream-123")
+        coordinator.markProgress(now: start)
+
+        await coordinator.recoverStaleStreamIfNeeded(now: start.addingTimeInterval(18.1))
+
+        XCTAssertEqual(streamClient.startedURLs.count, 2)
+        XCTAssertEqual(streamClient.stopCount, 1)
+        XCTAssertEqual(coordinator.recoveryState, .reconnecting)
+    }
+
+    @MainActor
+    func testSilentInitialConnectionReconnectsWhenStale() async throws {
+        let streamClient = CoordinatorSpySSEStreamingClient()
+        let coordinator = makeCoordinator(streamClient: streamClient) { request in
+            apiTestJSONResponse(
+                #"{"active": true, "stream_id": "stream-123", "replay_available": true}"#,
+                for: request
+            )
+        }
+
+        coordinator.start(streamID: "stream-123")
+        XCTAssertNil(coordinator.lastProgressDate)
+        let connectionStartedAt = try XCTUnwrap(coordinator.lastTransportActivityDate)
+
+        await coordinator.recoverStaleStreamIfNeeded(
+            now: connectionStartedAt.addingTimeInterval(18.1)
+        )
+
+        XCTAssertEqual(streamClient.startedURLs.count, 2)
+        XCTAssertEqual(streamClient.stopCount, 1)
+        XCTAssertEqual(coordinator.recoveryState, .reconnecting)
     }
 
     @MainActor
@@ -344,7 +517,8 @@ final class ChatStreamCoordinatorTests: APIClientTestCase {
                 checkingInterval: 5,
                 reconnectInterval: 18,
                 runningToolReconnectInterval: 25,
-                statusPollCooldown: 4
+                statusPollCooldown: 4,
+                transportFreshInterval: 12
             )
         ) { request in
             XCTAssertEqual(request.url?.path, "/api/chat/stream/status")
@@ -358,7 +532,9 @@ final class ChatStreamCoordinatorTests: APIClientTestCase {
         coordinator.start(streamID: "stream-123")
         coordinator.markProgress(now: start)
 
-        await coordinator.recoverStaleStreamIfNeeded(now: start.addingTimeInterval(5.1))
+        // 12.1s: past transportFreshInterval, so the stale-recovery status poll
+        // actually fires (#227).
+        await coordinator.recoverStaleStreamIfNeeded(now: start.addingTimeInterval(12.1))
 
         XCTAssertEqual(coordinator.activeStreamID, "stream-new")
         XCTAssertFalse(coordinator.isConnectionSuspended)
@@ -381,7 +557,8 @@ final class ChatStreamCoordinatorTests: APIClientTestCase {
                 checkingInterval: 5,
                 reconnectInterval: 18,
                 runningToolReconnectInterval: 25,
-                statusPollCooldown: 4
+                statusPollCooldown: 4,
+                transportFreshInterval: 12
             )
         ) { request in
             XCTAssertEqual(request.url?.path, "/api/chat/stream/status")
@@ -397,7 +574,9 @@ final class ChatStreamCoordinatorTests: APIClientTestCase {
         coordinator.start(streamID: "stream-123")
         coordinator.markProgress(now: start)
 
-        await coordinator.recoverStaleStreamIfNeeded(now: start.addingTimeInterval(5.1))
+        // 12.1s: past transportFreshInterval, so the stale-recovery status poll
+        // actually fires (#227).
+        await coordinator.recoverStaleStreamIfNeeded(now: start.addingTimeInterval(12.1))
 
         // PR #266 review #3: the run generation captured before the load changed
         // when `.done` finalized the run, so the now-stale stale-recovery path
@@ -422,7 +601,8 @@ final class ChatStreamCoordinatorTests: APIClientTestCase {
                 checkingInterval: 5,
                 reconnectInterval: 18,
                 runningToolReconnectInterval: 25,
-                statusPollCooldown: 4
+                statusPollCooldown: 4,
+                transportFreshInterval: 12
             )
         ) { request in
             XCTAssertEqual(request.url?.path, "/api/chat/stream/status")
@@ -433,7 +613,9 @@ final class ChatStreamCoordinatorTests: APIClientTestCase {
         coordinator.start(streamID: "stream-123")
         coordinator.markProgress(now: start)
 
-        await coordinator.recoverStaleStreamIfNeeded(now: start.addingTimeInterval(5.1))
+        // 12.1s: past transportFreshInterval, so the stale-recovery status poll
+        // actually fires (#227).
+        await coordinator.recoverStaleStreamIfNeeded(now: start.addingTimeInterval(12.1))
 
         // Happy path: server reports the stale run inactive and no concurrent run or
         // completion intervened, so canFinalizeRunAfterLoad lets the stale-recovery
@@ -529,16 +711,122 @@ final class ChatStreamCoordinatorTests: APIClientTestCase {
         XCTAssertEqual(liveActivityManager.ends.last?.status, .complete)
 
         coordinator.start(streamID: "stream-error")
+        streamClient.emit(.metering(MeteringStreamEvent(
+            tokensPerSecond: 12.25,
+            isTokensPerSecondAvailable: true,
+            isEstimated: false,
+            sessionId: "session-abc"
+        )))
+        XCTAssertEqual(coordinator.liveTokensPerSecond, 12.25)
         streamClient.emit(.error("server failed"))
         XCTAssertNil(coordinator.activeStreamID)
+        XCTAssertNil(coordinator.liveTokensPerSecond)
         XCTAssertEqual(delegate.errorMessages, ["server failed"])
         XCTAssertEqual(liveActivityManager.ends.last?.status, .failed)
 
         coordinator.start(streamID: "stream-cancel")
+        streamClient.emit(.metering(MeteringStreamEvent(
+            tokensPerSecond: 24.5,
+            isTokensPerSecondAvailable: true,
+            isEstimated: false,
+            sessionId: "session-abc"
+        )))
+        XCTAssertEqual(coordinator.liveTokensPerSecond, 24.5)
         let response = try await coordinator.cancelActiveStream()
         XCTAssertEqual(response?.ok, true)
         XCTAssertNil(coordinator.activeStreamID)
+        XCTAssertNil(coordinator.liveTokensPerSecond)
         XCTAssertEqual(liveActivityManager.ends.last?.status, .cancelled)
+    }
+
+    @MainActor
+    func testLiveResponseSpeedAcceptsOnlyCurrentSessionExactReadingsAndClearsOnLifecycleChanges() {
+        let streamClient = CoordinatorSpySSEStreamingClient()
+        let delegate = CoordinatorDelegateSpy()
+        let coordinator = makeCoordinator(streamClient: streamClient, delegate: delegate)
+
+        coordinator.start(streamID: "stream-one")
+        streamClient.emit(.metering(MeteringStreamEvent(
+            tokensPerSecond: 12.25,
+            isTokensPerSecondAvailable: true,
+            isEstimated: false,
+            sessionId: "session-abc"
+        )))
+        XCTAssertEqual(coordinator.liveTokensPerSecond, 12.25)
+
+        streamClient.emit(.metering(MeteringStreamEvent(
+            tokensPerSecond: 99,
+            isTokensPerSecondAvailable: true,
+            isEstimated: false,
+            sessionId: "another-session"
+        )))
+        XCTAssertEqual(coordinator.liveTokensPerSecond, 12.25)
+
+        streamClient.emit(.metering(MeteringStreamEvent(
+            tokensPerSecond: 12.25,
+            isTokensPerSecondAvailable: true,
+            isEstimated: true,
+            sessionId: "session-abc"
+        )))
+        XCTAssertNil(coordinator.liveTokensPerSecond)
+
+        streamClient.emit(.metering(MeteringStreamEvent(
+            tokensPerSecond: 24.5,
+            isTokensPerSecondAvailable: true,
+            isEstimated: false,
+            sessionId: "session-abc"
+        )))
+        _ = coordinator.prepareForSessionLoad()
+        XCTAssertNil(coordinator.liveTokensPerSecond)
+
+        streamClient.emit(.metering(MeteringStreamEvent(
+            tokensPerSecond: 24.5,
+            isTokensPerSecondAvailable: true,
+            isEstimated: false,
+            sessionId: "session-abc"
+        )))
+        coordinator.start(streamID: "stream-two")
+        XCTAssertNil(coordinator.liveTokensPerSecond)
+
+        streamClient.emit(.metering(MeteringStreamEvent(
+            tokensPerSecond: 36.75,
+            isTokensPerSecondAvailable: true,
+            isEstimated: false,
+            sessionId: "session-abc"
+        )))
+        streamClient.emit(.done(DoneStreamEvent(usage: ContextWindowSnapshot(
+            contextLength: nil,
+            thresholdTokens: nil,
+            lastPromptTokens: nil,
+            inputTokens: nil,
+            outputTokens: nil,
+            estimatedCost: nil,
+            tokensPerSecond: 40.5
+        ))))
+
+        XCTAssertNil(coordinator.liveTokensPerSecond)
+        XCTAssertEqual(delegate.donePayloads.last?.usage?.tokensPerSecond, 40.5)
+    }
+
+    @MainActor
+    func testLiveResponseSpeedClearsImmediatelyWhenTransportFails() {
+        let streamClient = CoordinatorSpySSEStreamingClient()
+        let delegate = CoordinatorDelegateSpy()
+        let coordinator = makeCoordinator(streamClient: streamClient, delegate: delegate)
+
+        coordinator.start(streamID: "stream-one")
+        streamClient.emit(.metering(MeteringStreamEvent(
+            tokensPerSecond: 12.25,
+            isTokensPerSecondAvailable: true,
+            isEstimated: false,
+            sessionId: "session-abc"
+        )))
+        XCTAssertEqual(coordinator.liveTokensPerSecond, 12.25)
+
+        streamClient.emit(.transportError("Connection lost"))
+
+        XCTAssertNil(coordinator.liveTokensPerSecond)
+        XCTAssertTrue(coordinator.isConnectionSuspended)
     }
 
     @MainActor
@@ -634,6 +922,7 @@ private final class CoordinatorDelegateSpy: ChatStreamCoordinatorDelegate {
     private(set) var startConnectionReplayValues: [Bool] = []
     private(set) var resetRecoveryCount = 0
     private(set) var tokens: [String] = []
+    private(set) var donePayloads: [DoneStreamEvent] = []
     private(set) var pendingSteerLeftovers: [String] = []
     var latestAssistantMessageID: String? = "assistant-latest"
     var restoredSnapshotEventID: String?
@@ -733,7 +1022,8 @@ private final class CoordinatorDelegateSpy: ChatStreamCoordinatorDelegate {
     }
 
     func streamCoordinatorApplyDone(_ payload: DoneStreamEvent) -> Bool {
-        doneHasCompletedTranscript
+        donePayloads.append(payload)
+        return doneHasCompletedTranscript
     }
 
     func streamCoordinatorApplyApprovalUpdate(_ update: ApprovalPendingResponse) {}

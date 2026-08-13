@@ -1,5 +1,8 @@
 package com.uzairansar.hermex.ui
 
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+
 object ShortcutDestination {
     const val NewSessionAction = "new"
     const val NewVoiceSessionAction = "newVoice"
@@ -14,6 +17,12 @@ object ShortcutDestination {
     const val ShareUri = "hermes-agent://share"
     const val SettingsUri = "hermes-agent://settings"
     const val PanelsUri = "hermes-agent://panels"
+
+    fun sessionUri(sessionId: String?): String? {
+        val normalized = sessionId?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val encoded = URLEncoder.encode(normalized, StandardCharsets.UTF_8.name()).replace("+", "%20")
+        return "hermes-agent://session?id=$encoded"
+    }
 
     fun supportedAction(value: String?): String? =
         value?.takeIf {

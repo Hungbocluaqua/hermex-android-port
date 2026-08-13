@@ -58,6 +58,98 @@ final class CacheStoreTests: XCTestCase {
         XCTAssertEqual(updatedSession.expiresAt, secondCachedAt.addingTimeInterval(CachePolicy.ttl))
     }
 
+    func testCachedSessionsPreserveSubagentClassificationAndReadOnlySafety() throws {
+        let context = try makeContext()
+        let serverURL = URL(string: "https://example.test")!
+        let cachedAt = Date(timeIntervalSince1970: 1_770_000_000)
+        let now = cachedAt.addingTimeInterval(60)
+        let response = try decodeSessions("""
+        {
+          "sessions": [
+            {
+              "session_id": "subagent-child",
+              "title": "Delegated research",
+              "source_tag": "subagent",
+              "raw_source": "subagent",
+              "session_source": "other",
+              "source_label": "Subagent",
+              "parent_session_id": "parent-1",
+              "relationship_type": "child_session",
+              "read_only": true,
+              "archived": false
+            }
+          ]
+        }
+        """)
+
+        try CacheStore.cacheSessions(
+            try XCTUnwrap(response.sessions),
+            serverURL: serverURL,
+            in: context,
+            cachedAt: cachedAt
+        )
+
+        let cached = try XCTUnwrap(
+            CacheStore.cachedSessions(serverURL: serverURL, in: context, now: now).first
+        )
+        XCTAssertEqual(cached.rawSource, "subagent")
+        XCTAssertEqual(cached.parentSessionId, "parent-1")
+        XCTAssertEqual(cached.relationshipType, "child_session")
+        XCTAssertTrue(cached.isDelegatedSubagentSession)
+        XCTAssertTrue(cached.isSessionReadOnly)
+        XCTAssertFalse(AutomatedSessionVisibility(showsCron: true, showsCli: true).shows(cached))
+        XCTAssertTrue(AutomatedSessionVisibility.showAll.shows(cached))
+    }
+
+    func testCachedSessionsPreserveClaudeCodeClassificationAndVisibility() throws {
+        let context = try makeContext()
+        let serverURL = URL(string: "https://example.test")!
+        let cachedAt = Date(timeIntervalSince1970: 1_770_000_000)
+        let response = try decodeSessions("""
+        {
+          "sessions": [
+            {
+              "session_id": "claude-code",
+              "title": "Imported transcript",
+              "source_tag": "claude_code",
+              "raw_source": "claude_code",
+              "is_cli_session": true,
+              "read_only": true,
+              "archived": false
+            },
+            {
+              "session_id": "ordinary-cli",
+              "title": "Terminal chat",
+              "source_tag": "cli",
+              "is_cli_session": true,
+              "archived": false
+            }
+          ]
+        }
+        """)
+
+        try CacheStore.cacheSessions(
+            try XCTUnwrap(response.sessions),
+            serverURL: serverURL,
+            in: context,
+            cachedAt: cachedAt
+        )
+
+        let cached = try CacheStore.cachedSessions(
+            serverURL: serverURL,
+            in: context,
+            now: cachedAt.addingTimeInterval(60)
+        )
+        let hidden = AutomatedSessionVisibility(
+            showsCron: true,
+            showsCli: true,
+            showsClaudeCode: false
+        )
+
+        XCTAssertTrue(try XCTUnwrap(cached.first { $0.sessionId == "claude-code" }).isClaudeCodeSession)
+        XCTAssertEqual(cached.filter(hidden.shows).compactMap(\.sessionId), ["ordinary-cli"])
+    }
+
     func testCacheMessagesWritesLoadedWindowAndRemovesStaleMessages() throws {
         let context = try makeContext()
         let serverURL = URL(string: "https://example.test")!
@@ -294,6 +386,37 @@ final class CacheStoreTests: XCTestCase {
         XCTAssertEqual(cachedMessages.first?.reasoning, "Cached reasoning.")
     }
 
+    func testAssistantTurnTpsDecodesAndRoundTripsThroughCache() throws {
+        let context = try makeContext()
+        let serverURL = URL(string: "https://example.test")!
+        let cachedAt = Date(timeIntervalSince1970: 1_770_000_000)
+        let message = try JSONDecoder().decode(
+            ChatMessage.self,
+            from: Data(#"{"role":"assistant","content":"Done","messageId":"m1","_turnTps":48.75}"#.utf8)
+        )
+
+        XCTAssertEqual(message.turnTps, 48.75)
+
+        try CacheStore.cacheMessages(
+            [message],
+            serverURL: serverURL,
+            sessionID: "abc123",
+            in: context,
+            cachedAt: cachedAt
+        )
+
+        XCTAssertEqual(try fetchCachedMessages(in: context).first?.turnTps, 48.75)
+        XCTAssertEqual(
+            try CacheStore.cachedMessages(
+                serverURL: serverURL,
+                sessionID: "abc123",
+                in: context,
+                now: cachedAt.addingTimeInterval(60)
+            ).first?.turnTps,
+            48.75
+        )
+    }
+
     func testCachedMessagesIgnoresExpiredMessages() throws {
         let context = try makeContext()
         let serverURL = URL(string: "https://example.test")!
@@ -512,6 +635,60 @@ final class CacheStoreTests: XCTestCase {
         XCTAssertEqual(attachment.mime, "image/png")
         XCTAssertEqual(attachment.size, 12345)
         XCTAssertEqual(attachment.isImage, true)
+    }
+
+    func testCacheMessagesRoundTripsToolCallAndStructuredContentFields() throws {
+        let context = try makeContext()
+        let serverURL = URL(string: "https://example.test")!
+        let cachedAt = Date(timeIntervalSince1970: 1_770_000_000)
+        let now = cachedAt.addingTimeInterval(60)
+
+        let toolCalls: [JSONValue] = [
+            .object([
+                "id": .string("call-1"),
+                "function": .object([
+                    "name": .string("read_file"),
+                    "arguments": .string("{\"path\": \"notes.txt\"}")
+                ])
+            ])
+        ]
+        let contentParts: [JSONValue] = [
+            .object(["type": .string("text"), "text": .string("Reading the file")]),
+            .object(["type": .string("tool_use"), "id": .string("call-1")])
+        ]
+
+        let messages = [
+            ChatMessage(
+                role: "assistant",
+                content: "Reading the file",
+                timestamp: 1_770_000_000,
+                messageId: "m1",
+                toolUseId: "call-1",
+                toolCalls: toolCalls,
+                contentParts: contentParts
+            )
+        ]
+
+        try CacheStore.cacheMessages(
+            messages,
+            serverURL: serverURL,
+            sessionID: "abc123",
+            in: context,
+            cachedAt: cachedAt
+        )
+
+        let cachedMessages = try CacheStore.cachedMessages(
+            serverURL: serverURL,
+            sessionID: "abc123",
+            in: context,
+            now: now
+        )
+
+        XCTAssertEqual(cachedMessages.count, 1)
+        let restored = try XCTUnwrap(cachedMessages.first)
+        XCTAssertEqual(restored.toolUseId, "call-1")
+        XCTAssertEqual(restored.toolCalls, toolCalls)
+        XCTAssertEqual(restored.contentParts, contentParts)
     }
 
     // MARK: - Per-server isolation (#18)

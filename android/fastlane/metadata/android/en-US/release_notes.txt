@@ -1,1 +1,1 @@
-Completes Android parity for responsive chat, sharing, deep links, voice input, workspace export, profile shortcuts, streaming recovery, and 18 locales. Fixes clipped chat headers, stale session lists, and model selection after reopening sessions whose provider aliases differ.
+Introduces production Kanban with Boards, Cards, live updates, workflow and bulk actions, Board management, Dispatcher, offline safety, and full iOS parity. Also improves streaming recovery, workspace Markdown previews, file artifacts, and safe private-network onboarding.

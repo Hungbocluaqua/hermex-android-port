@@ -12,6 +12,7 @@ extension APIClient {
         deliver: String?,
         skills: [String],
         model: String?,
+        provider: String?,
         profile: String?,
         toastNotifications: Bool
     ) async throws -> CronMutationResponse {
@@ -25,6 +26,7 @@ extension APIClient {
                 deliver: deliver,
                 skills: skills,
                 model: model,
+                provider: provider,
                 profile: profile,
                 toastNotifications: toastNotifications
             )
@@ -39,6 +41,7 @@ extension APIClient {
         deliver: String?,
         skills: [String]?,
         model: String?,
+        provider: String?,
         profile: String?,
         toastNotifications: Bool?
     ) async throws -> CronMutationResponse {
@@ -53,10 +56,15 @@ extension APIClient {
                 deliver: deliver,
                 skills: skills,
                 model: model,
+                provider: provider,
                 profile: profile,
                 toastNotifications: toastNotifications
             )
         )
+    }
+
+    func cronDeliveryOptions() async throws -> CronDeliveryOptionsResponse {
+        try await send(endpoint: .cronDeliveryOptions, method: "GET")
     }
 
     func deleteCron(jobID: String) async throws -> CronMutationResponse {
@@ -102,10 +110,6 @@ extension APIClient {
     func cronHistory(jobID: String, offset: Int? = nil, limit: Int? = 50) async throws -> CronHistoryResponse {
         try await send(endpoint: .cronHistory(jobID: jobID, offset: offset, limit: limit), method: "GET")
     }
-
-    func cronDeliveryOptions() async throws -> CronDeliveryOptionsResponse {
-        try await send(endpoint: .cronDeliveryOptions, method: "GET")
-    }
 }
 
 private struct CronCreateRequest: Encodable {
@@ -115,6 +119,7 @@ private struct CronCreateRequest: Encodable {
     let deliver: String?
     let skills: [String]
     let model: String?
+    let provider: String?
     let profile: String?
     let toastNotifications: Bool
 }
@@ -127,6 +132,7 @@ private struct CronUpdateRequest: Encodable {
     let deliver: String?
     let skills: [String]?
     let model: String?
+    let provider: String?
     let profile: String?
     let toastNotifications: Bool?
 }

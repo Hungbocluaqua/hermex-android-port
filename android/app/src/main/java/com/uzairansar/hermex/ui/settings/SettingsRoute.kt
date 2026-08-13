@@ -92,6 +92,7 @@ import com.uzairansar.hermex.data.preferences.displayModelTitle
 import com.uzairansar.hermex.data.preferences.modelIdentifier
 import com.uzairansar.hermex.data.preferences.normalizedProvider
 import com.uzairansar.hermex.data.preferences.AppThemeMode
+import com.uzairansar.hermex.data.preferences.DictationProviderPreference
 import com.uzairansar.hermex.data.preferences.LocalSettingsRepository
 import com.uzairansar.hermex.data.preferences.StreamingSendBehavior
 import com.uzairansar.hermex.data.repository.AuthRepository
@@ -155,6 +156,7 @@ fun SettingsRoute(
         mutableStateOf(runCatching(appIconManager::currentChoice).getOrDefault(AppIconChoice.Default))
     }
     var isAppIconPickerExpanded by rememberSaveable { mutableStateOf(false) }
+    var showProviders by rememberSaveable { mutableStateOf(false) }
     var appIconErrorMessage by remember { mutableStateOf<String?>(null) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         viewModel.handleResponseCompletionNotificationPermissionResult(granted)
@@ -328,6 +330,18 @@ fun SettingsRoute(
                             viewModel.setStreamingSendBehavior(entries[nextIndex])
                         },
                     )
+                    SettingsDivider()
+                    SettingsPickerRow(
+                        label = localizedString("Dictation Provider"),
+                        value = localizedString(state.dictationProviderPreference.settingsDescription),
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_mic,
+                        onClick = {
+                            val entries = DictationProviderPreference.entries
+                            val nextIndex = (entries.indexOf(state.dictationProviderPreference) + 1) % entries.size
+                            viewModel.setDictationProviderPreference(entries[nextIndex])
+                        },
+                    )
+                    SettingsFootnote("On-device only keeps composer dictation audio off your Hermes server.")
                 }
             }
             item {
@@ -373,6 +387,13 @@ fun SettingsRoute(
                     SettingsFootnote("Adds a small marker and time above each response.")
                     SettingsDivider()
                     SettingsToggleRow(
+                        label = localizedString("Response Speed"),
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_lucide_chart_column_increasing,
+                        value = state.chatDisplaySettings.showsResponseSpeed,
+                        onValueChange = viewModel::setShowsResponseSpeed,
+                    )
+                    SettingsDivider()
+                    SettingsToggleRow(
                         label = localizedString("Wrap Code Block Lines"),
                         iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_wrap_line,
                         value = state.chatDisplaySettings.wrapsCodeBlockLines,
@@ -395,6 +416,61 @@ fun SettingsRoute(
                         onValueChange = viewModel::setHidesAttachmentPaths,
                     )
                     SettingsFootnote("Hides appended file paths while keeping attachment previews and server delivery intact.")
+                    SettingsDivider()
+                    SettingsToggleRow(
+                        label = localizedString("Files Button"),
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_lucide_folder,
+                        value = state.chatDisplaySettings.showsChatFilesButton,
+                        onValueChange = viewModel::setShowsChatFilesButton,
+                    )
+                    SettingsDivider()
+                    SettingsToggleRow(
+                        label = localizedString("Git Actions"),
+                        iconRes = com.uzairansar.hermex.R.drawable.ic_hermex_git_branch,
+                        value = state.chatDisplaySettings.showsChatGitControls,
+                        onValueChange = viewModel::setShowsChatGitControls,
+                    )
+                    SettingsFootnote("Covers the git button in the chat toolbar and turn-level git actions.")
+                }
+            }
+            item {
+                SettingsSection(title = "Main Page") {
+                    SettingsToggleRow(
+                        label = localizedString("Tasks"),
+                        value = state.mainPageDisplaySettings.showTasks,
+                        onValueChange = viewModel::setShowTasksSection,
+                    )
+                    SettingsToggleRow(
+                        label = localizedString("Kanban"),
+                        value = state.mainPageDisplaySettings.showKanban,
+                        onValueChange = viewModel::setShowKanbanSection,
+                    )
+                    SettingsToggleRow(
+                        label = localizedString("Skills"),
+                        value = state.mainPageDisplaySettings.showSkills,
+                        onValueChange = viewModel::setShowSkillsSection,
+                    )
+                    SettingsToggleRow(
+                        label = localizedString("Memory"),
+                        value = state.mainPageDisplaySettings.showMemory,
+                        onValueChange = viewModel::setShowMemorySection,
+                    )
+                    SettingsToggleRow(
+                        label = localizedString("Insights"),
+                        value = state.mainPageDisplaySettings.showInsights,
+                        onValueChange = viewModel::setShowInsightsSection,
+                    )
+                    SettingsToggleRow(
+                        label = localizedString("Active Profile"),
+                        value = state.mainPageDisplaySettings.showActiveProfile,
+                        onValueChange = viewModel::setShowActiveProfileSection,
+                    )
+                    SettingsToggleRow(
+                        label = localizedString("Projects"),
+                        value = state.mainPageDisplaySettings.showProjects,
+                        onValueChange = viewModel::setShowProjectsSection,
+                    )
+                    SettingsFootnote("Turn off entries you do not use to shorten the top of the session list.")
                 }
             }
             item {
@@ -476,6 +552,13 @@ fun SettingsRoute(
                                 onClick = viewModel::openDefaultProfilePicker,
                                 enabled = !state.isLoadingServerSettings,
                             )
+                            Spacer(Modifier.height(12.dp))
+                            SettingsPickerSummaryRow(
+                                title = localizedString("Providers"),
+                                value = providerSummaryLabel(state),
+                                onClick = { showProviders = true },
+                                enabled = !state.isLoadingServerSettings,
+                            )
                         }
                     }
                 }
@@ -513,12 +596,24 @@ fun SettingsRoute(
                         switchTestTag = "cli_sessions_switch",
                         onValueChange = viewModel::setShowCliSessions,
                     )
-                    state.cliSessionsError?.let {
+                    SettingsToggleRow(
+                        label = localizedString("Claude Code Sessions"),
+                        value = state.showClaudeCodeSessions,
+                        enabled = state.showCliSessions && !state.isSavingClaudeCodeSessions,
+                        switchTestTag = "claude_code_sessions_switch",
+                        onValueChange = viewModel::setShowClaudeCodeSessions,
+                    )
+                    SettingsToggleRow(
+                        label = localizedString("Subagent Sessions"),
+                        value = state.sessionRowDisplaySettings.showSubagentSessions,
+                        onValueChange = viewModel::setShowSubagentSessions,
+                    )
+                    (state.cliSessionsError ?: state.claudeCodeSessionsError)?.let {
                         Text(localizedString(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     } ?: run {
-                        if (state.cliSessionsServerSynced) {
+                        if (state.cliSessionsServerSynced || state.claudeCodeSessionsServerSynced) {
                             Text(
-                                localizedString("CLI session visibility is synced with this server, so the WebUI follows it too."),
+                                localizedString("Session visibility is synced with this server, so the WebUI follows it too."),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.secondary,
                             )
@@ -577,6 +672,9 @@ fun SettingsRoute(
         }
         }
         SettingsDialogs(state, viewModel)
+    }
+    if (showProviders) {
+        ProvidersDialog(state = state, onDismiss = { showProviders = false })
     }
 }
 
@@ -1518,6 +1616,125 @@ private fun DefaultModelPickerDialog(
 }
 
 @Composable
+private fun ProvidersDialog(
+    state: SettingsUiState,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(localizedString("Providers")) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 560.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                when {
+                    state.providers.isEmpty() && state.providersError != null -> {
+                        StatusText(localizedString("Could not load providers"), isError = true)
+                        Text(
+                            localizedString("Try refreshing the Active Server settings."),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
+                    state.providers.isEmpty() -> Text(localizedString("No providers reported by this server."))
+                    else -> state.providers.forEach { provider ->
+                        val providerId = provider.id?.trim().orEmpty()
+                        val active = providerId.isNotBlank() &&
+                            providerId.equals(state.activeProvider?.trim(), ignoreCase = true)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(HermexCardShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f))
+                                .padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(5.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    providerDisplayName(provider),
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                if (active) {
+                                    Text(
+                                        localizedString("Active"),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                            providerCredentialLabel(provider)?.let { label ->
+                                Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                            }
+                            provider.authError?.trim()?.takeIf { it.isNotBlank() }?.let { error ->
+                                Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                            }
+                            val models = provider.models.orEmpty().mapNotNull { model ->
+                                model.label?.trim()?.takeIf { it.isNotBlank() }
+                                    ?: model.id?.trim()?.takeIf { it.isNotBlank() }
+                            }
+                            if (models.isNotEmpty()) {
+                                Text(
+                                    localizedStringFormat("Models (%lld)", (provider.modelsTotal ?: models.size).toLong()),
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
+                                Text(
+                                    models.take(12).joinToString("\n"),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                )
+                                if ((provider.modelsTotal ?: models.size) > models.size) {
+                                    Text(
+                                        localizedStringFormat("Showing %lld of %lld models.", models.size.toLong(), provider.modelsTotal?.toLong() ?: models.size.toLong()),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                Text(
+                    localizedString("Provider keys are managed on the server. This screen is read-only."),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(localizedString("Done")) } },
+    )
+}
+
+@Composable
+internal fun providerDisplayName(provider: com.uzairansar.hermex.core.model.ProviderSummary): String =
+    provider.displayName?.trim()?.takeIf { it.isNotBlank() }
+        ?: provider.name?.trim()?.takeIf { it.isNotBlank() }
+        ?: provider.id?.trim()?.takeIf { it.isNotBlank() }
+        ?: localizedString("Unknown provider")
+
+@Composable
+internal fun providerCredentialLabel(provider: com.uzairansar.hermex.core.model.ProviderSummary): String? {
+    val hasKey = provider.hasKey ?: provider.configured
+    return when {
+        hasKey == true -> provider.keySource?.trim()?.takeIf { it.isNotBlank() }?.let {
+            localizedStringFormat("Key: %@", it.replace('_', ' '))
+        } ?: localizedString("Key configured")
+        hasKey == false -> localizedString("No key configured")
+        provider.isSelfHosted == true -> localizedString("Self-hosted")
+        else -> null
+    }
+}
+
+@Composable
 private fun ServerUpdateControls(
     state: SettingsUiState,
     viewModel: SettingsViewModel,
@@ -2083,6 +2300,15 @@ private fun defaultModelLabel(state: SettingsUiState): String {
     }
     return model?.displayModelTitle ?: listOfNotNull(modelId, state.defaultModelProvider?.let { "($it)" }).joinToString(" ")
 }
+
+@Composable
+private fun providerSummaryLabel(state: SettingsUiState): String =
+    when {
+        state.providersError != null && state.providers.isEmpty() -> localizedString("Unavailable")
+        state.providers.isEmpty() -> localizedString("None reported")
+        else -> state.activeProvider?.trim()?.takeIf { it.isNotBlank() }
+            ?: localizedStringFormat("%lld providers", state.providers.size.toLong())
+    }
 
 private fun defaultProfileLabel(state: SettingsUiState): String {
     val profileName = state.activeProfile?.trim()?.takeIf { it.isNotBlank() } ?: return "Server default"

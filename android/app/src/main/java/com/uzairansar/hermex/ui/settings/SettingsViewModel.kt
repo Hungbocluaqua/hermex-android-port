@@ -12,12 +12,14 @@ import com.uzairansar.hermex.core.model.ModelCatalogResponse
 import com.uzairansar.hermex.core.model.ProfileSummary
 import com.uzairansar.hermex.core.model.ProfilesResponse
 import com.uzairansar.hermex.core.model.ProviderSummary
+import com.uzairansar.hermex.core.model.ProvidersResponse
 import com.uzairansar.hermex.core.model.SettingsResponse
 import com.uzairansar.hermex.core.model.UpdatesCheckResponse
 import com.uzairansar.hermex.core.model.isConfirmedDefaultModel
 import com.uzairansar.hermex.core.model.isConfirmedProfileSwitch
 import com.uzairansar.hermex.core.model.isConfirmedMutation
 import com.uzairansar.hermex.core.model.isConfirmedShowCliSessions
+import com.uzairansar.hermex.core.model.isConfirmedShowClaudeCodeSessions
 import com.uzairansar.hermex.core.network.CustomHeader
 import com.uzairansar.hermex.core.network.parseCustomHeaderLines
 import com.uzairansar.hermex.data.repository.AddServerResult
@@ -26,7 +28,9 @@ import com.uzairansar.hermex.data.preferences.modelIdentifier
 import com.uzairansar.hermex.data.preferences.normalizedProvider
 import com.uzairansar.hermex.data.preferences.AppThemeMode
 import com.uzairansar.hermex.data.preferences.ChatDisplaySettings
+import com.uzairansar.hermex.data.preferences.DictationProviderPreference
 import com.uzairansar.hermex.data.preferences.LocalSettingsRepository
+import com.uzairansar.hermex.data.preferences.MainPageDisplaySettings
 import com.uzairansar.hermex.data.preferences.SessionRowDisplaySettings
 import com.uzairansar.hermex.data.preferences.SessionIdentitySettings
 import com.uzairansar.hermex.data.preferences.StreamingSendBehavior
@@ -55,6 +59,7 @@ import kotlinx.serialization.Serializable
 
 private data class ServerSettingsResults(
     val models: Result<ModelCatalogResponse>,
+    val providers: Result<ProvidersResponse>,
     val profiles: Result<ProfilesResponse>,
     val settings: Result<SettingsResponse>,
     val updates: Result<UpdatesCheckResponse>,
@@ -67,8 +72,10 @@ data class SettingsUiState(
     val sessionIdentitySettings: SessionIdentitySettings = SessionIdentitySettings(),
     val headerLogoColorHex: String = "#FFD700",
     val streamingSendBehavior: StreamingSendBehavior = StreamingSendBehavior.Steer,
+    val dictationProviderPreference: DictationProviderPreference = DictationProviderPreference.ServerFirst,
     val chatDisplaySettings: ChatDisplaySettings = ChatDisplaySettings(),
     val sessionRowDisplaySettings: SessionRowDisplaySettings = SessionRowDisplaySettings(),
+    val mainPageDisplaySettings: MainPageDisplaySettings = MainPageDisplaySettings(),
     val responseCompletionNotificationsEnabled: Boolean = false,
     val hasRequestedResponseCompletionNotificationPermission: Boolean = false,
     val responseCompletionNotificationStatusMessage: String? = null,
@@ -77,6 +84,10 @@ data class SettingsUiState(
     val cliSessionsServerSynced: Boolean = false,
     val isSavingCliSessions: Boolean = false,
     val cliSessionsError: String? = null,
+    val showClaudeCodeSessions: Boolean = true,
+    val claudeCodeSessionsServerSynced: Boolean = false,
+    val isSavingClaudeCodeSessions: Boolean = false,
+    val claudeCodeSessionsError: String? = null,
     val isSigningOut: Boolean = false,
     val isLoadingServerSettings: Boolean = false,
     val isSavingDefaultModel: Boolean = false,
@@ -88,6 +99,9 @@ data class SettingsUiState(
     val defaultProfilePickerError: String? = null,
     val models: List<ModelSummary> = emptyList(),
     val modelProviders: List<ProviderSummary> = emptyList(),
+    val providers: List<ProviderSummary> = emptyList(),
+    val activeProvider: String? = null,
+    val providersError: String? = null,
     val defaultModel: String? = null,
     val defaultModelProvider: String? = null,
     val profiles: List<ProfileSummary> = emptyList(),
@@ -225,6 +239,8 @@ class SettingsViewModel(
     private var serverSettingsGeneration = 0L
     private var cliSessionsSaveJob: Job? = null
     private var cliSessionsSaveGeneration = 0L
+    private var claudeCodeSessionsSaveJob: Job? = null
+    private var claudeCodeSessionsSaveGeneration = 0L
 
     init {
         viewModelScope.launch {
@@ -246,6 +262,11 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
+            localSettingsRepository.dictationProviderPreference.collectLatest { preference ->
+                _state.update { it.copy(dictationProviderPreference = preference) }
+            }
+        }
+        viewModelScope.launch {
             localSettingsRepository.tintPrimaryActionsWithThemeColor.collectLatest { enabled ->
                 _state.update { it.copy(tintPrimaryActionsWithThemeColor = enabled) }
             }
@@ -263,6 +284,11 @@ class SettingsViewModel(
         viewModelScope.launch {
             localSettingsRepository.sessionRowDisplaySettings.collectLatest { displaySettings ->
                 _state.update { it.copy(sessionRowDisplaySettings = displaySettings) }
+            }
+        }
+        viewModelScope.launch {
+            localSettingsRepository.mainPageDisplaySettings.collectLatest { displaySettings ->
+                _state.update { it.copy(mainPageDisplaySettings = displaySettings) }
             }
         }
         viewModelScope.launch {
@@ -427,18 +453,24 @@ class SettingsViewModel(
             _state.update { it.copy(isLoadingServerSettings = true, error = null, notice = null) }
             val serverId = activeServerId
             val cachedCliSessions = serverId?.let { localSettingsRepository.currentShowCliSessions(it) } ?: true
-            val (modelsResult, profilesResult, settingsResult, updatesResult) = coroutineScope {
+            val cachedClaudeCodeSessions = serverId?.let { localSettingsRepository.currentShowClaudeCodeSessions(it) } ?: true
+            val (modelsResult, providersResult, profilesResult, settingsResult, updatesResult) = coroutineScope {
                 val models = async { runSuspendCatching { repository.models() } }
+                val providers = async { runSuspendCatching { repository.providers() } }
                 val profiles = async { runSuspendCatching { repository.profiles() } }
                 val settings = async { runSuspendCatching { repository.settings() } }
                 val updates = async { runSuspendCatching { repository.updatesCheck() } }
-                ServerSettingsResults(models.await(), profiles.await(), settings.await(), updates.await())
+                ServerSettingsResults(models.await(), providers.await(), profiles.await(), settings.await(), updates.await())
             }
             val settings = settingsResult.getOrNull()
             val serverCliSessions = settings?.showCliSessions
+            val serverClaudeCodeSessions = settings?.showClaudeCodeSessions
             if (generation != serverSettingsGeneration) return@launch
             if (serverId != null && serverCliSessions != null) {
                 runSuspendCatching { localSettingsRepository.setShowCliSessions(serverId, serverCliSessions) }
+            }
+            if (serverId != null && serverClaudeCodeSessions != null) {
+                runSuspendCatching { localSettingsRepository.setShowClaudeCodeSessions(serverId, serverClaudeCodeSessions) }
             }
             if (generation != serverSettingsGeneration) return@launch
             _state.update { current ->
@@ -446,6 +478,9 @@ class SettingsViewModel(
                     isLoadingServerSettings = false,
                     models = modelsResult.getOrNull()?.models.orEmpty(),
                     modelProviders = modelsResult.getOrNull()?.providers.orEmpty(),
+                    providers = providersResult.getOrNull()?.providers.orEmpty(),
+                    activeProvider = providersResult.getOrNull()?.activeProvider,
+                    providersError = providersResult.exceptionOrNull()?.message,
                     defaultModel = settings?.defaultModel ?: modelsResult.getOrNull()?.defaultModel,
                     defaultModelProvider = settings?.defaultModelProvider ?: modelsResult.getOrNull()?.activeProvider,
                     profiles = profilesResult.getOrNull()?.profiles.orEmpty(),
@@ -456,6 +491,9 @@ class SettingsViewModel(
                     showCliSessions = serverCliSessions ?: cachedCliSessions,
                     cliSessionsServerSynced = serverCliSessions != null,
                     cliSessionsError = null,
+                    showClaudeCodeSessions = serverClaudeCodeSessions ?: cachedClaudeCodeSessions,
+                    claudeCodeSessionsServerSynced = serverClaudeCodeSessions != null,
+                    claudeCodeSessionsError = null,
                     error = listOfNotNull(
                         modelsResult.exceptionOrNull()?.message,
                         profilesResult.exceptionOrNull()?.message,
@@ -526,6 +564,78 @@ class SettingsViewModel(
                             showCliSessions = previous,
                             isSavingCliSessions = false,
                             cliSessionsError = error.message ?: "Could not sync CLI session visibility.",
+                        )
+                    }
+                }
+        }
+    }
+
+    fun setDictationProviderPreference(preference: DictationProviderPreference) {
+        viewModelScope.launch {
+            runSuspendCatching { localSettingsRepository.setDictationProviderPreference(preference) }
+                .onSuccess { _state.update { it.copy(dictationProviderPreference = preference, notice = "Interaction updated.", error = null) } }
+                .onFailure { error -> _state.update { it.copy(error = error.message ?: "Could not update dictation provider.") } }
+        }
+    }
+
+    fun setShowClaudeCodeSessions(enabled: Boolean) {
+        val repository = panelsRepository ?: return
+        val serverId = activeServerId ?: return
+        val previous = _state.value.showClaudeCodeSessions
+        val shouldSyncWithServer = _state.value.claudeCodeSessionsServerSynced
+        val generation = ++claudeCodeSessionsSaveGeneration
+        claudeCodeSessionsSaveJob?.cancel()
+        claudeCodeSessionsSaveJob = viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    showClaudeCodeSessions = enabled,
+                    isSavingClaudeCodeSessions = true,
+                    claudeCodeSessionsError = null,
+                    notice = null,
+                    error = null,
+                )
+            }
+            runSuspendCatching { localSettingsRepository.setShowClaudeCodeSessions(serverId, enabled) }
+            if (generation != claudeCodeSessionsSaveGeneration) return@launch
+            if (!shouldSyncWithServer) {
+                _state.update { it.copy(isSavingClaudeCodeSessions = false) }
+                return@launch
+            }
+            runSuspendCatching { repository.updateClaudeCodeSessionVisibility(enabled) }
+                .onSuccess { response ->
+                    if (generation != claudeCodeSessionsSaveGeneration) return@onSuccess
+                    if (!response.isConfirmedShowClaudeCodeSessions(enabled)) {
+                        localSettingsRepository.setShowClaudeCodeSessions(serverId, previous)
+                        _state.update {
+                            it.copy(
+                                showClaudeCodeSessions = previous,
+                                isSavingClaudeCodeSessions = false,
+                                claudeCodeSessionsError = "The server did not confirm the Claude Code visibility change.",
+                            )
+                        }
+                        return@onSuccess
+                    }
+                    val serverValue = response.showClaudeCodeSessions ?: enabled
+                    localSettingsRepository.setShowClaudeCodeSessions(serverId, serverValue)
+                    if (generation != claudeCodeSessionsSaveGeneration) return@onSuccess
+                    _state.update {
+                        it.copy(
+                            showClaudeCodeSessions = serverValue,
+                            isSavingClaudeCodeSessions = false,
+                            claudeCodeSessionsServerSynced = response.showClaudeCodeSessions != null,
+                            claudeCodeSessionsError = null,
+                            notice = "Claude Code session visibility updated.",
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    if (error is CancellationException || generation != claudeCodeSessionsSaveGeneration) return@onFailure
+                    localSettingsRepository.setShowClaudeCodeSessions(serverId, previous)
+                    _state.update {
+                        it.copy(
+                            showClaudeCodeSessions = previous,
+                            isSavingClaudeCodeSessions = false,
+                            claudeCodeSessionsError = error.message ?: "Could not sync Claude Code session visibility.",
                         )
                     }
                 }
@@ -604,6 +714,18 @@ class SettingsViewModel(
         }
     }
 
+    fun setShowsResponseSpeed(enabled: Boolean) = updateChatDisplay {
+        localSettingsRepository.setShowsResponseSpeed(enabled)
+    }
+
+    fun setShowsChatFilesButton(enabled: Boolean) = updateChatDisplay {
+        localSettingsRepository.setShowsChatFilesButton(enabled)
+    }
+
+    fun setShowsChatGitControls(enabled: Boolean) = updateChatDisplay {
+        localSettingsRepository.setShowsChatGitControls(enabled)
+    }
+
     fun setSessionRowShowMessageCount(enabled: Boolean) {
         viewModelScope.launch {
             runSuspendCatching { localSettingsRepository.setSessionRowShowMessageCount(enabled) }
@@ -625,6 +747,58 @@ class SettingsViewModel(
             runSuspendCatching { localSettingsRepository.setShowCronSessions(enabled) }
                 .onSuccess { _state.update { it.copy(notice = "Session display updated.", error = null) } }
                 .onFailure { error -> _state.update { it.copy(error = error.message ?: "Could not update session display.") } }
+        }
+    }
+
+    fun setShowSubagentSessions(enabled: Boolean) = updateSessionDisplay {
+        localSettingsRepository.setShowSubagentSessions(enabled)
+    }
+
+    fun setShowTasksSection(enabled: Boolean) = updateMainPageDisplay {
+        localSettingsRepository.setShowTasksSection(enabled)
+    }
+
+    fun setShowKanbanSection(enabled: Boolean) = updateMainPageDisplay {
+        localSettingsRepository.setShowKanbanSection(enabled)
+    }
+
+    fun setShowSkillsSection(enabled: Boolean) = updateMainPageDisplay {
+        localSettingsRepository.setShowSkillsSection(enabled)
+    }
+
+    fun setShowMemorySection(enabled: Boolean) = updateMainPageDisplay {
+        localSettingsRepository.setShowMemorySection(enabled)
+    }
+
+    fun setShowInsightsSection(enabled: Boolean) = updateMainPageDisplay {
+        localSettingsRepository.setShowInsightsSection(enabled)
+    }
+
+    fun setShowActiveProfileSection(enabled: Boolean) = updateMainPageDisplay {
+        localSettingsRepository.setShowActiveProfileSection(enabled)
+    }
+
+    fun setShowProjectsSection(enabled: Boolean) = updateMainPageDisplay {
+        localSettingsRepository.setShowProjectsSection(enabled)
+    }
+
+    private fun updateChatDisplay(update: suspend () -> Unit) {
+        persistDisplaySetting(update, "Chat display updated.", "Could not update chat display.")
+    }
+
+    private fun updateSessionDisplay(update: suspend () -> Unit) {
+        persistDisplaySetting(update, "Session display updated.", "Could not update session display.")
+    }
+
+    private fun updateMainPageDisplay(update: suspend () -> Unit) {
+        persistDisplaySetting(update, "Main page updated.", "Could not update the main page.")
+    }
+
+    private fun persistDisplaySetting(update: suspend () -> Unit, notice: String, fallbackError: String) {
+        viewModelScope.launch {
+            runSuspendCatching { update() }
+                .onSuccess { _state.update { it.copy(notice = notice, error = null) } }
+                .onFailure { error -> _state.update { it.copy(error = error.message ?: fallbackError) } }
         }
     }
 

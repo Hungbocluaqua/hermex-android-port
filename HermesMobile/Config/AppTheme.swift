@@ -208,6 +208,7 @@ enum ChatTranscriptDisplaySettings {
     static let toolCardsStartExpandedKey = "chatTranscript.toolCardsStartExpanded"
     static let hidesAttachmentPathsKey = "chatTranscript.hidesAttachmentPaths"
     static let showsAssistantTurnTimestampsKey = "chatTranscript.showsAssistantTurnTimestamps"
+    static let showsResponseSpeedKey = "chatTranscript.showsResponseSpeed"
     static let wrapsCodeBlockLinesKey = "chatTranscript.wrapsCodeBlockLines"
 
     /// Backs the Settings → Chat "Right-to-Left Chat Layout" toggle (issue #259).
@@ -290,9 +291,36 @@ enum ChatTranscriptDisplaySettings {
     static func showsAssistantTurnHeader(
         role: String?,
         hasTextContent: Bool,
-        isEnabled: Bool
+        isEnabled: Bool,
+        showsResponseSpeed: Bool = false,
+        hasResponseSpeed: Bool = false
     ) -> Bool {
-        isEnabled && role == "assistant" && hasTextContent
+        (isEnabled || (showsResponseSpeed && hasResponseSpeed)) &&
+            role == "assistant" &&
+            hasTextContent
+    }
+}
+
+/// Visibility of the optional navigation entries, so a user can hide the parts of
+/// the app they never use (issue #189): the session-list utility rows and the
+/// chat's Files and Git controls. These buttons are the only way into those
+/// screens, so hiding one takes it out of reach until the toggle goes back on.
+/// Purely a display preference — nothing stops loading or syncing.
+enum SectionVisibilitySettings {
+    static let tasksKey = "sectionVisibility.tasks"
+    static let kanbanKey = "sectionVisibility.kanban"
+    static let skillsKey = "sectionVisibility.skills"
+    static let memoryKey = "sectionVisibility.memory"
+    static let insightsKey = "sectionVisibility.insights"
+    static let activeProfileKey = "sectionVisibility.activeProfile"
+    static let projectsKey = "sectionVisibility.projects"
+    static let chatFilesKey = "sectionVisibility.chatFiles"
+    static let chatGitKey = "sectionVisibility.chatGit"
+
+    /// Every entry defaults to visible, so an install that predates these toggles
+    /// looks exactly as it did before.
+    static func isVisible(_ key: String, in defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: key) as? Bool ?? true
     }
 }
 
@@ -596,5 +624,89 @@ enum StreamingSendBehavior: String, CaseIterable, Identifiable {
 
     static func storedValue(_ rawValue: String) -> StreamingSendBehavior {
         StreamingSendBehavior(rawValue: rawValue) ?? .steer
+    }
+}
+
+enum ComposerSTTProviderPreference: String, CaseIterable, Identifiable {
+    case serverFirst
+    case onDeviceFirst
+    case onDeviceOnly
+
+    static let storageKey = "composerSTTProviderPreference"
+    static let defaultValue: ComposerSTTProviderPreference = .serverFirst
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .serverFirst:
+            String(localized: "Server first")
+        case .onDeviceFirst:
+            String(localized: "On-device first")
+        case .onDeviceOnly:
+            String(localized: "On-device only")
+        }
+    }
+
+    static func storedValue(_ rawValue: String) -> ComposerSTTProviderPreference {
+        ComposerSTTProviderPreference(rawValue: rawValue) ?? defaultValue
+    }
+}
+
+enum ComposerSTTProvider: Equatable {
+    case server
+    case onDevice
+}
+
+enum ComposerSTTProviderPolicy {
+    static func orderedProviders(
+        preference: ComposerSTTProviderPreference,
+        serverConfigured: Bool,
+        onDeviceSupported: Bool
+    ) -> [ComposerSTTProvider] {
+        switch preference {
+        case .serverFirst:
+            return compactProviders(
+                (.server, serverConfigured),
+                (.onDevice, onDeviceSupported)
+            )
+        case .onDeviceFirst:
+            return compactProviders(
+                (.onDevice, onDeviceSupported),
+                (.server, serverConfigured)
+            )
+        case .onDeviceOnly:
+            return compactProviders((.onDevice, onDeviceSupported))
+        }
+    }
+
+    static func fallbackProvider(
+        after failedProvider: ComposerSTTProvider,
+        preference: ComposerSTTProviderPreference,
+        serverConfigured: Bool,
+        onDeviceSupported: Bool
+    ) -> ComposerSTTProvider? {
+        let providers = orderedProviders(
+            preference: preference,
+            serverConfigured: serverConfigured,
+            onDeviceSupported: onDeviceSupported
+        )
+        guard let failedIndex = providers.firstIndex(of: failedProvider) else {
+            return nil
+        }
+
+        let fallbackIndex = providers.index(after: failedIndex)
+        guard fallbackIndex < providers.endIndex else {
+            return nil
+        }
+        return providers[fallbackIndex]
+    }
+
+    private static func compactProviders(
+        _ candidates: (ComposerSTTProvider, Bool)...
+    ) -> [ComposerSTTProvider] {
+        candidates.compactMap { provider, isAvailable in
+            isAvailable ? provider : nil
+        }
     }
 }

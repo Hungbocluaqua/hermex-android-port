@@ -13,12 +13,16 @@ struct ChatStreamCoordinatorTiming: Equatable {
     let reconnectInterval: TimeInterval
     let runningToolReconnectInterval: TimeInterval
     let statusPollCooldown: TimeInterval
+    // Transport quieter than this is treated as provably alive; must sit above
+    // the server's ~5s SSE heartbeat cadence and below reconnectInterval (#227).
+    let transportFreshInterval: TimeInterval
 
     static let standard = ChatStreamCoordinatorTiming(
         checkingInterval: 5,
         reconnectInterval: 18,
         runningToolReconnectInterval: 25,
-        statusPollCooldown: 4
+        statusPollCooldown: 4,
+        transportFreshInterval: 12
     )
 }
 
@@ -90,6 +94,8 @@ final class ChatStreamCoordinator {
     private(set) var hasCompletedCurrentResponse = false
     private(set) var lastEventID: String?
     private(set) var lastProgressDate: Date?
+    private(set) var lastTransportActivityDate: Date?
+    private(set) var liveTokensPerSecond: Double?
     private var lastRecoveryStatusCheckDate: Date?
     private(set) var isReplayConnection = false
     // Bumped whenever the active run starts or finalizes. Captured before an async
@@ -127,6 +133,7 @@ final class ChatStreamCoordinator {
     func prepareForNewResponse() {
         hasCompletedCurrentResponse = false
         isConnectionSuspended = false
+        liveTokensPerSecond = nil
     }
 
     func start(
@@ -135,6 +142,7 @@ final class ChatStreamCoordinator {
         recoveryState: ActiveStreamRecoveryState = .idle
     ) {
         hasCompletedCurrentResponse = false
+        liveTokensPerSecond = nil
         runGeneration &+= 1
         activeStreamID = streamID
         isConnectionSuspended = false
@@ -200,6 +208,7 @@ final class ChatStreamCoordinator {
     }
 
     func prepareForSessionLoad() -> ChatStreamLoadPreparation {
+        liveTokensPerSecond = nil
         let activeStreamIDBeforeLoad = activeStreamID
         if activeStreamIDBeforeLoad != nil, !hasCompletedCurrentResponse {
             delegate?.streamCoordinatorSaveSnapshotIfNeeded()
@@ -217,6 +226,7 @@ final class ChatStreamCoordinator {
         usedCacheFallback: Bool
     ) {
         hasCompletedCurrentResponse = false
+        liveTokensPerSecond = nil
 
         if usedCacheFallback {
             activeStreamID = nil
@@ -293,6 +303,14 @@ final class ChatStreamCoordinator {
                 finalizeInactiveStream(streamID: activeStreamID)
             }
         } catch {
+            if (error as? APIError)?.indicatesMissingStream == true,
+               self.activeStreamID == activeStreamID,
+               isConnectionSuspended {
+                await delegate?.streamCoordinatorLoadMessages(modelContext: modelContext)
+                guard canFinalizeRunAfterLoad(streamID: activeStreamID, capturedGeneration: generation) else { return }
+                finalizeInactiveStream(streamID: activeStreamID)
+                return
+            }
             delegate?.streamCoordinatorDidReceiveRecoveryError(error)
         }
     }
@@ -351,8 +369,24 @@ final class ChatStreamCoordinator {
             return
         }
 
+        let reconnectInterval = delegate?.streamCoordinatorHasRunningLiveToolCall == true
+            ? timing.runningToolReconnectInterval
+            : timing.reconnectInterval
         guard let lastProgressDate else {
-            recoveryState = .idle
+            guard let lastTransportActivityDate,
+                  now.timeIntervalSince(lastTransportActivityDate) >= reconnectInterval
+            else {
+                recoveryState = .idle
+                return
+            }
+
+            recoveryState = .checking
+            lastRecoveryStatusCheckDate = now
+            await recoverStaleStream(
+                streamID: activeStreamID,
+                forceReconnect: true,
+                modelContext: modelContext
+            )
             return
         }
 
@@ -362,11 +396,18 @@ final class ChatStreamCoordinator {
             return
         }
 
+        let transportElapsed = now.timeIntervalSince(lastTransportActivityDate ?? lastProgressDate)
+        guard transportElapsed >= timing.transportFreshInterval else {
+            // #227: heartbeats prove the connection is alive during a
+            // semantically quiet window (model thinking / slow tool call), so
+            // stay idle and skip status polls. A genuinely silent transport
+            // still escalates below once past transportFreshInterval.
+            recoveryState = .idle
+            return
+        }
+
         recoveryState = .checking
-        let reconnectInterval = delegate?.streamCoordinatorHasRunningLiveToolCall == true
-            ? timing.runningToolReconnectInterval
-            : timing.reconnectInterval
-        let shouldForceReconnect = elapsed >= reconnectInterval
+        let shouldForceReconnect = transportElapsed >= reconnectInterval
         guard shouldForceReconnect || shouldPollStatus(now: now) else { return }
 
         lastRecoveryStatusCheckDate = now
@@ -379,6 +420,7 @@ final class ChatStreamCoordinator {
 
     func markProgress(now: Date = Date()) {
         lastProgressDate = now
+        lastTransportActivityDate = now
         lastRecoveryStatusCheckDate = nil
         recoveryState = .idle
     }
@@ -410,6 +452,7 @@ final class ChatStreamCoordinator {
 
     private func handle(_ event: SSEEvent) {
         lastEventID = streamClient.lastEventID ?? lastEventID
+        lastTransportActivityDate = Date()
 
         switch event {
         case .token(let text):
@@ -447,6 +490,11 @@ final class ChatStreamCoordinator {
             if delegate?.streamCoordinatorUpdateTitle(payload) == true {
                 markProgress()
             }
+        case .metering(let payload):
+            guard payload.sessionId == nil || payload.sessionId == delegate?.streamCoordinatorSessionID else {
+                break
+            }
+            liveTokensPerSecond = payload.displayableTokensPerSecond
         case .done(let payload):
             let hasCompletedTranscript = delegate?.streamCoordinatorApplyDone(payload) == true
             completeCurrentResponse(needsTranscriptRefresh: !hasCompletedTranscript)
@@ -478,12 +526,21 @@ final class ChatStreamCoordinator {
             finishStream()
         case .transportError(let message):
             handleTransportError(message)
+        case .heartbeat:
+            // #227: a heartbeat proves the transport is alive without carrying
+            // semantic progress — drop an already-shown "Checking stream" state
+            // immediately. Never demote .reconnecting; that chip is owned by
+            // the reconnect flow until real progress lands.
+            if recoveryState == .checking {
+                recoveryState = .idle
+            }
         case .ignored:
             break
         }
     }
 
     private func handleTransportError(_ message: String) {
+        liveTokensPerSecond = nil
         guard activeStreamID != nil, !hasCompletedCurrentResponse else {
             if !hasCompletedCurrentResponse {
                 delegate?.streamCoordinatorDidReceiveErrorMessage(message)
@@ -536,10 +593,12 @@ final class ChatStreamCoordinator {
                 return
             }
 
-            guard forceReconnect else {
-                recoveryState = .checking
-                return
-            }
+            // PR #238 review: recoveryState was set to .checking before this
+            // await. If it changed mid-flight (a heartbeat or real progress
+            // demoted it to .idle), the transport just proved itself alive —
+            // don't resurrect the chip or churn a live connection; the next
+            // recovery tick re-evaluates from scratch.
+            guard recoveryState == .checking, forceReconnect else { return }
 
             reconnectStaleStream(
                 streamID: expectedStreamID,
@@ -550,13 +609,23 @@ final class ChatStreamCoordinator {
                 "Stale stream recovery status check failed category=\(APIError.privacySafeLogCategory(for: error), privacy: .public)"
             )
 
-            guard forceReconnect,
-                  activeStreamID == expectedStreamID,
-                  !isConnectionSuspended
-            else {
-                recoveryState = .checking
+            if (error as? APIError)?.indicatesMissingStream == true,
+               activeStreamID == expectedStreamID,
+               !isConnectionSuspended {
+                await delegate?.streamCoordinatorLoadMessages(modelContext: modelContext)
+                guard canFinalizeRunAfterLoad(streamID: expectedStreamID, capturedGeneration: generation),
+                      !isConnectionSuspended else { return }
+                finalizeInactiveStream(streamID: expectedStreamID)
                 return
             }
+
+            // Same mid-flight demotion guard as the success path (PR #238
+            // review): only a still-.checking state may escalate.
+            guard recoveryState == .checking,
+                  forceReconnect,
+                  activeStreamID == expectedStreamID,
+                  !isConnectionSuspended
+            else { return }
 
             reconnectStaleStream(streamID: expectedStreamID, usesReplay: true)
         }
@@ -586,6 +655,7 @@ final class ChatStreamCoordinator {
         delegate?.streamCoordinatorStopAuxiliaryMonitoring(clearPrompt: true)
         activeStreamID = nil
         lastEventID = nil
+        liveTokensPerSecond = nil
         delegate?.streamCoordinatorStreamingAssistantMessageID = nil
         hasCompletedCurrentResponse = true
         delegate?.streamCoordinatorDidCompleteCurrentResponse(needsTranscriptRefresh: needsTranscriptRefresh)
@@ -639,6 +709,7 @@ final class ChatStreamCoordinator {
         delegate?.streamCoordinatorRemoveSnapshot(streamID: finishedStreamID)
         activeStreamID = nil
         lastEventID = nil
+        liveTokensPerSecond = nil
         delegate?.streamCoordinatorStreamingAssistantMessageID = nil
         hasCompletedCurrentResponse = false
         delegate?.streamCoordinatorDidFinishStream()
@@ -654,7 +725,9 @@ final class ChatStreamCoordinator {
         isReplay: Bool,
         recoveryState: ActiveStreamRecoveryState
     ) {
-        lastProgressDate = isReplay ? Date() : nil
+        let startedAt = Date()
+        lastProgressDate = isReplay ? startedAt : nil
+        lastTransportActivityDate = startedAt
         lastRecoveryStatusCheckDate = nil
         self.recoveryState = recoveryState
         isReplayConnection = isReplay
@@ -664,6 +737,7 @@ final class ChatStreamCoordinator {
     private func resetRecoveryState() {
         recoveryState = .idle
         lastProgressDate = nil
+        lastTransportActivityDate = nil
         lastRecoveryStatusCheckDate = nil
         isReplayConnection = false
         delegate?.streamCoordinatorDidResetRecoveryState()

@@ -25,6 +25,9 @@ struct SettingsView: View {
         _cliSessionsSync = State(initialValue: CliSessionsSyncModel(server: server) { value in
             let client = APIClient(baseURL: server)
             _ = try await client.updateSettings(showCliSessions: value)
+        } writeClaudeCodeToServer: { value in
+            let client = APIClient(baseURL: server)
+            _ = try await client.updateSettings(showClaudeCodeSessions: value)
         })
     }
 
@@ -62,13 +65,17 @@ struct SettingsView: View {
     @AppStorage(SessionRowDisplaySettings.showMessageCountKey) private var showsSessionMessageCount = true
     @AppStorage(SessionRowDisplaySettings.showWorkspaceKey) private var showsSessionWorkspace = true
     @AppStorage(SessionRowDisplaySettings.showCronSessionsKey) private var showsCronSessions = true
+    @AppStorage(SessionRowDisplaySettings.showSubagentSessionsKey)
+    private var showsSubagentSessions = SessionRowDisplaySettings.defaultShowsSubagentSessions
     @State private var cliSessionsSync: CliSessionsSyncModel
     @AppStorage(StreamingSendBehavior.storageKey) private var streamingSendBehaviorRawValue = StreamingSendBehavior.steer.rawValue
+    @AppStorage(ComposerSTTProviderPreference.storageKey) private var sttProviderPreferenceRawValue = ComposerSTTProviderPreference.defaultValue.rawValue
     @AppStorage(ChatTranscriptDisplaySettings.showsThinkingAndToolCardsKey) private var showsThinkingAndToolCards = true
     @AppStorage(ChatTranscriptDisplaySettings.thinkingCardsStartExpandedKey) private var thinkingCardsStartExpanded = false
     @AppStorage(ChatTranscriptDisplaySettings.toolCardsStartExpandedKey) private var toolCardsStartExpanded = false
     @AppStorage(ChatTranscriptDisplaySettings.hidesAttachmentPathsKey) private var hidesAttachmentPaths = true
     @AppStorage(ChatTranscriptDisplaySettings.showsAssistantTurnTimestampsKey) private var showsAssistantTurnTimestamps = false
+    @AppStorage(ChatTranscriptDisplaySettings.showsResponseSpeedKey) private var showsResponseSpeed = false
     @AppStorage(ChatTranscriptDisplaySettings.wrapsCodeBlockLinesKey) private var wrapsCodeBlockLines = false
     @AppStorage(ChatTranscriptDisplaySettings.rtlChatLayoutEnabledKey) private var rtlChatLayoutEnabled = ChatTranscriptDisplaySettings.rtlChatLayoutDefaultEnabled
     @AppStorage(StreamedTextAnimationSettings.isEnabledKey) private var isStreamedTextAnimationEnabled = true
@@ -76,6 +83,15 @@ struct SettingsView: View {
     @AppStorage(PrimaryActionTintSettings.isEnabledKey) private var tintsPrimaryActions = false
     @AppStorage(SessionIdentitySettings.displayNameKey) private var identityDisplayName = ""
     @AppStorage(SessionIdentitySettings.initialsKey) private var identityInitials = ""
+    @AppStorage(SectionVisibilitySettings.tasksKey) private var showsTasksSection = true
+    @AppStorage(SectionVisibilitySettings.kanbanKey) private var showsKanbanSection = true
+    @AppStorage(SectionVisibilitySettings.skillsKey) private var showsSkillsSection = true
+    @AppStorage(SectionVisibilitySettings.memoryKey) private var showsMemorySection = true
+    @AppStorage(SectionVisibilitySettings.insightsKey) private var showsInsightsSection = true
+    @AppStorage(SectionVisibilitySettings.activeProfileKey) private var showsActiveProfileSection = true
+    @AppStorage(SectionVisibilitySettings.projectsKey) private var showsProjectsSection = true
+    @AppStorage(SectionVisibilitySettings.chatFilesKey) private var showsChatFilesButton = true
+    @AppStorage(SectionVisibilitySettings.chatGitKey) private var showsChatGitControls = true
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
@@ -165,6 +181,20 @@ struct SettingsView: View {
                             Text(behavior.settingsDescription).tag(behavior.rawValue)
                         }
                     }
+
+                    SettingsDivider()
+
+                    SettingsPickerRow(
+                        title: String(localized: "Dictation Provider"),
+                        systemImage: "mic",
+                        selection: $sttProviderPreferenceRawValue
+                    ) {
+                        ForEach(ComposerSTTProviderPreference.allCases) { preference in
+                            Text(preference.title).tag(preference.rawValue)
+                        }
+                    }
+
+                    SettingsFootnote(String(localized: "On-device only keeps composer dictation audio off your Hermes server."))
                 }
 
                 SettingsCard(title: String(localized: "Chat")) {
@@ -215,6 +245,14 @@ struct SettingsView: View {
                     SettingsDivider()
 
                     SettingsToggleRow(
+                        title: String(localized: "Response Speed"),
+                        systemImage: "gauge.with.dots.needle.67percent",
+                        isOn: $showsResponseSpeed
+                    )
+
+                    SettingsDivider()
+
+                    SettingsToggleRow(
                         title: String(localized: "Wrap Code Block Lines"),
                         systemImage: "arrow.turn.down.left",
                         isOn: $wrapsCodeBlockLines
@@ -251,6 +289,82 @@ struct SettingsView: View {
                     )
 
                     SettingsFootnote(String(localized: "Shows short response text on the Lock Screen and Dynamic Island."))
+
+                    SettingsDivider()
+
+                    SettingsToggleRow(
+                        title: String(localized: "Files Button"),
+                        systemImage: "folder",
+                        isOn: $showsChatFilesButton
+                    )
+
+                    SettingsDivider()
+
+                    SettingsToggleRow(
+                        title: String(localized: "Git Actions"),
+                        systemImage: "arrow.triangle.branch",
+                        isOn: $showsChatGitControls
+                    )
+
+                    SettingsFootnote(String(localized: "Covers both the git menu in the chat toolbar and the branch picker in the composer."))
+                }
+
+                SettingsCard(title: String(localized: "Main Page")) {
+                    SettingsToggleRow(
+                        title: String(localized: "Tasks"),
+                        systemImage: "calendar.badge.clock",
+                        isOn: $showsTasksSection
+                    )
+
+                    SettingsDivider()
+
+                    SettingsToggleRow(
+                        title: String(localized: "Kanban"),
+                        systemImage: "rectangle.split.3x1",
+                        isOn: $showsKanbanSection
+                    )
+
+                    SettingsDivider()
+
+                    SettingsToggleRow(
+                        title: String(localized: "Skills"),
+                        systemImage: "hammer",
+                        isOn: $showsSkillsSection
+                    )
+
+                    SettingsDivider()
+
+                    SettingsToggleRow(
+                        title: String(localized: "Memory"),
+                        systemImage: "brain",
+                        isOn: $showsMemorySection
+                    )
+
+                    SettingsDivider()
+
+                    SettingsToggleRow(
+                        title: String(localized: "Insights"),
+                        systemImage: "chart.bar",
+                        isOn: $showsInsightsSection
+                    )
+
+                    SettingsDivider()
+
+                    SettingsToggleRow(
+                        title: String(localized: "Active Profile"),
+                        systemImage: "person.crop.circle",
+                        isOn: $showsActiveProfileSection
+                    )
+
+                    SettingsDivider()
+
+                    SettingsToggleRow(
+                        title: String(localized: "Projects"),
+                        systemImage: "folder.badge.gearshape",
+                        isOn: $showsProjectsSection
+                    )
+
+                    SettingsFootnote(String(localized: "Turn off the entries you never use to shorten the top of the session list. Each one is the only way into its screen, so turn it back on here when you need it again."))
                 }
 
                 SettingsCard(title: String(localized: "Sessions")) {
@@ -287,10 +401,32 @@ struct SettingsView: View {
                         )
                     )
 
-                    if let syncError = cliSessionsSync.syncErrorMessage {
+                    SettingsDivider()
+
+                    SettingsToggleRow(
+                        title: String(localized: "Claude Code Sessions"),
+                        systemImage: "chevron.left.forwardslash.chevron.right",
+                        isOn: Binding(
+                            get: { cliSessionsSync.showsClaudeCodeSessions },
+                            set: { cliSessionsSync.setShowsClaudeCodeSessions($0) }
+                        )
+                    )
+                    .disabled(!cliSessionsSync.showsCliSessions)
+
+                    SettingsDivider()
+
+                    SettingsToggleRow(
+                        title: String(localized: "Subagent Sessions"),
+                        systemImage: "arrow.triangle.branch",
+                        isOn: $showsSubagentSessions
+                    )
+
+                    if let syncError = cliSessionsSync.syncErrorMessage
+                        ?? cliSessionsSync.claudeCodeSyncErrorMessage {
                         SettingsErrorFootnote(syncError)
-                    } else if cliSessionsSync.serverSyncsCliSessions {
-                        SettingsFootnote(String(localized: "CLI session visibility is synced with this server, so the WebUI follows it too."))
+                    } else if cliSessionsSync.serverSyncsCliSessions
+                        || cliSessionsSync.serverSyncsClaudeCodeSessions {
+                        SettingsFootnote(String(localized: "Session visibility is synced with this server, so the WebUI follows it too."))
                     }
                 }
 
@@ -345,6 +481,19 @@ struct SettingsView: View {
                     SettingsValueRow(title: String(localized: "Status")) {
                         serverStatusPill
                     }
+
+                    SettingsDivider()
+
+                    NavigationLink {
+                        ProvidersView(server: server)
+                    } label: {
+                        SettingsAccessoryRow(
+                            title: String(localized: "Providers"),
+                            systemImage: "key.horizontal"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens the provider status screen.")
 
                     SettingsDivider()
 
@@ -430,6 +579,7 @@ struct SettingsView: View {
             .padding(.horizontal, 16)
             .padding(.top, 18)
             .padding(.bottom, 36)
+            .adaptiveReadableContent(maxWidth: AdaptiveReadableContentWidth.secondaryDestination)
         }
         .background(Color(.systemBackground))
         .navigationTitle("Settings")
@@ -885,6 +1035,7 @@ struct SettingsView: View {
             // Server wins on conflict: `show_cli_sessions` is the cross-device
             // truth, the local value is just its offline cache (#19).
             cliSessionsSync.adopt(serverValue: settings.showCliSessions)
+            cliSessionsSync.adoptClaudeCode(serverValue: settings.showClaudeCodeSessions)
             if serverVersion == nil {
                 serverSettingsError = String(localized: "Unknown")
             }
@@ -2150,6 +2301,7 @@ struct AddServerView: View {
                 }
             }
         }
+        .adaptiveFormPresentation()
     }
 
     @ViewBuilder

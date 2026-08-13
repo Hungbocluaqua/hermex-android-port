@@ -31,6 +31,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalContentColor
@@ -47,7 +49,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -78,6 +83,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uzairansar.hermex.core.model.CronJob
 import com.uzairansar.hermex.core.model.CronOutputResponse
+import com.uzairansar.hermex.core.model.CronDeliveryPlatform
 import com.uzairansar.hermex.core.model.InsightsActivityByDay
 import com.uzairansar.hermex.core.model.InsightsActivityByHour
 import com.uzairansar.hermex.core.model.InsightsDailyToken
@@ -395,6 +401,7 @@ fun PanelsRoute(
     state.taskDraft?.let { draft ->
         TaskEditorDialog(
             draft = draft,
+            deliveryOptions = state.cronDeliveryOptions,
             isMutating = state.isMutating,
             onDraftChange = viewModel::updateTaskDraft,
             onDismiss = viewModel::dismissTaskEditor,
@@ -1504,11 +1511,19 @@ private fun ActivityPanelRow(title: String, value: String, detail: String) {
 @Composable
 private fun TaskEditorDialog(
     draft: CronTaskDraft,
+    deliveryOptions: List<CronDeliveryPlatform>?,
     isMutating: Boolean,
     onDraftChange: (CronTaskDraft) -> Unit,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
 ) {
+    var deliveryMenuExpanded by rememberSaveable(draft.editingJobId) { mutableStateOf(false) }
+    val deliverLabel = localizedString("Deliver")
+    val pickerOptions = cronDeliverPickerOptions(
+        serverOptions = deliveryOptions,
+        currentValue = draft.deliver,
+        initialValue = draft.initialDeliver ?: draft.deliver,
+    )
     AlertDialog(
         modifier = Modifier.panelDialogChrome(),
         shape = HermexGlassShape,
@@ -1542,13 +1557,60 @@ private fun TaskEditorDialog(
                     singleLine = true,
                     enabled = !isMutating,
                 )
-                OutlinedTextField(
-                    value = draft.deliver,
-                    onValueChange = { onDraftChange(draft.copy(deliver = it)) },
-                    label = { Text(localizedString("Deliver")) },
-                    singleLine = true,
-                    enabled = !isMutating,
-                )
+                if (pickerOptions == null) {
+                    OutlinedTextField(
+                        value = draft.deliver,
+                        onValueChange = { onDraftChange(draft.copy(deliver = it)) },
+                        label = { Text(deliverLabel) },
+                        singleLine = true,
+                        enabled = !isMutating,
+                    )
+                } else {
+                    val selected = pickerOptions.firstOrNull { it.value == draft.deliver.trim() }
+                    val selectedLabel = selected?.let { option ->
+                        if (option.isCustom) localizedStringFormat("%@ (custom)", option.label) else option.label
+                    } ?: draft.deliver
+                    Box(Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = selectedLabel,
+                            onValueChange = {},
+                            label = { Text(deliverLabel) },
+                            trailingIcon = { Text(if (deliveryMenuExpanded) "^" else "v") },
+                            singleLine = true,
+                            readOnly = true,
+                            enabled = !isMutating,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .clickable(enabled = !isMutating, role = Role.Button) {
+                                    deliveryMenuExpanded = true
+                                }
+                                .semantics { contentDescription = deliverLabel },
+                        )
+                        DropdownMenu(
+                            expanded = deliveryMenuExpanded,
+                            onDismissRequest = { deliveryMenuExpanded = false },
+                        ) {
+                            pickerOptions.forEach { option ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            if (option.isCustom) localizedStringFormat("%@ (custom)", option.label)
+                                            else option.label,
+                                        )
+                                    },
+                                    onClick = {
+                                        deliveryMenuExpanded = false
+                                        onDraftChange(draft.copy(deliver = option.value))
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = draft.skillsText,
                     onValueChange = { onDraftChange(draft.copy(skillsText = it)) },

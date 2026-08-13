@@ -2,6 +2,7 @@ package com.uzairansar.hermex
 
 import android.app.Application
 import com.uzairansar.hermex.core.network.HermesApiClient
+import com.uzairansar.hermex.core.network.HttpKanbanEventStreamingClient
 import com.uzairansar.hermex.core.network.PersistentCookieJar
 import com.uzairansar.hermex.core.network.SseStreamClient
 import com.uzairansar.hermex.data.db.HermexDatabase
@@ -11,6 +12,7 @@ import com.uzairansar.hermex.data.repository.AuthRepository
 import com.uzairansar.hermex.data.repository.CacheMaintenanceRepository
 import com.uzairansar.hermex.data.repository.ChatRepository
 import com.uzairansar.hermex.data.repository.GitRepository
+import com.uzairansar.hermex.data.repository.KanbanRepository
 import com.uzairansar.hermex.data.repository.PanelsRepository
 import com.uzairansar.hermex.data.repository.SessionRepository
 import com.uzairansar.hermex.data.repository.WorkspaceRepository
@@ -136,5 +138,21 @@ class AppContainer(private val application: Application) {
 
     fun panelsRepository(baseUrl: HttpUrl): PanelsRepository = PanelsRepository(apiClient(baseUrl))
     fun workspaceRepository(baseUrl: HttpUrl): WorkspaceRepository = WorkspaceRepository(apiClient(baseUrl))
+    fun kanbanRepository(baseUrl: HttpUrl): KanbanRepository {
+        val authGeneration = authRepository.currentAuthGeneration(baseUrl)
+        return KanbanRepository(
+            client = apiClient(baseUrl),
+            streamingClient = HttpKanbanEventStreamingClient(
+                baseUrl = baseUrl,
+                client = okHttpClient,
+                onUnauthorized = { server ->
+                    applicationScope.launch { authRepository.handleUnauthorized(server, authGeneration) }
+                },
+                customHeaders = {
+                    registry.customHeaders(ServerRegistry.normalizedId(baseUrl))
+                },
+            ),
+        )
+    }
     fun gitRepository(baseUrl: HttpUrl): GitRepository = GitRepository(apiClient(baseUrl))
 }
