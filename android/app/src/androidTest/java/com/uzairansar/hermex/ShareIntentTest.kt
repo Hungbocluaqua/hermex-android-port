@@ -6,6 +6,8 @@ import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.uzairansar.hermex.data.share.SharedDraftStore
+import com.uzairansar.hermex.data.share.SharedAttachment
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -84,5 +86,26 @@ class ShareIntentTest {
 
         assertEquals(false, store.hasPendingDraft())
         assertEquals(null, store.loadPendingDraft())
+    }
+
+    @Test
+    fun importedDraftIsAcknowledgedOnlyWhenItsGenerationStillMatches() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        context.getSharedPreferences("hermex_share", android.content.Context.MODE_PRIVATE).edit().clear().commit()
+        val store = SharedDraftStore(context)
+        val attachmentFile = File(context.cacheDir, "share-ack-test.txt").apply { writeText("hello") }
+        store.savePendingDraft(
+            text = "first",
+            attachments = listOf(SharedAttachment("content://share/first", cachedPath = attachmentFile.absolutePath)),
+        )
+        val first = requireNotNull(store.loadPendingDraft(removeAfterLoad = false))
+        store.savePendingDraft(text = "newer", attachments = emptyList())
+
+        assertEquals(false, store.commitImportedDraft(first.createdAtEpochMillis, emptyList()))
+        assertEquals("newer", store.loadPendingDraft(removeAfterLoad = false)?.text)
+
+        val newer = requireNotNull(store.loadPendingDraft(removeAfterLoad = false))
+        assertEquals(true, store.commitImportedDraft(newer.createdAtEpochMillis, emptyList()))
+        assertEquals(null, store.loadPendingDraft(removeAfterLoad = false))
     }
 }

@@ -80,12 +80,6 @@ internal data class QueuedDraft(
     val attachments: List<UploadResponse>,
 )
 
-private class SharedAttachmentUploadException(
-    message: String,
-    val retryAttachment: SharedAttachment,
-    cause: Throwable? = null,
-) : Exception(message, cause)
-
 internal object ChatProfileSwitchPolicy {
     fun requiresNewSessionConfirmation(hasPersistedConversation: Boolean): Boolean = hasPersistedConversation
 }
@@ -178,6 +172,8 @@ internal data class PersistedChatPendingState(
     val queuedDrafts: List<QueuedDraft> = emptyList(),
     val backgroundTasks: Map<String, BackgroundTaskState> = emptyMap(),
     val btwTask: BtwTaskState? = null,
+    val importedSharedDraftCreatedAtEpochMillis: Long? = null,
+    val importedSharedDraftRemainder: List<SharedAttachment> = emptyList(),
 )
 
 @Serializable
@@ -317,6 +313,7 @@ data class ChatUiState(
     val isLoadingComposerConfig: Boolean = false,
     val isLoadingOlderMessages: Boolean = false,
     val attachmentUploadsInFlight: Int = 0,
+    val pendingLocalUploadCount: Int = 0,
     val isRecordingVoiceNote: Boolean = false,
     val voiceNoteStartedAtMillis: Long? = null,
     val isTranscribingVoiceNote: Boolean = false,
@@ -409,6 +406,8 @@ class ChatViewModel internal constructor(
     private val pendingLocalUploads = linkedMapOf<String, PendingLocalAttachmentUpload>()
     private val queuedSlashMessages = ArrayDeque<QueuedDraft>()
     private var currentBtwTask: BtwTaskState? = null
+    private var importedSharedDraftCreatedAtEpochMillis: Long? = null
+    private var importedSharedDraftRemainder: List<SharedAttachment> = emptyList()
     private var isDrainingQueuedSlashMessage = false
     @Volatile private var isClearing = false
 
@@ -421,8 +420,11 @@ class ChatViewModel internal constructor(
             draft = persisted?.draft.orEmpty(),
             pendingAttachments = persisted?.pendingAttachments.orEmpty(),
             attachmentUploadsInFlight = pendingLocalUploads.size,
+            pendingLocalUploadCount = pendingLocalUploads.size,
         )
         currentBtwTask = persisted?.btwTask ?: BtwTaskRegistry.load(registryKey)
+        importedSharedDraftCreatedAtEpochMillis = persisted?.importedSharedDraftCreatedAtEpochMillis
+        importedSharedDraftRemainder = persisted?.importedSharedDraftRemainder.orEmpty()
         currentBtwTask?.let { BtwTaskRegistry.save(registryKey, it) }
         load()
         loadComposerConfig()
@@ -1148,7 +1150,7 @@ class ChatViewModel internal constructor(
     private fun reserveAttachmentSlot(): Boolean {
         var accepted = false
         _state.update {
-            if (it.pendingAttachments.size + it.attachmentUploadsInFlight >= MAXIMUM_MESSAGE_ATTACHMENTS) {
+            if (it.pendingAttachments.size + pendingLocalUploads.size >= MAXIMUM_MESSAGE_ATTACHMENTS) {
                 it.copy(error = "Attach up to $MAXIMUM_MESSAGE_ATTACHMENTS files per message.")
             } else {
                 accepted = true
@@ -1164,6 +1166,7 @@ class ChatViewModel internal constructor(
             mimeType = mimeType,
         )
         pendingLocalUploads[pending.id] = pending
+        _state.update { it.copy(pendingLocalUploadCount = pendingLocalUploads.size) }
         persistPendingState(durable = true)
         uploadPendingLocalAttachment(pending)
     }
@@ -1181,6 +1184,7 @@ class ChatViewModel internal constructor(
             _state.update {
                 it.copy(
                     attachmentUploadsInFlight = (it.attachmentUploadsInFlight - 1).coerceAtLeast(0),
+                    pendingLocalUploadCount = pendingLocalUploads.size,
                     error = "An attachment could not be restored after the app restarted.",
                 )
             }
@@ -1195,6 +1199,7 @@ class ChatViewModel internal constructor(
                 it.copy(
                     pendingAttachments = it.pendingAttachments + upload,
                     attachmentUploadsInFlight = (it.attachmentUploadsInFlight - 1).coerceAtLeast(0),
+                    pendingLocalUploadCount = pendingLocalUploads.size,
                 )
             }
             persistPendingState(durable = true)
@@ -1202,108 +1207,113 @@ class ChatViewModel internal constructor(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            pendingLocalUploads.remove(pending.id)
             _state.update {
                 it.copy(
                     attachmentUploadsInFlight = (it.attachmentUploadsInFlight - 1).coerceAtLeast(0),
-                    error = error.message ?: "Upload failed.",
+                    pendingLocalUploadCount = pendingLocalUploads.size,
+                    error = "${error.message ?: "Upload failed."} Tap Retry to try again.",
                 )
             }
             persistPendingState(durable = true)
-            file.delete()
         }
     }
 
-    fun consumeSharedDraft(context: Context, draft: SharedDraft) {
+    fun retryPendingLocalUploads() {
+        val pending = pendingLocalUploads.values.toList()
+        if (pending.isEmpty() || _state.value.attachmentUploadsInFlight > 0) return
+        _state.update { it.copy(attachmentUploadsInFlight = pending.size, error = null) }
+        pending.forEach { upload ->
+            viewModelScope.launch { uploadPendingLocalAttachment(upload) }
+        }
+    }
+
+    fun consumeSharedDraft(
+        context: Context,
+        draft: SharedDraft,
+        onDurablyImported: (List<SharedAttachment>) -> Boolean,
+    ) {
         viewModelScope.launch {
+            if (importedSharedDraftCreatedAtEpochMillis == draft.createdAtEpochMillis) {
+                if (onDurablyImported(importedSharedDraftRemainder)) {
+                    importedSharedDraftCreatedAtEpochMillis = null
+                    importedSharedDraftRemainder = emptyList()
+                    persistPendingState(durable = true)
+                }
+                return@launch
+            }
             val sharedText = draft.text.trim()
             val attachments = draft.attachments.ifEmpty {
                 draft.uris.map { SharedAttachment(uri = it) }
             }
-            if (sharedText.isNotBlank()) {
-                _state.update { state ->
-                    val separator = if (state.draft.isBlank() || state.draft.endsWith("\n")) "" else "\n\n"
-                    state.copy(
-                        draft = "${state.draft}$separator$sharedText",
-                        notice = "Shared text added to the draft.",
-                        error = null,
-                    )
-                }
-                persistPendingState()
-            }
             val acceptedAttachments = attachments.take(remainingAttachmentSlots())
             val deferredAttachments = attachments.drop(acceptedAttachments.size)
-            if (attachments.size > acceptedAttachments.size) {
-                _state.update { it.copy(error = "Attach up to $MAXIMUM_MESSAGE_ATTACHMENTS files per message.") }
-            }
-            if (acceptedAttachments.isEmpty()) {
-                if (deferredAttachments.isNotEmpty()) {
-                    SharedDraftStore(context).savePendingDraft(text = "", attachments = deferredAttachments)
+            val preparedUploads = mutableListOf<PendingLocalAttachmentUpload>()
+            try {
+                acceptedAttachments.forEach { attachment ->
+                    preparedUploads += prepareSharedAttachmentUpload(context, attachment)
+                }
+            } catch (error: CancellationException) {
+                preparedUploads.forEach { runCatching { File(it.cachedPath).delete() } }
+                throw error
+            } catch (error: Throwable) {
+                preparedUploads.forEach { runCatching { File(it.cachedPath).delete() } }
+                _state.update {
+                    it.copy(
+                        error = error.message ?: "Could not import the shared attachment.",
+                    )
                 }
                 return@launch
             }
 
-            _state.update {
-                it.copy(
-                    attachmentUploadsInFlight = it.attachmentUploadsInFlight + acceptedAttachments.size,
-                    error = null,
-                )
-            }
-            val uploaded = mutableListOf<UploadResponse>()
-            val failures = mutableListOf<String>()
-            val retryAttachments = mutableListOf<SharedAttachment>()
-            val preparedAttachments = acceptedAttachments.toMutableList()
+            val previousState = _state.value
+            val previousImportedId = importedSharedDraftCreatedAtEpochMillis
+            val previousRemainder = importedSharedDraftRemainder
+            val separator = if (previousState.draft.isBlank() || previousState.draft.endsWith("\n")) "" else "\n\n"
+            preparedUploads.forEach { pendingLocalUploads[it.id] = it }
+            importedSharedDraftCreatedAtEpochMillis = draft.createdAtEpochMillis
+            importedSharedDraftRemainder = deferredAttachments
+            _state.value = previousState.copy(
+                draft = if (sharedText.isBlank()) previousState.draft else "${previousState.draft}$separator$sharedText",
+                attachmentUploadsInFlight = previousState.attachmentUploadsInFlight + preparedUploads.size,
+                pendingLocalUploadCount = pendingLocalUploads.size,
+                notice = when {
+                    sharedText.isNotBlank() && preparedUploads.isNotEmpty() -> "Shared text and ${preparedUploads.size} attachment(s) added."
+                    sharedText.isNotBlank() -> "Shared text added to the draft."
+                    preparedUploads.isNotEmpty() -> "${preparedUploads.size} shared attachment(s) added."
+                    else -> previousState.notice
+                },
+                error = if (deferredAttachments.isNotEmpty()) {
+                    "Attach up to $MAXIMUM_MESSAGE_ATTACHMENTS files per message. The remaining files are still in Share."
+                } else {
+                    null
+                },
+            )
             try {
-                acceptedAttachments.forEachIndexed { index, attachment ->
-                    runSuspendCatching {
-                        uploadSharedAttachment(context, attachment) { prepared ->
-                            preparedAttachments[index] = prepared
-                        }
-                    }
-                        .onSuccess { upload -> uploaded += upload }
-                        .onFailure { error ->
-                            if (error is CancellationException) throw error
-                            failures += (error.message ?: "Shared attachment upload failed.")
-                            retryAttachments += (error as? SharedAttachmentUploadException)?.retryAttachment ?: preparedAttachments[index]
-                        }
-                }
-            } catch (error: CancellationException) {
-                SharedDraftStore(context).savePendingDraft(
-                    text = "",
-                    attachments = preparedAttachments + deferredAttachments,
+                persistPendingState(durable = true)
+            } catch (error: Throwable) {
+                preparedUploads.forEach { pendingLocalUploads.remove(it.id) }
+                importedSharedDraftCreatedAtEpochMillis = previousImportedId
+                importedSharedDraftRemainder = previousRemainder
+                _state.value = previousState.copy(
+                    pendingLocalUploadCount = pendingLocalUploads.size,
+                    error = error.message ?: "Could not save the shared draft.",
                 )
-                throw error
-            } finally {
+                preparedUploads.forEach { runCatching { File(it.cachedPath).delete() } }
+                return@launch
+            }
+
+            if (onDurablyImported(deferredAttachments)) {
+                importedSharedDraftCreatedAtEpochMillis = null
+                importedSharedDraftRemainder = emptyList()
+                persistPendingState(durable = true)
+            } else {
                 _state.update {
-                    it.copy(
-                        attachmentUploadsInFlight =
-                            (it.attachmentUploadsInFlight - acceptedAttachments.size).coerceAtLeast(0),
-                    )
+                    it.copy(error = "Shared content is saved in this chat, but Share cleanup failed. Reopen this chat to retry cleanup.")
                 }
             }
-            preparedAttachments
-                .filterNot { prepared -> retryAttachments.any { it.cachedPath == prepared.cachedPath } }
-                .forEach { prepared ->
-                    prepared.cachedPath?.let(::File)?.takeIf { it.isInside(context.cacheDir) }?.let { runCatching { it.delete() } }
-                }
-            val pendingSharedAttachments = retryAttachments + deferredAttachments
-            if (pendingSharedAttachments.isNotEmpty()) {
-                runCatching {
-                    SharedDraftStore(context).savePendingDraft(text = "", attachments = pendingSharedAttachments)
-                }
+            preparedUploads.forEach { pending ->
+                viewModelScope.launch { uploadPendingLocalAttachment(pending) }
             }
-            _state.update {
-                it.copy(
-                    pendingAttachments = it.pendingAttachments + uploaded,
-                    notice = when {
-                        uploaded.isNotEmpty() && sharedText.isNotBlank() -> "Shared text and ${uploaded.size} attachment(s) added."
-                        uploaded.isNotEmpty() -> "${uploaded.size} shared attachment(s) added."
-                        else -> it.notice
-                    },
-                    error = failures.takeIf { failureList -> failureList.isNotEmpty() }?.joinToString("\n"),
-                )
-            }
-            persistPendingState()
         }
     }
 
@@ -1316,7 +1326,7 @@ class ChatViewModel internal constructor(
         AttachmentLimitPolicy.remaining(
             maximum = MAXIMUM_MESSAGE_ATTACHMENTS,
             attached = _state.value.pendingAttachments.size,
-            uploadsInFlight = _state.value.attachmentUploadsInFlight,
+            uploadsInFlight = pendingLocalUploads.size,
         )
 
     fun startVoiceNote(recorder: VoiceNoteRecorder) {
@@ -2808,6 +2818,8 @@ class ChatViewModel internal constructor(
                 queuedDrafts = queuedSlashMessages.toList(),
                 backgroundTasks = backgroundPromptsByTaskId.toMap(),
                 btwTask = currentBtwTask,
+                importedSharedDraftCreatedAtEpochMillis = importedSharedDraftCreatedAtEpochMillis,
+                importedSharedDraftRemainder = importedSharedDraftRemainder,
             ),
             durable = durable,
         )
@@ -3981,35 +3993,27 @@ class ChatViewModel internal constructor(
         }
     }
 
-    private suspend fun uploadSharedAttachment(
+    private suspend fun prepareSharedAttachmentUpload(
         context: Context,
         attachment: SharedAttachment,
-        onPrepared: (SharedAttachment) -> Unit,
-    ): UploadResponse =
+    ): PendingLocalAttachmentUpload =
         withContext(Dispatchers.IO) {
-            val cachedFile = attachment.cachedPath
+            val sourceFile = attachment.cachedPath
                 ?.let(::File)
                 ?.takeIf { it.exists() && it.isFile }
-            val file = cachedFile ?: copyUriToCache(context, Uri.parse(attachment.uri))
-            val retryAttachment = attachment.copy(cachedPath = file.absolutePath)
-            onPrepared(retryAttachment)
+            val file = if (sourceFile != null) {
+                val destination = File(context.cacheDir, "attachment-${System.nanoTime()}-${sourceFile.name}")
+                sourceFile.inputStream().buffered().use { input ->
+                    copyAttachmentWithLimit(input, destination, MAXIMUM_ATTACHMENT_BYTES)
+                }
+                destination
+            } else {
+                copyUriToCache(context, Uri.parse(attachment.uri))
+            }
             val mimeType = attachment.mimeType ?: runCatching {
                 context.contentResolver.getType(Uri.parse(attachment.uri))
             }.getOrNull()
-            try {
-                require(file.length() in 1..MAXIMUM_ATTACHMENT_BYTES) { "Attachments must be 20 MB or smaller." }
-                repository.upload(sessionId, file, mimeType).also { upload ->
-                    require(upload.error.isNullOrBlank()) { upload.error ?: "Upload failed." }
-                }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                throw SharedAttachmentUploadException(
-                    message = error.message ?: "Shared attachment upload failed.",
-                    retryAttachment = retryAttachment,
-                    cause = error,
-                )
-            }
+            PendingLocalAttachmentUpload(cachedPath = file.absolutePath, mimeType = mimeType)
         }
 
 private fun File.isInside(directory: File): Boolean {

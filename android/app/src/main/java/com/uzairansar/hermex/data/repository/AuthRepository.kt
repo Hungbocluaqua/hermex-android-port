@@ -84,10 +84,7 @@ class AuthRepository(
                 ensureCurrentAuthGeneration(url, generation)
                 accountSelectionGeneration.incrementAndGet()
                 val account = withSecureStorage {
-                    registry.activate(url).also { activated ->
-                        registry.saveCustomHeaders(activated.id, customHeaders)
-                        registry.setLoggedOut(activated.id, false)
-                    }
+                    registry.activate(url, customHeaders = customHeaders, loggedOut = false)
                 }
                 _state.value = AuthState.LoggedIn(url, account)
             } catch (error: Throwable) {
@@ -134,10 +131,9 @@ class AuthRepository(
                         displayName = displayName,
                         initials = initials,
                         headerLogoColorHex = headerLogoColorHex,
-                    ).also { activated ->
-                        registry.saveCustomHeaders(activated.id, customHeaders)
-                        registry.setLoggedOut(activated.id, false)
-                    }
+                        customHeaders = customHeaders,
+                        loggedOut = false,
+                    )
                 }
                 _state.value = AuthState.LoggedIn(url, account)
                 AddServerResult.Added(account)
@@ -228,8 +224,9 @@ class AuthRepository(
                 // Keep the configured account and its session intact if durable cache cleanup fails.
                 clearCachedServer(url.toString())
                 advanceAuthGeneration(url)
-                cookieJar.clear(url)
-                registry.remove(id)
+                cookieJar.whileClearing(url) { cookieMutation ->
+                    registry.remove(id, cookieMutation)
+                }
                 _state.value = restoreState()
             }
         }
@@ -287,8 +284,9 @@ class AuthRepository(
     private suspend fun markLoggedOut(server: okhttp3.HttpUrl) {
         val serverId = ServerRegistry.normalizedId(server)
         val active = withSecureStorage {
-            registry.setLoggedOut(serverId, true)
-            cookieJar.clear(server)
+            cookieJar.whileClearing(server) { cookieMutation ->
+                registry.setLoggedOut(serverId, true, cookieMutation)
+            }
             registry.activeServer()
         }
         runCatching { clearCachedServer(server.toString()) }

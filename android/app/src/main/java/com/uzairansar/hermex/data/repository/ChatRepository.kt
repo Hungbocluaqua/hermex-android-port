@@ -110,7 +110,7 @@ class ChatRepository(
             val cached = cacheOwnership.readIfCurrent(serverUrl, operationGeneration) {
                 val messages = cacheDao.cachedMessages(serverUrl, sessionId, now, MESSAGE_PAGE_LIMIT)
                     .mapNotNull { it.toMessage() }
-                val metadata = cacheDao.cachedSessions(serverUrl, now)
+                val metadata = cacheDao.cachedSessions(serverUrl, now, includeArchived = true)
                     .firstOrNull { it.sessionId == sessionId }
                     ?.toSummary()
                 messages to metadata

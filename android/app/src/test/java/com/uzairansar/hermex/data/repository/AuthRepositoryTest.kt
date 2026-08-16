@@ -303,6 +303,63 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun logoutStorageFailurePreservesBothLoginMarkerAndCookie() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            server.enqueue(json("""{"ok":true}"""))
+            val secretStore = AtomicFailingSecretStore()
+            val registry = ServerRegistry(secretStore)
+            val url = server.url("/")
+            registry.activate(url)
+            val cookieJar = PersistentCookieJar(secretStore)
+            cookieJar.saveFromResponse(
+                url,
+                listOf(Cookie.Builder().name("session").value("token").hostOnlyDomain(url.host).path("/").build()),
+            )
+            val repository = authRepository(registry, secretStore, cookieJar)
+            secretStore.failNextUpdate = true
+
+            val error = runCatching { repository.logout() }.exceptionOrNull()
+
+            assertNotNull(error)
+            assertTrue(repository.state.value is AuthState.LoggedIn)
+            assertFalse(registry.isLoggedOut(requireNotNull(registry.activeServer()).id))
+            assertEquals("token", cookieJar.loadForRequest(url).single { it.name == "session" }.value)
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun forgetStorageFailurePreservesBothAccountAndCookie() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            val secretStore = AtomicFailingSecretStore()
+            val registry = ServerRegistry(secretStore)
+            val url = server.url("/")
+            val account = registry.activate(url)
+            val cookieJar = PersistentCookieJar(secretStore)
+            cookieJar.saveFromResponse(
+                url,
+                listOf(Cookie.Builder().name("session").value("token").hostOnlyDomain(url.host).path("/").build()),
+            )
+            val repository = authRepository(registry, secretStore, cookieJar)
+            secretStore.failNextUpdate = true
+
+            val error = runCatching { repository.forget(account.id) }.exceptionOrNull()
+
+            assertNotNull(error)
+            assertNotNull(registry.snapshot.value.servers.firstOrNull { it.id == account.id })
+            assertTrue(repository.state.value is AuthState.LoggedIn)
+            assertEquals("token", cookieJar.loadForRequest(url).single { it.name == "session" }.value)
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
     fun staleUnauthorizedGenerationCannotLogOutReactivatedSession() = runBlocking {
         val server = MockWebServer()
         try {
@@ -480,5 +537,39 @@ private class InMemorySecretStore : SecretStore {
 
     override fun clearPrefix(prefix: String) {
         values.keys.filter { it.startsWith(prefix) }.forEach(values::remove)
+    }
+    override fun update(transform: (Map<String, String>) -> Map<String, String>) {
+        val updated = transform(values.toMap())
+        values.clear()
+        values.putAll(updated)
+    }
+}
+
+private class AtomicFailingSecretStore : SecretStore {
+    private val values = mutableMapOf<String, String>()
+    var failNextUpdate = false
+
+    override fun getString(key: String): String? = values[key]
+
+    override fun putString(key: String, value: String) {
+        values[key] = value
+    }
+
+    override fun remove(key: String) {
+        values.remove(key)
+    }
+
+    override fun clearPrefix(prefix: String) {
+        values.keys.filter { it.startsWith(prefix) }.forEach(values::remove)
+    }
+
+    override fun update(transform: (Map<String, String>) -> Map<String, String>) {
+        if (failNextUpdate) {
+            failNextUpdate = false
+            error("storage unavailable")
+        }
+        val updated = transform(values.toMap())
+        values.clear()
+        values.putAll(updated)
     }
 }

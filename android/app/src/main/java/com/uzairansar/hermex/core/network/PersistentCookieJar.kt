@@ -36,13 +36,30 @@ class PersistentCookieJar(
 
     fun clear(url: HttpUrl) {
         synchronized(lock) {
-            persist(readAll(url).filterNot { record -> record.toCookie()?.matches(url) == true })
-            secretStore.remove(legacyKeyFor(url))
+            secretStore.update(clearingMutation(url))
         }
+    }
+
+    internal fun <T> whileClearing(url: HttpUrl, action: ((Map<String, String>) -> Map<String, String>) -> T): T =
+        synchronized(lock) { action(clearingMutation(url)) }
+
+    internal fun clearingMutation(url: HttpUrl): (Map<String, String>) -> Map<String, String> = { current ->
+        val legacyKey = legacyKeyFor(url)
+        val retained = readAll(current, url).filterNot { record -> record.belongsToServer(url) }
+        current
+            .minus(legacyKey)
+            .let { secrets ->
+                if (retained.isEmpty()) secrets - COOKIE_STORE_KEY
+                else secrets + (COOKIE_STORE_KEY to HermesJson.encodeToString(retained))
+            }
     }
 
     private fun readAll(url: HttpUrl): List<CookieRecord> =
         (read(COOKIE_STORE_KEY) + read(legacyKeyFor(url)))
+            .distinctBy { record -> Triple(record.name, record.domain, record.path) }
+
+    private fun readAll(secrets: Map<String, String>, url: HttpUrl): List<CookieRecord> =
+        (decodeRecords(secrets[COOKIE_STORE_KEY]) + decodeRecords(secrets[legacyKeyFor(url)]))
             .distinctBy { record -> Triple(record.name, record.domain, record.path) }
 
     private fun persist(records: List<CookieRecord>) {
@@ -51,14 +68,26 @@ class PersistentCookieJar(
     }
 
     private fun read(key: String): List<CookieRecord> =
-        secretStore.getString(key)
-            ?.let { runCatching { HermesJson.decodeFromString<List<CookieRecord>>(it) }.getOrNull() }
-            .orEmpty()
+        decodeRecords(secretStore.getString(key))
+
+    private fun decodeRecords(encoded: String?): List<CookieRecord> =
+        encoded?.let { runCatching { HermesJson.decodeFromString<List<CookieRecord>>(it) }.getOrNull() }.orEmpty()
 
     private fun legacyKeyFor(url: HttpUrl): String = "cookies::${ServerOrigin.from(url)}"
 
     private companion object {
         const val COOKIE_STORE_KEY = "cookies::all"
+    }
+}
+
+private fun CookieRecord.belongsToServer(url: HttpUrl): Boolean {
+    val cookie = toCookie() ?: return false
+    if (cookie.secure && !url.isHttps) return false
+    return if (cookie.hostOnly) {
+        cookie.domain.equals(url.host, ignoreCase = true)
+    } else {
+        url.host.equals(cookie.domain, ignoreCase = true) ||
+            url.host.endsWith(".${cookie.domain}", ignoreCase = true)
     }
 }
 

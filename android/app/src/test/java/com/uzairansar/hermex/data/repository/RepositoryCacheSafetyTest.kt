@@ -428,6 +428,33 @@ class RepositoryCacheSafetyTest {
         }
     }
 
+    @Test
+    fun archivedSessionListFallsBackToArchivedCacheWhenOffline() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            val dao = RecordingCacheDao()
+            val serverUrl = server.url("/").toString()
+            dao.cachedSessionResult = listOf(
+                requireNotNull(CachedSessionEntity.from(serverUrl, SessionSummary(sessionId = "active"))),
+                requireNotNull(CachedSessionEntity.from(serverUrl, SessionSummary(sessionId = "archived", archived = true))),
+            )
+            val repository = SessionRepository(
+                client = HermesApiClient(server.url("/"), OkHttpClient()),
+                cacheDao = dao,
+                cacheOwnership = ServerCacheOwnership(),
+            )
+            server.enqueue(MockResponse.Builder().code(503).body("unavailable").build())
+
+            val result = repository.loadSessions(includeArchived = true) as ResultState.Data
+
+            assertTrue(result.fromCache)
+            assertEquals(listOf("active", "archived"), result.value.sessions.map { it.sessionId })
+        } finally {
+            server.close()
+        }
+    }
+
     private fun json(body: String): MockResponse = MockResponse.Builder()
         .code(200)
         .addHeader("Content-Type", "application/json")
@@ -445,11 +472,13 @@ private class RecordingCacheDao : CacheDao {
     val purgedSessionIds = mutableListOf<String>()
     var clearServerCount = 0
 
-    override suspend fun cachedSessions(serverUrl: String, now: Long): List<CachedSessionEntity> = cachedSessionResult
+    override suspend fun cachedSessions(serverUrl: String, now: Long, includeArchived: Boolean): List<CachedSessionEntity> =
+        cachedSessionResult.filter { includeArchived || it.archived != true }
     override suspend fun cachedMessages(serverUrl: String, sessionId: String, now: Long, limit: Int): List<CachedMessageEntity> {
         cachedMessageLimit = limit
         return cachedMessageResult.takeLast(limit)
     }
+
     override suspend fun upsertSessions(sessions: List<CachedSessionEntity>) { replacedSessionBatches += sessions }
     override suspend fun upsertMessages(messages: List<CachedMessageEntity>) { replacedMessageBatches += messages }
     override suspend fun sessionKeys(serverUrl: String): List<String> = emptyList()

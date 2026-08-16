@@ -24,6 +24,7 @@ interface SecretStore {
     fun putString(key: String, value: String)
     fun remove(key: String)
     fun clearPrefix(prefix: String)
+    fun update(transform: (Map<String, String>) -> Map<String, String>)
 }
 
 class AndroidSecretStore(context: Context) : SecretStore {
@@ -49,6 +50,11 @@ class AndroidSecretStore(context: Context) : SecretStore {
     override fun clearPrefix(prefix: String) {
         val updated = secrets.filterKeys { !it.startsWith(prefix) }
         if (updated.size != secrets.size) persist(updated)
+    }
+
+    @Synchronized
+    override fun update(transform: (Map<String, String>) -> Map<String, String>) {
+        persist(transform(secrets))
     }
 
     private fun loadSecretsOrMigrate(): Map<String, String> {
@@ -168,6 +174,8 @@ class UnavailableSecretStore(
     override fun remove(key: String): Nothing = unavailable()
 
     override fun clearPrefix(prefix: String): Nothing = unavailable()
+
+    override fun update(transform: (Map<String, String>) -> Map<String, String>): Nothing = unavailable()
 
     private fun unavailable(): Nothing = throw IllegalStateException(
         "Secure storage is unavailable. Reset secure data from the recovery screen.",

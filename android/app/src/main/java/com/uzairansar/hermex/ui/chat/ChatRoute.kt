@@ -81,6 +81,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -773,8 +774,10 @@ fun ChatRoute(
 
     LaunchedEffect(consumeSharedDraft, sharedDraftStore) {
         if (consumeSharedDraft) {
-            sharedDraftStore?.loadPendingDraft()?.let { draft ->
-                viewModel.consumeSharedDraft(context, draft)
+            sharedDraftStore?.loadPendingDraft(removeAfterLoad = false)?.let { draft ->
+                viewModel.consumeSharedDraft(context, draft) { remainingAttachments ->
+                    sharedDraftStore.commitImportedDraft(draft.createdAtEpochMillis, remainingAttachments)
+                }
             }
         }
     }
@@ -863,6 +866,7 @@ fun ChatRoute(
                 onClarificationDraftChange = viewModel::updateClarificationDraft,
                 onClarificationSubmit = viewModel::respondClarification,
                 onClarificationChoice = { choice -> viewModel.respondClarification(choice) },
+                onRetryUploads = viewModel::retryPendingLocalUploads,
             )
             if (state.isLoading) {
                 ChatTranscriptLoadingSkeleton()
@@ -1383,6 +1387,7 @@ private fun ComposerAttachmentTile(
     onPreview: () -> Unit,
     loadAttachmentImage: suspend (String) -> ByteArray?,
 ) {
+    val removeDescription = localizedStringFormat("Remove attachment %@", attachment.displayName)
     Box(
         modifier = Modifier.padding(top = 6.dp, end = 6.dp),
     ) {
@@ -1452,19 +1457,23 @@ private fun ComposerAttachmentTile(
                 }
             }
         }
-        Text(
-            text = "X",
+        IconButton(
+            onClick = onRemove,
             modifier = Modifier
                 .align(Alignment.TopEnd)
+                .size(48.dp)
                 .clip(CircleShape)
-                .clickable(onClick = onRemove)
                 .background(MaterialTheme.colorScheme.background)
                 .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Bold,
-        )
+                .semantics { contentDescription = removeDescription },
+        ) {
+            Text(
+                text = "X",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+            )
+        }
     }
 }
 
@@ -1750,6 +1759,7 @@ private fun ChatStatusStack(
     onClarificationDraftChange: (String) -> Unit,
     onClarificationSubmit: () -> Unit,
     onClarificationChoice: (String) -> Unit,
+    onRetryUploads: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -1766,6 +1776,12 @@ private fun ChatStatusStack(
         }
         if (!state.showsTranscriptErrorState) {
             state.error?.let { InlineNotice(it, isError = true) }
+        }
+        if (state.pendingLocalUploadCount > 0 && !state.isUploadingAttachment) {
+            HermexPillButton(
+                label = localizedString("Retry"),
+                onClick = onRetryUploads,
+            )
         }
         if (state.isSessionApprovalBypassEnabled) {
             ApprovalBypassStatusPill()
@@ -2522,6 +2538,7 @@ private fun ComposerSecondaryBar(
                 enabled = !state.isStreaming && !state.isViewingCachedData && !state.isRunningSessionAction,
                 leadingIcon = com.uzairansar.hermex.R.drawable.ic_lucide_folder,
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                modifier = Modifier.testTag("chat_workspace_picker"),
             )
         }
         if (showsProfile) {
@@ -3395,7 +3412,7 @@ private fun WorkspacePickerDialog(
         onDismiss = onDismiss,
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().testTag("workspace_picker_list"),
         ) {
             item("workspace-input") {
                 Column(

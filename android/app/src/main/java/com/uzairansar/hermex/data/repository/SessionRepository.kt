@@ -58,7 +58,7 @@ class SessionRepository(
             if (error is ApiError.Unauthorized) return ResultState.Error(error.userMessage(), error)
             if (!error.isCacheFallbackEligible()) return ResultState.Error(error.userMessage(), error)
             val cached = cacheOwnership.readIfCurrent(serverUrl, cacheGeneration) {
-                cacheDao.cachedSessions(serverUrl, now).map { it.toSummary() }
+                cacheDao.cachedSessions(serverUrl, now, includeArchived).map { it.toSummary() }
             } ?: return ResultState.Error("The active profile changed while sessions were loading.", error)
             if (cached.isNotEmpty()) ResultState.Data(SessionPage(cached), fromCache = true) else ResultState.Error(error.userMessage(), error)
         }

@@ -28,7 +28,7 @@ private class SyncRecordingCacheDao(
 ) : CacheDao {
     val deletedMessageSessionIds = mutableListOf<String>()
 
-    override suspend fun cachedSessions(serverUrl: String, now: Long) = emptyList<CachedSessionEntity>()
+    override suspend fun cachedSessions(serverUrl: String, now: Long, includeArchived: Boolean) = emptyList<CachedSessionEntity>()
     override suspend fun cachedMessages(serverUrl: String, sessionId: String, now: Long, limit: Int) = emptyList<CachedMessageEntity>()
     override suspend fun upsertSessions(sessions: List<CachedSessionEntity>) = Unit
     override suspend fun upsertMessages(messages: List<CachedMessageEntity>) = Unit

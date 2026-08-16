@@ -37,7 +37,7 @@ jobs:
   test:
     name: Kotlin, Lint, And Device Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 120
     steps:
       - name: Check out
         uses: actions/checkout@v7
@@ -65,6 +65,18 @@ jobs:
           python3 ci/generate_android_localization_catalog.py --check
           python3 ci/migrate_android_compose_literals.py --check
 
-      - name: Test, lint, build, and run managed-device tests
+      - name: Test, lint, and build
         working-directory: android
-        run: ./gradlew testDebugUnitTest lintDebug assembleDebug pixel2api35DebugAndroidTest
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug
+
+      - name: Run API 27 managed-device tests
+        working-directory: android
+        run: ./gradlew pixel2api27DebugAndroidTest
+
+      - name: Run API 35 managed-device tests
+        working-directory: android
+        run: ./gradlew pixel2api35DebugAndroidTest
+
+      - name: Run API 36 managed-device tests
+        working-directory: android
+        run: ./gradlew pixel2api36DebugAndroidTest

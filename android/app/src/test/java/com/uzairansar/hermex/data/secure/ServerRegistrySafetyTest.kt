@@ -33,6 +33,20 @@ class ServerRegistrySafetyTest {
             restored.setActive(account.id)
         }
     }
+
+    @Test
+    fun failedPersistenceDoesNotPublishAnUnstoredRegistryMutation() {
+        val store = FailingSecretStore()
+        val registry = ServerRegistry(store)
+        store.failWrites = true
+
+        assertThrows(IllegalStateException::class.java) {
+            registry.activate("https://example.com".toHttpUrl())
+        }
+
+        assertEquals(emptyList<ServerAccount>(), registry.snapshot.value.servers)
+        assertEquals(null, store.values["servers"])
+    }
 }
 
 private class MutableSecretStore(
@@ -50,5 +64,29 @@ private class MutableSecretStore(
 
     override fun clearPrefix(prefix: String) {
         values.keys.filter { it.startsWith(prefix) }.forEach(values::remove)
+    }
+    override fun update(transform: (Map<String, String>) -> Map<String, String>) {
+        val updated = transform(values.toMap())
+        values.clear()
+        values.putAll(updated)
+    }
+}
+
+private class FailingSecretStore : SecretStore {
+    val values = mutableMapOf<String, String>()
+    var failWrites = false
+
+    override fun getString(key: String): String? = values[key]
+    override fun putString(key: String, value: String) {
+        check(!failWrites) { "storage unavailable" }
+        values[key] = value
+    }
+    override fun remove(key: String) { values.remove(key) }
+    override fun clearPrefix(prefix: String) { values.keys.filter { it.startsWith(prefix) }.forEach(values::remove) }
+    override fun update(transform: (Map<String, String>) -> Map<String, String>) {
+        check(!failWrites) { "storage unavailable" }
+        val updated = transform(values.toMap())
+        values.clear()
+        values.putAll(updated)
     }
 }

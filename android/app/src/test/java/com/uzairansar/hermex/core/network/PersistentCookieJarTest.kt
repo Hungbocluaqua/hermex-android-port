@@ -73,6 +73,20 @@ class PersistentCookieJarTest {
     }
 
     @Test
+    fun clearingServerRemovesCookiesScopedBelowTheRootPath() {
+        val jar = PersistentCookieJar(ConcurrentSecretStore())
+        val url = "https://hermes.example.test/".toHttpUrl()
+        jar.saveFromResponse(
+            url,
+            listOf(Cookie.Builder().name("session").value("token").hostOnlyDomain(url.host).path("/api").build()),
+        )
+
+        jar.clear(url)
+
+        assertTrue(jar.loadForRequest("https://hermes.example.test/api/session".toHttpUrl()).isEmpty())
+    }
+
+    @Test
     fun clearingParentServerPreservesHostOnlySubdomainCookie() {
         val jar = PersistentCookieJar(ConcurrentSecretStore())
         val parentUrl = "https://example.test/".toHttpUrl()
@@ -95,4 +109,11 @@ private class ConcurrentSecretStore : SecretStore {
     override fun putString(key: String, value: String) { values[key] = value }
     override fun remove(key: String) { values.remove(key) }
     override fun clearPrefix(prefix: String) { values.keys.filter { it.startsWith(prefix) }.forEach(values::remove) }
+    override fun update(transform: (Map<String, String>) -> Map<String, String>) {
+        synchronized(values) {
+            val updated = transform(values.toMap())
+            values.clear()
+            values.putAll(updated)
+        }
+    }
 }

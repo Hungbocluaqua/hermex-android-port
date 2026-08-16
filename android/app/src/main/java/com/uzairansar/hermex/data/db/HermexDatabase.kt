@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [CachedSessionEntity::class, CachedMessageEntity::class],
     version = 2,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class HermexDatabase : RoomDatabase() {
     abstract fun cacheDao(): CacheDao
