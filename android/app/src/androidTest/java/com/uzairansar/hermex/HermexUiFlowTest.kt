@@ -653,6 +653,78 @@ class HermexUiFlowTest {
     }
 
     @Test
+    fun chatPendingPromptsStayBetweenTopBarAndComposer() {
+        val prompt = AtomicReference("approval")
+        val mockServer = MockWebServer().also { server ->
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse = when (request.url.encodedPath) {
+                    "/api/session" -> json(
+                        """{"session":{"session_id":"s1","title":"Prompt layout","messages":[]}}""",
+                    )
+                    "/api/models" -> json("""{"models":[]}""")
+                    "/api/profiles" -> json("""{"profiles":[]}""")
+                    "/api/workspaces" -> json("""{"workspaces":[]}""")
+                    "/api/reasoning" -> json("""{"supported_efforts":[]}""")
+                    "/api/commands" -> json("""{"commands":[]}""")
+                    "/api/skills" -> json("""{"skills":[]}""")
+                    "/api/chat/start" -> json("""{"stream_id":"stream-1","session_id":"s1"}""")
+                    "/api/chat/stream" -> MockResponse.Builder()
+                        .code(200)
+                        .setHeader("Content-Type", "text/event-stream")
+                        .body("event: token\ndata: {\"text\":\"Waiting for approval\"}\n\n")
+                        .bodyDelay(20, TimeUnit.SECONDS)
+                        .build()
+                    "/api/approval/pending" -> if (prompt.get() == "approval") {
+                        json(
+                            """{"pending":{"approval_id":"approval-1","command":"Run a command that needs confirmation"},"pending_count":1}""",
+                        )
+                    } else {
+                        json("{}")
+                    }
+                    "/api/clarify/pending" -> if (prompt.get() == "clarification") {
+                        json(
+                            """{"pending":{"clarify_id":"clarify-1","question":"Which implementation should the agent use for this change?","choices_offered":["Conservative","Balanced","Aggressive"]},"pending_count":1}""",
+                        )
+                    } else {
+                        json("{}")
+                    }
+                    "/api/approval/respond" -> {
+                        prompt.set("clarification")
+                        json("""{"ok":true,"choice":"once"}""")
+                    }
+                    else -> MockResponse.Builder().code(404).body("""{"error":"unexpected"}""").build()
+                }
+            }
+            server.start()
+            this.server = server
+        }
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        val container = AppContainer(application)
+
+        composeRule.setContent {
+            HermexTheme {
+                ChatRoute(
+                    sessionId = "s1",
+                    repository = container.chatRepository(mockServer.url("/")),
+                    onOpenChat = {},
+                    onBack = {},
+                    onOpenWorkspace = {},
+                    onOpenGit = {},
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Prompt layout") }
+        composeRule.onNodeWithContentDescription("Message").performTextInput("Show prompt")
+        composeRule.onNodeWithContentDescription("Send").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Approval required") }
+        assertPromptIsBetweenChrome("approval_card")
+        composeRule.onNodeWithText("Allow once").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Clarification needed") }
+        assertPromptIsBetweenChrome("clarification_card")
+    }
+
+    @Test
     fun chatRouteSendsMessageAndRendersAssistantTurn() {
         val chatStarted = AtomicBoolean(false)
         var chatStartBody = ""
@@ -2302,6 +2374,14 @@ class HermexUiFlowTest {
             .setHeader("Content-Type", "application/json")
             .body(body)
             .build()
+
+    private fun assertPromptIsBetweenChrome(tag: String) {
+        val topBarBounds = composeRule.onNodeWithTag("chat_top_bar").fetchSemanticsNode().boundsInRoot
+        val composerBounds = composeRule.onNodeWithTag("chat_composer").fetchSemanticsNode().boundsInRoot
+        val promptBounds = composeRule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+        assertTrue(promptBounds.top >= topBarBounds.bottom)
+        assertTrue(promptBounds.bottom <= composerBounds.top)
+    }
 
     private fun eventStream(body: String): MockResponse =
         MockResponse.Builder()

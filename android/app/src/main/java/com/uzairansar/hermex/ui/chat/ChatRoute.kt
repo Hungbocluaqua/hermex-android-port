@@ -539,10 +539,13 @@ fun ChatRoute(
     var autoVoiceConsumed by rememberSaveable(sessionId, autoStartVoice) { mutableStateOf(false) }
     var topBarHeightPx by remember(sessionId) { mutableIntStateOf(0) }
     var composerHeightPx by remember(sessionId) { mutableIntStateOf(0) }
+    var statusStackHeightPx by remember(sessionId) { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val topBarHeight = with(density) { topBarHeightPx.toDp() }.takeIf { it > 0.dp } ?: 82.dp
     val statusBarHeight = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
-    val transcriptTopPadding = (topBarHeight - statusBarHeight).coerceAtLeast(0.dp) + 8.dp
+    val statusStackHeight = with(density) { statusStackHeightPx.toDp() }
+    val transcriptTopPadding =
+        (topBarHeight - statusBarHeight).coerceAtLeast(0.dp) + statusStackHeight + 8.dp
     val composerHeight = with(density) { composerHeightPx.toDp() }.takeIf { it > 0.dp } ?: 160.dp
     val transcriptListState = rememberLazyListState()
     val isTranscriptDragged by transcriptListState.interactionSource.collectIsDraggedAsState()
@@ -638,6 +641,7 @@ fun ChatRoute(
         state.responseCompletionTrigger,
         state.isLoading,
         composerHeightPx,
+        statusStackHeightPx,
         transcriptScrollCooldownActive,
     ) {
         if (!shouldAutoScrollTranscript(
@@ -859,15 +863,6 @@ fun ChatRoute(
         ) {
             CompositionLocalProvider(LocalLayoutDirection provides chatLayoutDirection) {
                 Column(Modifier.fillMaxSize()) {
-                ChatStatusStack(
-                state = state,
-                onApprovalChoice = viewModel::respondApproval,
-                onSkipApprovals = viewModel::skipApprovalsForCurrentSession,
-                onClarificationDraftChange = viewModel::updateClarificationDraft,
-                onClarificationSubmit = viewModel::respondClarification,
-                onClarificationChoice = { choice -> viewModel.respondClarification(choice) },
-                onRetryUploads = viewModel::retryPendingLocalUploads,
-            )
             if (state.isLoading) {
                 ChatTranscriptLoadingSkeleton()
             } else if (state.showsTranscriptErrorState) {
@@ -1043,6 +1038,32 @@ fun ChatRoute(
             }
             }
         }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        top = topBarHeight + 8.dp,
+                        bottom = composerHeight + 8.dp,
+                    ),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                CompositionLocalProvider(LocalLayoutDirection provides chatLayoutDirection) {
+                    ChatStatusStack(
+                        state = state,
+                        onApprovalChoice = viewModel::respondApproval,
+                        onSkipApprovals = viewModel::skipApprovalsForCurrentSession,
+                        onClarificationDraftChange = viewModel::updateClarificationDraft,
+                        onClarificationSubmit = viewModel::respondClarification,
+                        onClarificationChoice = { choice -> viewModel.respondClarification(choice) },
+                        onRetryUploads = viewModel::retryPendingLocalUploads,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .onSizeChanged { statusStackHeightPx = it.height }
+                            .testTag("chat_status_stack"),
+                    )
+                }
+            }
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -1760,10 +1781,10 @@ private fun ChatStatusStack(
     onClarificationSubmit: () -> Unit,
     onClarificationChoice: (String) -> Unit,
     onRetryUploads: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .padding(horizontal = 14.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
@@ -3654,7 +3675,8 @@ private fun ApprovalCard(
         modifier = Modifier
             .fillMaxWidth()
             .hermexGlass(shape = HermexCardShape, castsShadow = false)
-            .padding(12.dp),
+            .padding(12.dp)
+            .testTag("approval_card"),
     ) {
         Text(localizedString("Approval required"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         if (count > 1) Text(localizedStringFormat("Pending approvals: %lld", count), style = MaterialTheme.typography.bodySmall)
@@ -3711,7 +3733,8 @@ private fun ClarificationCard(
         modifier = Modifier
             .fillMaxWidth()
             .hermexGlass(shape = HermexCardShape, castsShadow = false)
-            .padding(12.dp),
+            .padding(12.dp)
+            .testTag("clarification_card"),
     ) {
         Text(localizedString("Clarification needed"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         if (count > 1) Text(localizedStringFormat("Pending prompts: %lld", count), style = MaterialTheme.typography.bodySmall)
