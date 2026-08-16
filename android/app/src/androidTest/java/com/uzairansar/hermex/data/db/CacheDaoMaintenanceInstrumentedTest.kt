@@ -50,6 +50,11 @@ class CacheDaoMaintenanceInstrumentedTest {
         assertEquals(now + sevenDaysMillis, freshSession.expiresAtEpochMillis)
         dao.upsertSessions(listOf(freshSession, expiredSession))
 
+        val archivedSession = requireNotNull(
+            CachedSessionEntity.from(serverA, SessionSummary(sessionId = "archived", archived = true), now),
+        )
+        dao.upsertSessions(listOf(archivedSession))
+
         val freshMessage = CachedMessageEntity.from(
             serverUrl = serverB,
             sessionId = "fresh",
@@ -80,6 +85,7 @@ class CacheDaoMaintenanceInstrumentedTest {
         dao.maintenance(now)
 
         assertEquals(listOf("fresh"), dao.cachedSessions(serverA, now).map { it.sessionId })
+        assertEquals(listOf("archived", "fresh"), dao.cachedSessions(serverA, now, includeArchived = true).map { it.sessionId }.sorted())
         assertTrue(dao.messageKeys(serverB, "expired").isEmpty())
         assertEquals(listOf(freshMessage.cacheKey), dao.messageKeys(serverB, "fresh"))
 

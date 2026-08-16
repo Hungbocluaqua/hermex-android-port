@@ -88,6 +88,13 @@ class ChatRepository(
     private val streamEventIds = ConcurrentHashMap<String, String>()
     private val streamCacheGenerations = ConcurrentHashMap<String, Long>()
 
+    suspend fun loadCachedSessionSnapshot(sessionId: String): ChatSessionSnapshot? =
+        loadCachedSessionSnapshot(
+            sessionId = sessionId,
+            now = System.currentTimeMillis(),
+            operationGeneration = cacheOwnership.generation(serverUrl),
+        )
+
     suspend fun loadSessionSnapshot(sessionId: String): ResultState<ChatSessionSnapshot> {
         val operationGeneration = cacheOwnership.generation(serverUrl)
         val now = System.currentTimeMillis()
@@ -107,19 +114,9 @@ class ChatRepository(
                 return ResultState.Error(error.userMessage(), error)
             }
             if (!error.isChatCacheFallbackEligible()) return ResultState.Error(error.userMessage(), error)
-            val cached = cacheOwnership.readIfCurrent(serverUrl, operationGeneration) {
-                val messages = cacheDao.cachedMessages(serverUrl, sessionId, now, MESSAGE_PAGE_LIMIT)
-                    .mapNotNull { it.toMessage() }
-                val metadata = cacheDao.cachedSessions(serverUrl, now)
-                    .firstOrNull { it.sessionId == sessionId }
-                    ?.toSummary()
-                messages to metadata
-            } ?: return ResultState.Error("The active profile changed while this conversation was loading.", error)
-            if (cached.first.isNotEmpty()) {
-                ResultState.Data(snapshotFromCachedSession(cached.first, cached.second), fromCache = true)
-            } else {
-                ResultState.Error(error.userMessage(), error)
-            }
+            val cached = loadCachedSessionSnapshot(sessionId, now, operationGeneration)
+                ?: return ResultState.Error(error.userMessage(), error)
+            ResultState.Data(cached, fromCache = true)
         }
     }
 
@@ -372,6 +369,19 @@ class ChatRepository(
                 now,
             )
         }
+    }
+
+    private suspend fun loadCachedSessionSnapshot(
+        sessionId: String,
+        now: Long,
+        operationGeneration: Long,
+    ): ChatSessionSnapshot? = cacheOwnership.readIfCurrent(serverUrl, operationGeneration) {
+        val messages = cacheDao.cachedMessages(serverUrl, sessionId, now, MESSAGE_PAGE_LIMIT)
+            .mapNotNull { it.toMessage() }
+        val metadata = cacheDao.cachedSessions(serverUrl, now, includeArchived = true)
+            .firstOrNull { it.sessionId == sessionId }
+            ?.toSummary()
+        if (messages.isEmpty() && metadata == null) null else snapshotFromCachedSession(messages, metadata)
     }
 
     private suspend fun cacheSessionSnapshot(

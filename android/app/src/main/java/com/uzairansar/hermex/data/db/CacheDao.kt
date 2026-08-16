@@ -8,8 +8,8 @@ import androidx.room.Transaction
 
 @Dao
 interface CacheDao {
-    @Query("SELECT * FROM cached_sessions WHERE serverUrl = :serverUrl AND archived IS NOT 1 AND expiresAtEpochMillis > :now ORDER BY COALESCE(lastMessageAt, updatedAt, createdAt, 0) DESC")
-    suspend fun cachedSessions(serverUrl: String, now: Long): List<CachedSessionEntity>
+    @Query("SELECT * FROM cached_sessions WHERE serverUrl = :serverUrl AND (:includeArchived = 1 OR archived IS NOT 1) AND expiresAtEpochMillis > :now ORDER BY COALESCE(lastMessageAt, updatedAt, createdAt, 0) DESC")
+    suspend fun cachedSessions(serverUrl: String, now: Long, includeArchived: Boolean = false): List<CachedSessionEntity>
 
     @Query(
         "SELECT * FROM (" +

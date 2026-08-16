@@ -23,8 +23,8 @@ android {
         applicationId = "com.uzairansar.hermex"
         minSdk = 26
         targetSdk = 36
-        versionCode = 30
-        versionName = "1.1.0"
+        versionCode = 32
+        versionName = "1.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -67,14 +67,32 @@ android {
     testOptions {
         managedDevices {
             localDevices {
+                create("pixel2api27") {
+                    device = "Pixel 2"
+                    apiLevel = 27
+                    systemImageSource = "aosp"
+                    testedAbi = "x86"
+                }
                 create("pixel2api35") {
                     device = "Pixel 2"
                     apiLevel = 35
                     systemImageSource = "aosp-atd"
                     testedAbi = "x86_64"
                 }
+                create("pixel2api36") {
+                    device = "Pixel 2"
+                    apiLevel = 36
+                    systemImageSource = "aosp"
+                    testedAbi = "x86_64"
+                }
             }
         }
+    }
+}
+
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
     }
 }
 

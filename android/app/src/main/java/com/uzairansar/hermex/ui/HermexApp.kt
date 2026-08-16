@@ -30,8 +30,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -68,7 +70,7 @@ fun HermexApp(
     onShortcutIntentConsumed: (Intent) -> Unit = {},
 ) {
     val context = LocalContext.current
-    val usesRegularWidthShell = usesRegularWidthSessionLayout(LocalConfiguration.current.screenWidthDp)
+    val usesRegularWidthShell = usesRegularWidthSessionLayout(currentWindowWidthDp())
     val navController = rememberNavController()
     val authState by container.authRepository.state.collectAsStateWithLifecycle()
     val themeMode by container.localSettingsRepository.themeMode.collectAsStateWithLifecycle(
@@ -293,8 +295,7 @@ fun HermexApp(
                     ),
                 ) { entry ->
                     val shortcutAction = ShortcutDestination.supportedAction(entry.arguments?.getString("shortcutAction"))
-                    val configuration = LocalConfiguration.current
-                    val usesRegularWidthLayout = usesRegularWidthSessionLayout(configuration.screenWidthDp)
+                    val usesRegularWidthLayout = usesRegularWidthSessionLayout(currentWindowWidthDp())
                     val initiallyOpenSessionId = entry.arguments?.getString("openSessionId")
                     val initiallyConsumesShare = entry.arguments?.getBoolean("openSessionConsumeShare") == true
                     val initiallyAutoStartsVoice = entry.arguments?.getBoolean("openSessionAutoVoice") == true
@@ -586,6 +587,12 @@ fun HermexApp(
 }
 
 internal fun usesRegularWidthSessionLayout(screenWidthDp: Int): Boolean = screenWidthDp >= 840
+
+@Composable
+private fun currentWindowWidthDp(): Int {
+    val widthPixels = LocalWindowInfo.current.containerSize.width
+    return with(LocalDensity.current) { widthPixels.toDp().value.roundToInt() }
+}
 
 internal fun regularWidthDestinationRoute(route: String, usesRegularWidthLayout: Boolean): String {
     if (!usesRegularWidthLayout || !route.startsWith("chat/")) return route

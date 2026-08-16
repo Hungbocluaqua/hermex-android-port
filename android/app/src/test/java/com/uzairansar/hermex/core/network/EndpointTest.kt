@@ -16,13 +16,12 @@ class EndpointTest {
     private val base = "https://hermes.example.com/".toHttpUrl()
 
     @Test
-    fun sessionEndpointMatchesIosContract() {
+    fun sessionEndpointCapsTheRawTransportWindow() {
         val url = Endpoint.Session(
             id = "abc",
             includeMessages = true,
             messageLimit = 50,
             messageBefore = 10,
-            expandRenderable = true,
         ).url(base)
 
         assertEquals("/api/session", url.encodedPath)
@@ -30,7 +29,7 @@ class EndpointTest {
         assertEquals("1", url.queryParameter("messages"))
         assertEquals("50", url.queryParameter("msg_limit"))
         assertEquals("10", url.queryParameter("msg_before"))
-        assertEquals("1", url.queryParameter("expand_renderable"))
+        assertEquals(null, url.queryParameter("expand_renderable"))
     }
 
     @Test

@@ -1,0 +1,291 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "d170d7575e1d3ebd307aefd2c88f9346",
+    "entities": [
+      {
+        "tableName": "cached_sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`cacheKey` TEXT NOT NULL, `serverUrl` TEXT NOT NULL, `sessionId` TEXT NOT NULL, `title` TEXT, `workspace` TEXT, `model` TEXT, `modelProvider` TEXT, `messageCount` INTEGER, `createdAt` REAL, `updatedAt` REAL, `lastMessageAt` REAL, `pinned` INTEGER, `archived` INTEGER, `projectId` TEXT, `profile` TEXT, `inputTokens` INTEGER, `outputTokens` INTEGER, `estimatedCost` REAL, `activeStreamId` TEXT, `isStreaming` INTEGER, `isCliSession` INTEGER, `sourceTag` TEXT, `rawSource` TEXT, `sessionSource` TEXT, `sourceLabel` TEXT, `parentSessionId` TEXT, `relationshipType` TEXT, `readOnly` INTEGER, `isReadOnly` INTEGER, `cachedAtEpochMillis` INTEGER NOT NULL, `expiresAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`cacheKey`))",
+        "fields": [
+          {
+            "fieldPath": "cacheKey",
+            "columnName": "cacheKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverUrl",
+            "columnName": "serverUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "workspace",
+            "columnName": "workspace",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "model",
+            "columnName": "model",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "modelProvider",
+            "columnName": "modelProvider",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "messageCount",
+            "columnName": "messageCount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "lastMessageAt",
+            "columnName": "lastMessageAt",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "pinned",
+            "columnName": "pinned",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "archived",
+            "columnName": "archived",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "projectId",
+            "columnName": "projectId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "profile",
+            "columnName": "profile",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "inputTokens",
+            "columnName": "inputTokens",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "outputTokens",
+            "columnName": "outputTokens",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "estimatedCost",
+            "columnName": "estimatedCost",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "activeStreamId",
+            "columnName": "activeStreamId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isStreaming",
+            "columnName": "isStreaming",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isCliSession",
+            "columnName": "isCliSession",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sourceTag",
+            "columnName": "sourceTag",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rawSource",
+            "columnName": "rawSource",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sessionSource",
+            "columnName": "sessionSource",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sourceLabel",
+            "columnName": "sourceLabel",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "parentSessionId",
+            "columnName": "parentSessionId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "relationshipType",
+            "columnName": "relationshipType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "explicitReadOnlyFlag",
+            "columnName": "readOnly",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "alternateReadOnlyFlag",
+            "columnName": "isReadOnly",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "cachedAtEpochMillis",
+            "columnName": "cachedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiresAtEpochMillis",
+            "columnName": "expiresAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "cacheKey"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cached_sessions_serverUrl",
+            "unique": false,
+            "columnNames": [
+              "serverUrl"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cached_sessions_serverUrl` ON `${TABLE_NAME}` (`serverUrl`)"
+          },
+          {
+            "name": "index_cached_sessions_serverUrl_sessionId",
+            "unique": true,
+            "columnNames": [
+              "serverUrl",
+              "sessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_cached_sessions_serverUrl_sessionId` ON `${TABLE_NAME}` (`serverUrl`, `sessionId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "cached_messages",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`cacheKey` TEXT NOT NULL, `serverUrl` TEXT NOT NULL, `sessionId` TEXT NOT NULL, `sortIndex` INTEGER NOT NULL, `messageJson` TEXT NOT NULL, `cachedAtEpochMillis` INTEGER NOT NULL, `expiresAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`cacheKey`))",
+        "fields": [
+          {
+            "fieldPath": "cacheKey",
+            "columnName": "cacheKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverUrl",
+            "columnName": "serverUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortIndex",
+            "columnName": "sortIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "messageJson",
+            "columnName": "messageJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cachedAtEpochMillis",
+            "columnName": "cachedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiresAtEpochMillis",
+            "columnName": "expiresAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "cacheKey"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cached_messages_serverUrl",
+            "unique": false,
+            "columnNames": [
+              "serverUrl"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cached_messages_serverUrl` ON `${TABLE_NAME}` (`serverUrl`)"
+          },
+          {
+            "name": "index_cached_messages_sessionId",
+            "unique": false,
+            "columnNames": [
+              "sessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cached_messages_sessionId` ON `${TABLE_NAME}` (`sessionId`)"
+          },
+          {
+            "name": "index_cached_messages_serverUrl_sessionId_sortIndex",
+            "unique": true,
+            "columnNames": [
+              "serverUrl",
+              "sessionId",
+              "sortIndex"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_cached_messages_serverUrl_sessionId_sortIndex` ON `${TABLE_NAME}` (`serverUrl`, `sessionId`, `sortIndex`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd170d7575e1d3ebd307aefd2c88f9346')"
+    ]
+  }
+}

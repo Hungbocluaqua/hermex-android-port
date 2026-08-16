@@ -118,22 +118,30 @@ internal fun deleteSharedAttachmentCaches(
     }
 }
 
-class SharedDraftStore(context: Context) {
-    private val preferences = context.getSharedPreferences("hermex_share", Context.MODE_PRIVATE)
+class SharedDraftStore(
+    context: Context,
+    preferencesName: String = "hermex_share",
+) {
+    private val preferences = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
     private val cacheDirectory = context.cacheDir
 
-    @Synchronized
-    fun savePendingDraft(text: String, attachments: List<SharedAttachment>): Boolean {
+    fun savePendingDraft(text: String, attachments: List<SharedAttachment>): Boolean = synchronized(STORE_LOCK) {
         val attachmentSelection = selectSharedAttachments(attachments)
         deleteSharedAttachmentCaches(attachmentSelection.rejected, cacheDirectory)
 
         val trimmedText = text.trim()
         val previousDraft = loadPendingDraft(removeAfterLoad = false)
+        val createdAtEpochMillis = maxOf(
+            System.currentTimeMillis(),
+            (previousDraft?.createdAtEpochMillis ?: Long.MIN_VALUE).let { previous ->
+                if (previous == Long.MAX_VALUE) Long.MAX_VALUE else previous + 1
+            },
+        )
         if (trimmedText.isBlank() && attachmentSelection.accepted.isEmpty()) {
             if (preferences.edit().remove(KEY).commit()) {
                 deleteSharedAttachmentCaches(previousDraft?.attachments.orEmpty(), cacheDirectory)
             }
-            return false
+            return@synchronized false
         }
 
         val encodedDraft = HermesJson.encodeToString(
@@ -141,6 +149,7 @@ class SharedDraftStore(context: Context) {
                 text = trimmedText,
                 attachments = attachmentSelection.accepted,
                 uris = attachmentSelection.accepted.map { it.uri },
+                createdAtEpochMillis = createdAtEpochMillis,
             ),
         )
         val saved = preferences.edit()
@@ -148,7 +157,7 @@ class SharedDraftStore(context: Context) {
             .commit()
         if (!saved) {
             deleteSharedAttachmentCaches(attachmentSelection.accepted, cacheDirectory)
-            return false
+            return@synchronized false
         }
 
         val retainedPaths = attachmentSelection.accepted.mapNotNull { it.cachedPath }.toSet()
@@ -156,24 +165,57 @@ class SharedDraftStore(context: Context) {
             previousDraft?.attachments.orEmpty().filterNot { it.cachedPath in retainedPaths },
             cacheDirectory,
         )
-        return true
+        true
     }
 
-    @Synchronized
-    fun loadPendingDraft(removeAfterLoad: Boolean = true): SharedDraft? {
-        val value = preferences.getString(KEY, null) ?: return null
+    fun loadPendingDraft(removeAfterLoad: Boolean = true): SharedDraft? = synchronized(STORE_LOCK) {
+        val value = preferences.getString(KEY, null) ?: return@synchronized null
         val draft = runCatching { HermesJson.decodeFromString<SharedDraft>(value) }.getOrNull()
         if (draft == null) {
             preferences.edit().remove(KEY).apply()
-            return null
+            return@synchronized null
         }
-        if (removeAfterLoad && !preferences.edit().remove(KEY).commit()) return null
-        return draft
+        if (removeAfterLoad && !preferences.edit().remove(KEY).commit()) return@synchronized null
+        draft
+    }
+
+    fun commitImportedDraft(
+        expectedCreatedAtEpochMillis: Long,
+        remainingAttachments: List<SharedAttachment>,
+    ): Boolean = synchronized(STORE_LOCK) {
+        val current = loadPendingDraft(removeAfterLoad = false) ?: return@synchronized true
+        if (current.createdAtEpochMillis != expectedCreatedAtEpochMillis) return@synchronized false
+
+        val selection = selectSharedAttachments(remainingAttachments)
+        val replacement = selection.accepted.takeIf { it.isNotEmpty() }?.let { attachments ->
+            HermesJson.encodeToString(
+                SharedDraft(
+                    text = "",
+                    attachments = attachments,
+                    uris = attachments.map { it.uri },
+                    createdAtEpochMillis = maxOf(
+                        System.currentTimeMillis(),
+                        if (current.createdAtEpochMillis == Long.MAX_VALUE) Long.MAX_VALUE else current.createdAtEpochMillis + 1,
+                    ),
+                ),
+            )
+        }
+        val editor = preferences.edit()
+        if (replacement == null) editor.remove(KEY) else editor.putString(KEY, replacement)
+        if (!editor.commit()) return@synchronized false
+
+        val retainedPaths = selection.accepted.mapNotNull { it.cachedPath }.toSet()
+        deleteSharedAttachmentCaches(
+            current.attachments.filterNot { it.cachedPath in retainedPaths } + selection.rejected,
+            cacheDirectory,
+        )
+        true
     }
 
     fun hasPendingDraft(): Boolean = loadPendingDraft(removeAfterLoad = false) != null
 
     companion object {
         private const val KEY = "pending_share_draft"
+        private val STORE_LOCK = Any()
     }
 }

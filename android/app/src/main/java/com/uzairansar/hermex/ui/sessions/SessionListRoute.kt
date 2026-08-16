@@ -217,7 +217,7 @@ fun SessionListRoute(
     // Navigation keeps this ViewModel alive while chat is on top. Refresh each time
     // the sessions destination re-enters composition so newly changed chats appear.
     LaunchedEffect(viewModel) {
-        viewModel.refreshAll()
+        viewModel.refreshAllOnVisible()
     }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -396,7 +396,7 @@ fun SessionListRoute(
                 item {
                     StatusStack(state = state)
                 }
-                if (state.isLoading) {
+                if (state.isLoading && state.sessions.isEmpty()) {
                     item {
                         Box(Modifier.fillMaxWidth().padding(top = 30.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(strokeWidth = 2.dp)

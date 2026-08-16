@@ -90,7 +90,7 @@ class HermesApiClientSafetyTest {
                 .exceptionOrNull() as ApiError.Http
 
             assertTrue(error.body.orEmpty().length <= 64 * 1024)
-            assertTrue(error.message.orEmpty().length <= 520)
+            assertEquals("The Hermes server hit an internal error. Check the server logs, then try again.", error.message)
         } finally {
             server.close()
         }
@@ -100,7 +100,19 @@ class HermesApiClientSafetyTest {
     fun htmlErrorBodiesAreNotRenderedAsUserMessages() {
         val error = ApiError.Http(502, "<html><body>proxy failure</body></html>")
 
-        assertEquals("HTTP 502 request failed.", error.message)
+        assertEquals("The server or tunnel is unavailable. Check that Hermes Web UI is running and reachable.", error.message)
+    }
+
+    @Test
+    fun jsonErrorBodiesExposeOnlyRecognizedMessageFields() {
+        assertEquals(
+            "The server rejected the request: Invalid workspace.",
+            ApiError.Http(400, "{\"error\":\"Invalid workspace.\",\"debug\":\"secret trace\"}").message,
+        )
+        assertEquals(
+            "HTTP 409 request failed.",
+            ApiError.Http(409, "plain text containing internal details").message,
+        )
     }
 
     @Test

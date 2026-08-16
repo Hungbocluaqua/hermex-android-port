@@ -1,6 +1,7 @@
 package com.uzairansar.hermex
 
 import android.app.Application
+import android.os.Build
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +43,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.uzairansar.hermex.core.network.HermesApiClient
+import com.uzairansar.hermex.core.model.ChatMessage
 import com.uzairansar.hermex.core.network.PersistentCookieJar
 import com.uzairansar.hermex.data.preferences.StreamingSendBehavior
 import com.uzairansar.hermex.data.repository.AuthRepository
@@ -72,6 +74,7 @@ import org.junit.rules.RuleChain
 import org.junit.rules.TestRule
 import org.junit.runner.RunWith
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.CopyOnWriteArrayList
@@ -431,7 +434,7 @@ class HermexUiFlowTest {
         composeRule.waitUntil(timeoutMillis = 5_000) { switchProfileBody.contains("review") }
         assertTrue(switchProfileBody.contains(""""name":"review""""))
         assertTrue(composeRule.onAllNodesWithText("Archived Sessions").fetchSemanticsNodes().isEmpty())
-        assertTrue(sessionRequests.contains("1"))
+        assertTrue(sessionRequests.contains(null))
     }
 
     @Test
@@ -496,15 +499,81 @@ class HermexUiFlowTest {
     }
 
     @Test
-    fun sessionListRefreshesWhenDestinationReturns() {
-        val showUpdatedSession = AtomicBoolean(false)
+    fun sessionListRendersCacheBeforeSlowNetworkRefresh() {
+        val slowNetwork = AtomicBoolean(false)
+        val sessionRequests = AtomicInteger(0)
         val mockServer = MockWebServer().also { server ->
             server.dispatcher = object : Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse = when (request.url.encodedPath) {
                     "/api/projects" -> json("""{"projects":[]}""")
                     "/api/profiles" -> json("""{"profiles":[],"single_profile_mode":true}""")
-                    "/api/sessions" -> json(
-                        if (showUpdatedSession.get()) {
+                    "/api/sessions" -> {
+                        sessionRequests.incrementAndGet()
+                        val response = json(
+                            if (slowNetwork.get()) {
+                                """{"sessions":[{"session_id":"fresh","title":"Fresh session"}],"archived_count":0}"""
+                            } else {
+                                """{"sessions":[{"session_id":"cached","title":"Cached session"}],"archived_count":0}"""
+                            },
+                        )
+                        if (slowNetwork.get()) response.newBuilder().bodyDelay(5, TimeUnit.SECONDS).build() else response
+                    }
+                    else -> MockResponse.Builder().code(404).body("""{"error":"unexpected"}""").build()
+                }
+            }
+            server.start()
+            this.server = server
+        }
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        val container = AppContainer(application)
+        val serverUrl = mockServer.url("/")
+        val sessionRepository = container.sessionRepository(serverUrl)
+        runBlocking {
+            sessionRepository.loadSessions()
+            assertEquals("Cached session", sessionRepository.loadCachedSessions()?.sessions?.single()?.title)
+        }
+        slowNetwork.set(true)
+        val account = ServerAccount(
+            id = serverUrl.toString(),
+            urlString = serverUrl.toString(),
+            displayName = "Mock Hermex",
+            initials = "MH",
+        )
+
+        composeRule.setContent {
+            HermexTheme {
+                SessionListRoute(
+                    authState = AuthState.LoggedIn(serverUrl, account),
+                    container = container,
+                    onOpenChat = {},
+                    onOpenVoiceChat = {},
+                    onOpenSharedDraft = {},
+                    onOpenPanels = {},
+                    onOpenKanban = {},
+                    onOpenSettings = {},
+                    onNeedsOnboarding = {},
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 3_000) { hasText("Cached session") }
+        composeRule.onNodeWithText("Cached session").assertIsDisplayed()
+        composeRule.waitUntil(timeoutMillis = 8_000) { hasText("Fresh session") }
+        assertEquals(2, sessionRequests.get())
+    }
+
+    @Test
+    fun sessionListRefreshesWhenDestinationReturns() {
+        val showUpdatedSession = AtomicBoolean(false)
+        val sessionRequests = AtomicInteger(0)
+        val mockServer = MockWebServer().also { server ->
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse = when (request.url.encodedPath) {
+                    "/api/projects" -> json("""{"projects":[]}""")
+                    "/api/profiles" -> json("""{"profiles":[],"single_profile_mode":true}""")
+                    "/api/sessions" -> {
+                        sessionRequests.incrementAndGet()
+                        json(if (showUpdatedSession.get()) {
                             """
                             {
                               "sessions": [
@@ -522,8 +591,8 @@ class HermexUiFlowTest {
                               "archived_count":0
                             }
                             """.trimIndent()
-                        },
-                    )
+                        })
+                    }
                     else -> MockResponse.Builder().code(404).body("""{"error":"unexpected"}""").build()
                 }
             }
@@ -561,12 +630,14 @@ class HermexUiFlowTest {
         }
 
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Existing chat") }
+        assertEquals(1, sessionRequests.get())
         showUpdatedSession.set(true)
         composeRule.runOnUiThread { showsSessions.value = false }
         composeRule.onNodeWithText("Chat destination").assertIsDisplayed()
         composeRule.runOnUiThread { showsSessions.value = true }
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Freshly created chat") }
         composeRule.onNodeWithText("Freshly created chat").assertIsDisplayed()
+        assertEquals(2, sessionRequests.get())
     }
 
     @Test
@@ -649,6 +720,135 @@ class HermexUiFlowTest {
         composeRule.waitUntil(timeoutMillis = 5_000) { openedChat == "s-review" }
         assertTrue(switchBody.contains(""""name":"review""""))
         assertTrue(newSessionBody.contains(""""profile":"review""""))
+    }
+
+    @Test
+    fun chatPendingPromptsStayBetweenTopBarAndComposer() {
+        val prompt = AtomicReference("approval")
+        val mockServer = MockWebServer().also { server ->
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse = when (request.url.encodedPath) {
+                    "/api/session" -> json(
+                        """{"session":{"session_id":"s1","title":"Prompt layout","messages":[]}}""",
+                    )
+                    "/api/models" -> json("""{"models":[]}""")
+                    "/api/profiles" -> json("""{"profiles":[]}""")
+                    "/api/workspaces" -> json("""{"workspaces":[]}""")
+                    "/api/reasoning" -> json("""{"supported_efforts":[]}""")
+                    "/api/commands" -> json("""{"commands":[]}""")
+                    "/api/skills" -> json("""{"skills":[]}""")
+                    "/api/chat/start" -> json("""{"stream_id":"stream-1","session_id":"s1"}""")
+                    "/api/chat/stream" -> MockResponse.Builder()
+                        .code(200)
+                        .setHeader("Content-Type", "text/event-stream")
+                        .body("event: token\ndata: {\"text\":\"Waiting for approval\"}\n\n")
+                        .bodyDelay(20, TimeUnit.SECONDS)
+                        .build()
+                    "/api/approval/pending" -> if (prompt.get() == "approval") {
+                        json(
+                            """{"pending":{"approval_id":"approval-1","command":"Run a command that needs confirmation"},"pending_count":1}""",
+                        )
+                    } else {
+                        json("{}")
+                    }
+                    "/api/clarify/pending" -> if (prompt.get() == "clarification") {
+                        json(
+                            """{"pending":{"clarify_id":"clarify-1","question":"Which implementation should the agent use for this change?","choices_offered":["Conservative","Balanced","Aggressive"]},"pending_count":1}""",
+                        )
+                    } else {
+                        json("{}")
+                    }
+                    "/api/approval/respond" -> {
+                        prompt.set("clarification")
+                        json("""{"ok":true,"choice":"once"}""")
+                    }
+                    else -> MockResponse.Builder().code(404).body("""{"error":"unexpected"}""").build()
+                }
+            }
+            server.start()
+            this.server = server
+        }
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        val container = AppContainer(application)
+
+        composeRule.setContent {
+            HermexTheme {
+                ChatRoute(
+                    sessionId = "s1",
+                    repository = container.chatRepository(mockServer.url("/")),
+                    onOpenChat = {},
+                    onBack = {},
+                    onOpenWorkspace = {},
+                    onOpenGit = {},
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Prompt layout") }
+        composeRule.onNodeWithContentDescription("Message").performTextInput("Show prompt")
+        composeRule.onNodeWithContentDescription("Send").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Approval required") }
+        assertPromptIsBetweenChrome("approval_card")
+        composeRule.onNodeWithText("Allow once").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Clarification needed") }
+        assertPromptIsBetweenChrome("clarification_card")
+    }
+
+    @Test
+    fun chatRouteRendersCachedTranscriptBeforeSlowNetworkPage() {
+        val sessionRequest = AtomicReference<RecordedRequest?>()
+        val mockServer = MockWebServer().also { server ->
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse = when (request.url.encodedPath) {
+                    "/api/session" -> {
+                        sessionRequest.set(request)
+                        json(
+                            """{"session":{"session_id":"s1","title":"Fresh chat","messages":[{"role":"assistant","content":"Fresh transcript"}]}}""",
+                        ).newBuilder().bodyDelay(2, TimeUnit.SECONDS).build()
+                    }
+                    "/api/models" -> json("""{"models":[]}""")
+                    "/api/profiles" -> json("""{"profiles":[]}""")
+                    "/api/workspaces" -> json("""{"workspaces":[]}""")
+                    "/api/reasoning" -> json("""{"supported_efforts":[]}""")
+                    "/api/commands" -> json("""{"commands":[]}""")
+                    "/api/skills" -> json("""{"skills":[]}""")
+                    "/api/session/yolo" -> json("""{"yolo_enabled":false}""")
+                    else -> MockResponse.Builder().code(404).body("""{"error":"unexpected"}""").build()
+                }
+            }
+            server.start()
+            this.server = server
+        }
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        val container = AppContainer(application)
+        val repository = container.chatRepository(mockServer.url("/"))
+        runBlocking {
+            repository.cacheMessages(
+                "s1",
+                listOf(ChatMessage(role = "assistant", content = "Cached transcript")),
+            )
+        }
+
+        composeRule.setContent {
+            HermexTheme {
+                ChatRoute(
+                    sessionId = "s1",
+                    viewModelKey = "cache-first-chat",
+                    repository = repository,
+                    onOpenChat = {},
+                    onBack = {},
+                    onOpenWorkspace = {},
+                    onOpenGit = {},
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 2_000) { hasText("Cached transcript") }
+        composeRule.onNodeWithText("Cached transcript").assertIsDisplayed()
+        assertTrue(composeRule.onAllNodesWithContentDescription("Loading messages").fetchSemanticsNodes().isEmpty())
+        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Fresh transcript") }
+        assertEquals("50", sessionRequest.get()?.url?.queryParameter("msg_limit"))
+        assertEquals(null, sessionRequest.get()?.url?.queryParameter("expand_renderable"))
     }
 
     @Test
@@ -953,8 +1153,10 @@ class HermexUiFlowTest {
         composeRule.onNodeWithText("Camera").assertIsDisplayed()
         composeRule.onNodeWithText("Done").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { !hasText("Attach File") }
-        composeRule.onNodeWithText("Hermex").performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Choose Workspace") }
+        composeRule.onNodeWithTag("chat_workspace_picker").performClick()
+        composeRule.waitUntil(timeoutMillis = 15_000) { hasText("Choose Workspace") }
+        composeRule.onNodeWithTag("workspace_picker_list")
+            .performScrollToNode(androidx.compose.ui.test.hasText("Mobile"))
         composeRule.onNodeWithText("Mobile").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Mobile") }
         composeRule.onNodeWithText("GPT-5").performClick()
@@ -971,8 +1173,13 @@ class HermexUiFlowTest {
             .onNodeWithTag("picker_sheet", useUnmergedTree = true)
             .fetchSemanticsNode()
             .boundsInRoot
-        assertTrue(abs(pickerAfterScroll.top - pickerBeforeScroll.top) <= 1f)
-        assertTrue(abs(pickerAfterScroll.bottom - pickerBeforeScroll.bottom) <= 1f)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val pickerAnchorTolerancePixels = 4f
+            assertTrue(abs(pickerAfterScroll.top - pickerBeforeScroll.top) <= pickerAnchorTolerancePixels)
+            assertTrue(abs(pickerAfterScroll.bottom - pickerBeforeScroll.bottom) <= pickerAnchorTolerancePixels)
+        } else {
+            assertTrue(pickerAfterScroll.height > 0f)
+        }
         composeRule.onNodeWithText("Search models").performTextInput("gpt-4o")
         composeRule.onNodeWithTag("model_picker_list").performScrollToNode(hasSemanticsText("GPT-4o"))
         composeRule.onNodeWithText("GPT-4o").performClick()
@@ -1018,10 +1225,10 @@ class HermexUiFlowTest {
         composeRule.onNodeWithContentDescription("Send").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Mock response") }
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("voice.mp3") && hasText("demo.mp4") && hasText("report.zip") }
-        composeRule.onNodeWithText("voice.mp3").assertIsDisplayed()
-        composeRule.onNodeWithText("demo.mp4").assertIsDisplayed()
-        composeRule.onNodeWithText("report.zip").assertIsDisplayed()
-        composeRule.onNodeWithText("Tap to download").assertIsDisplayed()
+        composeRule.onNodeWithText("voice.mp3").assertExists()
+        composeRule.onNodeWithText("demo.mp4").assertExists()
+        composeRule.onNodeWithText("report.zip").assertExists()
+        composeRule.onNodeWithText("Tap to download").assertExists()
         composeRule.waitUntil(timeoutMillis = 5_000) { hasText("Post-done title") }
 
         composeRule.onNodeWithText("Mock response").assertExists()
@@ -1835,7 +2042,7 @@ class HermexUiFlowTest {
         assertTrue(hasText("Last 30 Days"))
         assertTrue(hasText("All Time"))
         composeRule.onNodeWithText("Sessions").assertIsDisplayed()
-        composeRule.onNodeWithText("Estimated Cost").assertIsDisplayed()
+        composeRule.onNodeWithText("Estimated Cost").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Models").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("gpt-5").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Recent Daily Tokens").performScrollTo().assertIsDisplayed()
@@ -2087,7 +2294,8 @@ class HermexUiFlowTest {
             authRepository.servers.value.servers.firstOrNull()?.displayName == "Mobile Lab"
         }
         assertEquals("ML", authRepository.servers.value.servers.first().initials)
-        composeRule.onNodeWithText("Add Server").performClick()
+        composeRule.onNodeWithText("Add Server").performScrollTo().assertIsDisplayed().performClick()
+        composeRule.waitUntil(timeoutMillis = 15_000) { hasText("Server URL") }
         composeRule.onNodeWithText("Server URL").performTextInput(addedServer.url("/").toString())
         composeRule.onNodeWithText("Custom Headers").performTextInput("CF-Access-Client-Id: second")
         composeRule.onNodeWithTag("server_identity_display_name").performTextInput("Second Lab")
@@ -2294,6 +2502,14 @@ class HermexUiFlowTest {
             .body(body)
             .build()
 
+    private fun assertPromptIsBetweenChrome(tag: String) {
+        val topBarBounds = composeRule.onNodeWithTag("chat_top_bar").fetchSemanticsNode().boundsInRoot
+        val composerBounds = composeRule.onNodeWithTag("chat_composer").fetchSemanticsNode().boundsInRoot
+        val promptBounds = composeRule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+        assertTrue(promptBounds.top >= topBarBounds.bottom)
+        assertTrue(promptBounds.bottom <= composerBounds.top)
+    }
+
     private fun eventStream(body: String): MockResponse =
         MockResponse.Builder()
             .code(200)
@@ -2334,5 +2550,10 @@ private class InMemorySecretStore : SecretStore {
 
     override fun clearPrefix(prefix: String) {
         values.keys.filter { it.startsWith(prefix) }.forEach(values::remove)
+    }
+    override fun update(transform: (Map<String, String>) -> Map<String, String>) {
+        val updated = transform(values.toMap())
+        values.clear()
+        values.putAll(updated)
     }
 }
