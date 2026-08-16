@@ -863,7 +863,7 @@ fun ChatRoute(
         ) {
             CompositionLocalProvider(LocalLayoutDirection provides chatLayoutDirection) {
                 Column(Modifier.fillMaxSize()) {
-            if (state.isLoading) {
+            if (state.isLoading && state.messages.isEmpty()) {
                 ChatTranscriptLoadingSkeleton()
             } else if (state.showsTranscriptErrorState) {
                 ChatTranscriptErrorState(

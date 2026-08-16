@@ -38,29 +38,42 @@ class SessionRepository(
 ) {
     private val serverUrl = client.baseUrl.toString()
 
+    suspend fun loadCachedSessions(includeArchived: Boolean = false): SessionPage? =
+        loadCachedSessions(
+            includeArchived = includeArchived,
+            now = System.currentTimeMillis(),
+            cacheGeneration = cacheOwnership.generation(serverUrl),
+        )
+
     suspend fun loadSessions(includeArchived: Boolean = false): ResultState<SessionPage> {
         val cacheGeneration = cacheOwnership.generation(serverUrl)
         val now = System.currentTimeMillis()
         return try {
-            // Fetch archived identities too so a complete response can distinguish deletion from archiving.
-            val response = client.sessions(includeArchived = true, archivedLimit = ARCHIVED_SYNC_LIMIT)
+            val response = client.sessions(
+                includeArchived = includeArchived,
+                archivedLimit = ARCHIVED_SYNC_LIMIT.takeIf { includeArchived },
+            )
             val allSessions = response.sessions.orEmpty()
             val sessions = allSessions.filter { includeArchived || it.archived != true }
             val entities = allSessions.mapNotNull { CachedSessionEntity.from(serverUrl, it, now) }
             val archivedReturned = allSessions.count { it.archived == true }
-            val authoritative = response.archivedCount?.let { archivedReturned >= it } == true
+            val authoritative = includeArchived && response.archivedCount?.let { archivedReturned >= it } == true
             cacheOwnership.writeIfCurrent(serverUrl, cacheGeneration) {
-                cacheDao.replaceSessions(serverUrl, entities, now, authoritative)
+                if (includeArchived) {
+                    cacheDao.replaceSessions(serverUrl, entities, now, authoritative)
+                } else {
+                    if (entities.isNotEmpty()) cacheDao.upsertSessions(entities)
+                    cacheDao.maintenance(now)
+                }
             }
             ResultState.Data(SessionPage(sessions, response.archivedCount))
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
             if (error is ApiError.Unauthorized) return ResultState.Error(error.userMessage(), error)
             if (!error.isCacheFallbackEligible()) return ResultState.Error(error.userMessage(), error)
-            val cached = cacheOwnership.readIfCurrent(serverUrl, cacheGeneration) {
-                cacheDao.cachedSessions(serverUrl, now, includeArchived).map { it.toSummary() }
-            } ?: return ResultState.Error("The active profile changed while sessions were loading.", error)
-            if (cached.isNotEmpty()) ResultState.Data(SessionPage(cached), fromCache = true) else ResultState.Error(error.userMessage(), error)
+            val cached = loadCachedSessions(includeArchived, now, cacheGeneration)
+                ?: return ResultState.Error(error.userMessage(), error)
+            ResultState.Data(cached, fromCache = true)
         }
     }
 
@@ -157,6 +170,22 @@ class SessionRepository(
 
     suspend fun exportSession(sessionId: String, format: SessionExportFormat, fallbackTitle: String?): SessionExportFile =
         client.exportSession(sessionId, format, fallbackTitle, exportDirectoryProvider?.invoke())
+
+    private suspend fun loadCachedSessions(
+        includeArchived: Boolean,
+        now: Long,
+        cacheGeneration: Long,
+    ): SessionPage? = cacheOwnership.readIfCurrent(serverUrl, cacheGeneration) {
+        val allSessions = cacheDao.cachedSessions(serverUrl, now, includeArchived = true).map { it.toSummary() }
+        if (allSessions.isEmpty()) {
+            null
+        } else {
+            SessionPage(
+                sessions = allSessions.filter { includeArchived || it.archived != true },
+                archivedCount = allSessions.count { it.archived == true },
+            )
+        }
+    }
 }
 
 private const val ARCHIVED_SYNC_LIMIT = 2_000

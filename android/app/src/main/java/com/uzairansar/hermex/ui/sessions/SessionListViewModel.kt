@@ -21,6 +21,7 @@ import com.uzairansar.hermex.data.preferences.MainPageDisplaySettings
 import com.uzairansar.hermex.data.preferences.SessionRowDisplaySettings
 import com.uzairansar.hermex.data.repository.PanelsRepository
 import com.uzairansar.hermex.data.repository.ResultState
+import com.uzairansar.hermex.data.repository.SessionPage
 import com.uzairansar.hermex.data.repository.SessionRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -257,6 +258,7 @@ class SessionListViewModel(
     private var remoteSearchJob: Job? = null
     private var profilesJob: Job? = null
     private var profilesGeneration = 0L
+    private var hasEnteredComposition = false
 
     init {
         viewModelScope.launch {
@@ -301,12 +303,28 @@ class SessionListViewModel(
         refreshJob = viewModelScope.launch {
             val snapshot = _state.value
             val requestedArchivedMode = snapshot.showArchived
+            var cachedPreview: SessionPage? = null
             _state.update {
                 it.copy(
                     isLoading = true,
                     error = null,
                     notice = if (clearNotice) null else it.notice,
                 )
+            }
+            if (snapshot.sessions.isEmpty()) {
+                runSuspendCatching { repository.loadCachedSessions(requestedArchivedMode) }
+                    .getOrNull()
+                    ?.let { cached ->
+                        if (_state.value.showArchived != requestedArchivedMode) return@launch
+                        cachedPreview = cached
+                        _state.update {
+                            it.copy(
+                                sessions = cached.sessions,
+                                archivedCount = cached.archivedCount,
+                                isViewingCachedData = false,
+                            )
+                        }
+                    }
             }
             val projects = async { runSuspendCatching { repository.loadProjects() } }
             val result = repository.loadSessions(includeArchived = requestedArchivedMode)
@@ -331,7 +349,16 @@ class SessionListViewModel(
                         )
                     }
                 }
-                is ResultState.Error -> _state.update { it.copy(isLoading = false, error = result.message) }
+                is ResultState.Error -> _state.update {
+                    val shouldRevertCachedPreview = cachedPreview?.let { preview -> it.sessions == preview.sessions } == true
+                    it.copy(
+                        sessions = if (shouldRevertCachedPreview) snapshot.sessions else it.sessions,
+                        archivedCount = if (shouldRevertCachedPreview) snapshot.archivedCount else it.archivedCount,
+                        isLoading = false,
+                        isViewingCachedData = false,
+                        error = result.message,
+                    )
+                }
                 ResultState.Loading -> Unit
             }
             projects.await().onSuccess { loadedProjects ->
@@ -345,6 +372,14 @@ class SessionListViewModel(
     fun refreshAll() {
         refresh()
         refreshProfiles()
+    }
+
+    fun refreshAllOnVisible() {
+        if (hasEnteredComposition) {
+            refreshAll()
+        } else {
+            hasEnteredComposition = true
+        }
     }
 
     fun updateSearchQuery(value: String) {

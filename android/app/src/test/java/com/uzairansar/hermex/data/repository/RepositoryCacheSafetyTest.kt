@@ -19,6 +19,7 @@ import mockwebserver3.MockWebServer
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.TimeUnit
@@ -41,8 +42,12 @@ class RepositoryCacheSafetyTest {
             val error = runCatching {
                 repository.loadOlderSessionSnapshot("session-1", before = 10, currentMessages = emptyList())
             }.exceptionOrNull()
+            val request = server.takeRequest()
 
             assertTrue(error is ApiError.InvalidResponse)
+            assertEquals("50", request.url.queryParameter("msg_limit"))
+            assertEquals("10", request.url.queryParameter("msg_before"))
+            assertNull(request.url.queryParameter("expand_renderable"))
             assertTrue(dao.replacedMessageBatches.isEmpty())
         } finally {
             server.close()
@@ -402,6 +407,31 @@ class RepositoryCacheSafetyTest {
     }
 
     @Test
+    fun activeSessionLoadOmitsArchivedPayload() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            val dao = RecordingCacheDao()
+            val repository = SessionRepository(
+                client = HermesApiClient(server.url("/"), OkHttpClient()),
+                cacheDao = dao,
+                cacheOwnership = ServerCacheOwnership(),
+            )
+            server.enqueue(json("""{"sessions":[{"session_id":"active"}],"archived_count":30}"""))
+
+            repository.loadSessions(includeArchived = false)
+            val request = server.takeRequest()
+
+            assertNull(request.url.queryParameter("include_archived"))
+            assertNull(request.url.queryParameter("archived_limit"))
+            assertTrue(dao.authoritativeSessionSyncs.isEmpty())
+            assertEquals(listOf("active"), dao.replacedSessionBatches.single().map { it.sessionId })
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
     fun completeArchivedSessionSyncIsMarkedAuthoritative() = runBlocking {
         val server = MockWebServer()
         try {
@@ -418,11 +448,14 @@ class RepositoryCacheSafetyTest {
                 ),
             )
 
-            val result = repository.loadSessions(includeArchived = false)
+            val result = repository.loadSessions(includeArchived = true)
+            val request = server.takeRequest()
 
             assertEquals(listOf(true), dao.authoritativeSessionSyncs)
             assertEquals(listOf("active", "archived"), dao.replacedSessionBatches.single().map { it.sessionId })
-            assertEquals(listOf("active"), (result as ResultState.Data).value.sessions.map { it.sessionId })
+            assertEquals(listOf("active", "archived"), (result as ResultState.Data).value.sessions.map { it.sessionId })
+            assertEquals("1", request.url.queryParameter("include_archived"))
+            assertEquals("2000", request.url.queryParameter("archived_limit"))
         } finally {
             server.close()
         }
@@ -455,6 +488,83 @@ class RepositoryCacheSafetyTest {
         }
     }
 
+    @Test
+    fun cachedChatSnapshotIsAvailableBeforeTheNetworkLoad() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            val dao = RecordingCacheDao()
+            val serverUrl = server.url("/").toString()
+            dao.cachedSessionResult = listOf(
+                requireNotNull(
+                    CachedSessionEntity.from(
+                        serverUrl,
+                        SessionSummary(sessionId = "session-1", title = "Cached title", messageCount = 120),
+                    ),
+                ),
+            )
+            dao.cachedMessageResult = listOf(
+                CachedMessageEntity.from(
+                    serverUrl,
+                    "session-1",
+                    com.uzairansar.hermex.core.model.ChatMessage(role = "assistant", content = "cached"),
+                    index = 0,
+                ),
+            )
+            val repository = ChatRepository(
+                client = HermesApiClient(server.url("/"), OkHttpClient()),
+                cacheDao = dao,
+                cacheOwnership = ServerCacheOwnership(),
+                sse = SseStreamClient(server.url("/"), OkHttpClient()) { emptyList() },
+            )
+
+            val snapshot = repository.loadCachedSessionSnapshot("session-1")
+
+            assertEquals("Cached title", snapshot?.title)
+            assertEquals("cached", snapshot?.messages?.single()?.displayText)
+            assertEquals(0, server.requestCount)
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun cachedSessionListIsAvailableBeforeTheNetworkLoad() = runBlocking {
+        val server = MockWebServer()
+        try {
+            server.start()
+            val dao = RecordingCacheDao()
+            val serverUrl = server.url("/").toString()
+            dao.cachedSessionResult = listOf(
+                requireNotNull(
+                    CachedSessionEntity.from(
+                        serverUrl,
+                        SessionSummary(sessionId = "active", title = "Cached active"),
+                    ),
+                ),
+                requireNotNull(
+                    CachedSessionEntity.from(
+                        serverUrl,
+                        SessionSummary(sessionId = "archived", title = "Cached archived", archived = true),
+                    ),
+                ),
+            )
+            val repository = SessionRepository(
+                client = HermesApiClient(server.url("/"), OkHttpClient()),
+                cacheDao = dao,
+                cacheOwnership = ServerCacheOwnership(),
+            )
+
+            val page = repository.loadCachedSessions()
+
+            assertEquals(listOf("active"), page?.sessions?.map { it.sessionId })
+            assertEquals(1, page?.archivedCount)
+            assertEquals(0, server.requestCount)
+        } finally {
+            server.close()
+        }
+    }
+
     private fun json(body: String): MockResponse = MockResponse.Builder()
         .code(200)
         .addHeader("Content-Type", "application/json")
@@ -462,7 +572,7 @@ class RepositoryCacheSafetyTest {
         .build()
 }
 
-private class RecordingCacheDao : CacheDao {
+internal class RecordingCacheDao : CacheDao {
     val replacedSessionBatches = mutableListOf<List<CachedSessionEntity>>()
     val replacedMessageBatches = mutableListOf<List<CachedMessageEntity>>()
     val authoritativeSessionSyncs = mutableListOf<Boolean>()

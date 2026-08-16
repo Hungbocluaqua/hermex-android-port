@@ -487,7 +487,21 @@ class ChatViewModel internal constructor(
         val generation = ++loadGeneration
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
+            val previousState = _state.value
+            var cacheFirstMessages: List<ChatMessage>? = null
             _state.update { it.copy(isLoading = true, error = null) }
+            if (previousState.messages.isEmpty()) {
+                runSuspendCatching { repository.loadCachedSessionSnapshot(sessionId) }
+                    .getOrNull()
+                    ?.takeIf { it.messages.isNotEmpty() }
+                    ?.let { cachedSnapshot ->
+                        if (generation != loadGeneration) return@launch
+                        cacheFirstMessages = cachedSnapshot.messages
+                        applySessionSnapshot(cachedSnapshot, fromCache = false) {
+                            it.copy(isLoading = true)
+                        }
+                    }
+            }
             when (val result = repository.loadSessionSnapshot(sessionId)) {
                 is ResultState.Data -> {
                     if (generation != loadGeneration) return@launch
@@ -500,7 +514,21 @@ class ChatViewModel internal constructor(
                     drainQueuedSlashMessageIfIdle()
                 }
                 is ResultState.Error -> if (generation == loadGeneration) {
-                    _state.update { it.copy(isLoading = false, error = result.message) }
+                    _state.update { current ->
+                        if (cacheFirstMessages != null && current.messages == cacheFirstMessages) {
+                            current.copy(
+                                messages = previousState.messages,
+                                messagesOffset = previousState.messagesOffset,
+                                hasOlderMessages = previousState.hasOlderMessages,
+                                compressionReferenceCard = previousState.compressionReferenceCard,
+                                completedToolCallGroups = previousState.completedToolCallGroups,
+                                isLoading = false,
+                                error = result.message,
+                            )
+                        } else {
+                            current.copy(isLoading = false, error = result.message)
+                        }
+                    }
                 }
                 ResultState.Loading -> Unit
             }
