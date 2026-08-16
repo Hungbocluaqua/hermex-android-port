@@ -118,8 +118,11 @@ internal fun deleteSharedAttachmentCaches(
     }
 }
 
-class SharedDraftStore(context: Context) {
-    private val preferences = context.getSharedPreferences("hermex_share", Context.MODE_PRIVATE)
+class SharedDraftStore(
+    context: Context,
+    preferencesName: String = "hermex_share",
+) {
+    private val preferences = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
     private val cacheDirectory = context.cacheDir
 
     fun savePendingDraft(text: String, attachments: List<SharedAttachment>): Boolean = synchronized(STORE_LOCK) {

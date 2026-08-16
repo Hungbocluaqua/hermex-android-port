@@ -91,8 +91,9 @@ class ShareIntentTest {
     @Test
     fun importedDraftIsAcknowledgedOnlyWhenItsGenerationStillMatches() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        context.getSharedPreferences("hermex_share", android.content.Context.MODE_PRIVATE).edit().clear().commit()
-        val store = SharedDraftStore(context)
+        val preferencesName = "hermex_share_generation_test"
+        context.getSharedPreferences(preferencesName, android.content.Context.MODE_PRIVATE).edit().clear().commit()
+        val store = SharedDraftStore(context, preferencesName)
         val attachmentFile = File(context.cacheDir, "share-ack-test.txt").apply { writeText("hello") }
         store.savePendingDraft(
             text = "first",
