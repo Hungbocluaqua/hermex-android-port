@@ -847,15 +847,172 @@ object MessageAttachmentSerializer : KSerializer<MessageAttachment> {
     }
 }
 
-@Serializable
+@Serializable(with = ToolCallFunctionSerializer::class)
+data class ToolCallFunction(
+    val name: String? = null,
+    val arguments: String? = null,
+)
+
+object ToolCallFunctionSerializer : KSerializer<ToolCallFunction> {
+    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("ToolCallFunction") {
+        element<String?>("name")
+        element<String?>("arguments")
+    }
+
+    override fun deserialize(decoder: Decoder): ToolCallFunction {
+        val jsonDecoder = decoder as? JsonDecoder ?: return ToolCallFunction()
+        val element = jsonDecoder.decodeJsonElement() as? JsonObject ?: return ToolCallFunction()
+        val name = element["name"].stringOrNull()
+        val argumentsRaw = element["arguments"] ?: element["args"]
+        val argumentsString = when (argumentsRaw) {
+            is JsonPrimitive -> argumentsRaw.contentOrNull
+            is JsonObject, is JsonArray -> argumentsRaw.toString()
+            else -> null
+        }
+        return ToolCallFunction(
+            name = name,
+            arguments = argumentsString,
+        )
+    }
+
+    override fun serialize(encoder: Encoder, value: ToolCallFunction) {
+        val jsonEncoder = encoder as? JsonEncoder ?: return
+        jsonEncoder.encodeJsonElement(
+            buildJsonObject {
+                value.name?.let { put("name", it) }
+                value.arguments?.let { put("arguments", it) }
+            },
+        )
+    }
+}
+
+@Serializable(with = ToolCallSerializer::class)
 data class ToolCall(
     val id: String? = null,
+    val type: String? = null,
+    val function: ToolCallFunction? = null,
     val name: String? = null,
     val preview: String? = null,
     val args: Map<String, JsonElement>? = null,
     val result: JsonElement? = null,
     @SerialName("is_error") val isError: Boolean? = null,
-)
+) {
+    val displayName: String
+        get() = name?.trim()?.takeIf { it.isNotBlank() }
+            ?: function?.name?.trim()?.takeIf { it.isNotBlank() }
+            ?: preview?.lineSequence()?.firstOrNull { it.isNotBlank() }?.take(48)
+            ?: id?.trim()?.takeIf { it.isNotBlank() }
+            ?: "Tool"
+}
+
+object ToolCallSerializer : KSerializer<ToolCall> {
+    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("ToolCall") {
+        element<String?>("id")
+        element<String?>("type")
+        element<ToolCallFunction?>("function")
+        element<String?>("name")
+        element<String?>("preview")
+        element<Map<String, JsonElement>?>("args")
+        element<JsonElement?>("result")
+        element<Boolean?>("isError")
+    }
+
+    override fun deserialize(decoder: Decoder): ToolCall {
+        val jsonDecoder = decoder as? JsonDecoder ?: return ToolCall()
+        val element = jsonDecoder.decodeJsonElement() as? JsonObject ?: return ToolCall()
+
+        val id = element["id"].stringOrNull()
+            ?: element["call_id"].stringOrNull()
+            ?: element["tool_call_id"].stringOrNull()
+            ?: element["tid"].stringOrNull()
+
+        val type = element["type"].stringOrNull()
+
+        val functionElement = element["function"]
+        val function = when (functionElement) {
+            is JsonObject -> {
+                val fnName = functionElement["name"].stringOrNull()
+                val fnArgsRaw = functionElement["arguments"] ?: functionElement["args"]
+                val fnArgsString = when (fnArgsRaw) {
+                    is JsonPrimitive -> fnArgsRaw.contentOrNull
+                    is JsonObject, is JsonArray -> fnArgsRaw.toString()
+                    else -> null
+                }
+                ToolCallFunction(name = fnName, arguments = fnArgsString)
+            }
+            else -> null
+        }
+
+        val name = element["name"].stringOrNull()
+
+        val preview = element["preview"].stringOrNull()
+            ?: element["snippet"].stringOrNull()
+
+        val topLevelArgs = element["args"]
+            ?: element["arguments"]
+            ?: element["input"]
+        val functionArgs = (functionElement as? JsonObject)?.let { it["arguments"] ?: it["args"] }
+
+        val args = parseArgs(topLevelArgs, functionArgs, jsonDecoder)
+
+        val result = element["result"] ?: element["output"]
+
+        val isError = element["is_error"].booleanValueOrNull()
+            ?: element["isError"].booleanValueOrNull()
+
+        return ToolCall(
+            id = id,
+            type = type,
+            function = function,
+            name = name,
+            preview = preview,
+            args = args,
+            result = result,
+            isError = isError,
+        )
+    }
+
+    override fun serialize(encoder: Encoder, value: ToolCall) {
+        val jsonEncoder = encoder as? JsonEncoder ?: return
+        jsonEncoder.encodeJsonElement(
+            buildJsonObject {
+                value.id?.let { put("id", it) }
+                value.type?.let { put("type", it) }
+                value.function?.let { put("function", jsonEncoder.json.encodeToJsonElement(it)) }
+                value.name?.let { put("name", it) }
+                value.preview?.let { put("preview", it) }
+                value.args?.let { put("args", jsonEncoder.json.encodeToJsonElement(it)) }
+                value.result?.let { put("result", it) }
+                value.isError?.let { put("is_error", it) }
+            },
+        )
+    }
+
+    private fun parseArgs(
+        topLevelArgsElement: JsonElement?,
+        functionArgsElement: JsonElement?,
+        jsonDecoder: JsonDecoder,
+    ): Map<String, JsonElement>? {
+        val fromTopLevel = parseJsonElementToMap(topLevelArgsElement, jsonDecoder)
+        if (fromTopLevel != null) return fromTopLevel
+        return parseJsonElementToMap(functionArgsElement, jsonDecoder)
+    }
+
+    private fun parseJsonElementToMap(element: JsonElement?, jsonDecoder: JsonDecoder): Map<String, JsonElement>? {
+        return when (element) {
+            is JsonObject -> element.toMap()
+            is JsonPrimitive -> {
+                val text = element.contentOrNull?.trim()
+                if (text.isNullOrEmpty()) return null
+                runCatching {
+                    val parsed = jsonDecoder.json.parseToJsonElement(text)
+                    (parsed as? JsonObject)?.toMap()
+                }.getOrNull()
+            }
+            else -> null
+        }
+    }
+}
 
 @Serializable
 data class PersistedToolCall(
@@ -864,16 +1021,25 @@ data class PersistedToolCall(
     val tid: String? = null,
     @SerialName("assistant_msg_idx") val assistantMsgIdx: Int? = null,
     val args: Map<String, JsonElement>? = null,
+    val id: String? = null,
+    val type: String? = null,
+    val function: ToolCallFunction? = null,
 ) {
-    fun toToolCall(fallbackIndex: Int): ToolCall =
-        ToolCall(
-            id = tid?.trim()?.takeIf { it.isNotEmpty() } ?: "persisted-tool-$fallbackIndex",
+    fun toToolCall(fallbackIndex: Int): ToolCall {
+        val resolvedId = tid?.trim()?.takeIf { it.isNotEmpty() }
+            ?: id?.trim()?.takeIf { it.isNotEmpty() }
+            ?: "persisted-tool-$fallbackIndex"
+        return ToolCall(
+            id = resolvedId,
+            type = type,
+            function = function,
             name = name,
             preview = snippet,
             args = args,
             result = null,
             isError = null,
         )
+    }
 }
 
 data class ToolCallGroup(
@@ -936,7 +1102,7 @@ object ToolCallGroupResolver {
         val seen = linkedMapOf<String, ToolCall>()
         tools.forEachIndexed { index, tool ->
             val key = tool.id?.takeUnless { it.startsWith("persisted-tool-") }
-                ?: "${tool.name.orEmpty().trim()}:${tool.args?.toString().orEmpty()}:$index"
+                ?: "${tool.displayName.trim()}:${tool.args?.toString().orEmpty()}:$index"
             seen[key] = tool
         }
         return seen.values.toList()
@@ -1798,6 +1964,15 @@ private fun JsonElement?.doubleValueOrNull(): Double? {
 private fun JsonElement?.intValueOrNull(): Int? {
     val primitive = this as? JsonPrimitive ?: return null
     return primitive.intOrNull ?: primitive.contentOrNull?.trim()?.toIntOrNull()
+}
+
+private fun JsonElement?.booleanValueOrNull(): Boolean? {
+    val primitive = this as? JsonPrimitive ?: return null
+    return primitive.booleanOrNull ?: when (primitive.contentOrNull?.trim()?.lowercase()) {
+        "true", "1", "yes", "on" -> true
+        "false", "0", "no", "off" -> false
+        else -> null
+    }
 }
 
 @Serializable

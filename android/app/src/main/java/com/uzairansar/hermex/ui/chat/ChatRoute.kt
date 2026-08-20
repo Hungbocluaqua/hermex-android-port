@@ -5716,11 +5716,6 @@ private fun ToolDetailSection(
     }
 }
 
-private val ToolCall.displayName: String
-    get() = name?.takeIf { it.isNotBlank() }
-        ?: preview?.lineSequence()?.firstOrNull { it.isNotBlank() }?.take(48)
-        ?: id?.takeIf { it.isNotBlank() }
-        ?: "Tool"
 
 private val ToolCall.collapsedStatusText: String?
     get() = when {
