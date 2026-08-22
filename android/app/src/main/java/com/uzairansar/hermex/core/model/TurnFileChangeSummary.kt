@@ -100,7 +100,10 @@ object TurnFileChangeAggregator {
     }
 
     private fun candidates(tool: ToolCall): List<PathCandidate> {
-        val name = tool.name?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: return emptyList()
+        val name = (tool.name?.takeIf { it.isNotBlank() } ?: tool.function?.name)
+            ?.trim()
+            ?.lowercase()
+            ?.takeIf { it.isNotBlank() } ?: return emptyList()
         val action = actionForTool(name) ?: return emptyList()
         val args = tool.args.orEmpty()
 
